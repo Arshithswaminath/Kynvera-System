@@ -2786,7 +2786,7 @@
     function render(c) {
       if (!c) return;
       if (c.full_name) {
-        document.title = c.full_name + ' — Hiring Documents · Injaaz';
+        document.title = c.full_name + ' — Hiring Documents · Kynvera';
       }
       const contacts = [];
       if (c.email) contacts.push(escapeHtml(c.email));

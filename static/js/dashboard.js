@@ -242,6 +242,14 @@ function loadUserWelcome() {
   }
 }
 
+function userHasBdModuleAccess(user) {
+  if (!user) return false;
+  if (isAppAdmin(user)) return true;
+  const d = (user.designation || '').trim().toLowerCase();
+  if (d === 'business_development' || d === 'general_manager' || d === 'operations_manager') return true;
+  return accessFlagOn(user, 'access_business_development') || accessFlagOn(user, 'access_sales_manager');
+}
+
 function userHasBdEmailAccess(user) {
   if (!user) return false;
   if (isAppAdmin(user)) return true;
@@ -284,6 +292,12 @@ function userHasReportGenerationNavAccess(user) {
   return accessFlagOn(user, 'access_report_generation');
 }
 
+function userHasAutomationsAccess(user) {
+  if (!user) return false;
+  if (isAppAdmin(user)) return true;
+  return accessFlagOn(user, 'access_hr');
+}
+
 /** Navbar items tied to admin profile module flags (main_navbar.html). */
 function applyProfileBasedNavVisibility(user) {
   const inspectionEl = document.getElementById('inspection-forms-menu-item');
@@ -308,7 +322,7 @@ function applyProfileBasedNavVisibility(user) {
   }
   const qhsiEl = document.getElementById('qhsi-menu-item');
   if (qhsiEl) {
-    qhsiEl.style.display = (user && (isAppAdmin(user) || accessFlagOn(user, 'access_qhsi'))) ? 'list-item' : 'none';
+    qhsiEl.style.display = 'none';
   }
   const reportEl = document.getElementById('report-gen-menu-item');
   if (reportEl) {
@@ -323,6 +337,10 @@ function applyProfileBasedNavVisibility(user) {
       userHasHrNavAccess(user)
     ));
     filesEl.style.display = showFiles ? 'list-item' : 'none';
+  }
+  const automationsEl = document.getElementById('automations-menu-item');
+  if (automationsEl) {
+    automationsEl.style.display = userHasAutomationsAccess(user) ? 'list-item' : 'none';
   }
 }
 
@@ -349,7 +367,7 @@ function checkAndShowAdminMenu(user) {
     deviceMgmtMenuItem.style.display = (user && isAppAdmin(user)) ? 'list-item' : 'none';
   }
   if (bdModuleMenuItem) {
-    bdModuleMenuItem.style.display = (user && isAppAdmin(user)) ? 'list-item' : 'none';
+    bdModuleMenuItem.style.display = userHasBdModuleAccess(user) ? 'list-item' : 'none';
   }
 
   // Legacy Review History nav is retired in favor of unified Submitted Forms.
@@ -491,11 +509,12 @@ function updateModuleVisibility(user) {
     deviceMgmtCard.style.visibility = isAdmin ? 'visible' : 'hidden';
   }
 
-  // Check Business Development module access (admin only)
+  // Business Development module — BD designation, BD access, GM/ops, or admin
   const bdCard = document.getElementById('module-bd');
   if (bdCard) {
-    bdCard.style.display = isAdmin ? 'block' : 'none';
-    bdCard.style.visibility = isAdmin ? 'visible' : 'hidden';
+    const showBd = userHasBdModuleAccess(user);
+    bdCard.style.display = showBd ? 'block' : 'none';
+    bdCard.style.visibility = showBd ? 'visible' : 'hidden';
   }
 
   // HR Module: match admin "HR module" flag and HR/GM designations (see /hr/ hub routing)
@@ -530,6 +549,17 @@ function updateModuleVisibility(user) {
     filesMenuItem.style.display = hasFilesAccess ? 'list-item' : 'none';
   }
 
+  const automationsCard = document.getElementById('module-automations');
+  const automationsMenuItem = document.getElementById('automations-menu-item');
+  const hasAutomationsAccess = userHasAutomationsAccess(user);
+  if (automationsCard) {
+    automationsCard.style.display = hasAutomationsAccess ? 'block' : 'none';
+    automationsCard.style.visibility = hasAutomationsAccess ? 'visible' : 'hidden';
+  }
+  if (automationsMenuItem) {
+    automationsMenuItem.style.display = hasAutomationsAccess ? 'list-item' : 'none';
+  }
+
   // Service tickets (same rule as main_navbar ticketing-menu-item)
   const ticketingCard = document.getElementById('module-ticketing');
   if (ticketingCard) {
@@ -548,13 +578,12 @@ function updateModuleVisibility(user) {
 
   const qhsiCard = document.getElementById('module-qhsi');
   const qhsiMenuItem = document.getElementById('qhsi-menu-item');
-  const showQhsi = isAdmin || accessFlagOn(user, 'access_qhsi');
   if (qhsiCard) {
-    qhsiCard.style.display = showQhsi ? 'block' : 'none';
-    qhsiCard.style.visibility = showQhsi ? 'visible' : 'hidden';
+    qhsiCard.style.display = 'none';
+    qhsiCard.style.visibility = 'hidden';
   }
   if (qhsiMenuItem) {
-    qhsiMenuItem.style.display = showQhsi ? 'list-item' : 'none';
+    qhsiMenuItem.style.display = 'none';
   }
 
   // Check Report Generation / MMR hub
@@ -723,7 +752,10 @@ async function loadPendingCount(user) {
     }
     
     const data = await response.json();
-    const submissions = data.submissions || [];
+    const submissions = (data.submissions || []).filter(function (s) {
+      const mt = (s.module_type || '').trim();
+      return mt !== 'qhsi_staff_compliance' && mt !== 'qhsi_inspection';
+    });
     
     if (pendingModule) {
       pendingModule.style.display = 'block';
@@ -782,7 +814,13 @@ window.openSubmissionForReview = async function(submissionId, moduleUrl) {
       }
     });
     
-    window.location.href = `/${moduleUrl}/form?edit=${submissionId}&review=true`;
+    var href = '/' + moduleUrl + '/form?edit=' + submissionId + '&review=true';
+    if (moduleUrl === 'qhsi_staff_compliance') {
+      href = '/qhsi/staff-compliance?edit=' + encodeURIComponent(submissionId) + '&review=true';
+    } else if (moduleUrl === 'qhsi_inspection') {
+      href = '/qhsi/inspection?edit=' + encodeURIComponent(submissionId) + '&review=true';
+    }
+    window.location.href = href;
   } catch (error) {
     console.error('Error starting review:', error);
     alert('Failed to start review. Please try again.');
@@ -955,7 +993,8 @@ function displayProfileData(user) {
     if (userHasHrNavAccess(user)) modules.push('HR');
     if (isAppAdmin(user) || user.access_procurement_module) modules.push('Procurement');
     if (isAppAdmin(user) || user.access_files || user.access_hr || userHasHrNavAccess(user)) modules.push('Files');
-    if (isAppAdmin(user) || user.designation === 'business_development' || user.access_business_development) modules.push('Business Development');
+    if (userHasAutomationsAccess(user)) modules.push('Automations');
+    if (isAppAdmin(user) || user.designation === 'business_development' || user.access_business_development || user.access_sales_manager) modules.push('Business Development');
     if (userHasReportGenerationNavAccess(user)) modules.push('Report Generation');
     return modules.length > 0 ? modules.join(', ') : 'None';
   };
@@ -1029,7 +1068,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
   if (isAppAdmin(user) || user.access_cleaning) modules.push({ name: 'Cleaning', desc: 'Facility hygiene & maintenance', icon: 'cleaning', color: '#10b981', bg: '#ecfdf5' });
   if (userHasHrNavAccess(user)) modules.push({ name: 'HR', desc: 'People & workforce management', icon: 'hr_mod', color: '#f59e0b', bg: '#fffbeb' });
   if (isAppAdmin(user) || user.access_procurement_module) modules.push({ name: 'Procurement', desc: 'Purchasing & vendor tracking', icon: 'procurement', color: '#7c3aed', bg: '#faf5ff' });
-  if (isAppAdmin(user) || user.designation === 'business_development' || user.access_business_development) modules.push({ name: 'Business Development', desc: 'Proposals & client pipeline', icon: 'biz_dev', color: '#0d9488', bg: '#f0fdfa' });
+  if (userHasBdModuleAccess(user)) modules.push({ name: 'Business Development', desc: 'Pipeline, quotations & follow-ups', icon: 'biz_dev', color: '#ff8e68', bg: '#fff4ef' });
   if (userHasReportGenerationNavAccess(user)) modules.push({ name: 'Report Generation', desc: 'Analytics & export tools', icon: 'reports', color: '#0369a1', bg: '#eff6ff' });
   
   const moduleBadges = modules.length > 0 
@@ -3329,18 +3368,42 @@ function loadInspectionDashboardStats() {
   var grid = document.getElementById('inspection-stats-grid');
   if (!grid) return;
   var cardCount = grid.querySelectorAll('.dashboard-stat-card').length || 3;
+  var semanticIds = [
+    'stat-submitted-count',
+    'stat-pending-count',
+    'stat-approved-count',
+    'stat-total-count'
+  ];
 
-  var token = localStorage.getItem('access_token');
-  if (!token) {
+  function setText(id, val, empty) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (val == null || val === '') {
+      el.textContent = empty;
+    } else {
+      el.textContent = String(val);
+    }
+  }
+
+  function setDash() {
+    semanticIds.forEach(function (id) { setText(id, '—', '—'); });
     for (var j = 0; j < cardCount; j++) {
       var ve = document.getElementById('insp-stat-value-' + j);
       if (ve) ve.textContent = '—';
     }
+  }
+
+  var token = localStorage.getItem('access_token');
+  if (!token) {
+    setDash();
     return;
   }
 
   authenticatedFetch('/api/workflow/inspection-dashboard-stats')
     .then(function (response) {
+      if (!response || typeof response.json !== 'function') {
+        return { ok: false, body: null };
+      }
       return response.json().then(function (body) {
         return { ok: response.ok, body: body };
       }).catch(function () {
@@ -3348,32 +3411,50 @@ function loadInspectionDashboardStats() {
       });
     })
     .then(function (result) {
-      var metrics = result.body && result.body.hero_metrics;
-      if (!result.ok || !Array.isArray(metrics) || !metrics.length) {
-        for (var i = 0; i < cardCount; i++) {
-          var vv = document.getElementById('insp-stat-value-' + i);
-          if (vv) vv.textContent = '—';
-        }
+      var body = (result && result.body) || {};
+      var metrics = body.hero_metrics;
+      if (!result || !result.ok) {
+        setDash();
         return;
       }
-      for (var k = 0; k < cardCount; k++) {
-        var m = metrics[k];
-        var lbl = document.getElementById('insp-stat-label-' + k);
-        var val = document.getElementById('insp-stat-value-' + k);
-        if (lbl && m && m.label) lbl.textContent = m.label;
-        if (val && m) {
-          var v = m.value;
-          val.textContent = v != null && v !== '' ? String(v) : '0';
-        } else if (val && !m) {
-          val.textContent = '—';
+
+      var submitted = body.submitted;
+      var pending = body.pending;
+      var approved = body.approved;
+      var total = body.total;
+      if (Array.isArray(metrics) && metrics.length) {
+        if (submitted == null && metrics[0]) submitted = metrics[0].value;
+        if (pending == null && metrics[1]) pending = metrics[1].value;
+        if (approved == null && metrics[2]) approved = metrics[2].value;
+        if (total == null && metrics[0]) total = metrics[0].value;
+      }
+
+      if (document.getElementById('stat-submitted-count')) {
+        setText('stat-submitted-count', submitted, '0');
+        setText('stat-pending-count', pending, '0');
+        setText('stat-approved-count', approved, '0');
+        setText('stat-total-count', total, '0');
+      }
+
+      if (Array.isArray(metrics) && metrics.length) {
+        for (var k = 0; k < cardCount; k++) {
+          var m = metrics[k];
+          var lbl = document.getElementById('insp-stat-label-' + k);
+          var val = document.getElementById('insp-stat-value-' + k);
+          if (lbl && m && m.label) lbl.textContent = m.label;
+          if (val && m) {
+            var v = m.value;
+            val.textContent = v != null && v !== '' ? String(v) : '0';
+          } else if (val && !m) {
+            val.textContent = '—';
+          }
         }
+      } else if (!document.getElementById('stat-submitted-count')) {
+        setDash();
       }
     })
     .catch(function () {
-      for (var e = 0; e < cardCount; e++) {
-        var el = document.getElementById('insp-stat-value-' + e);
-        if (el) el.textContent = '—';
-      }
+      setDash();
     });
 }
 

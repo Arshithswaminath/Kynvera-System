@@ -9,20 +9,38 @@ from datetime import datetime, timezone
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Set testing environment variables at module import time, not inside the `app`
+# fixture. pytest always imports tests/conftest.py before collecting any test
+# file in this directory, but several test files (e.g. test_hr_forms_pdf_suite.py's
+# `@pytest.mark.parametrize(..., module_hr.pdf_service.get_supported_pdf_forms())`)
+# eagerly import application modules as a side effect of a decorator argument —
+# which happens at COLLECTION time, before any fixture (including this one) ever
+# runs. That import chain pulls in config.py, whose module-level env-var reads
+# (RATELIMIT_ENABLED, DATABASE_URL, etc.) only execute once and get cached in
+# sys.modules — so if config.py loads before these os.environ writes, it freezes
+# in production defaults for the rest of the process, no matter what the `app`
+# fixture sets afterward. Setting them here, at conftest.py's own import time,
+# guarantees they land before ANY test module (and its collection-time imports)
+# can be evaluated.
+os.environ['FLASK_ENV'] = 'testing'
+os.environ['TESTING'] = 'true'
+os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
+os.environ['SECRET_KEY'] = 'test-secret-key-for-testing'
+os.environ['JWT_SECRET_KEY'] = 'test-jwt-secret-key-for-testing'
+os.environ['ASSISTANT_LLM_ENABLED'] = 'false'
+os.environ['ANTHROPIC_API_KEY'] = ''
+os.environ['OPENAI_API_KEY'] = ''
+# The full suite calls /api/auth/login far more than its intended 5-per-minute
+# limit via the per-test auth-header fixtures below. Without this, a full
+# `pytest tests/` run gets rate-limited mid-suite: login silently returns no
+# access_token, headers become "Bearer None", and every later test cascades into
+# unrelated 401s. Config key is read by config.py -> Flask-Limiter directly.
+os.environ['RATELIMIT_ENABLED'] = 'false'
+
 
 @pytest.fixture(scope='session')
 def app():
     """Create test application"""
-    # Set testing environment variables before importing app
-    os.environ['FLASK_ENV'] = 'testing'
-    os.environ['TESTING'] = 'true'
-    os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
-    os.environ['SECRET_KEY'] = 'test-secret-key-for-testing'
-    os.environ['JWT_SECRET_KEY'] = 'test-jwt-secret-key-for-testing'
-    os.environ['ASSISTANT_LLM_ENABLED'] = 'false'
-    os.environ['ANTHROPIC_API_KEY'] = ''
-    os.environ['OPENAI_API_KEY'] = ''
-    
     from Injaaz import create_app
     from app.models import db
     
@@ -36,6 +54,7 @@ def app():
         'ASSISTANT_LLM_ENABLED': False,
         'ANTHROPIC_API_KEY': '',
         'OPENAI_API_KEY': '',
+        'RATELIMIT_ENABLED': False,
     })
     
     with app.app_context():

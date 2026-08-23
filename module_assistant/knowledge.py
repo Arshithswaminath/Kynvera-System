@@ -1,5 +1,5 @@
 """
-Keyword-based knowledge search for the Injaaz assistant (no embeddings).
+Keyword-based knowledge search for the Kynvera assistant (no embeddings).
 Merges built-in faqs.json with admin-managed KnowledgeBaseEntry records.
 """
 import json
@@ -330,11 +330,11 @@ def search_faqs(query: str, limit: int = 2) -> List[dict]:
         if _has_location_intent(query) and _record_covers_location_intent(question, answer, keywords, tags):
             score += 14.0
 
-        # Penalise records that miss every specific query token (e.g. generic "What is Injaaz?").
+        # Penalise records that miss every specific query token (e.g. generic "What is Kynvera?").
         elif specific and not any(_token_hits_record(tok, question, answer, keywords, tags) for tok in specific):
             score -= 12.0
 
-        # "Where is Injaaz?" must not return a "What is Injaaz Application?" definition card.
+        # "Where is Kynvera?" must not return a "What is Kynvera?" definition card.
         if intent & {'location', 'located', 'office'} and _is_definition_faq(question, faq_id):
             score -= 20.0
 
@@ -356,7 +356,7 @@ def search_faqs(query: str, limit: int = 2) -> List[dict]:
             'id': faq.get('id'),
             'question': faq.get('question'),
             'answer': answer,
-            'source': faq.get('source', 'Injaaz Help'),
+            'source': faq.get('source', 'Kynvera Help'),
             'link': faq.get('link'),
             'is_db': bool(faq.get('is_db')),
             'score': sc,

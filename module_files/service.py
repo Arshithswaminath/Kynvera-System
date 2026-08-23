@@ -800,9 +800,13 @@ def _build_closed_ticket_pdf(kind: str, created_by: Optional[int]) -> Tuple[byte
 
     if artifact == 'report':
         from module_ticketing.ticket_pdf_builder import build_ticket_pdf
+        from module_ticketing.routes import _ticket_location_map_payload
         notes = ticket.notes.order_by(TicketNote.created_at.asc()).all()
         images = ticket.images.all()
-        build_ticket_pdf(ticket, notes, images, materials, manpower_entries, buf)
+        build_ticket_pdf(
+            ticket, notes, images, materials, manpower_entries, buf,
+            location_map=_ticket_location_map_payload(ticket),
+        )
         filename = f'{code}_report.pdf'
         display = f'{code} — Service report'
     else:

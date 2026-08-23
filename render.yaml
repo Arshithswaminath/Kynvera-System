@@ -5,6 +5,14 @@ services:
   - type: web
     name: injaaz-app
     env: python
+    # PR previews: Render spins a temporary copy of this service for pull
+    # requests into the linked branch (ajman-municipality). Use manual so a
+    # preview is created only when the PR title includes [render preview]
+    # (avoids a billed instance on every PR). Switch to automatic if you want
+    # a preview URL on every PR. Enable the same setting on the live service
+    # in the Render Dashboard if this Blueprint is not the source of truth.
+    previews:
+      generation: manual
     buildCommand: bash build.sh
     startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 300 --worker-class gthread
     envVars:

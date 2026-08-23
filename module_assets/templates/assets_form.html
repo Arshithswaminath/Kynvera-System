@@ -16,17 +16,37 @@
            placeholder="Auto AST-####" value="{{ asset.asset_id if asset else '' }}"></label>
     <label>QR code<input class="fm-input" name="qr_code" placeholder="Leave blank for QR-{asset id}" value="{{ asset.qr_code if asset and asset.qr_code else '' }}"></label>
     <label>Type<input class="fm-input" name="asset_type" placeholder="chiller, pump, AHU…" value="{{ asset.asset_type if asset and asset.asset_type else '' }}"></label>
-    <label>Building<input class="fm-input" name="building" value="{{ asset.building if asset and asset.building else '' }}"></label>
-    <label>Floor<input class="fm-input" name="floor" value="{{ asset.floor if asset and asset.floor else '' }}"></label>
-    <label>Room<input class="fm-input" name="room" value="{{ asset.room if asset and asset.room else '' }}"></label>
+    <div class="fm-full fm-location-fields">
+      <p class="fm-location-hint">From Service Tickets: project → property → zone → unit.</p>
+      <label>Project
+        <select class="fm-input" name="project_id" id="assetProject">
+          <option value="">Select project…</option>
+        </select>
+      </label>
+      <label>Building
+        <select class="fm-input" name="building" id="assetBuilding" disabled>
+          <option value="">Select building…</option>
+        </select>
+      </label>
+      <label>Floor
+        <select class="fm-input" name="floor" id="assetFloor" disabled>
+          <option value="">Select floor…</option>
+        </select>
+      </label>
+      <label>Room
+        <select class="fm-input" name="room" id="assetRoom" disabled>
+          <option value="">Select room…</option>
+        </select>
+      </label>
+    </div>
     <label>Manufacturer<input class="fm-input" name="manufacturer" value="{{ asset.manufacturer if asset and asset.manufacturer else '' }}"></label>
     <label>Model<input class="fm-input" name="model" value="{{ asset.model if asset and asset.model else '' }}"></label>
     <label>Serial number<input class="fm-input" name="serial_number" value="{{ asset.serial_number if asset and asset.serial_number else '' }}"></label>
     <label>Installation date<input class="fm-input" type="date" name="installation_date" value="{{ asset.installation_date.isoformat() if asset and asset.installation_date else '' }}"></label>
     <label>Warranty expiry<input class="fm-input" type="date" name="warranty_expiry" value="{{ asset.warranty_expiry.isoformat() if asset and asset.warranty_expiry else '' }}"></label>
     <label>Purchase cost<input class="fm-input" type="number" step="0.01" name="purchase_cost" value="{{ asset.purchase_cost if asset and asset.purchase_cost is not none else '' }}"></label>
-    <label>Latitude<input class="fm-input" type="number" step="any" name="latitude" value="{{ asset.latitude if asset and asset.latitude is not none else '' }}"></label>
-    <label>Longitude<input class="fm-input" type="number" step="any" name="longitude" value="{{ asset.longitude if asset and asset.longitude is not none else '' }}"></label>
+    <label>Latitude<input class="fm-input" type="number" step="any" name="latitude" id="assetLat" value="{{ asset.latitude if asset and asset.latitude is not none else '' }}"></label>
+    <label>Longitude<input class="fm-input" type="number" step="any" name="longitude" id="assetLng" value="{{ asset.longitude if asset and asset.longitude is not none else '' }}"></label>
     <label>Maintenance cost total<input class="fm-input" type="number" step="0.01" name="maintenance_cost_total" value="{{ asset.maintenance_cost_total if asset else 0 }}"></label>
     <label>Health score (0–100)<input class="fm-input" type="number" min="0" max="100" name="health_score" value="{{ asset.health_score if asset and asset.health_score is not none else '' }}"></label>
     <label>Status
@@ -49,6 +69,172 @@
 <script>
 const MODE = {{ 'edit'|tojson if mode == 'edit' else 'create'|tojson }};
 const CODE = {{ (asset.asset_id if asset else '')|tojson }};
+const LOCATIONS = {{ (locations or [])|tojson }};
+const PREFILL = {
+  project_id: {{ (asset.project_id if asset and asset.project_id else none)|tojson }},
+  building: {{ (asset.building if asset and asset.building else '')|tojson }},
+  floor: {{ (asset.floor if asset and asset.floor else '')|tojson }},
+  room: {{ (asset.room if asset and asset.room else '')|tojson }},
+};
+
+(function initLocationSelects() {
+  const params = new URLSearchParams(location.search);
+  const projectSel = document.getElementById('assetProject');
+  const buildingSel = document.getElementById('assetBuilding');
+  const floorSel = document.getElementById('assetFloor');
+  const roomSel = document.getElementById('assetRoom');
+  const latEl = document.getElementById('assetLat');
+  const lngEl = document.getElementById('assetLng');
+  if (!projectSel || !buildingSel) return;
+
+  const initial = {
+    project_id: (params.get('project_id') || PREFILL.project_id || '').toString(),
+    building: (params.get('building') || PREFILL.building || '').trim(),
+    floor: (params.get('floor') || PREFILL.floor || '').trim(),
+    room: (params.get('room') || PREFILL.room || '').trim(),
+  };
+  let coordsFromCatalog = false;
+
+  function projectKey(p) {
+    return p.id == null ? 'none' : String(p.id);
+  }
+  function findProject(id) {
+    const key = id === '' || id == null ? '' : String(id);
+    return LOCATIONS.find((p) => projectKey(p) === key) || null;
+  }
+  function inferProjectId(buildingName) {
+    if (!buildingName) return '';
+    const hits = LOCATIONS.filter((p) => (p.buildings || []).some((b) => b.name === buildingName));
+    return hits.length === 1 ? projectKey(hits[0]) : '';
+  }
+  function findBuilding(name) {
+    const proj = findProject(projectSel.value);
+    return ((proj && proj.buildings) || []).find((b) => b.name === name) || null;
+  }
+  function findFloor(building, name) {
+    return ((building && building.floors) || []).find((f) => f.name === name) || null;
+  }
+  function findRoom(floor, name) {
+    return ((floor && floor.rooms) || []).find((r) => r.name === name) || null;
+  }
+  function fillSelect(sel, items, placeholder, selected) {
+    const rows = (items || []).map((item) => {
+      if (typeof item === 'string') return { value: item, label: item };
+      return {
+        value: item.value != null ? String(item.value) : item.name,
+        label: item.label || item.name,
+      };
+    });
+    sel.innerHTML = '';
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = placeholder;
+    sel.appendChild(blank);
+    rows.forEach((row) => {
+      const opt = document.createElement('option');
+      opt.value = row.value;
+      opt.textContent = row.label;
+      sel.appendChild(opt);
+    });
+    if (selected && !rows.some((row) => row.value === String(selected))) {
+      const opt = document.createElement('option');
+      opt.value = selected;
+      opt.textContent = selected;
+      sel.appendChild(opt);
+    }
+    sel.value = selected || '';
+    sel.disabled = !items || (!items.length && !selected);
+  }
+  function maybeSetCoords(lat, lng) {
+    if (lat == null || lng == null) return;
+    const userTyped = (latEl.value || lngEl.value) && !coordsFromCatalog;
+    if (userTyped) return;
+    latEl.value = lat;
+    lngEl.value = lng;
+    coordsFromCatalog = true;
+  }
+  function renderBuildings() {
+    const proj = findProject(projectSel.value);
+    const buildings = (proj && proj.buildings) || [];
+    fillSelect(
+      buildingSel,
+      buildings,
+      buildings.length ? 'Select building…' : 'No buildings in this project',
+      initial.building
+    );
+    buildingSel.disabled = !projectSel.value && !initial.building;
+    if (buildings.length || initial.building) buildingSel.disabled = false;
+    initial.building = buildingSel.value;
+    renderFloors();
+  }
+  function renderFloors() {
+    const b = findBuilding(buildingSel.value);
+    const floors = (b && b.floors) || [];
+    fillSelect(floorSel, floors, floors.length ? 'Select floor…' : 'No floors in this building', initial.floor);
+    floorSel.disabled = !floors.length && !initial.floor;
+    initial.floor = floorSel.value;
+    maybeSetCoords(b && b.latitude, b && b.longitude);
+    renderRooms();
+  }
+  function renderRooms() {
+    const b = findBuilding(buildingSel.value);
+    const f = findFloor(b, floorSel.value);
+    const rooms = (f && f.rooms) || [];
+    fillSelect(roomSel, rooms, rooms.length ? 'Select room…' : 'No rooms on this floor', initial.room);
+    roomSel.disabled = !rooms.length && !initial.room;
+    initial.room = roomSel.value;
+    const room = findRoom(f, roomSel.value);
+    if (room && room.latitude != null) maybeSetCoords(room.latitude, room.longitude);
+  }
+
+  if (!LOCATIONS.length) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = 'Add a project in Service Tickets first';
+    projectSel.replaceChildren(opt);
+    projectSel.disabled = true;
+    buildingSel.disabled = true;
+    floorSel.disabled = true;
+    roomSel.disabled = true;
+    return;
+  }
+
+  if (!initial.project_id && initial.building) {
+    initial.project_id = inferProjectId(initial.building);
+  }
+  fillSelect(
+    projectSel,
+    LOCATIONS.map((p) => ({ value: projectKey(p), label: p.name })),
+    'Select project…',
+    initial.project_id
+  );
+  projectSel.disabled = false;
+  renderBuildings();
+  projectSel.addEventListener('change', () => {
+    initial.building = '';
+    initial.floor = '';
+    initial.room = '';
+    coordsFromCatalog = false;
+    renderBuildings();
+  });
+  buildingSel.addEventListener('change', () => {
+    initial.floor = '';
+    initial.room = '';
+    coordsFromCatalog = false;
+    renderFloors();
+  });
+  floorSel.addEventListener('change', () => {
+    initial.room = '';
+    renderRooms();
+  });
+  roomSel.addEventListener('change', () => {
+    const b = findBuilding(buildingSel.value);
+    const f = findFloor(b, floorSel.value);
+    const room = findRoom(f, roomSel.value);
+    if (room && room.latitude != null) maybeSetCoords(room.latitude, room.longitude);
+  });
+})();
+
 document.getElementById('assetForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const fd = new FormData(e.target);

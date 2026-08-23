@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% include 'partials/base_head.html' %}
+  <title>Automations — Kynvera</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/files-page.css') }}?v=22">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/automations.css') }}?v=5">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+</head>
+<body class="has-main-nav files-page auto-page">
+  {% set active_page = 'automations' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <main class="auto-wrap">
+    <header class="auto-hero">
+      <div>
+        <p class="auto-kicker">Schedules</p>
+        <h1 class="auto-title">Automations</h1>
+        <p class="auto-sub">Daily exports land in Files under HR and in email at 8:00 PM Dubai. Google Drive sync runs only when Drive is already connected.</p>
+      </div>
+      <button type="button" class="files-btn files-btn-ghost" id="autoRefreshBtn">Refresh</button>
+    </header>
+
+    <section id="autoJobs" class="auto-jobs" aria-live="polite">
+      <p class="auto-empty">Loading…</p>
+    </section>
+
+    <section class="auto-runs">
+      <h2 class="auto-runs-title">Recent runs</h2>
+      <div class="files-table-wrap table-scroll">
+        <table class="files-table" id="autoRunsTable">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Job</th>
+              <th>Trigger</th>
+              <th>Status</th>
+              <th>Detail</th>
+            </tr>
+          </thead>
+          <tbody id="autoRunsBody">
+            <tr><td colspan="5" class="files-empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="files-toast" id="autoToast" hidden>
+    <span class="files-toast-msg" id="autoToastMsg"></span>
+  </div>
+
+  <div class="auto-chat" id="autoChat" hidden role="tooltip">
+    <p class="auto-chat-title" id="autoChatTitle">Warning</p>
+    <p class="auto-chat-body" id="autoChatBody"></p>
+    <span class="auto-chat-nub" aria-hidden="true"></span>
+  </div>
+
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=20"></script>
+  <script src="{{ url_for('static', filename='js/automations.js') }}?v=5"></script>
+</body>
+</html>

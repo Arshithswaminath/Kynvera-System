@@ -154,6 +154,7 @@
         {% if cnt_work_done > 0 %}<span class="sb-badge sb-badge--pending">{{ cnt_work_done }}</span>{% endif %}
       </a>
 
+      {% if cnt_provider > 0 %}
       <a href="{{ url_for('ticketing.ticket_list') }}?status=provider_closed"
          class="sb-nav-item{% if ops_nav_active %} active{% endif %}">
         <span class="sb-nav-icon" aria-hidden="true">
@@ -162,8 +163,9 @@
           </svg>
         </span>
         Pending Ops
-        {% if cnt_provider > 0 %}<span class="sb-badge sb-badge--alert">{{ cnt_provider }}</span>{% endif %}
+        <span class="sb-badge sb-badge--alert">{{ cnt_provider }}</span>
       </a>
+      {% endif %}
 
       <a href="{{ url_for('ticketing.ticket_list') }}?status=closed"
          class="sb-nav-item{% if ep == 'ticketing.ticket_list' and request.args.get('status') == 'closed' %} active{% endif %}">

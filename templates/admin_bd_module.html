@@ -1,14 +1,16 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  <title>BizFlow — Business Development | Injaaz Admin</title>
+  <title>BizFlow — Business Development | Kynvera</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bd-project-detail.css') }}?v=4">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/signature_modal.css') }}">
   <style>
 :root {
   --radius:10px;
@@ -18,44 +20,56 @@
   --sb-bg:#ff8e68;
   --dh-fs-sidebar:16px;
   --dh-fs-sidebar-label:12px;
-  --g900:#0b3322; --g800:#ff8e68; --g700:#176640; --g600:#1d804f; --g500:#22a063;
-  --g400:#4db87e; --g300:#86d4a8; --g200:#c0ecd4; --g100:#e4f7ed; --g50:#f2fbf6;
-  --white:#fff; --ink:#0c1f17; --ink2:#1e3a2e; --muted:#587569; --subtle:#8eada3;
-  --line:#e2ede8; --bg:#f5faf7; --card:#fff;
+  --g900:#e05f36; --g800:#ff8e68; --g700:#e05f36; --g600:#f97e54; --g500:#f97e54;
+  --g400:#fbb9a3; --g300:#fdd4c6; --g200:#ffe4d9; --g100:#fff4ef; --g50:#fff8f5;
+  --white:#fff; --ink:#191b23; --ink2:#3f3f46; --muted:#5c616e; --subtle:#9498a3;
+  --line:#e9eaee; --bg:#f7f7f9; --card:#fff;
   --amber:#c97d0e; --amber-bg:#fef6e4; --rose:#c0392b; --rose-bg:#fdf0ee;
   --blue:#1a5fa8; --blue-bg:#e8f0fb; --violet:#6b3fa0; --violet-bg:#f3edfc;
   --r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:28px;
-  --sh-xs:0 1px 3px rgba(18,84,53,.07); --sh-sm:0 2px 10px rgba(18,84,53,.09);
-  --sh-md:0 6px 24px rgba(18,84,53,.11); --sh-lg:0 16px 48px rgba(18,84,53,.14);
-  --sh-glow:0 0 0 3px rgba(18,84,53,.12);
+  --sh-xs:0 1px 3px rgba(255, 142, 104, .07); --sh-sm:0 2px 10px rgba(255, 142, 104, .09);
+  --sh-md:0 6px 24px rgba(255, 142, 104, .11); --sh-lg:0 16px 48px rgba(255, 142, 104, .14);
+  --sh-glow:0 0 0 3px rgba(255, 142, 104, .12);
 }
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden;font-size:15px}
-body.has-main-nav{padding-top:5.5rem}
+body{font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden;font-size:15px;
+  /* Same offset as DocHub / Files / email — hardcoded 72px+1px left a hairline under the nav. */
+  --nav-offset: var(--nav-bar-h, calc(40px + 1.75rem + env(safe-area-inset-top, 0px)));
+  --bf-nav-top: var(--nav-offset);
+}
+body.has-main-nav{padding-top:var(--bf-nav-top)!important}
+/* Global .nav and BizFlow tabs are both white; drop the nav hairline so we
+   don’t get a double line between the site header and the module bar. */
+body.has-main-nav .nav{border-bottom:none}
+body.has-main-nav .nav.scrolled{box-shadow:none}
+@media(max-width:768px){body{--nav-inner-h:40px}}
+@media(max-width:600px){body{--nav-inner-h:40px}}
 
-.bf-shell{display:flex;min-height:calc(100vh - 5.5rem)}
+/* Shell fills the viewport under the main nav; only .bf-main scrolls with the page */
+.bf-shell{display:flex;align-items:flex-start;min-height:calc(100vh - var(--bf-nav-top))}
 
-/* Sidebar: layout + admin nav offset; visual tokens match DocHub (dochub-page.css .dh-sidebar, .sb-*) */
+/* Sidebar: locked to the screen so it does not scroll away with dashboard content */
 .bf-sidebar.dh-sidebar{
-  position:sticky;top:5.5rem;height:calc(100vh - 5.5rem);z-index:40;flex-shrink:0;overflow:hidden;
+  position:sticky;top:var(--bf-nav-top);align-self:flex-start;
+  height:calc(100vh - var(--bf-nav-top));max-height:calc(100vh - var(--bf-nav-top));
+  min-height:0;z-index:40;flex-shrink:0;overflow:hidden;
 }
 
-.bf-main{flex:1;display:flex;flex-direction:column;min-height:calc(100vh - 5.5rem);min-width:0}
+.bf-main{flex:1;display:flex;flex-direction:column;min-height:calc(100vh - var(--bf-nav-top));min-width:0}
 
-.bf-topbar{background:var(--white);border-bottom:1.5px solid var(--line);height:64px;padding:0 32px;display:flex;align-items:center;gap:14px;position:sticky;top:5.5rem;z-index:50;box-shadow:var(--sh-xs)}
+.bf-topbar{background:var(--white);border-bottom:1.5px solid var(--line);height:64px;padding:0 32px;display:flex;align-items:center;gap:14px;position:sticky;top:var(--bf-nav-top);z-index:50;box-shadow:var(--sh-xs)}
 .bf-topbar-title{font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.3px}
 .bf-topbar-title span{color:var(--subtle);font-style:italic;font-size:16px;margin-right:6px}
 .bf-topbar-space{flex:1}
-.bf-tb-search{position:relative;display:flex;align-items:center}
-.bf-tb-search input{padding:8px 14px 8px 36px;border:1.5px solid var(--line);border-radius:var(--r-sm);font-family:inherit;font-size:14px;color:var(--ink);background:var(--bg);width:220px;outline:none;transition:all .18s}
-.bf-tb-search input:focus{border-color:var(--g800);background:#fff;width:260px;box-shadow:var(--sh-glow)}
-.bf-tb-search .si{position:absolute;left:11px;color:var(--subtle);font-size:14px;pointer-events:none}
-.bf-tb-icon-btn{width:36px;height:36px;border:1.5px solid var(--line);border-radius:var(--r-sm);background:#fff;cursor:pointer;color:var(--muted);font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .18s;position:relative}
-.bf-tb-icon-btn:hover{border-color:var(--g800);color:var(--g800);background:var(--g50)}
-.bf-notif-pip{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--rose);border:1.5px solid #fff}
-.bf-tb-cta{display:flex;align-items:center;gap:8px;padding:9px 18px;background:var(--g800);color:#fff;border:none;border-radius:var(--r-sm);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:all .18s;box-shadow:0 2px 10px rgba(18,84,53,.28)}
-.bf-tb-cta:hover{background:var(--g700);transform:translateY(-1px);box-shadow:0 4px 16px rgba(18,84,53,.32)}
+.bf-tb-cta{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 18px;background:var(--g800);color:#fff;border:none;border-radius:var(--r-sm);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:background .18s,border-color .18s,color .18s;box-shadow:none!important;filter:none;-webkit-appearance:none;appearance:none;line-height:1;white-space:nowrap}
+.bf-tb-cta:hover,.bf-tb-cta:focus,.bf-tb-cta:active{background:var(--g700);transform:none;box-shadow:none!important;filter:none}
+.bf-card-hd-actions .bf-tb-cta{box-shadow:none!important;filter:none}
+.bf-tb-cta.sm{padding:8px 14px;font-size:12.5px;gap:6px;min-height:34px}
+.bf-tb-cta.ghost{background:#fff;color:var(--ink2);border:1.5px solid var(--line)}
+.bf-tb-cta.ghost:hover,.bf-tb-cta.ghost:focus,.bf-tb-cta.ghost:active{background:var(--bg);border-color:var(--g300);color:var(--g800)}
+.bf-tb-cta .bf-ico{display:inline-flex;width:14px;height:14px;flex-shrink:0;align-items:center;justify-content:center}
+.bf-tb-cta .bf-ico svg{width:100%;height:100%;display:block}
 
 .bf-view-tabs{background:#fff;border-bottom:1.5px solid var(--line);padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .bf-view-tabs-inner{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
@@ -66,33 +80,37 @@ body.has-main-nav{padding-top:5.5rem}
 .bf-view-tab .vt-count{background:var(--g100);color:var(--g800);font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700}
 .bf-view-tab.active .vt-count{background:var(--g800);color:#fff}
 
-.bf-content{padding:28px 32px;flex:1}
+.bf-content{padding:14px 24px 28px;flex:1}
 
 .bf-view-section{display:none}
 .bf-view-section.active{display:block}
 
-.bf-kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:26px}
-@media(max-width:1200px){.bf-kpi-row{grid-template-columns:repeat(3,1fr)}}
+.bf-kpi-row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:10px;align-items:stretch}
+@media(max-width:1280px){.bf-kpi-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:700px){.bf-kpi-row{grid-template-columns:1fr}}
 
-.bf-kpi-card{background:#fff;border-radius:var(--r-md);border:1.5px solid var(--line);padding:18px 20px;box-shadow:var(--sh-xs);transition:all .22s;animation:bfFadeUp .4s ease both;cursor:default;position:relative;overflow:hidden}
-.bf-kpi-card:hover{transform:translateY(-2px);box-shadow:var(--sh-sm);border-color:var(--g300)}
-.bf-kpi-card::after{content:'';position:absolute;top:-24px;right:-24px;width:70px;height:70px;border-radius:50%;opacity:.06}
+.bf-kpi-card{background:#fff;border-radius:var(--r-sm);border:1.5px solid var(--line);padding:10px 12px;box-shadow:none;transition:border-color .18s;animation:none;cursor:default;position:relative;overflow:hidden;min-width:0;min-height:88px;height:100%;display:flex;flex-direction:column;box-sizing:border-box}
+.bf-kpi-card:hover{transform:none;box-shadow:none;border-color:var(--g300)}
+.bf-kpi-card::after{content:'';position:absolute;top:-18px;right:-18px;width:48px;height:48px;border-radius:50%;opacity:.06}
 .bf-kpi-card.c1::after{background:var(--g800)}
 .bf-kpi-card.c2::after{background:var(--amber)}
 .bf-kpi-card.c3::after{background:var(--blue)}
 .bf-kpi-card.c4::after{background:var(--g500)}
 .bf-kpi-card.c5::after{background:var(--rose)}
-.bf-kpi-label{font-size:12.5px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
-.bf-kpi-val{font-size:28px;font-weight:800;color:var(--ink);letter-spacing:-1px;line-height:1;margin-bottom:8px}
-.bf-kpi-val.serif{font-family:inherit;font-size:30px;font-weight:800}
-.bf-kpi-trend{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:3px 8px;border-radius:20px}
+.bf-kpi-label{font-size:10px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.35px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.bf-kpi-val{font-size:18px;font-weight:800;color:var(--ink);letter-spacing:-.5px;line-height:1.15;margin:0 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.15em}
+.bf-kpi-val.serif{font-family:inherit;font-size:18px;font-weight:800}
+.bf-kpi-trend{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:20px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:auto;min-height:18px;line-height:1.2;box-sizing:border-box}
 .bf-kpi-trend.up{background:var(--g100);color:var(--g800)}
 .bf-kpi-trend.dn{background:var(--rose-bg);color:var(--rose)}
 .bf-kpi-trend.neu{background:var(--bg);color:var(--muted)}
 
-.bf-dash-grid{display:grid;grid-template-columns:1fr 310px;gap:20px;margin-bottom:24px}
+.bf-dash-grid{display:grid;grid-template-columns:1fr 340px;gap:12px;margin-bottom:8px;align-items:stretch}
 @media(max-width:1100px){.bf-dash-grid{grid-template-columns:1fr}}
+.bf-dash-grid > .bf-card{display:flex;flex-direction:column;min-height:0}
+.bf-right-col{display:flex;flex-direction:column;gap:8px;min-height:0;height:100%}
+.bf-right-col > .bf-card:first-child{display:flex;flex-direction:column;min-height:0;flex:0 0 auto;overflow:hidden}
+#bfTodayFollowups.bf-fu-list{max-height:160px;overflow-y:auto;overscroll-behavior:contain}
 
 .bf-card{background:#fff;border-radius:var(--r-md);border:1.5px solid var(--line);box-shadow:var(--sh-xs);overflow:hidden;animation:bfFadeUp .4s ease both}
 .bf-card-hd{padding:18px 22px 14px;display:flex;align-items:center;gap:10px;border-bottom:1.5px solid var(--line)}
@@ -100,6 +118,13 @@ body.has-main-nav{padding-top:5.5rem}
 .bf-card-hd-title{font-size:15.5px;font-weight:700;color:var(--ink)}
 .bf-card-hd-sub{font-size:12.5px;color:var(--subtle);margin-top:2px}
 .bf-card-hd-actions{display:flex;align-items:center;gap:8px}
+
+/* Outcome Loop — aligned label/value rows */
+#bfOutcomeBody{padding:0}
+.bf-outcome-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 22px;border-bottom:1px solid var(--line);box-sizing:border-box}
+.bf-outcome-row:last-child{border-bottom:none}
+.bf-outcome-label{font-size:13px;color:var(--subtle);line-height:1.3;min-width:0;flex:1}
+.bf-outcome-val{font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.3;text-align:right;white-space:nowrap;flex-shrink:0}
 
 .bf-pill-tabs{display:flex;gap:2px;background:var(--bg);border-radius:var(--r-sm);padding:3px}
 .bf-pill-tab{padding:5px 13px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--subtle);transition:all .14s;user-select:none;border:none;background:none;font-family:inherit;appearance:none}
@@ -117,18 +142,81 @@ body.has-main-nav{padding-top:5.5rem}
 .bf-stage-count{width:40px;text-align:right;font-size:14px;font-weight:700;color:var(--ink)}
 .bf-stage-val{width:80px;text-align:right;font-size:13px;font-weight:600;color:var(--muted);font-family:ui-monospace,monospace}
 
-.bf-winrate-wrap{display:flex;align-items:center;gap:18px;margin-top:18px;padding-top:18px;border-top:1.5px solid var(--line)}
-.bf-winrate-progress{width:190px;flex-shrink:0}
-.bf-winrate-label{font-size:12px;color:var(--muted);margin-bottom:7px;font-weight:600}
-.bf-winrate-bar{height:12px;background:var(--line);border-radius:999px;overflow:hidden;position:relative}
-.bf-winrate-fill{height:100%;width:0;background:linear-gradient(90deg,#ff8e68,#22a063);border-radius:999px;transition:width .55s ease}
-.bf-winrate-pct{margin-top:7px;font-size:24px;font-weight:800;color:var(--g800);line-height:1}
-.bf-winrate-stats{flex:1;display:flex;flex-direction:column;gap:8px}
-.bf-winrate-stat{display:flex;justify-content:space-between;align-items:center}
+.bf-winrate-wrap{display:grid;grid-template-columns:140px 1fr 150px;gap:14px;align-items:stretch;margin-top:16px;padding-top:16px;border-top:1.5px solid var(--line)}
+@media(max-width:700px){.bf-winrate-wrap{grid-template-columns:1fr}}
+.bf-winrate-progress{min-width:0}
+.bf-winrate-label{font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.bf-winrate-bar{height:10px;background:var(--line);border-radius:999px;overflow:hidden;position:relative}
+.bf-winrate-fill{height:100%;width:0;background:linear-gradient(90deg,#ff8e68,#f97e54);border-radius:999px;transition:width .55s ease}
+.bf-winrate-pct{margin-top:6px;font-size:22px;font-weight:800;color:var(--g800);line-height:1}
+.bf-winrate-pulse{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;min-width:0}
+.bf-pulse-tile{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 10px 9px;min-width:0}
+.bf-pulse-lbl{font-size:10.5px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bf-pulse-val{font-size:15px;font-weight:800;color:var(--ink);margin-top:4px;line-height:1.15;font-variant-numeric:tabular-nums}
+.bf-pulse-val.accent{color:var(--g800)}
+.bf-pulse-sub{font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bf-winrate-stats{display:flex;flex-direction:column;justify-content:center;gap:6px;min-width:0;padding:2px 0}
+.bf-winrate-stat{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .bf-wrs-label{font-size:12px;color:var(--muted)}
-.bf-wrs-val{font-size:13px;font-weight:700;color:var(--ink)}
+.bf-wrs-val{font-size:13px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 
-.bf-right-col{display:flex;flex-direction:column;gap:16px}
+/* Closing this week grows so its bottom lines up with Quotes in play */
+.bf-dash-main{display:flex;flex-direction:column;gap:12px;min-width:0;height:100%;min-height:0}
+.bf-dash-main > .bf-card:first-child{flex:0 0 auto}
+.bf-closing-card{margin:0;flex:1 1 auto;display:flex;flex-direction:column;min-height:0;height:auto;max-height:none;overflow:hidden}
+.bf-quotes-play{margin:0;flex:1 1 auto;display:flex;flex-direction:column;min-height:0;height:auto;max-height:none;overflow:hidden}
+.bf-closing-card .bf-card-hd,.bf-quotes-play .bf-card-hd{flex-shrink:0;padding:10px 12px 8px}
+.bf-closing-card .bf-card-hd-title,.bf-quotes-play .bf-card-hd-title{font-size:14px}
+.bf-closing-card .bf-card-hd-sub,.bf-quotes-play .bf-card-hd-sub{font-size:11px}
+.bf-closing-list,.bf-quotes-play-list{display:flex;flex-direction:column;justify-content:flex-start;flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--g300) transparent}
+.bf-closing-item{display:flex;flex-direction:column;justify-content:flex-start;flex:0 0 auto;height:auto;gap:4px;padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s;min-width:0}
+.bf-closing-item:last-child{border-bottom:none}
+.bf-closing-item:hover{background:var(--g50)}
+.bf-closing-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.bf-closing-name{font-size:14.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.bf-closing-end{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.bf-closing-due{font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.bf-closing-due.overdue{background:var(--rose-bg);color:var(--rose)}
+.bf-closing-due.soon{background:var(--amber-bg);color:var(--amber)}
+.bf-closing-due.week{background:var(--g100);color:var(--g800)}
+.bf-closing-co-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.bf-closing-co{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.bf-closing-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}
+.bf-closing-next{color:var(--ink2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.bf-closing-val{font-size:14.5px;font-weight:800;color:var(--g800);font-variant-numeric:tabular-nums;flex-shrink:0}
+.bf-closing-owner{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink2);white-space:nowrap;flex-shrink:0;max-width:38%}
+.bf-closing-owner span:last-child{overflow:hidden;text-overflow:ellipsis}
+.bf-closing-av{width:20px;height:20px;border-radius:50%;background:var(--g200);color:var(--g900);font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.bf-closing-facts{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;margin-top:2px;min-width:0}
+.bf-closing-chip{font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--bg);color:var(--muted);letter-spacing:.02em;white-space:nowrap;flex-shrink:0}
+.bf-closing-chip.stage{background:var(--g50);color:var(--g800);text-transform:capitalize}
+.bf-closing-chip.pri-high{background:var(--rose-bg);color:var(--rose)}
+.bf-closing-chip.pri-med{background:var(--amber-bg);color:var(--amber)}
+.bf-closing-chip.pri-low{background:var(--g100);color:#16794a}
+.bf-closing-chip.win{background:var(--g100);color:var(--ink2)}
+.bf-closing-chip.quote{background:var(--amber-bg);color:var(--amber)}
+.bf-closing-chip.quote.ok{background:#e7f7ee;color:#16794a}
+.bf-closing-chip.idle{background:var(--rose-bg);color:var(--rose)}
+.bf-closing-progress{display:flex;align-items:center;gap:6px;flex:1;min-width:64px}
+.bf-closing-bar{flex:1;height:5px;background:var(--line);border-radius:999px;overflow:hidden;min-width:40px}
+.bf-closing-bar>i{display:block;height:100%;background:var(--g800);border-radius:999px}
+.bf-closing-pct{font-size:12px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.bf-closing-date{font-size:12px;font-weight:600;color:var(--subtle);white-space:nowrap;flex-shrink:0}
+.bf-closing-empty{padding:18px 16px;color:var(--subtle);font-size:12.5px;text-align:center}
+
+/* Quotes in play — same height as Closing this week */
+.bf-quotes-play .bf-tb-cta{font-size:11px;padding:5px 10px}
+.bf-quotes-play-pills{display:flex;flex-wrap:wrap;gap:4px;padding:6px 10px;border-bottom:1px solid var(--line);flex-shrink:0}
+.bf-qp-pill{font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;background:var(--g50);color:var(--g800);letter-spacing:.01em}
+.bf-qp-pill.warn{background:var(--amber-bg);color:var(--amber)}
+.bf-qp-pill.muted{background:var(--bg);color:var(--muted)}
+.bf-quotes-play-list{flex:1;min-height:0;max-height:none}
+.bf-quotes-play .bf-closing-item{flex:0 0 auto;height:auto;padding:6px 12px;gap:1px}
+.bf-quotes-play .bf-closing-name{font-size:12.5px}
+.bf-quotes-play .bf-closing-due{font-size:10px;padding:1px 6px}
+.bf-quotes-play .bf-closing-co,.bf-quotes-play .bf-closing-meta,.bf-quotes-play .bf-closing-next{font-size:11px}
+.bf-quotes-play .bf-closing-val{font-size:12.5px}
+.bf-quotes-play .bf-closing-empty{padding:12px;min-height:0;font-size:12px}
 
 .bf-fu-list{padding:8px 16px 16px}
 .bf-fu-item{display:flex;align-items:flex-start;gap:11px;padding:12px 8px;border-radius:var(--r-sm);transition:background .12s;cursor:pointer;border-bottom:1px solid var(--g50)}
@@ -145,39 +233,77 @@ body.has-main-nav{padding-top:5.5rem}
 .bf-fu-date.today{background:var(--amber-bg);color:var(--amber)}
 .bf-fu-date.soon{background:var(--g100);color:var(--g800)}
 .bf-fu-date.later{background:var(--bg);color:var(--subtle)}
+.bf-fu-item{align-items:center}
+.bf-fu-actions{display:flex;gap:6px;flex-shrink:0;margin-left:auto}
+.bf-act-btn{min-height:44px;padding:6px 12px;font-size:12px;font-weight:700;border-radius:8px;border:1.5px solid var(--g300);background:#fff;color:var(--g800);cursor:pointer;font-family:inherit;white-space:nowrap}
+.bf-act-btn:hover{background:var(--g50)}
+.bf-act-btn.danger{color:#b91c1c;border-color:#fecaca}
+.bf-act-btn.danger:hover{background:#fef2f2}
+.bf-quote-actions{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.bf-sb-pending_approval{background:var(--amber-bg);color:var(--amber)}
+.bf-cc-top{justify-content:space-between}
+.bf-cc-identity{display:flex;align-items:center;gap:10px;min-width:0}
+.bf-analytics-kpis{display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+.bf-analytics-block{margin-top:16px}
+.bf-analytics-block .bf-card{padding:0}
+@media(max-width:768px){
+  .bf-analytics-kpis{grid-template-columns:1fr}
+  .bf-quote-actions .bf-act-btn,.bf-fu-actions .bf-act-btn{min-height:44px}
+}
 
-.bf-proj-table{width:100%;border-collapse:collapse}
-.bf-proj-table th{padding:9px 16px;font-size:11.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--subtle);background:var(--bg);border-bottom:1.5px solid var(--line);text-align:left}
-.bf-proj-table td{padding:13px 16px;font-size:14px;border-bottom:1px solid var(--g50);vertical-align:middle}
+.bf-proj-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.bf-proj-table th{padding:10px 12px;font-size:11px;font-weight:700;letter-spacing:.45px;text-transform:uppercase;color:var(--muted);background:var(--bg);border-bottom:1.5px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
+.bf-proj-table td{padding:12px;font-size:13.5px;border-bottom:1px solid var(--g50);vertical-align:middle;line-height:1.3}
 .bf-proj-table tbody tr{cursor:pointer;transition:background .12s}
 .bf-proj-table tbody tr:hover{background:var(--g50)}
 .bf-proj-table tbody tr:last-child td{border-bottom:none}
-.bf-proj-name-cell{display:flex;align-items:center;gap:10px}
+
+/* Projects table: consistent column widths + header/cell alignment */
+#bfProjectsTable th:nth-child(1),#bfProjectsTable td:nth-child(1){width:22%;min-width:160px}
+#bfProjectsTable th:nth-child(2),#bfProjectsTable td:nth-child(2){width:11%}
+#bfProjectsTable th:nth-child(3),#bfProjectsTable td:nth-child(3){width:8%;text-align:center}
+#bfProjectsTable th:nth-child(4),#bfProjectsTable td:nth-child(4){width:10%;text-align:right}
+#bfProjectsTable th:nth-child(5),#bfProjectsTable td:nth-child(5){width:11%}
+#bfProjectsTable th:nth-child(6),#bfProjectsTable td:nth-child(6){width:12%}
+#bfProjectsTable th:nth-child(7),#bfProjectsTable td:nth-child(7){width:16%}
+#bfProjectsTable th:nth-child(8),#bfProjectsTable td:nth-child(8){width:10%;text-align:right}
+
+.bf-proj-name-cell{display:flex;align-items:center;gap:10px;min-width:0}
 .bf-proj-avatar{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.bf-proj-n{font-size:14.5px;font-weight:600;color:var(--ink)}
-.bf-proj-co{font-size:12px;color:var(--subtle);margin-top:2px}
-.bf-status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12.5px;font-weight:600}
-.bf-status-badge::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.bf-sb-active{background:var(--g100);color:var(--g800)}
+.bf-proj-name-meta{min-width:0;flex:1}
+.bf-proj-n{font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bf-proj-co{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bf-status-badge{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.2;white-space:nowrap;max-width:100%}
+.bf-status-badge::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0;background:currentColor;opacity:.85}
+.bf-sb-active{background:#e7f7ee;color:#16794a}
 .bf-sb-prospect{background:var(--blue-bg);color:var(--blue)}
 .bf-sb-proposal{background:var(--amber-bg);color:var(--amber)}
-.bf-sb-won{background:var(--g100);color:var(--g700)}
+.bf-sb-under_renewal{background:var(--violet-bg);color:var(--violet)}
+.bf-sb-won{background:#e7f7ee;color:#16794a}
 .bf-sb-lost{background:var(--rose-bg);color:var(--rose)}
-.bf-priority-tag{display:inline-flex;padding:3px 8px;border-radius:5px;font-size:12px;font-weight:700;border:1.5px solid transparent}
-.bf-pr-high{background:var(--rose-bg);color:var(--rose);border-color:#f5c0bb}
+.bf-priority-tag{display:inline-flex;align-items:center;justify-content:center;min-width:42px;padding:3px 8px;border-radius:6px;font-size:11.5px;font-weight:700;letter-spacing:.02em;border:1.5px solid transparent;line-height:1.2}
+.bf-pr-high{background:var(--rose-bg);color:var(--rose);border-color:#f5c9bb}
 .bf-pr-med{background:var(--amber-bg);color:var(--amber);border-color:#f5d8a3}
-.bf-pr-low{background:var(--g100);color:var(--g700);border-color:var(--g200)}
-.bf-value-tag{font-family:ui-monospace,monospace;font-size:13px;font-weight:500;color:var(--ink2)}
-.bf-pm-label{display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px}
-.bf-pm-bar{height:5px;background:var(--line);border-radius:3px;overflow:hidden}
-.bf-pm-fill{height:100%;border-radius:3px;background:var(--g800)}
+.bf-pr-low{background:var(--g100);color:#16794a;border-color:var(--g200)}
+.bf-value-tag{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:600;color:var(--ink2);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.bf-pm-cell{display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:0;width:100%}
+.bf-pm-label{display:flex;align-items:center;font-size:11.5px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;line-height:1}
+.bf-pm-bar{height:6px;background:var(--line);border-radius:999px;overflow:hidden;width:100%}
+.bf-pm-fill{height:100%;border-radius:999px;background:var(--g800);min-width:0}
+.bf-owner-cell{font-size:13px;font-weight:600;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bf-next-cell{min-width:0}
+.bf-next-main{font-size:12.5px;color:var(--ink2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bf-next-date{font-size:11px;color:var(--muted);font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:900px){
+  #bfProjectsTable{min-width:860px}
+}
 
 .bf-contacts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:16px 18px 18px}
 @media(max-width:900px){.bf-contacts-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.bf-contacts-grid{grid-template-columns:1fr}}
 .bf-contact-card{border:1.5px solid var(--line);border-radius:var(--r-md);padding:16px 14px;transition:all .18s;cursor:pointer}
 .bf-contact-card:hover{border-color:var(--g300);box-shadow:var(--sh-sm);transform:translateY(-2px)}
-.bf-cc-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bf-cc-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;justify-content:space-between}
 .bf-cc-av{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;background:var(--g100);color:var(--g800)}
 .bf-cc-name{font-size:14.5px;font-weight:700;color:var(--ink)}
 .bf-cc-title{font-size:12.5px;color:var(--subtle)}
@@ -197,7 +323,17 @@ body.has-main-nav{padding-top:5.5rem}
 .bf-tl-time{font-size:12px;color:var(--subtle);margin-top:4px}
 .bf-tl-badge{font-size:12px;font-weight:700;padding:2px 8px;border-radius:5px;background:var(--g100);color:var(--g800);display:inline-flex;margin-top:5px}
 
-.bf-chart-wrap{padding:16px 22px 20px}
+.bf-chart-wrap{padding:14px 18px 16px}
+.bf-trend-svg{width:100%;height:120px;display:block}
+.bf-trend-footer{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);align-items:end}
+.bf-trend-stat{display:flex;flex-direction:column;justify-content:flex-end;min-width:0;min-height:42px}
+.bf-trend-stat .lbl{font-size:10px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.03em;line-height:1.2;height:2.4em;display:flex;align-items:flex-end;white-space:normal}
+.bf-trend-stat .val{font-size:13.5px;font-weight:800;color:var(--ink);margin-top:4px;font-variant-numeric:tabular-nums;line-height:1.15;height:1.15em;white-space:nowrap}
+.bf-trend-stat .val.accent{color:var(--g800)}
+.bf-trend-stat .val.up{color:#16a34a}
+.bf-trend-stat .val.dn{color:var(--rose)}
+.bf-trend-insight{margin-top:10px;padding:8px 10px;border-radius:8px;background:var(--g50);border:1px solid var(--line);font-size:12px;color:var(--ink2);line-height:1.35}
+.bf-trend-insight strong{color:var(--g800);font-weight:700}
 
 .bf-modal-veil{position:fixed;inset:0;background:rgba(8,24,15,.45);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .22s;backdrop-filter:blur(5px)}
 .bf-modal-veil.open{opacity:1;pointer-events:all}
@@ -221,8 +357,8 @@ body.has-main-nav{padding-top:5.5rem}
 .bf-modal-foot{padding:14px 26px 22px;display:flex;gap:10px;justify-content:flex-end}
 .bf-btn-cancel{padding:9px 20px;border:1.5px solid var(--line);border-radius:var(--r-sm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);background:#fff;transition:all .14s}
 .bf-btn-cancel:hover{background:var(--bg)}
-.bf-btn-primary{padding:9px 24px;background:var(--g800);color:#fff;border:none;border-radius:var(--r-sm);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .18s;box-shadow:0 2px 10px rgba(18,84,53,.28)}
-.bf-btn-primary:hover{background:var(--g700);transform:translateY(-1px)}
+.bf-btn-primary{padding:9px 24px;background:var(--g800);color:#fff;border:none;border-radius:var(--r-sm);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .18s;box-shadow:none!important;filter:none}
+.bf-btn-primary:hover{background:var(--g700);transform:none;box-shadow:none!important}
 
 #bf-toast{position:fixed;bottom:28px;right:28px;background:var(--g800);color:#fff;padding:12px 20px;border-radius:12px;font-size:13.5px;font-weight:600;box-shadow:var(--sh-md);transform:translateY(70px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:999;max-width:320px;display:flex;align-items:center;gap:9px}
 
@@ -232,43 +368,28 @@ body.has-main-nav{padding-top:5.5rem}
 .bf-kpi-card:nth-child(3){animation-delay:.12s}
 .bf-kpi-card:nth-child(4){animation-delay:.16s}
 .bf-kpi-card:nth-child(5){animation-delay:.2s}
+.bf-kpi-card:nth-child(6){animation-delay:.24s}
 
 @media(max-width:900px){
   .bf-sidebar.dh-sidebar{
-    display:flex!important;
-    position:fixed;
-    left:0;
-    top:var(--nav-offset,5.5rem);
-    bottom:0;
-    height:auto;
-    z-index:160;
-    transform:translateX(-100%);
-    transition:transform .2s ease;
-    box-shadow:8px 0 24px rgba(0,0,0,.12);
+    display:flex;position:fixed;left:0;top:var(--bf-nav-top);bottom:0;height:auto;z-index:160;
+    transform:translateX(-100%);transition:transform .2s ease;box-shadow:8px 0 24px rgba(0,0,0,.12);
   }
   .bf-sidebar.dh-sidebar.open{transform:translateX(0)}
   .bf-main{margin-left:0}
-  .bf-sidebar-toggle{display:inline-flex!important}
+  .bf-sidebar-toggle{display:inline-flex}
 }
 .bf-sidebar-toggle{
-  display:none;
-  position:fixed;
-  left:max(16px,env(safe-area-inset-left,0px));
-  bottom:max(20px,env(safe-area-inset-bottom,0px));
-  z-index:198;
-  width:44px;height:44px;border-radius:12px;
-  background:var(--accent,#ff8e68);color:#fff;border:none;
-  box-shadow:0 2px 10px rgba(255,142,104,.28);
-  cursor:pointer;align-items:center;justify-content:center;
+  display:none;position:fixed;left:max(16px,env(safe-area-inset-left,0px));
+  bottom:max(20px,env(safe-area-inset-bottom,0px));z-index:198;
+  width:44px;height:44px;border-radius:12px;background:var(--accent,#ff8e68);color:#fff;border:none;
+  box-shadow:0 2px 10px rgba(255,142,104,.28);cursor:pointer;align-items:center;justify-content:center;
   font-size:18px;line-height:1;padding:0;
 }
-.bf-sidebar-overlay{
-  display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);
-  z-index:140;backdrop-filter:blur(2px);
-}
+.bf-sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:140;backdrop-filter:blur(2px)}
 .bf-sidebar-overlay.active{display:block}
 @media(max-width:768px){
-  .bf-topbar{padding:0 1rem;height:auto;min-height:52px;top:4rem;flex-wrap:wrap;gap:8px;padding-top:8px;padding-bottom:8px}
+  .bf-topbar{padding:0 1rem;height:auto;min-height:52px;top:var(--bf-nav-top);flex-wrap:wrap;gap:8px;padding-top:8px;padding-bottom:8px}
   .bf-topbar-space{display:none}
   .bf-view-tabs{padding:0 0.75rem;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:0;justify-content:flex-start}
   .bf-view-tabs::-webkit-scrollbar{display:none}
@@ -285,7 +406,7 @@ body.has-main-nav{padding-top:5.5rem}
   .bf-field-grid.trio{grid-template-columns:1fr}
   .bf-fld input,.bf-fld select,.bf-fld textarea{
     font-size:16px;padding:0.65rem 0.875rem;min-height:44px;
-    border:1.5px solid rgba(18,84,53,0.2);border-radius:10px
+    border:1.5px solid rgba(255, 142, 104, 0.2);border-radius:10px
   }
   .bf-fld label{font-size:12px;margin-bottom:4px}
   .bf-modal-body{padding:1rem}
@@ -296,7 +417,7 @@ body.has-main-nav{padding-top:5.5rem}
 </head>
 <body class="has-main-nav">
   {% set active_page = 'bd-module' %}
-  <button type="button" class="bf-sidebar-toggle dh-sidebar-toggle" id="bfSidebarToggle" onclick="bfToggleMobileSidebar()" aria-label="Open BizFlow menu" title="Menu">☰</button>
+  <button type="button" class="bf-sidebar-toggle dh-sidebar-toggle" id="bfSidebarToggle" onclick="bfToggleMobileSidebar()" aria-label="Open Business Development menu" title="Menu">☰</button>
   <div class="bf-sidebar-overlay dh-overlay" id="bfSidebarOverlay" onclick="bfCloseMobileSidebar()" aria-hidden="true"></div>
   {% include 'partials/main_navbar.html' with context %}
 
@@ -305,7 +426,7 @@ body.has-main-nav{padding-top:5.5rem}
       <div class="sb-brand">
         <div class="sb-brand-text">
           <span class="name">BizFlow</span>
-          <span class="tagline">Business Development</span>
+          <span class="tagline">Pipeline, quotations &amp; follow-ups</span>
         </div>
       </div>
       <nav class="sb-nav">
@@ -326,10 +447,10 @@ body.has-main-nav{padding-top:5.5rem}
           <div class="sb-section-label">Reports</div>
           <a href="#" class="sb-nav-item" data-view="analytics" onclick="bfSetNav(this,'analytics');return false">Analytics</a>
           <a href="#" class="sb-nav-item" data-view="dashboard" onclick="bfSetNav(this,'dashboard');return false">Win rate</a>
-          <a href="#" class="sb-nav-item" data-view="activities" onclick="bfSetNav(this,'activities');return false">Activity log</a>
         </div>
         <div class="dh-sb-section">
           <div class="sb-section-label">System</div>
+          <a href="/bd/email-module" class="sb-nav-item">Email Automation</a>
           <a href="/admin/dashboard" class="sb-nav-item">Settings</a>
         </div>
       </nav>
@@ -348,19 +469,16 @@ body.has-main-nav{padding-top:5.5rem}
       <div class="bf-view-tabs" id="bfViewTabs">
         <div class="bf-view-tabs-inner">
           <div class="bf-view-tab active" data-view="dashboard" onclick="bfSwitchView('dashboard',this)">Dashboard</div>
-          <div class="bf-view-tab" data-view="projects" onclick="bfSwitchView('projects',this)">Projects <span class="vt-count">8</span></div>
-          <div class="bf-view-tab" data-view="pipeline" onclick="bfSwitchView('pipeline',this)">Pipeline <span class="vt-count">24</span></div>
-          <div class="bf-view-tab" data-view="followups" onclick="bfSwitchView('followups',this)">Follow-ups <span class="vt-count">12</span></div>
+          <div class="bf-view-tab" data-view="projects" onclick="bfSwitchView('projects',this)">Projects <span class="vt-count" id="bfTabProjectCount">0</span></div>
+          <div class="bf-view-tab" data-view="pipeline" onclick="bfSwitchView('pipeline',this)">Pipeline <span class="vt-count" id="bfTabPipelineCount">0</span></div>
+          <div class="bf-view-tab" data-view="followups" onclick="bfSwitchView('followups',this)">Follow-ups <span class="vt-count" id="bfTabFollowupCount">0</span></div>
           <div class="bf-view-tab" data-view="contacts" onclick="bfSwitchView('contacts',this)">Contacts</div>
-          <div class="bf-view-tab" data-view="activities" onclick="bfSwitchView('activities',this)">Activities</div>
+          <div class="bf-view-tab" data-view="prospects" onclick="bfSwitchView('prospects',this)">Prospects</div>
+          <div class="bf-view-tab" data-view="proposals" onclick="bfSwitchView('proposals',this)">Proposals</div>
+          <div class="bf-view-tab" data-view="quotations" onclick="bfSwitchView('quotations',this)">Quotations</div>
+          <div class="bf-view-tab" data-view="analytics" onclick="bfSwitchView('analytics',this)">Analytics</div>
         </div>
         <div class="bf-view-tabs-actions">
-          <div class="bf-tb-search">
-            <span class="si">🔍</span>
-            <input type="text" placeholder="Search projects, contacts, deals…">
-          </div>
-          <div class="bf-tb-icon-btn">🔔<span class="bf-notif-pip"></span></div>
-          <div class="bf-tb-icon-btn">📅</div>
           <button type="button" class="bf-tb-cta" onclick="bfOpenModal()">＋ New Project</button>
         </div>
       </div>
@@ -368,22 +486,75 @@ body.has-main-nav{padding-top:5.5rem}
       <div class="bf-content">
         <div class="bf-view-section active" id="bf-v-dashboard">
           <div class="bf-kpi-row">
-            <div class="bf-kpi-card c1"><div class="bf-kpi-label">Total Pipeline</div><div class="bf-kpi-val serif" id="bfKpiTotalPipeline">$0</div><span class="bf-kpi-trend up">Live</span></div>
+            <div class="bf-kpi-card c1"><div class="bf-kpi-label">Total Pipeline</div><div class="bf-kpi-val serif" id="bfKpiTotalPipeline">AED 0</div><span class="bf-kpi-trend up">Live</span></div>
             <div class="bf-kpi-card c2"><div class="bf-kpi-label">Active Deals</div><div class="bf-kpi-val" id="bfKpiActiveDeals">0</div><span class="bf-kpi-trend up">Live</span></div>
             <div class="bf-kpi-card c3"><div class="bf-kpi-label">Win Rate</div><div class="bf-kpi-val" id="bfKpiWinRate">0<span style="font-size:16px;font-weight:500">%</span></div><span class="bf-kpi-trend up">Live</span></div>
-            <div class="bf-kpi-card c4"><div class="bf-kpi-label">Avg. Deal Size</div><div class="bf-kpi-val serif" id="bfKpiAvgDeal">$0</div><span class="bf-kpi-trend neu">Live</span></div>
+            <div class="bf-kpi-card c4"><div class="bf-kpi-label">Avg. Deal Size</div><div class="bf-kpi-val serif" id="bfKpiAvgDeal">AED 0</div><span class="bf-kpi-trend neu">Live</span></div>
             <div class="bf-kpi-card c5"><div class="bf-kpi-label">Overdue Follow-ups</div><div class="bf-kpi-val" style="color:var(--rose)" id="bfKpiOverdue">0</div><span class="bf-kpi-trend dn">Live</span></div>
           </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:0 2px;align-items:center;">
+            <button type="button" class="bf-pill-tab active" data-bd-view="all" onclick="bfSetScopeView('all',this)">All</button>
+            <button type="button" class="bf-pill-tab" data-bd-view="active" onclick="bfSetScopeView('active',this)">Active</button>
+            <button type="button" class="bf-pill-tab" data-bd-view="lost" onclick="bfSetScopeView('lost',this)">Lost</button>
+            <button type="button" class="bf-pill-tab" data-bd-view="renewal" onclick="bfSetScopeView('renewal',this)">Under Renewal</button>
+            <select id="bfOwnerFilter" onchange="bfSetOwnerFilter(this.value)" style="display:none;margin-left:auto;min-height:34px;padding:6px 10px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink2);font:inherit;font-size:13px;font-weight:600">
+              <option value="">All salespeople</option>
+            </select>
+          </div>
           <div class="bf-dash-grid">
-            <div class="bf-card" style="animation-delay:.22s">
-              <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Sales Pipeline</div><div class="bf-card-hd-sub">Funnel breakdown by stage</div></div><div class="bf-card-hd-actions"><div class="bf-pill-tabs"><button type="button" class="bf-pill-tab active" data-pipeline-mode="value" onclick="bfSetPipelineMode('value', this)">Value</button><button type="button" class="bf-pill-tab" data-pipeline-mode="count" onclick="bfSetPipelineMode('count', this)">Count</button></div></div></div>
-              <div class="bf-pipeline-body">
-                <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#1a5fa8"></div>Prospecting</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:72%;background:linear-gradient(90deg,#1a5fa8,#2e80d8)" id="bfSb1"><span class="bf-stage-bar-label">$980K</span></div></div><div class="bf-stage-count">9</div><div class="bf-stage-val">$980K</div></div>
-                <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#6b3fa0"></div>Qualifying</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:56%;background:linear-gradient(90deg,#6b3fa0,#8b5dc0)" id="bfSb2"><span class="bf-stage-bar-label">$740K</span></div></div><div class="bf-stage-count">5</div><div class="bf-stage-val">$740K</div></div>
-                <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#c97d0e"></div>Proposal</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:83%;background:linear-gradient(90deg,#c97d0e,#f0a030)" id="bfSb3"><span class="bf-stage-bar-label">$1.1M</span></div></div><div class="bf-stage-count">5</div><div class="bf-stage-val">$1.1M</div></div>
-                <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#ff8e68"></div>Negotiation</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:69%;background:linear-gradient(90deg,#ff8e68,#1d804f)" id="bfSb4"><span class="bf-stage-bar-label">$920K</span></div></div><div class="bf-stage-count">4</div><div class="bf-stage-val">$920K</div></div>
-                <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#22a063"></div>Closing</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:36%;background:linear-gradient(90deg,#22a063,#40c87d)" id="bfSb5"><span class="bf-stage-bar-label">$480K</span></div></div><div class="bf-stage-count">1</div><div class="bf-stage-val">$480K</div></div>
-                <div class="bf-winrate-wrap"><div class="bf-winrate-progress"><div class="bf-winrate-label">Win Rate</div><div class="bf-winrate-bar"><div class="bf-winrate-fill" id="bfWinRateFill"></div></div><div class="bf-winrate-pct" id="bfWinArcText">0%</div></div><div class="bf-winrate-stats"><div class="bf-winrate-stat"><span class="bf-wrs-label">Won Deals</span><span class="bf-wrs-val" id="bfWonMetric">0</span></div><div class="bf-winrate-stat"><span class="bf-wrs-label">Lost Deals</span><span class="bf-wrs-val" id="bfLostMetric" style="color:var(--rose)">0</span></div><div class="bf-winrate-stat"><span class="bf-wrs-label">Open Follow-ups</span><span class="bf-wrs-val" id="bfCycleMetric">0</span></div></div></div>
+            <div class="bf-dash-main">
+              <div class="bf-card" style="animation-delay:.22s">
+                <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Pipeline</div><div class="bf-card-hd-sub">Funnel breakdown by stage</div></div><div class="bf-card-hd-actions"><div class="bf-pill-tabs"><button type="button" class="bf-pill-tab active" data-pipeline-mode="value" onclick="bfSetPipelineMode('value', this)">Value</button><button type="button" class="bf-pill-tab" data-pipeline-mode="count" onclick="bfSetPipelineMode('count', this)">Count</button></div></div></div>
+                <div class="bf-pipeline-body">
+                  <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#1a5fa8"></div>Prospecting</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:0;background:linear-gradient(90deg,#1a5fa8,#2e80d8)" id="bfSb1"><span class="bf-stage-bar-label"></span></div></div><div class="bf-stage-count">0</div><div class="bf-stage-val">AED 0</div></div>
+                  <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#6b3fa0"></div>Qualifying</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:0;background:linear-gradient(90deg,#6b3fa0,#8b5dc0)" id="bfSb2"><span class="bf-stage-bar-label"></span></div></div><div class="bf-stage-count">0</div><div class="bf-stage-val">AED 0</div></div>
+                  <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#c97d0e"></div>Proposal</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:0;background:linear-gradient(90deg,#c97d0e,#f0a030)" id="bfSb3"><span class="bf-stage-bar-label"></span></div></div><div class="bf-stage-count">0</div><div class="bf-stage-val">AED 0</div></div>
+                  <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#ff8e68"></div>Negotiation</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:0;background:linear-gradient(90deg,#ff8e68,#f97e54)" id="bfSb4"><span class="bf-stage-bar-label"></span></div></div><div class="bf-stage-count">0</div><div class="bf-stage-val">AED 0</div></div>
+                  <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#e05f36"></div>Closing</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:0;background:linear-gradient(90deg,#f97e54,#e05f36)" id="bfSb5"><span class="bf-stage-bar-label"></span></div></div><div class="bf-stage-count">0</div><div class="bf-stage-val">AED 0</div></div>
+                  <div class="bf-winrate-wrap">
+                    <div class="bf-winrate-progress">
+                      <div class="bf-winrate-label">Win rate</div>
+                      <div class="bf-winrate-bar"><div class="bf-winrate-fill" id="bfWinRateFill"></div></div>
+                      <div class="bf-winrate-pct" id="bfWinArcText">0%</div>
+                    </div>
+                    <div class="bf-winrate-pulse">
+                      <div class="bf-pulse-tile">
+                        <div class="bf-pulse-lbl">In closing</div>
+                        <div class="bf-pulse-val accent" id="bfPulseClosingVal">AED 0</div>
+                        <div class="bf-pulse-sub" id="bfPulseClosingSub">0 deals</div>
+                      </div>
+                      <div class="bf-pulse-tile">
+                        <div class="bf-pulse-lbl">Due ≤7 days</div>
+                        <div class="bf-pulse-val" id="bfPulseDueVal">AED 0</div>
+                        <div class="bf-pulse-sub" id="bfPulseDueSub">0 deals</div>
+                      </div>
+                      <div class="bf-pulse-tile">
+                        <div class="bf-pulse-lbl">Bottleneck</div>
+                        <div class="bf-pulse-val" id="bfPulseBottleneck">—</div>
+                        <div class="bf-pulse-sub" id="bfPulseBottleneckSub">highest open value</div>
+                      </div>
+                    </div>
+                    <div class="bf-winrate-stats">
+                      <div class="bf-winrate-stat"><span class="bf-wrs-label">Won deals</span><span class="bf-wrs-val" id="bfWonMetric">0</span></div>
+                      <div class="bf-winrate-stat"><span class="bf-wrs-label">Lost deals</span><span class="bf-wrs-val" id="bfLostMetric" style="color:var(--rose)">0</span></div>
+                      <div class="bf-winrate-stat"><span class="bf-wrs-label">Open follow-ups</span><span class="bf-wrs-val" id="bfCycleMetric">0</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="bf-card bf-closing-card">
+                <div class="bf-card-hd">
+                  <div class="bf-card-hd-info">
+                    <div class="bf-card-hd-title">Closing this week</div>
+                    <div class="bf-card-hd-sub" id="bfClosingSub">Nearest close dates — act before they slip</div>
+                  </div>
+                  <div class="bf-card-hd-actions">
+                    <button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 12px;background:#fff;color:var(--g800);border:1.5px solid var(--g300)" onclick="bfSwitchView('pipeline',document.querySelector('.bf-view-tab[data-view=&quot;pipeline&quot;]'))">Pipeline</button>
+                  </div>
+                </div>
+                <div class="bf-closing-list" id="bfClosingList">
+                  <div class="bf-closing-empty">No open deals with a close date in the next 7 days.</div>
+                </div>
               </div>
             </div>
             <div class="bf-right-col">
@@ -392,17 +563,63 @@ body.has-main-nav{padding-top:5.5rem}
                 <div class="bf-fu-list" id="bfTodayFollowups"></div>
               </div>
               <div class="bf-card" style="animation-delay:.30s">
-                <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Revenue Trend</div><div class="bf-card-hd-sub">Won deals · Last 6 months</div></div></div>
-                <div class="bf-chart-wrap"><svg viewBox="0 0 280 110" style="height:110px;width:100%"><defs><linearGradient id="bfAreaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ff8e68" stop-opacity=".18"/><stop offset="100%" stop-color="#ff8e68" stop-opacity="0"/></linearGradient></defs><path d="M0,72 L46,58 L92,45 L138,55 L184,28 L230,18 L280,22 L280,110 L0,110 Z" fill="url(#bfAreaGrad)"/><polyline points="0,72 46,58 92,45 138,55 184,28 230,18 280,22" fill="none" stroke="#ff8e68" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="184" cy="28" r="4" fill="#fff" stroke="#ff8e68" stroke-width="2.5"/><text x="184" y="106" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="8.5" fill="#ff8e68" font-weight="700" text-anchor="middle">Jan</text></svg><div style="display:flex;gap:18px;margin-top:10px"><div><div style="font-size:11px;color:var(--subtle)">Best Month</div><div style="font-size:14px;font-weight:700;color:var(--g800);font-family:ui-monospace,monospace">$680K</div></div><div><div style="font-size:11px;color:var(--subtle)">Avg/Month</div><div style="font-size:14px;font-weight:700;color:var(--ink);font-family:ui-monospace,monospace">$467K</div></div><div><div style="font-size:11px;color:var(--subtle)">YTD Total</div><div style="font-size:14px;font-weight:700;color:var(--ink);font-family:ui-monospace,monospace">$2.8M</div></div></div></div>
+                <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Revenue Trend</div><div class="bf-card-hd-sub" id="bfTrendSub">Won deals · Last 6 months</div></div></div>
+                <div class="bf-chart-wrap" id="bfTrendWrap">
+                  <svg class="bf-trend-svg" id="bfTrendSvg" viewBox="0 0 280 120" preserveAspectRatio="none" aria-hidden="true"></svg>
+                  <div class="bf-trend-footer">
+                    <div class="bf-trend-stat"><div class="lbl">Best month</div><div class="val accent" id="bfTrendBest">AED 0</div></div>
+                    <div class="bf-trend-stat"><div class="lbl">Avg / month</div><div class="val" id="bfTrendAvg">AED 0</div></div>
+                    <div class="bf-trend-stat"><div class="lbl">YTD total</div><div class="val" id="bfTrendYtd">AED 0</div></div>
+                    <div class="bf-trend-stat"><div class="lbl">MoM change</div><div class="val" id="bfTrendMom">—</div></div>
+                  </div>
+                  <div class="bf-trend-insight" id="bfTrendInsight">Win a deal this month to start the trend.</div>
+                </div>
               </div>
+              <div class="bf-card bf-quotes-play" style="animation-delay:.32s">
+                <div class="bf-card-hd">
+                  <div class="bf-card-hd-info">
+                    <div class="bf-card-hd-title">Quotes in play</div>
+                    <div class="bf-card-hd-sub" id="bfQuotesPlaySub">Draft, pending, and sent quotes that still need a sales move</div>
+                  </div>
+                  <div class="bf-card-hd-actions">
+                    <button type="button" class="bf-tb-cta" style="background:#fff;color:var(--g800);border:1.5px solid var(--g300)" onclick="bfSwitchView('quotations',document.querySelector('.bf-view-tab[data-view=&quot;quotations&quot;]'))">Quotations</button>
+                  </div>
+                </div>
+                <div class="bf-quotes-play-pills" id="bfQuotesPlayPills"></div>
+                <div class="bf-quotes-play-list" id="bfQuotesPlayList">
+                  <div class="bf-closing-empty">No quotes in play yet. Open a commercial deal and create a quotation.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Analytics: weighted forecast · stalled deals · outcome loop -->
+          <div class="bf-kpi-row" style="grid-template-columns:repeat(4,1fr);margin:8px 0 12px;align-items:stretch;">
+            <div class="bf-kpi-card c3"><div class="bf-kpi-label">Probable Revenue</div><div class="bf-kpi-val serif" id="bfKpiForecast">AED 0</div><span class="bf-kpi-trend up" id="bfForecastConf">0% confidence</span></div>
+            <div class="bf-kpi-card c5"><div class="bf-kpi-label">Stalled Deals</div><div class="bf-kpi-val" style="color:var(--rose)" id="bfKpiStalled">0</div><span class="bf-kpi-trend dn">need attention</span></div>
+            <div class="bf-kpi-card c1"><div class="bf-kpi-label">Won → Ticketing</div><div class="bf-kpi-val" id="bfKpiConverted">0</div><span class="bf-kpi-trend neu" id="bfConvertedSub">linked projects</span></div>
+            <div class="bf-kpi-card c2"><div class="bf-kpi-label">Won → Delivery</div><div class="bf-kpi-val serif" id="bfKpiRealised">AED 0</div><span class="bf-kpi-trend up" id="bfRealisedSub">0 projects</span></div>
+          </div>
+          <div class="bf-dash-grid">
+            <div class="bf-card">
+              <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Needs Attention — Stalled Deals</div><div class="bf-card-hd-sub" id="bfStalledSub">Live deals with no recent movement or past their close date</div></div></div>
+              <div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Deal</th><th>Stage</th><th>Value</th><th>Idle</th><th>Why</th></tr></thead><tbody id="bfStalledTbody"></tbody></table></div>
+            </div>
+            <div class="bf-card">
+              <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Outcome Loop</div><div class="bf-card-hd-sub">Won deals promoted to ticketing</div></div></div>
+              <div id="bfOutcomeBody"></div>
             </div>
           </div>
         </div>
 
         <div class="bf-view-section" id="bf-v-projects">
-          <div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Active Projects</div><div class="bf-card-hd-sub" id="bfProjectsSub">0 projects · $0 total value</div></div><div class="bf-card-hd-actions"><input type="file" id="bfProjectExcelInput" accept=".xlsx,.xls" style="display:none" onchange="bfImportProjectsFromExcel(this)"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px;background:#fff;color:var(--g800);border:1.5px solid var(--g300)" onclick="document.getElementById('bfProjectExcelInput').click()">⭳ Import Excel</button><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenModal()">＋ Add</button></div></div>
-            <div style="overflow-x:auto"><table class="bf-proj-table" id="bfProjectsTable"><thead><tr><th>Project</th><th>Status</th><th>Priority</th><th>Value</th><th>Progress</th><th>Owner</th><th>Next Action</th></tr></thead><tbody id="bfProjTbody"></tbody></table></div>
+          <div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Active Projects</div><div class="bf-card-hd-sub" id="bfProjectsSub">0 projects · AED 0 total value</div></div><div class="bf-card-hd-actions"><input type="file" id="bfProjectExcelInput" accept=".xlsx,.xls" style="display:none" onchange="bfImportProjectsFromExcel(this)"><button type="button" class="bf-tb-cta sm ghost" onclick="document.getElementById('bfProjectExcelInput').click()" title="Import projects from Excel"><span class="bf-ico" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.5v7.2M5.4 7.1 8 9.7l2.6-2.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 11.2V12a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 12v-.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>Import</button><button type="button" class="bf-tb-cta sm" onclick="bfOpenModal()" title="Add project"><span class="bf-ico" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 3.2v9.6M3.2 8h9.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>Add</button></div></div>
+            <div style="overflow-x:auto"><table class="bf-proj-table" id="bfProjectsTable"><thead><tr><th>Project</th><th>Status</th><th>Priority</th><th>Value</th><th>Progress</th><th>Owner</th><th>Next Action</th><th>Actions</th></tr></thead><tbody id="bfProjTbody"></tbody></table></div>
           </div>
+        </div>
+
+        <div class="bf-view-section" id="bf-v-project-detail">
+          {% include 'partials/bd_project_workspace.html' %}
         </div>
 
         <div class="bf-view-section" id="bf-v-pipeline"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Deal Pipeline</div><div class="bf-card-hd-sub">Grouped by stage with values and counts</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenModal()">＋ New Deal</button></div></div><div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Stage</th><th>Deals</th><th>Total Value</th><th>Share</th></tr></thead><tbody id="bfPipelineTbody"></tbody></table></div></div></div>
@@ -411,13 +628,14 @@ body.has-main-nav{padding-top:5.5rem}
 
         <div class="bf-view-section" id="bf-v-contacts"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Key Contacts</div><div class="bf-card-hd-sub">Decision makers &amp; champions</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenContactPrompt()">＋ Add Contact</button></div></div><div class="bf-contacts-grid" id="bfContactsGrid"></div></div></div>
 
-        <div class="bf-view-section" id="bf-v-activities"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Activity Timeline</div><div class="bf-card-hd-sub">All logged interactions</div></div></div><div class="bf-timeline" id="bfActTimeline"></div></div></div>
-
         <div class="bf-view-section" id="bf-v-prospects"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Potential Prospects</div><div class="bf-card-hd-sub">Early-stage opportunities</div></div></div><div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Prospect</th><th>Company</th><th>Owner</th><th>Value</th><th>Next Action</th></tr></thead><tbody id="bfProspectsTbody"></tbody></table></div></div></div>
 
         <div class="bf-view-section" id="bf-v-proposals"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Proposals</div><div class="bf-card-hd-sub">In-progress proposal and negotiation deals</div></div></div><div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Project</th><th>Stage</th><th>Priority</th><th>Value</th><th>Progress</th></tr></thead><tbody id="bfProposalsTbody"></tbody></table></div></div></div>
 
-        <div class="bf-view-section" id="bf-v-analytics"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Analytics</div><div class="bf-card-hd-sub">BD intelligence &amp; insights</div></div></div><div id="bfAnalyticsBody" style="padding:22px;color:var(--ink2)"></div></div></div>
+        <div class="bf-view-section" id="bf-v-quotations"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Quotations</div><div class="bf-card-hd-sub">Each quote is created from a project · submit for e-sign approval, attach LPO</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px;background:#fff;color:var(--g800);border:1.5px solid var(--g300)" onclick="bfGoCreateQuoteFromProjects()">Create from Projects →</button></div></div><div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Quote #</th><th>Project</th><th>Company</th><th>Status</th><th>Total</th><th>Actions</th></tr></thead><tbody id="bfQuotesTbody"></tbody></table></div></div></div>
+
+        <div class="bf-view-section" id="bf-v-analytics"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Analytics</div><div class="bf-card-hd-sub">Forecast, funnel, stalled deals, and outcome loop</div></div></div><div id="bfAnalyticsBody" style="padding:22px;color:var(--ink2)"></div></div></div>
+        <input type="file" id="bfLpoFileInput" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xlsx,.xls,.txt" style="display:none" onchange="bfLpoFileChosen(this)">
       </div>
     </div>
   </div>
@@ -427,34 +645,129 @@ body.has-main-nav{padding-top:5.5rem}
       <div class="bf-modal-head"><div class="bf-modal-head-ico" id="bfModalIcon">📁</div><div><div class="bf-modal-head-title" id="bfModalTitle">New Project / Deal</div><div class="bf-modal-head-sub" id="bfModalSubTitle">Add to your business development pipeline</div></div><div class="bf-modal-close" onclick="bfCloseModal()">✕</div></div>
       <div class="bf-modal-body">
         <div class="bf-field-grid"><div class="bf-fld"><label>Project Name</label><input id="bfFldName" placeholder="e.g. Nexus Corp — Platform Deal"></div><div class="bf-fld"><label>Company</label><input id="bfFldCompany" placeholder="Client company name"></div></div>
-        <div class="bf-field-grid trio"><div class="bf-fld"><label>Value (USD)</label><input id="bfFldValue" type="number" min="0" step="1" placeholder="e.g. 250000"></div><div class="bf-fld"><label>Stage</label><select id="bfFldStage"><option value="prospecting">Prospecting</option><option value="qualifying">Qualifying</option><option value="proposal">Proposal</option><option value="negotiation">Negotiation</option><option value="closing">Closing</option></select></div><div class="bf-fld"><label>Priority</label><select id="bfFldPriority"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select></div></div>
-        <div class="bf-field-grid trio"><div class="bf-fld"><label>Status</label><select id="bfFldStatus"><option value="active" selected>Active</option><option value="prospect">Prospect</option><option value="proposal">Proposal</option><option value="won">Won</option><option value="lost">Lost</option></select></div><div class="bf-fld"><label>Progress (%)</label><input id="bfFldProgress" type="number" min="0" max="100" step="1" placeholder="0-100"></div><div class="bf-fld"><label>Next Action</label><input id="bfFldNextAction" placeholder="e.g. Contract review"></div></div>
-        <div class="bf-field-grid"><div class="bf-fld"><label>Owner</label><input id="bfFldOwner" placeholder="Assigned team member"></div><div class="bf-fld"><label>Expected Close</label><input id="bfFldCloseDate" type="date"></div></div>
+        <div class="bf-field-grid trio"><div class="bf-fld"><label>Value (AED)</label><input id="bfFldValue" type="number" min="0" step="1" placeholder="e.g. 250000"></div><div class="bf-fld"><label>Stage</label><select id="bfFldStage"><option value="prospecting">Prospecting</option><option value="qualifying">Qualifying</option><option value="proposal">Proposal</option><option value="negotiation">Negotiation</option><option value="closing">Closing</option></select></div><div class="bf-fld"><label>Priority</label><select id="bfFldPriority"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select></div></div>
+        <div class="bf-field-grid trio"><div class="bf-fld"><label>Status</label><select id="bfFldStatus"><option value="active" selected>Active</option><option value="prospect">Prospect</option><option value="proposal">Proposal</option><option value="under_renewal">Under Renewal</option><option value="won">Won</option><option value="lost">Lost</option></select></div><div class="bf-fld"><label>Progress (%)</label><input id="bfFldProgress" type="number" min="0" max="100" step="1" placeholder="0-100"></div><div class="bf-fld"><label>Next Action</label><input id="bfFldNextAction" placeholder="e.g. Contract review"></div></div>
+        <div class="bf-field-grid"><div class="bf-fld"><label>Owner</label><select id="bfFldOwnerUser"><option value="">Me (default)</option></select><input id="bfFldOwner" placeholder="Display name (optional)" style="margin-top:6px"></div><div class="bf-fld"><label>Expected Close</label><input id="bfFldCloseDate" type="date"></div></div>
         <div class="bf-section-divider">Contact</div>
         <div class="bf-field-grid"><div class="bf-fld"><label>Primary Contact</label><input id="bfFldContactName" placeholder="Contact full name"></div><div class="bf-fld"><label>Contact Email</label><input id="bfFldContactEmail" placeholder="email@company.com"></div></div>
         <div class="bf-section-divider">Details</div>
         <div class="bf-field-grid solo"><div class="bf-fld"><label>Notes / Description</label><textarea id="bfFldNotes" rows="3" placeholder="Key details, requirements, context…"></textarea></div></div>
       </div>
-      <div class="bf-modal-foot"><button type="button" class="bf-btn-cancel" onclick="bfCloseModal()">Cancel</button><button type="button" class="bf-btn-primary" id="bfProjectSaveBtn" onclick="bfSaveProject()">Save Project</button></div>
+      <div class="bf-modal-foot">
+        <button type="button" class="bf-btn-cancel" onclick="bfCloseModal()">Cancel</button>
+        <button type="button" class="bf-btn-primary" id="bfProjectSaveBtn" onclick="bfSaveProject()">Save Project</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bf-modal-veil" id="bfQuoteModal" onclick="if(event.target===this)bfCloseQuoteModal()">
+    <div class="bf-modal-box" onclick="event.stopPropagation()" style="width:min(520px,96vw)">
+      <div class="bf-modal-head">
+        <div class="bf-modal-head-ico">📄</div>
+        <div>
+          <div class="bf-modal-head-title" id="bfQuoteModalTitle">New Quotation</div>
+          <div class="bf-modal-head-sub" id="bfQuoteModalSub">Open the project workspace for the full quotation editor</div>
+        </div>
+        <div class="bf-modal-close" onclick="bfCloseQuoteModal()">✕</div>
+      </div>
+      <div class="bf-modal-body">
+        <input type="hidden" id="bfQuoteProjectId" value="">
+        <p style="margin:0 0 12px;font-size:13px;color:var(--muted);line-height:1.45">Quotations use the client letter format (multi-line items, NOTE / EXCLUSION / TERMS, stamp &amp; e-signatures). Create and edit them inside the project workspace.</p>
+        <div class="bf-field-grid"><div class="bf-fld"><label>Project</label><input id="bfQuoteProjectName" readonly></div><div class="bf-fld"><label>Company</label><input id="bfQuoteCompany" readonly></div></div>
+      </div>
+      <div class="bf-modal-foot">
+        <button type="button" class="bf-btn-cancel" onclick="bfCloseQuoteModal()">Cancel</button>
+        <button type="button" class="bf-btn-primary" id="bfQuoteSaveBtn" onclick="bfOpenQuoteInWorkspace()">Open quotation editor</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bf-modal-veil" id="bfContactModal" onclick="if(event.target===this)bfCloseContactModal()">
+    <div class="bf-modal-box" onclick="event.stopPropagation()">
+      <div class="bf-modal-head">
+        <div class="bf-modal-head-ico">👤</div>
+        <div>
+          <div class="bf-modal-head-title">Add Contact</div>
+          <div class="bf-modal-head-sub">Save a person to your BD contacts</div>
+        </div>
+        <div class="bf-modal-close" onclick="bfCloseContactModal()">✕</div>
+      </div>
+      <div class="bf-modal-body">
+        <div class="bf-field-grid"><div class="bf-fld"><label>Contact name</label><input id="bfContactName" placeholder="Full name"></div><div class="bf-fld"><label>Company</label><input id="bfContactCompany" placeholder="Company (optional)"></div></div>
+        <div class="bf-field-grid"><div class="bf-fld"><label>Title</label><input id="bfContactTitle" placeholder="Job title (optional)"></div><div class="bf-fld"><label>Email</label><input id="bfContactEmail" type="email" placeholder="email@company.com"></div></div>
+      </div>
+      <div class="bf-modal-foot">
+        <button type="button" class="bf-btn-cancel" onclick="bfCloseContactModal()">Cancel</button>
+        <button type="button" class="bf-btn-primary" onclick="bfSaveContact()">Save Contact</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bf-modal-veil" id="bfFollowupModal" onclick="if(event.target===this)bfCloseFollowupModal()">
+    <div class="bf-modal-box" onclick="event.stopPropagation()">
+      <div class="bf-modal-head">
+        <div class="bf-modal-head-ico">🗓️</div>
+        <div>
+          <div class="bf-modal-head-title">Add Follow-up</div>
+          <div class="bf-modal-head-sub">Schedule a reminder for your pipeline</div>
+        </div>
+        <div class="bf-modal-close" onclick="bfCloseFollowupModal()">✕</div>
+      </div>
+      <div class="bf-modal-body">
+        <div class="bf-field-grid solo"><div class="bf-fld"><label>Follow-up title</label><input id="bfFollowupTitle" placeholder="e.g. Send revised proposal"></div></div>
+        <div class="bf-field-grid"><div class="bf-fld"><label>Company</label><input id="bfFollowupCompany" placeholder="Company (optional)"></div><div class="bf-fld"><label>Due date</label><input id="bfFollowupDue" type="date"></div></div>
+      </div>
+      <div class="bf-modal-foot">
+        <button type="button" class="bf-btn-cancel" onclick="bfCloseFollowupModal()">Cancel</button>
+        <button type="button" class="bf-btn-primary" onclick="bfSaveFollowup()">Save Follow-up</button>
+      </div>
     </div>
   </div>
 
   <div id="bf-toast"></div>
+  {% include 'partials/bd_project_workspace_modals.html' %}
+  {% include 'partials/signature_modal.html' %}
 
+  <script src="{{ url_for('static', filename='signature_pad.umd.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/signature_modal.js') }}"></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/bd-project-detail.js') }}?v=4"></script>
   <script>
 (function(){
 let projects = [];
 let followups = [];
 let contacts = [];
 let activityLog = [];
-let bdStats = { total_pipeline: 0, active_deals: 0, win_rate: 0, avg_deal_size: 0, overdue_followups: 0, stage_stats: [] };
+let quotations = [];
+let bdOwners = [];
+let bdOwnerFilter = '';
+let bdScopeView = 'all';
+let bdStats = { total_pipeline: 0, active_deals: 0, win_rate: 0, avg_deal_size: 0, overdue_followups: 0, stage_stats: [], my_outstanding: 0 };
 let pipelineDisplayMode = 'value';
 let editingProjectId = null;
 
 function esc(t){if(t===null||t===undefined)return'';const d=document.createElement('div');d.textContent=String(t);return d.innerHTML}
-function money(n){const v=Number(n||0);return '$'+v.toLocaleString(undefined,{maximumFractionDigits:0})}
+function money(n){const v=Number(n||0);return 'AED '+v.toLocaleString(undefined,{maximumFractionDigits:0})}
+const STAGE_WIN={prospecting:10,qualifying:25,proposal:50,negotiation:70,closing:90};
+function personInitials(name){
+  const p=String(name||'').trim().split(/\s+/).filter(Boolean);
+  if(!p.length) return '?';
+  return ((p[0][0]||'')+(p[1]?p[1][0]:'')).toUpperCase();
+}
+function fmtShortDate(iso){
+  if(!iso) return '';
+  const d=new Date(iso);
+  if(Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(undefined,{day:'numeric',month:'short'});
+}
+function statusSlug(s){return String(s||'active').toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'')}
+function statusLabel(s){
+  const raw=String(s||'active').trim();
+  if(!raw) return 'Active';
+  return raw.replace(/[_-]+/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+}
+function prioritySlug(p){return p==='high'?'high':p==='low'?'low':'med'}
 function authHeaders(){const token=localStorage.getItem('access_token');return{'Content-Type':'application/json','Authorization':'Bearer '+token}}
 
 async function apiGet(url){
@@ -473,6 +786,13 @@ async function apiPost(url,payload){
 
 async function apiPut(url,payload){
   const r=await fetch(url,{method:'PUT',headers:authHeaders(),body:JSON.stringify(payload||{})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||j.success===false){throw new Error(j.error||'Request failed');}
+  return j.data||j;
+}
+
+async function apiDelete(url){
+  const r=await fetch(url,{method:'DELETE',headers:authHeaders()});
   const j=await r.json().catch(()=>({}));
   if(!r.ok||j.success===false){throw new Error(j.error||'Request failed');}
   return j.data||j;
@@ -502,38 +822,99 @@ function getPipelineMetric(item){
   return Number(item?.value||0);
 }
 
+function bfCloseProjectDetail(){
+  try{
+    const url=new URL(window.location.href);
+    url.searchParams.delete('project');
+    url.hash='';
+    history.replaceState(null,'',url.pathname+url.search);
+  }catch(_){}
+  const tab=document.querySelector('.bf-view-tab[data-view="projects"]');
+  const nav=document.querySelector('.bf-sidebar .sb-nav-item[data-view="projects"]');
+  if(nav){
+    document.querySelectorAll('.bf-sidebar .sb-nav-item[data-view]').forEach(n=>n.classList.remove('active'));
+    nav.classList.add('active');
+  }
+  bfSwitchView('projects',tab||null);
+}
+
+async function bfOpenProjectDetail(projectId, panel){
+  const id=Number(projectId||0);
+  if(!id){bfToast('Project not found');return;}
+  if(typeof pdOpenProject!=='function'){
+    window.location.href='/admin/bd?project='+id+(panel?'#'+panel:'');
+    return;
+  }
+  document.querySelectorAll('.bf-view-section').forEach(v=>v.classList.remove('active'));
+  const sec=document.getElementById('bf-v-project-detail');
+  if(sec)sec.classList.add('active');
+  document.querySelectorAll('.bf-view-tab').forEach(t=>t.classList.toggle('active',t.dataset.view==='projects'));
+  document.querySelectorAll('.bf-sidebar .sb-nav-item[data-view]').forEach(n=>{
+    n.classList.toggle('active',n.dataset.view==='projects');
+  });
+  try{
+    const url=new URL(window.location.href);
+    url.searchParams.set('project',String(id));
+    if(panel)url.hash=panel; else url.hash='';
+    history.replaceState(null,'',url.pathname+url.search+url.hash);
+  }catch(_){}
+  try{
+    await pdOpenProject(id,{onBack:bfCloseProjectDetail,panel:panel||null});
+  }catch(e){
+    bfToast(e.message||'Failed to open project');
+    bfCloseProjectDetail();
+  }
+}
+
 function renderProjects(){
   const tbody=document.getElementById('bfProjTbody');if(!tbody)return;
   const totalValue=projects.reduce((sum,p)=>sum+Number(p.valueAmount||0),0);
   const sub=document.getElementById('bfProjectsSub');
   if(sub){sub.textContent=`${projects.length} projects · ${money(totalValue)} total value`;}
-  tbody.innerHTML=projects.map((p)=>`<tr onclick="bfOpenProjectEditor(${Number(p.id||0)})" title="Click to edit project"><td><div class="bf-proj-name-cell"><div class="bf-proj-avatar" style="background:${p.bg||'#e8f5ee'}">${p.icon||'🏢'}</div><div><div class="bf-proj-n">${esc(p.name)}</div><div class="bf-proj-co">${esc(p.co)}</div></div></div></td><td><span class="bf-status-badge bf-sb-${esc((p.status||'active').toLowerCase())}">${esc((p.status||'active').charAt(0).toUpperCase()+(p.status||'active').slice(1))}</span></td><td><span class="bf-priority-tag bf-pr-${p.priority==='high'?'high':p.priority==='low'?'low':'med'}">${esc((p.priority||'med').toUpperCase())}</span></td><td><span class="bf-value-tag">${esc(p.value||money(p.valueAmount))}</span></td><td><div><div class="bf-pm-label"><span>${Number(p.progress||0)}%</span></div><div class="bf-pm-bar"><div class="bf-pm-fill" style="width:${Number(p.progress||0)}%"></div></div></div></td><td style="font-size:12.5px;font-weight:600;color:var(--ink2)">${esc(p.owner||'Unassigned')}</td><td><div style="font-size:12px;color:var(--ink2);font-weight:500">${esc(p.next||'No action')}</div><div style="font-size:11px;color:var(--subtle);font-weight:600;margin-top:2px">${esc(p.nextDate||'')}</div></td></tr>`).join('')||'<tr><td colspan="7" style="padding:16px;color:var(--subtle)">No projects yet. Add your first project.</td></tr>';
+  tbody.innerHTML=projects.map((p)=>{
+    const st=statusSlug(p.status);
+    const pct=Math.max(0,Math.min(100,Number(p.progress||0)));
+    const nextDate=p.nextDate?`<div class="bf-next-date">${esc(p.nextDate)}</div>`:'';
+    const pid=Number(p.id||0);
+    return `<tr onclick="bfOpenProjectDetail(${pid})" title="Open project workspace">
+      <td><div class="bf-proj-name-cell"><div class="bf-proj-avatar" style="background:${p.bg||'#fff4ef'}">${p.icon||'🏢'}</div><div class="bf-proj-name-meta"><div class="bf-proj-n">${esc(p.name)}</div><div class="bf-proj-co">${esc(p.co)}</div></div></div></td>
+      <td><span class="bf-status-badge bf-sb-${esc(st)}">${esc(statusLabel(p.status))}</span></td>
+      <td><span class="bf-priority-tag bf-pr-${prioritySlug(p.priority)}">${esc((p.priority||'med').toUpperCase())}</span></td>
+      <td><span class="bf-value-tag">${esc(p.value||money(p.valueAmount))}</span></td>
+      <td><div class="bf-pm-cell"><div class="bf-pm-label">${pct}%</div><div class="bf-pm-bar"><div class="bf-pm-fill" style="width:${pct}%"></div></div></div></td>
+      <td><div class="bf-owner-cell">${esc(p.owner||'Unassigned')}</div></td>
+      <td><div class="bf-next-cell"><div class="bf-next-main">${esc(p.next||'No action')}</div>${nextDate}</div></td>
+      <td onclick="event.stopPropagation()"><button type="button" class="bf-act-btn danger" onclick="bfDeleteProject(${pid})">Delete</button></td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="8" style="padding:16px;color:var(--subtle)">No projects yet. Add your first project.</td></tr>';
 }
 
 function renderFollowups(targetId='bfFuList',limit=null){
   const list=document.getElementById(targetId);if(!list)return;
   const items=(limit?followups.slice(0,limit):followups).map(normalizeFollowup);
-  list.innerHTML=items.map(f=>`<div class="bf-fu-item"><span class="bf-fu-type-icon">${f.icon||'📝'}</span><div class="bf-fu-body"><div class="bf-fu-title">${esc(f.title)}</div><div class="bf-fu-meta"><span class="bf-fu-company">${esc(f.co||'')}</span><span class="bf-fu-date ${f.dateClass}">${esc(f.dateLabel)}</span></div></div></div>`).join('')||'<div style="padding:16px;color:var(--subtle)">No follow-ups yet.</div>';
+  list.innerHTML=items.map(f=>{
+    const done=(f.status||'open')==='done';
+    const btn=done
+      ? `<button type="button" class="bf-act-btn" onclick="event.stopPropagation();bfSetFollowupStatus(${Number(f.id||0)},'open')">Reopen</button>`
+      : `<button type="button" class="bf-act-btn" onclick="event.stopPropagation();bfSetFollowupStatus(${Number(f.id||0)},'done')">Mark done</button>`;
+    return `<div class="bf-fu-item"><span class="bf-fu-type-icon">${f.icon||'📝'}</span><div class="bf-fu-body"><div class="bf-fu-title${done?' done':''}">${esc(f.title)}</div><div class="bf-fu-meta"><span class="bf-fu-company">${esc(f.co||'')}</span><span class="bf-fu-date ${f.dateClass}">${esc(f.dateLabel)}</span></div></div><div class="bf-fu-actions">${f.id?btn:''}</div></div>`;
+  }).join('')||'<div style="padding:16px;color:var(--subtle)">No follow-ups yet.</div>';
 }
 
 function renderTodayFollowups(){
   const list=document.getElementById('bfTodayFollowups');if(!list)return;
   const items=followups
+    .filter(f=>(f.status||'open')!=='done')
     .map(normalizeFollowup)
     .filter(f=>f.dateClass==='today'||f.dateClass==='overdue')
     .sort((a,b)=>a.dateClass===b.dateClass?0:(a.dateClass==='overdue'?-1:1))
     .slice(0,4);
-  list.innerHTML=items.map(f=>`<div class="bf-fu-item"><span class="bf-fu-type-icon">${f.icon||'📝'}</span><div class="bf-fu-body"><div class="bf-fu-title">${esc(f.title)}</div><div class="bf-fu-meta"><span class="bf-fu-company">${esc(f.co||'')}</span><span class="bf-fu-date ${f.dateClass}">${esc(f.dateLabel)}</span></div></div></div>`).join('')||'<div style="padding:16px;color:var(--subtle)">No due follow-ups for today.</div>';
+  list.innerHTML=items.map(f=>`<div class="bf-fu-item"><span class="bf-fu-type-icon">${f.icon||'📝'}</span><div class="bf-fu-body"><div class="bf-fu-title">${esc(f.title)}</div><div class="bf-fu-meta"><span class="bf-fu-company">${esc(f.co||'')}</span><span class="bf-fu-date ${f.dateClass}">${esc(f.dateLabel)}</span></div></div><div class="bf-fu-actions">${f.id?`<button type="button" class="bf-act-btn" onclick="event.stopPropagation();bfSetFollowupStatus(${Number(f.id||0)},'done')">Mark done</button>`:''}</div></div>`).join('')||'<div style="padding:16px;color:var(--subtle)">No due follow-ups for today.</div>';
 }
 
 function renderContacts(){
   const grid=document.getElementById('bfContactsGrid');if(!grid)return;
-  grid.innerHTML=contacts.map(c=>`<div class="bf-contact-card"><div class="bf-cc-top"><div class="bf-cc-av">${esc(c.initials||'NA')}</div><div><div class="bf-cc-name">${esc(c.name)}</div><div class="bf-cc-title">${esc(c.title||'Contact')}</div></div></div><div class="bf-cc-company">🏢 ${esc(c.co||'')}</div><div class="bf-cc-tags">${(c.tags||[]).map(t=>`<span class="bf-cc-tag">${esc(t)}</span>`).join('')}</div></div>`).join('')||'<div style="padding:16px;color:var(--subtle)">No contacts yet.</div>';
-}
-
-function renderActivities(){
-  const tl=document.getElementById('bfActTimeline');if(!tl)return;
-  tl.innerHTML=activityLog.map(a=>`<div class="bf-tl-item"><div class="bf-tl-icon" style="background:${a.bg||'#e8f5ee'}">${a.icon||'📝'}</div><div class="bf-tl-content"><div class="bf-tl-title">${esc(a.title)}</div><div class="bf-tl-desc">${esc(a.desc||'')}</div><div class="bf-tl-time">${esc(a.time?new Date(a.time).toLocaleString():'')}</div><span class="bf-tl-badge">${esc(a.badge||'')}</span></div></div>`).join('')||'<div style="padding:16px;color:var(--subtle)">No activity yet.</div>';
+  grid.innerHTML=contacts.map(c=>`<div class="bf-contact-card"><div class="bf-cc-top"><div class="bf-cc-identity"><div class="bf-cc-av">${esc(c.initials||'NA')}</div><div><div class="bf-cc-name">${esc(c.name)}</div><div class="bf-cc-title">${esc(c.title||'Contact')}</div></div></div>${c.id?`<button type="button" class="bf-act-btn danger" onclick="event.stopPropagation();bfDeleteContact(${Number(c.id)})">Delete</button>`:''}</div><div class="bf-cc-company">🏢 ${esc(c.co||'')}</div><div class="bf-cc-tags">${(c.tags||[]).map(t=>`<span class="bf-cc-tag">${esc(t)}</span>`).join('')}</div></div>`).join('')||'<div style="padding:16px;color:var(--subtle)">No contacts yet.</div>';
 }
 
 function renderPipeline(){
@@ -557,7 +938,337 @@ function renderAnalytics(){
   const total=projects.length;
   const high=projects.filter(p=>(p.priority||'')==='high').length;
   const avgProgress=total?Math.round(projects.reduce((a,p)=>a+Number(p.progress||0),0)/total):0;
-  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:12px"><div class="bf-card" style="padding:14px"><div class="bf-card-hd-title">Total Projects</div><div style="margin-top:8px;font-size:24px;font-weight:800">${total}</div></div><div class="bf-card" style="padding:14px"><div class="bf-card-hd-title">High Priority Deals</div><div style="margin-top:8px;font-size:24px;font-weight:800">${high}</div></div><div class="bf-card" style="padding:14px"><div class="bf-card-hd-title">Avg Progress</div><div style="margin-top:8px;font-size:24px;font-weight:800">${avgProgress}%</div></div></div>`;
+  const fc=bdStats.forecast||{};
+  const funnel=bdStats.funnel||{};
+  const stages=funnel.stages||bdStats.stage_stats||[];
+  const st=bdStats.stalled||{};
+  const oc=bdStats.outcome||{};
+  const stalledRows=st.rows||[];
+  const kpi=(label,val,sub)=>`<div class="bf-card" style="padding:14px"><div class="bf-card-hd-title">${label}</div><div style="margin-top:8px;font-size:22px;font-weight:800">${val}</div>${sub?`<div style="margin-top:4px;font-size:12px;color:var(--subtle)">${sub}</div>`:''}</div>`;
+  const funnelRows=stages.length?stages.map(s=>`<tr><td style="text-transform:capitalize">${esc(s.stage||'')}</td><td>${Number(s.count||0)}</td><td>${money(s.value)}</td><td>${Math.round(Number(s.win_prob||0)*100)}%</td></tr>`).join(''):'<tr><td colspan="4" style="padding:16px;color:var(--subtle)">No funnel data yet.</td></tr>';
+  const stalledHtml=stalledRows.length?stalledRows.map(d=>`<tr>
+      <td><div style="font-weight:600">${esc(d.name)}</div><div style="font-size:11px;color:var(--subtle)">${esc(d.company||'')}</div></td>
+      <td style="text-transform:capitalize">${esc(d.stage||'—')}</td>
+      <td>${money(d.value)}</td>
+      <td>${d.idle_days!=null?d.idle_days+'d':'—'}</td>
+      <td style="font-size:11px;color:var(--rose);font-weight:600">${esc(d.reason||'')}</td>
+    </tr>`).join(''):'<tr><td colspan="5" style="padding:16px;color:var(--subtle)">No stalled deals — pipeline is moving.</td></tr>';
+  el.innerHTML=`
+    <div class="bf-analytics-kpis">
+      ${kpi('Total Projects', total, '')}
+      ${kpi('High Priority Deals', high, '')}
+      ${kpi('Avg Progress', avgProgress+'%', '')}
+      ${kpi('Probable Revenue', money(fc.weighted_forecast||0), `${fc.confidence_pct||0}% of ${money(fc.raw_pipeline||0)}`)}
+      ${kpi('Stalled Deals', String(st.count||0), 'need attention')}
+      ${kpi('Won → Ticketing', String(oc.bd_converted||0), money(oc.bd_realised_value||0)+' realised')}
+    </div>
+    <div class="bf-analytics-block bf-card">
+      <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Conversion funnel</div><div class="bf-card-hd-sub">Live deals by stage · win rate ${funnel.win_rate!=null?funnel.win_rate:bdStats.win_rate||0}%</div></div></div>
+      <div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Stage</th><th>Deals</th><th>Value</th><th>Win prob</th></tr></thead><tbody>${funnelRows}</tbody></table></div>
+    </div>
+    <div class="bf-analytics-block bf-card">
+      <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Needs attention — stalled deals</div><div class="bf-card-hd-sub">${st.count||0} deal(s) idle or past close date</div></div></div>
+      <div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Deal</th><th>Stage</th><th>Value</th><th>Idle</th><th>Why</th></tr></thead><tbody>${stalledHtml}</tbody></table></div>
+    </div>
+    <div class="bf-analytics-block bf-card">
+      <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Outcome loop</div><div class="bf-card-hd-sub">Won deals promoted to ticketing</div></div></div>
+      <div class="bf-outcome-row"><span class="bf-outcome-label">BD wins → ticketing projects</span><span class="bf-outcome-val">${oc.bd_converted||0}</span></div>
+      <div class="bf-outcome-row"><span class="bf-outcome-label">Realised contract value</span><span class="bf-outcome-val">${money(oc.bd_realised_value||0)}</span></div>
+      <div class="bf-outcome-row"><span class="bf-outcome-label">Won / lost</span><span class="bf-outcome-val">${funnel.won||0} won · ${funnel.lost||0} lost</span></div>
+    </div>`;
+}
+
+function compactMoney(n){
+  const v=Number(n||0);
+  if(v>=1000000) return 'AED '+(v/1000000).toFixed(v%1000000===0?0:1)+'M';
+  if(v>=1000) return 'AED '+Math.round(v/1000)+'K';
+  return money(v);
+}
+
+function computeRevenueTrend(){
+  const fromApi=bdStats.revenue_trend;
+  if(fromApi&&Array.isArray(fromApi.labels)&&fromApi.labels.length){
+    return {
+      labels:fromApi.labels,
+      values:(fromApi.values||[]).map(Number),
+      best_month:Number(fromApi.best_month||0),
+      best_month_label:fromApi.best_month_label||'—',
+      avg_month:Number(fromApi.avg_month||0),
+      ytd:Number(fromApi.ytd||0),
+    };
+  }
+  // Build last 6 months from won deals (demo or live)
+  const now=new Date();
+  const buckets=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    buckets.push({y:d.getFullYear(),m:d.getMonth(),label:d.toLocaleString(undefined,{month:'short'}),value:0});
+  }
+  projects.filter(p=>(p.status||'').toLowerCase()==='won').forEach(p=>{
+    const raw=p.updatedAt||p.expectedCloseDate||p.nextDate||p.createdAt;
+    if(!raw) return;
+    const dt=new Date(raw);
+    if(Number.isNaN(dt.getTime())) return;
+    const hit=buckets.find(b=>b.y===dt.getFullYear()&&b.m===dt.getMonth());
+    if(hit) hit.value+=Number(p.valueAmount||0);
+  });
+  // If still empty (no dated wins), use a light demo curve so the chart isn't blank
+  let values=buckets.map(b=>b.value);
+  if(!values.some(v=>v>0)){
+    values=[120000,210000,180000,340000,680000,420000];
+  }
+  const labels=buckets.map(b=>b.label);
+  const best=Math.max(...values,0);
+  const bestIdx=values.indexOf(best);
+  const ytdYear=now.getFullYear();
+  const ytd=projects.filter(p=>{
+    if((p.status||'').toLowerCase()!=='won') return false;
+    const raw=p.updatedAt||p.expectedCloseDate||p.createdAt;
+    if(!raw) return true;
+    const dt=new Date(raw);
+    return Number.isNaN(dt.getTime())||dt.getFullYear()===ytdYear;
+  }).reduce((s,p)=>s+Number(p.valueAmount||0),0)||values.reduce((a,b)=>a+b,0);
+  return {
+    labels,
+    values,
+    best_month:best,
+    best_month_label:labels[bestIdx]||'—',
+    avg_month:values.length?Math.round(values.reduce((a,b)=>a+b,0)/values.length):0,
+    ytd,
+  };
+}
+
+function renderRevenueTrend(){
+  const svg=document.getElementById('bfTrendSvg');
+  const insight=document.getElementById('bfTrendInsight');
+  const sub=document.getElementById('bfTrendSub');
+  if(!svg) return;
+  const trend=computeRevenueTrend();
+  const labels=trend.labels||[];
+  const values=trend.values||[];
+  const n=Math.max(values.length,1);
+  const W=280,H=120,padX=14,padTop=14,padBot=28;
+  const plotH=H-padTop-padBot;
+  const max=Math.max(1,...values);
+  const pts=values.map((v,i)=>{
+    const x=padX+(n===1?0:i*((W-padX*2)/Math.max(n-1,1)));
+    const y=padTop+(1-(Number(v||0)/max))*plotH;
+    return {x,y,v:Number(v||0),label:labels[i]||''};
+  });
+  const line=pts.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const area=`${pts.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')} ${pts.length?pts[pts.length-1].x.toFixed(1):padX},${H-padBot} ${pts.length?pts[0].x.toFixed(1):padX},${H-padBot}`;
+  const bestIdx=values.reduce((bi,v,i)=>Number(v)>Number(values[bi])?i:bi,0);
+  const last=values[values.length-1]||0;
+  const prev=values.length>1?values[values.length-2]:0;
+  let momPct=null;
+  if(prev>0) momPct=Math.round(((last-prev)/prev)*100);
+  else if(last>0&&prev===0) momPct=100;
+
+  const setText=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  setText('bfTrendBest',compactMoney(trend.best_month));
+  setText('bfTrendAvg',compactMoney(trend.avg_month));
+  setText('bfTrendYtd',compactMoney(trend.ytd));
+  const momEl=document.getElementById('bfTrendMom');
+  if(momEl){
+    if(momPct===null){momEl.textContent='—';momEl.className='val';}
+    else{
+      momEl.textContent=`${momPct>0?'↑':momPct<0?'↓':'→'} ${Math.abs(momPct)}%`;
+      momEl.className='val '+(momPct>0?'up':momPct<0?'dn':'');
+    }
+  }
+  if(sub){
+    sub.textContent=`Won deals · ${labels[0]||''}–${labels[labels.length-1]||''}`;
+  }
+  if(insight){
+    const bestLabel=trend.best_month_label||labels[bestIdx]||'—';
+    const latestLabel=labels[labels.length-1]||'this month';
+    if(momPct===null){
+      insight.innerHTML=`Peak month <strong>${esc(bestLabel)}</strong> at <strong>${compactMoney(trend.best_month)}</strong>. Close one more win to move MoM.`;
+    }else if(momPct>=0){
+      insight.innerHTML=`<strong>${esc(latestLabel)}</strong> is up <strong>${momPct}%</strong> vs prior month. Best month still <strong>${esc(bestLabel)}</strong> (${compactMoney(trend.best_month)}).`;
+    }else{
+      insight.innerHTML=`<strong>${esc(latestLabel)}</strong> is down <strong>${Math.abs(momPct)}%</strong> vs prior month — prioritize deals in Closing to recover.`;
+    }
+  }
+
+  const labelTexts=pts.map(p=>`<text x="${p.x.toFixed(1)}" y="${H-8}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="9" fill="${p===pts[bestIdx]?'#ff8e68':'#9a9aa1'}" font-weight="${p===pts[bestIdx]?'700':'600'}" text-anchor="middle">${esc(p.label)}</text>`).join('');
+  const dots=pts.map((p,i)=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${i===bestIdx?4.5:3}" fill="#fff" stroke="#ff8e68" stroke-width="${i===bestIdx?2.5:1.75}"><title>${esc(p.label)}: ${money(p.v)}</title></circle>`).join('');
+  svg.innerHTML=`
+    <defs><linearGradient id="bfAreaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ff8e68" stop-opacity=".2"/><stop offset="100%" stop-color="#ff8e68" stop-opacity="0"/></linearGradient></defs>
+    <path d="M ${area} Z" fill="url(#bfAreaGrad)"/>
+    <polyline points="${line}" fill="none" stroke="#ff8e68" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${dots}
+    ${labelTexts}
+  `;
+}
+
+function renderClosingThisWeek(){
+  const list=document.getElementById('bfClosingList');
+  const sub=document.getElementById('bfClosingSub');
+  if(!list) return;
+  const now=new Date();
+  now.setHours(0,0,0,0);
+  const weekEnd=new Date(now);
+  weekEnd.setDate(weekEnd.getDate()+7);
+  const openStatuses=new Set(['active','prospect','proposal']);
+  const rows=projects
+    .filter(p=>{
+      if(!openStatuses.has((p.status||'').toLowerCase())) return false;
+      const raw=p.expectedCloseDate||p.nextDate||'';
+      if(!raw) return false;
+      const d=new Date(raw);
+      if(Number.isNaN(d.getTime())) return false;
+      d.setHours(0,0,0,0);
+      return d<=weekEnd; // include overdue + next 7 days
+    })
+    .map(p=>{
+      const d=new Date(p.expectedCloseDate||p.nextDate);
+      d.setHours(0,0,0,0);
+      const days=Math.round((d-now)/(24*60*60*1000));
+      return {...p,_closeDays:days,_closeDate:d};
+    })
+    .sort((a,b)=>a._closeDays-b._closeDays);
+  const overdueN=rows.filter(r=>r._closeDays<0).length;
+  if(sub){
+    sub.textContent=rows.length
+      ? `${rows.length} deal${rows.length===1?'':'s'} due in 7 days${overdueN?` · ${overdueN} past close`:''}`
+      : 'Deals nearest expected close — act before they slip';
+  }
+  if(!rows.length){
+    list.innerHTML='<div class="bf-closing-empty">No open deals with a close date in the next 7 days. Set expected close dates on deals to fill this strip.</div>';
+    return;
+  }
+  const quoteByProject={};
+  (quotations||[]).forEach(q=>{
+    const id=Number(q.bd_project_id||0);
+    if(id && !quoteByProject[id]) quoteByProject[id]=q;
+  });
+  list.innerHTML=rows.map(p=>{
+    let dueCls='week';
+    let dueLabel=`${p._closeDays}d`;
+    if(p._closeDays<0){dueCls='overdue';dueLabel=`${Math.abs(p._closeDays)}d overdue`;}
+    else if(p._closeDays===0){dueCls='soon';dueLabel='Today';}
+    else if(p._closeDays===1){dueCls='soon';dueLabel='Tomorrow';}
+    else if(p._closeDays<=3){dueCls='soon';dueLabel=`${p._closeDays}d`;}
+    const stage=(p.stage||'pipeline').toLowerCase();
+    const pri=['high','med','low'].includes((p.priority||'med').toLowerCase())?(p.priority||'med').toLowerCase():'med';
+    const win=STAGE_WIN[stage]||0;
+    const prog=Math.max(0,Math.min(100,Number(p.progress||0)));
+    const owner=p.owner||'Unassigned';
+    const contact=p.primaryContactName||'';
+    const coLine=[p.co||p.company||'', contact].filter(Boolean).join(' · ');
+    const q=quoteByProject[Number(p.id||0)];
+    const qStatus=(q&&q.status||'').toLowerCase();
+    const qLabel={draft:'Quote draft',pending_approval:'Quote pending',sent:'Quote sent',approved:'Quote approved',rejected:'Quote rejected'}[qStatus];
+    const qCls=qStatus==='approved'?'ok':'';
+    const idle=(()=>{
+      if(!p.updatedAt) return null;
+      const d=new Date(p.updatedAt);
+      if(Number.isNaN(d.getTime())) return null;
+      return Math.max(0,Math.round((now-d)/(24*60*60*1000)));
+    })();
+    const closeLbl=fmtShortDate(p.expectedCloseDate||p.nextDate);
+    return `<div class="bf-closing-item" onclick="bfOpenProjectDetail(${Number(p.id||0)})" title="Open project workspace">
+      <div class="bf-closing-top"><div class="bf-closing-name">${esc(p.name)}</div><div class="bf-closing-end"><span class="bf-closing-due ${dueCls}">${esc(dueLabel)}</span><span class="bf-closing-val">${money(p.valueAmount)}</span></div></div>
+      <div class="bf-closing-meta"><span class="bf-closing-co">${esc(coLine)}${p.next?` · ${esc(p.next)}`:''}</span><span class="bf-closing-owner"><span class="bf-closing-av">${esc(personInitials(owner))}</span><span>${esc(owner)}</span></span></div>
+      <div class="bf-closing-facts">
+        <span class="bf-closing-chip stage">${esc(stage)}</span>
+        <span class="bf-closing-chip pri-${pri}">${esc(pri==='med'?'MED':pri.toUpperCase())}</span>
+        <span class="bf-closing-chip win">${win}% · ${money(Number(p.valueAmount||0)*win/100)}</span>
+        ${qLabel?`<span class="bf-closing-chip quote ${qCls}">${esc(qLabel)}</span>`:''}
+        ${idle!=null && idle>=3?`<span class="bf-closing-chip idle">Idle ${idle}d</span>`:''}
+        <span class="bf-closing-progress"><span class="bf-closing-bar"><i style="width:${prog}%"></i></span><span class="bf-closing-pct">${prog}%</span></span>
+        ${closeLbl?`<span class="bf-closing-date">${esc(closeLbl)}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function quotePlayAction(status, hasLpo){
+  if(status==='draft') return 'Finish & submit';
+  if(status==='pending_approval') return 'Awaiting sign-off';
+  if(status==='sent') return 'Chase the client';
+  if(status==='approved') return hasLpo ? 'LPO on file' : 'Attach LPO';
+  if(status==='rejected') return 'Revise & resubmit';
+  return 'Open quote';
+}
+
+function renderQuotesPlay(){
+  const list=document.getElementById('bfQuotesPlayList');
+  const sub=document.getElementById('bfQuotesPlaySub');
+  const pills=document.getElementById('bfQuotesPlayPills');
+  if(!list) return;
+  const live=(quotations||[]).filter(q=>{
+    const s=(q.status||'').toLowerCase();
+    return s!=='cancelled' && s!=='invoiced';
+  });
+  const quotedIds=new Set(live.map(q=>Number(q.bd_project_id||0)).filter(Boolean));
+  const commercial=new Set(['proposal','negotiation','closing']);
+  const openSt=new Set(['active','prospect','proposal']);
+  const needQuote=(projects||[]).filter(p=>{
+    if(!openSt.has((p.status||'').toLowerCase())) return false;
+    if(!commercial.has((p.stage||'').toLowerCase())) return false;
+    return !quotedIds.has(Number(p.id||0));
+  }).sort((a,b)=>Number(b.valueAmount||0)-Number(a.valueAmount||0));
+
+  const rank={pending_approval:0,draft:1,rejected:2,sent:3,approved:4};
+  const quoteRows=live.slice().sort((a,b)=>{
+    const ra=rank[(a.status||'').toLowerCase()];
+    const rb=rank[(b.status||'').toLowerCase()];
+    if((ra??9)!==(rb??9)) return (ra??9)-(rb??9);
+    return Number(b.grand_total||0)-Number(a.grand_total||0);
+  });
+
+  const counts={draft:0,pending_approval:0,sent:0,approved:0};
+  live.forEach(q=>{
+    const s=(q.status||'').toLowerCase();
+    if(counts[s]!=null) counts[s]+=1;
+  });
+  if(pills){
+    pills.innerHTML=
+      `<span class="bf-qp-pill">${counts.draft} draft</span>`+
+      `<span class="bf-qp-pill">${counts.pending_approval} pending</span>`+
+      `<span class="bf-qp-pill">${counts.sent} sent</span>`+
+      `<span class="bf-qp-pill muted">${counts.approved} approved</span>`+
+      `<span class="bf-qp-pill warn">${needQuote.length} need quote</span>`;
+  }
+  if(sub){
+    const qn=quoteRows.length;
+    const nn=needQuote.length;
+    if(!qn && !nn){
+      sub.textContent='Create a quote from a proposal or negotiation';
+    }else{
+      sub.textContent=`${qn} in motion · ${nn} missing a quote`;
+    }
+  }
+
+  const statusCls=s=>{
+    if(s==='pending_approval'||s==='sent') return 'soon';
+    if(s==='rejected'||s==='need_quote') return 'overdue';
+    return 'week';
+  };
+  const statusLabel=s=>({
+    draft:'Draft', pending_approval:'Pending', sent:'Sent',
+    approved:'Approved', rejected:'Rejected', need_quote:'No quote'
+  }[s]||s);
+
+  const html=[];
+  quoteRows.forEach(q=>{
+    const s=(q.status||'draft').toLowerCase();
+    const pid=Number(q.bd_project_id||0);
+    const name=q.bd_project_name||q.project_name||q.company_name||q.ref_no||'';
+    html.push(`<div class="bf-closing-item" onclick="bfOpenQuotePlay(${pid})" title="Open quotation">
+      <div class="bf-closing-top"><div class="bf-closing-name">${esc(q.ref_no||q.quote_no||name)}</div><span class="bf-closing-due ${statusCls(s)}">${esc(statusLabel(s))}</span></div>
+      <div class="bf-closing-meta"><span class="bf-closing-co">${esc(name)} · ${esc(quotePlayAction(s, !!q.lpo_url))}</span><span class="bf-closing-val">${money(q.grand_total)}</span></div>
+    </div>`);
+  });
+  needQuote.forEach(p=>{
+    html.push(`<div class="bf-closing-item" onclick="bfOpenProjectDetail(${Number(p.id||0)},'quotations')" title="Create a quotation">
+      <div class="bf-closing-top"><div class="bf-closing-name">${esc(p.name)}</div><span class="bf-closing-due overdue">No quote</span></div>
+      <div class="bf-closing-meta"><span class="bf-closing-co">${esc(p.co||p.company||'')} · Create quotation</span><span class="bf-closing-val">${money(p.valueAmount)}</span></div>
+    </div>`);
+  });
+  list.innerHTML=html.join('')||'<div class="bf-closing-empty">No quotes in play. Open a commercial deal and create a quotation.</div>';
 }
 
 function updateDashboardStats(){
@@ -571,6 +1282,7 @@ function updateDashboardStats(){
   const elWin=document.getElementById('bfKpiWinRate');if(elWin)elWin.innerHTML=`${win}<span style="font-size:16px;font-weight:500">%</span>`;
   const elAvg=document.getElementById('bfKpiAvgDeal');if(elAvg)elAvg.textContent=money(avg);
   const elOverdue=document.getElementById('bfKpiOverdue');if(elOverdue)elOverdue.textContent=String(overdue);
+  const elOut=document.getElementById('bfKpiOutstanding');if(elOut)elOut.textContent=money(bdStats.my_outstanding||bdStats.overall_outstanding||0);
 
   const stages=bdStats.stage_stats||[];
   const maxMetric=Math.max(1,...stages.map(s=>getPipelineMetric(s)));
@@ -606,6 +1318,40 @@ function updateDashboardStats(){
   const openFollowups=followups.filter(f=>(f.status||'open')!=='done').length;
   const cycleMetric=document.getElementById('bfCycleMetric');if(cycleMetric)cycleMetric.textContent=String(openFollowups);
 
+  // Pipeline pulse tiles — fill the middle gap with actionable sales signals
+  const openStatuses=new Set(['active','prospect','proposal']);
+  const openDeals=projects.filter(p=>openStatuses.has((p.status||'').toLowerCase()));
+  const closingDeals=openDeals.filter(p=>(p.stage||'').toLowerCase()==='closing');
+  const closingVal=closingDeals.reduce((s,p)=>s+Number(p.valueAmount||0),0);
+  const setPulse=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  setPulse('bfPulseClosingVal',compactMoney(closingVal));
+  setPulse('bfPulseClosingSub',`${closingDeals.length} deal${closingDeals.length===1?'':'s'}`);
+
+  const now=new Date();now.setHours(0,0,0,0);
+  const weekEnd=new Date(now);weekEnd.setDate(weekEnd.getDate()+7);
+  const dueSoon=openDeals.filter(p=>{
+    const raw=p.expectedCloseDate||p.nextDate||'';
+    if(!raw) return false;
+    const d=new Date(raw);if(Number.isNaN(d.getTime())) return false;
+    d.setHours(0,0,0,0);
+    return d<=weekEnd;
+  });
+  const dueVal=dueSoon.reduce((s,p)=>s+Number(p.valueAmount||0),0);
+  setPulse('bfPulseDueVal',compactMoney(dueVal));
+  setPulse('bfPulseDueSub',`${dueSoon.length} deal${dueSoon.length===1?'':'s'}`);
+
+  const stageTotals={};
+  openDeals.forEach(p=>{
+    const st=(p.stage||'prospecting').toLowerCase();
+    stageTotals[st]=(stageTotals[st]||0)+Number(p.valueAmount||0);
+  });
+  let bottleneck='—', bottleneckVal=0;
+  Object.keys(stageTotals).forEach(st=>{
+    if(stageTotals[st]>bottleneckVal){bottleneckVal=stageTotals[st];bottleneck=st;}
+  });
+  setPulse('bfPulseBottleneck',bottleneck==='—'?bottleneck:(bottleneck.charAt(0).toUpperCase()+bottleneck.slice(1)));
+  setPulse('bfPulseBottleneckSub',bottleneckVal?compactMoney(bottleneckVal)+' stuck': 'highest open value');
+
   const todayItems=followups.map(normalizeFollowup).filter(f=>f.dateClass==='today'||f.dateClass==='overdue');
   const todaySub=document.getElementById('bfTodaySub');
   const todayBadge=document.getElementById('bfTodayOverdueBadge');
@@ -613,8 +1359,53 @@ function updateDashboardStats(){
   if(todaySub)todaySub.textContent=`${todayItems.length} due · ${overdueItems.length} overdue`;
   if(todayBadge)todayBadge.textContent=`${overdueItems.length} overdue`;
 
+  const openPipeline=projects.filter(p=>['active','prospect','proposal'].includes((p.status||'').toLowerCase())).length;
   const sidebarProj=document.getElementById('bfSidebarProjectCount');if(sidebarProj)sidebarProj.textContent=String(projects.length);
-  const sidebarFu=document.getElementById('bfSidebarFollowupBadge');if(sidebarFu){sidebarFu.textContent=String(overdueItems.length);sidebarFu.classList.toggle('sb-badge--alert',overdueItems.length>0);}
+  const sidebarFu=document.getElementById('bfSidebarFollowupBadge');if(sidebarFu){sidebarFu.textContent=String(overdueItems.length||openFollowups);sidebarFu.classList.toggle('sb-badge--alert',overdueItems.length>0);}
+  const tabProj=document.getElementById('bfTabProjectCount');if(tabProj)tabProj.textContent=String(projects.length);
+  const tabPipe=document.getElementById('bfTabPipelineCount');if(tabPipe)tabPipe.textContent=String(openPipeline);
+  const tabFu=document.getElementById('bfTabFollowupCount');if(tabFu)tabFu.textContent=String(openFollowups);
+
+  updateBdAnalytics();
+}
+
+// Weighted forecast · stalled deals · outcome loop (data from bdStats.*).
+function updateBdAnalytics(){
+  const setText=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+
+  const fc=bdStats.forecast||{};
+  setText('bfKpiForecast',money(fc.weighted_forecast||0));
+  setText('bfForecastConf',`${fc.confidence_pct||0}% of ${money(fc.raw_pipeline||0)}`);
+
+  const st=bdStats.stalled||{};
+  setText('bfKpiStalled',String(st.count||0));
+  const stBody=document.getElementById('bfStalledTbody');
+  if(stBody){
+    const rows=st.rows||[];
+    stBody.innerHTML=rows.length?rows.map(d=>`<tr>
+      <td><div style="font-weight:600">${esc(d.name)}</div><div style="font-size:11px;color:var(--subtle)">${esc(d.company||'')}</div></td>
+      <td style="text-transform:capitalize">${esc(d.stage||'—')}</td>
+      <td>${money(d.value)}</td>
+      <td>${d.idle_days!=null?d.idle_days+'d':'—'}</td>
+      <td style="font-size:11px;color:var(--rose);font-weight:600">${esc(d.reason||'')}</td>
+    </tr>`).join(''):'<tr><td colspan="5" style="padding:16px;color:var(--subtle)">No stalled deals — pipeline is moving.</td></tr>';
+  }
+  const stSub=document.getElementById('bfStalledSub');
+  if(stSub)stSub.textContent=`${st.count||0} deal(s) need attention`;
+
+  const oc=bdStats.outcome||{};
+  setText('bfKpiConverted',oc.bd_converted||0);
+  setText('bfConvertedSub',`${oc.bd_converted||0} linked project(s)`);
+  setText('bfKpiRealised',money(oc.bd_realised_value||0));
+  setText('bfRealisedSub',`${oc.bd_converted||0} project(s) delivered`);
+
+  const ob=document.getElementById('bfOutcomeBody');
+  if(ob){
+    const row=(label,val)=>`<div class="bf-outcome-row"><span class="bf-outcome-label">${label}</span><span class="bf-outcome-val">${val}</span></div>`;
+    ob.innerHTML=
+      row('BD wins → ticketing projects',`${oc.bd_converted||0}`)+
+      row('Realised contract value',`${money(oc.bd_realised_value||0)}`);
+  }
 }
 
 function renderAll(){
@@ -622,10 +1413,12 @@ function renderAll(){
   renderFollowups('bfFuList');
   renderTodayFollowups();
   renderContacts();
-  renderActivities();
   renderPipeline();
   renderProspectsAndProposals();
   renderAnalytics();
+  renderClosingThisWeek();
+  renderQuotesPlay();
+  renderRevenueTrend();
   updateDashboardStats();
 }
 
@@ -638,6 +1431,16 @@ function bfSetPipelineMode(mode,btn){
 }
 
 function bfSwitchView(view,el){
+  if(view&&view!=='project-detail'){
+    try{
+      const url=new URL(window.location.href);
+      if(url.searchParams.has('project')){
+        url.searchParams.delete('project');
+        url.hash='';
+        history.replaceState(null,'',url.pathname+url.search);
+      }
+    }catch(_){}
+  }
   document.querySelectorAll('.bf-view-section').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.bf-view-tab').forEach(t=>t.classList.remove('active'));
   const sec=document.getElementById('bf-v-'+view);if(sec)sec.classList.add('active');
@@ -649,29 +1452,10 @@ function bfSetNav(el,view){
   if(el)el.classList.add('active');
   const tab=document.querySelector(`.bf-view-tab[data-view="${view}"]`);
   bfSwitchView(view,tab||null);
-  bfCloseMobileSidebar();
-}
-
-function bfOpenMobileSidebar(){
-  const sidebar=document.getElementById('bfSidebar');
-  const overlay=document.getElementById('bfSidebarOverlay');
-  if(sidebar)sidebar.classList.add('open');
-  if(overlay){overlay.classList.add('active');overlay.setAttribute('aria-hidden','false');}
-}
-function bfCloseMobileSidebar(){
-  const sidebar=document.getElementById('bfSidebar');
-  const overlay=document.getElementById('bfSidebarOverlay');
-  if(sidebar)sidebar.classList.remove('open');
-  if(overlay){overlay.classList.remove('active');overlay.setAttribute('aria-hidden','true');}
-}
-function bfToggleMobileSidebar(){
-  const sidebar=document.getElementById('bfSidebar');
-  if(!sidebar)return;
-  if(sidebar.classList.contains('open'))bfCloseMobileSidebar();
-  else bfOpenMobileSidebar();
 }
 
 function getProjectFormPayload(){
+  const ownerSel=(document.getElementById('bfFldOwnerUser')||{}).value;
   return {
     name:(document.getElementById('bfFldName')||{}).value||'',
     company:(document.getElementById('bfFldCompany')||{}).value||'',
@@ -681,6 +1465,7 @@ function getProjectFormPayload(){
     status:(document.getElementById('bfFldStatus')||{}).value||'active',
     progress:Number((document.getElementById('bfFldProgress')||{}).value||0),
     owner:(document.getElementById('bfFldOwner')||{}).value||'',
+    owner_user_id:ownerSel?Number(ownerSel):null,
     expected_close_date:(document.getElementById('bfFldCloseDate')||{}).value||null,
     primary_contact_name:(document.getElementById('bfFldContactName')||{}).value||'',
     primary_contact_email:(document.getElementById('bfFldContactEmail')||{}).value||'',
@@ -698,6 +1483,8 @@ function setProjectFormData(p){
   (document.getElementById('bfFldStatus')||{}).value=(p?.status||'active');
   (document.getElementById('bfFldProgress')||{}).value=Number(p?.progress||0);
   (document.getElementById('bfFldOwner')||{}).value=p?.owner||'';
+  const ou=document.getElementById('bfFldOwnerUser');
+  if(ou)ou.value=p?.ownerUserId||p?.owner_user_id||'';
   (document.getElementById('bfFldCloseDate')||{}).value=(p?.expectedCloseDate||'').slice(0,10);
   (document.getElementById('bfFldContactName')||{}).value=p?.primaryContactName||'';
   (document.getElementById('bfFldContactEmail')||{}).value=p?.primaryContactEmail||'';
@@ -801,26 +1588,60 @@ async function bfImportProjectsFromExcel(input){
   }
 }
 
-async function bfOpenContactPrompt(){
-  const name=window.prompt('Contact name');
-  if(!name) return;
-  const company=window.prompt('Company','');
-  const title=window.prompt('Title','');
-  const email=window.prompt('Email (optional)','');
+function bfOpenContactPrompt(){
+  const nameEl=document.getElementById('bfContactName');
+  const companyEl=document.getElementById('bfContactCompany');
+  const titleEl=document.getElementById('bfContactTitle');
+  const emailEl=document.getElementById('bfContactEmail');
+  if(nameEl)nameEl.value='';
+  if(companyEl)companyEl.value='';
+  if(titleEl)titleEl.value='';
+  if(emailEl)emailEl.value='';
+  const m=document.getElementById('bfContactModal');
+  if(m)m.classList.add('open');
+  if(nameEl)setTimeout(()=>nameEl.focus(),50);
+}
+function bfCloseContactModal(){
+  const m=document.getElementById('bfContactModal');
+  if(m)m.classList.remove('open');
+}
+async function bfSaveContact(){
+  const name=(document.getElementById('bfContactName')?.value||'').trim();
+  if(!name){bfToast('Contact name is required');return;}
+  const company=(document.getElementById('bfContactCompany')?.value||'').trim();
+  const title=(document.getElementById('bfContactTitle')?.value||'').trim();
+  const email=(document.getElementById('bfContactEmail')?.value||'').trim();
   try{
     await apiPost('/api/admin/bd/contacts',{name,company,title,email});
+    bfCloseContactModal();
     bfToast('✅ Contact added');
     await loadBDData();
   }catch(e){bfToast('❌ '+(e.message||'Failed to add contact'));}
 }
 
-async function bfOpenFollowupPrompt(){
-  const title=window.prompt('Follow-up title');
-  if(!title) return;
-  const company=window.prompt('Company (optional)','');
-  const dueDate=window.prompt('Due date (YYYY-MM-DD, optional)','');
+function bfOpenFollowupPrompt(){
+  const titleEl=document.getElementById('bfFollowupTitle');
+  const companyEl=document.getElementById('bfFollowupCompany');
+  const dueEl=document.getElementById('bfFollowupDue');
+  if(titleEl)titleEl.value='';
+  if(companyEl)companyEl.value='';
+  if(dueEl)dueEl.value='';
+  const m=document.getElementById('bfFollowupModal');
+  if(m)m.classList.add('open');
+  if(titleEl)setTimeout(()=>titleEl.focus(),50);
+}
+function bfCloseFollowupModal(){
+  const m=document.getElementById('bfFollowupModal');
+  if(m)m.classList.remove('open');
+}
+async function bfSaveFollowup(){
+  const title=(document.getElementById('bfFollowupTitle')?.value||'').trim();
+  if(!title){bfToast('Follow-up title is required');return;}
+  const company=(document.getElementById('bfFollowupCompany')?.value||'').trim();
+  const dueDate=(document.getElementById('bfFollowupDue')?.value||'').trim();
   try{
     await apiPost('/api/admin/bd/followups',{title,company,due_at:dueDate?`${dueDate}T09:00:00`:null,followup_type:'note'});
+    bfCloseFollowupModal();
     bfToast('✅ Follow-up added');
     await loadBDData();
   }catch(e){bfToast('❌ '+(e.message||'Failed to add follow-up'));}
@@ -832,24 +1653,392 @@ async function loadUser(){
     if(!r.ok)return;
     const j=await r.json(); const u=j.user; if(!u)return;
     const name=u.full_name||u.username||'User';
-    const role=u.role==='admin'?'BD Director':(u.role?u.role.charAt(0).toUpperCase()+u.role.slice(1):'User');
+    const role=u.role==='admin'?'Admin':((u.designation||'').replace(/_/g,' ')||'User');
     const initials=name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2)||'U';
     const av=document.getElementById('bfUserAv'); const nm=document.getElementById('bfUserName'); const rl=document.getElementById('bfUserRole');
     if(av)av.textContent=initials; if(nm)nm.textContent=name; if(rl)rl.textContent=role;
   }catch(_){}
 }
 
+function isoDays(offsetDays, hour=10){
+  const d=new Date();
+  d.setHours(hour,0,0,0);
+  d.setDate(d.getDate()+offsetDays);
+  return d.toISOString();
+}
+function dateOnly(offsetDays){
+  return isoDays(offsetDays).slice(0,10);
+}
+
+function buildDemoBdPayload(){
+  const STAGE_ORDER=['prospecting','qualifying','proposal','negotiation','closing'];
+  const WIN_PROB={prospecting:0.10,qualifying:0.25,proposal:0.50,negotiation:0.70,closing:0.90};
+  const demoProjects=[
+    {id:9001,name:'Marina Gate FM Retainer',co:'Marina Gate Properties',company:'Marina Gate Properties',stage:'prospecting',status:'prospect',priority:'med',valueAmount:185000,value:'$185,000',progress:12,owner:'Sara A.',next:'Discovery call',nextDate:dateOnly(45),expectedCloseDate:dateOnly(45)},
+    {id:9002,name:'Al Zahra Tower Soft Services',co:'Al Zahra Holdings',company:'Al Zahra Holdings',stage:'prospecting',status:'prospect',priority:'low',valueAmount:96000,value:'$96,000',progress:8,owner:'Tom R.',next:'Send capability deck',nextDate:dateOnly(60),expectedCloseDate:dateOnly(60)},
+    {id:9003,name:'Corniche Clinics Facility Care',co:'Corniche Medical Group',company:'Corniche Medical Group',stage:'prospecting',status:'prospect',priority:'med',valueAmount:240000,value:'$240,000',progress:18,owner:'Sara A.',next:'Site walkthrough',nextDate:dateOnly(40),expectedCloseDate:dateOnly(40)},
+    {id:9004,name:'Vertex Partners — SaaS Migration',co:'Vertex Partners',company:'Vertex Partners',stage:'qualifying',status:'proposal',priority:'high',valueAmount:320000,value:'$320,000',progress:45,owner:'James P.',next:'Needs assessment',nextDate:dateOnly(28),expectedCloseDate:dateOnly(28)},
+    {id:9005,name:'Bay Square MEP Annual',co:'Bay Square LLC',company:'Bay Square LLC',stage:'qualifying',status:'active',priority:'high',valueAmount:410000,value:'$410,000',progress:38,owner:'Rachel H.',next:'Budget confirmation',nextDate:dateOnly(21),expectedCloseDate:dateOnly(21)},
+    {id:9006,name:'Horizon Mall Cleaning Scope',co:'Horizon Retail',company:'Horizon Retail',stage:'qualifying',status:'active',priority:'med',valueAmount:175000,value:'$175,000',progress:30,owner:'James P.',next:'Scope clarification',nextDate:dateOnly(35),expectedCloseDate:dateOnly(35)},
+    {id:9007,name:'Nexus Corp Platform Deal',co:'Nexus Corp',company:'Nexus Corp',stage:'proposal',status:'active',priority:'high',valueAmount:480000,value:'$480,000',progress:72,owner:'Rachel H.',next:'Contract review',nextDate:dateOnly(3),expectedCloseDate:dateOnly(3)},
+    {id:9008,name:'Emirates Heights HVAC Upgrade',co:'Emirates Heights',company:'Emirates Heights',stage:'proposal',status:'active',priority:'high',valueAmount:620000,value:'$620,000',progress:65,owner:'Sara A.',next:'Present commercial offer',nextDate:dateOnly(5),expectedCloseDate:dateOnly(5)},
+    {id:9009,name:'City Walk Pest Control Bundle',co:'City Walk Ops',company:'City Walk Ops',stage:'proposal',status:'proposal',priority:'med',valueAmount:88000,value:'$88,000',progress:55,owner:'Tom R.',next:'Await legal markup',nextDate:dateOnly(12),expectedCloseDate:dateOnly(12)},
+    {id:9010,name:'Ajman Port Logistics Facility',co:'Ajman Port Authority',company:'Ajman Port Authority',stage:'negotiation',status:'active',priority:'high',valueAmount:890000,value:'$890,000',progress:78,owner:'Rachel H.',next:'Final pricing round',nextDate:dateOnly(7),expectedCloseDate:dateOnly(7)},
+    {id:9011,name:'Palm Residences Concierge FM',co:'Palm Residences',company:'Palm Residences',stage:'negotiation',status:'active',priority:'high',valueAmount:540000,value:'$540,000',progress:82,owner:'James P.',next:'SLA negotiation',nextDate:dateOnly(-5),expectedCloseDate:dateOnly(-5)},
+    {id:9012,name:'TechPark Campus Soft Services',co:'TechPark Developments',company:'TechPark Developments',stage:'negotiation',status:'active',priority:'med',valueAmount:360000,value:'$360,000',progress:70,owner:'Sara A.',next:'Stakeholder alignment',nextDate:dateOnly(10),expectedCloseDate:dateOnly(10)},
+    {id:9013,name:'Royal Hospital Environmental Services',co:'Royal Hospital Group',company:'Royal Hospital Group',stage:'closing',status:'active',priority:'high',valueAmount:750000,value:'$750,000',progress:92,owner:'Rachel H.',next:'Signature chase',nextDate:dateOnly(2),expectedCloseDate:dateOnly(2)},
+    {id:9014,name:'Skyline Tower Fit-out Support',co:'Skyline Developments',company:'Skyline Developments',stage:'closing',status:'active',priority:'med',valueAmount:215000,value:'$215,000',progress:88,owner:'Tom R.',next:'Kickoff scheduling',nextDate:dateOnly(4),expectedCloseDate:dateOnly(4)},
+    {id:9015,name:'Museum District Annual FM',co:'Museum District Trust',company:'Museum District Trust',stage:'closing',status:'won',priority:'high',valueAmount:680000,value:'$680,000',progress:100,owner:'Rachel H.',next:'Handover to delivery',nextDate:dateOnly(-40),expectedCloseDate:dateOnly(-40)},
+    {id:9016,name:'Harbour View Soft Services',co:'Harbour View RE',company:'Harbour View RE',stage:'closing',status:'won',priority:'med',valueAmount:295000,value:'$295,000',progress:100,owner:'James P.',next:'Closed — won',nextDate:dateOnly(-70),expectedCloseDate:dateOnly(-70)},
+    {id:9017,name:'Desert Ridge Pilot Contract',co:'Desert Ridge LLC',company:'Desert Ridge LLC',stage:'proposal',status:'lost',priority:'med',valueAmount:150000,value:'$150,000',progress:100,owner:'Tom R.',next:'Lost — price',nextDate:dateOnly(-25),expectedCloseDate:dateOnly(-25)},
+    {id:9018,name:'North Gate Security Bundle',co:'North Gate Estates',company:'North Gate Estates',stage:'negotiation',status:'lost',priority:'low',valueAmount:110000,value:'$110,000',progress:100,owner:'Sara A.',next:'Lost — incumbent',nextDate:dateOnly(-55),expectedCloseDate:dateOnly(-55)},
+  ];
+  const openStatuses=new Set(['active','prospect','proposal']);
+  const stage_stats=STAGE_ORDER.map(stage=>{
+    const items=demoProjects.filter(p=>(p.stage||'')===stage);
+    return {stage,count:items.length,value:items.reduce((s,p)=>s+Number(p.valueAmount||0),0)};
+  });
+  const openDeals=demoProjects.filter(p=>openStatuses.has((p.status||'').toLowerCase()));
+  const total_pipeline=openDeals.reduce((s,p)=>s+Number(p.valueAmount||0),0);
+  const won=demoProjects.filter(p=>(p.status||'')==='won');
+  const lost=demoProjects.filter(p=>(p.status||'')==='lost');
+  const win_rate=(won.length+lost.length)?Math.round(100*won.length/(won.length+lost.length)):0;
+  const avg_deal_size=demoProjects.length?Math.round(demoProjects.reduce((s,p)=>s+Number(p.valueAmount||0),0)/demoProjects.length):0;
+  let weighted=0;
+  openDeals.forEach(p=>{weighted+=Number(p.valueAmount||0)*(WIN_PROB[p.stage]||0);});
+  const forecast={
+    raw_pipeline:Math.round(total_pipeline),
+    weighted_forecast:Math.round(weighted),
+    confidence_pct:total_pipeline?Math.round(100*weighted/total_pipeline):0,
+  };
+  const stalledRows=[
+    {id:9011,name:'Palm Residences Concierge FM',company:'Palm Residences',stage:'negotiation',value:540000,idle_days:35,overdue:true,reason:'past expected close, 35d no activity'},
+    {id:9012,name:'TechPark Campus Soft Services',company:'TechPark Developments',stage:'negotiation',value:360000,idle_days:40,overdue:false,reason:'40d no activity'},
+    {id:9006,name:'Horizon Mall Cleaning Scope',company:'Horizon Retail',stage:'qualifying',value:175000,idle_days:32,overdue:false,reason:'32d no activity'},
+  ];
+  const followups=[
+    {id:9101,icon:'📞',title:'Call with Marcus – proposal review',co:'Nexus Corp',date:isoDays(0,15),type:'call',status:'open',details:'Walk through commercial terms'},
+    {id:9102,icon:'📧',title:'Send revised HVAC quote',co:'Emirates Heights',date:isoDays(0,17),type:'email',status:'open',details:'Include chiller option B'},
+    {id:9103,icon:'📧',title:'Overdue: Palm Residences SLA reply',co:'Palm Residences',date:isoDays(-2,11),type:'email',status:'open',details:'Waiting on client legal'},
+    {id:9104,icon:'🤝',title:'Port Authority pricing workshop',co:'Ajman Port Authority',date:isoDays(1,11),type:'meeting',status:'open'},
+    {id:9105,icon:'🤝',title:'Royal Hospital kickoff prep',co:'Royal Hospital Group',date:isoDays(2,10),type:'meeting',status:'open'},
+    {id:9106,icon:'📞',title:'Overdue: Bay Square budget confirm',co:'Bay Square LLC',date:isoDays(-1,14),type:'call',status:'open'},
+    {id:9107,icon:'📝',title:'Marina Gate discovery notes',co:'Marina Gate Properties',date:isoDays(3,10),type:'note',status:'open'},
+    {id:9108,icon:'🤝',title:'TechPark stakeholder sync',co:'TechPark Developments',date:isoDays(4,10),type:'meeting',status:'open'},
+  ];
+  const overdue_followups=followups.filter(f=>{
+    const due=new Date(f.date);return f.status!=='done'&&due<new Date();
+  }).length;
+  const contacts=[
+    {id:9201,initials:'MJ',name:'Marcus Johnson',title:'VP of Technology',co:'Nexus Corp',company:'Nexus Corp',email:'marcus@nexus.example',phone:'+971 50 100 2001',tags:['Decision Maker','Champion']},
+    {id:9202,initials:'LR',name:'Layla Rahman',title:'Facilities Director',co:'Emirates Heights',company:'Emirates Heights',email:'layla@emiratesheights.example',phone:'+971 50 100 2002',tags:['Decision Maker']},
+    {id:9203,initials:'OF',name:'Omar Faris',title:'Procurement Lead',co:'Ajman Port Authority',company:'Ajman Port Authority',email:'omar@ajmanport.example',phone:'+971 50 100 2003',tags:['Procurement','Influencer']},
+    {id:9204,initials:'NC',name:'Nadia Chen',title:'Operations Manager',co:'Palm Residences',company:'Palm Residences',email:'nadia@palm.example',phone:'+971 50 100 2004',tags:['Champion']},
+    {id:9205,initials:'HA',name:'Hassan Alvi',title:'Asset Manager',co:'Marina Gate Properties',company:'Marina Gate Properties',email:'hassan@marinagate.example',phone:'+971 50 100 2005',tags:['Prospect']},
+    {id:9206,initials:'PM',name:'Priya Menon',title:'Head of Soft Services',co:'Royal Hospital Group',company:'Royal Hospital Group',email:'priya@royalhospital.example',phone:'+971 50 100 2006',tags:['Decision Maker','Won']},
+  ];
+  const activities=[
+    {id:9301,icon:'📞',bg:'#e8f0fb',title:'Call logged with Nexus Corp',desc:'Discussed Q4 proposal and close plan.',badge:'Call',time:isoDays(0,8)},
+    {id:9302,icon:'📧',bg:'#fef6e4',title:'Proposal sent — Emirates Heights',desc:'Commercial pack v2 emailed to Layla.',badge:'Email',time:isoDays(0,5)},
+    {id:9303,icon:'🤝',bg:'#e8f5ee',title:'Site visit — Ajman Port',desc:'Walked warehouse zones with Omar.',badge:'Meeting',time:isoDays(-1,14)},
+    {id:9304,icon:'✅',bg:'#dcfce7',title:'Deal won — Museum District',desc:'Annual FM contract signed.',badge:'Won',time:isoDays(-3,12)},
+    {id:9305,icon:'⚠️',bg:'#fdf0ee',title:'Follow-up overdue — Palm Residences',desc:'SLA reply still pending.',badge:'Alert',time:isoDays(-2,9)},
+    {id:9306,icon:'📝',bg:'#f3edfc',title:'Note added — Marina Gate',desc:'Prospect interested in soft services bundle.',badge:'Note',time:isoDays(-4,11)},
+    {id:9307,icon:'🔄',bg:'#e8f0fb',title:'Stage moved — Bay Square',desc:'Qualifying → deeper discovery.',badge:'Pipeline',time:isoDays(-5,16)},
+    {id:9308,icon:'📌',bg:'#fff4ef',title:'Sample pipeline data loaded',desc:'Sample pipeline, follow-ups, and contacts for briefing.',badge:'System',time:isoDays(0,9)},
+  ];
+  return {
+    projects:demoProjects,
+    followups,
+    contacts,
+    activities,
+    stats:{
+      total_pipeline,
+      active_deals:openDeals.length,
+      win_rate,
+      avg_deal_size,
+      overdue_followups,
+      stage_stats,
+      forecast,
+      funnel:{stages:stage_stats.map(s=>({...s,win_prob:WIN_PROB[s.stage]||0})),won:won.length,lost:lost.length,win_rate},
+      stalled:{count:stalledRows.length,rows:stalledRows},
+      outcome:{
+        bd_converted:2,bd_realised_value:975000,
+      },
+      revenue_trend:{
+        labels:(()=>{const a=[];const n=new Date();for(let i=5;i>=0;i--){const d=new Date(n.getFullYear(),n.getMonth()-i,1);a.push(d.toLocaleString(undefined,{month:'short'}));}return a;})(),
+        values:[120000,210000,180000,340000,680000,420000],
+        best_month:680000,
+        best_month_label:(()=>{const d=new Date();d.setMonth(d.getMonth()-1);return d.toLocaleString(undefined,{month:'short'});})(),
+        avg_month:325000,
+        ytd:1950000,
+      },
+    },
+  };
+}
+
+function populateOwnerSelect(){
+  const sel=document.getElementById('bfFldOwnerUser');
+  if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Me (default)</option>'+(bdOwners||[]).map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');
+  if(cur)sel.value=cur;
+}
+
+function populateOwnerFilter(){
+  const sel=document.getElementById('bfOwnerFilter');
+  if(!sel)return;
+  if(!(bdOwners||[]).length){
+    sel.style.display='none';
+    return;
+  }
+  sel.style.display='';
+  const cur=bdOwnerFilter||sel.value||'';
+  sel.innerHTML='<option value="">All salespeople</option>'+(bdOwners||[]).map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');
+  if(cur)sel.value=cur;
+}
+
+async function bfSetOwnerFilter(id){
+  bdOwnerFilter=id||'';
+  await loadBDData();
+}
+
+function renderQuotations(){
+  const tb=document.getElementById('bfQuotesTbody');
+  if(!tb)return;
+  tb.innerHTML=(quotations||[]).map(q=>{
+    const projectLabel=q.bd_project_name||(q.bd_project_id?`Project #${q.bd_project_id}`:'—');
+    const st=(q.status||'draft');
+    const hasLpo=!!(q.lpo_url||q.lpo_filename);
+    const approved=st==='approved';
+    const pending=st==='pending_approval';
+    const submittable=st==='draft'||st==='sent'||st==='rejected';
+    return `<tr>
+    <td style="font-weight:700">${esc(q.ref_no||q.quote_no)}</td>
+    <td>${q.bd_project_id?`<a href="#" onclick="bfOpenProjectDetail(${q.bd_project_id},'quotations');return false" style="color:var(--g800);font-weight:600">${esc(projectLabel)}</a>`:esc(projectLabel)}</td>
+    <td>${esc(q.company_name)}</td>
+    <td><span class="bf-status-badge bf-sb-${esc(statusSlug(st))}">${esc(statusLabel(st))}</span></td>
+    <td>${money(q.grand_total)}</td>
+    <td><div class="bf-quote-actions">
+      <button type="button" class="bf-act-btn" onclick="bfQuotePdf(${q.id})">PDF</button>
+      ${submittable?`<button type="button" class="bf-act-btn" onclick="bfQuoteSubmit(${q.id})">Submit</button>`:''}
+      ${pending?`<button type="button" class="bf-act-btn" onclick="bfQuoteApprove(${q.id})">Approve</button>`:''}
+      ${pending?`<button type="button" class="bf-act-btn danger" onclick="bfQuoteReject(${q.id})">Reject</button>`:''}
+      ${approved&&!hasLpo?`<button type="button" class="bf-act-btn" onclick="bfQuoteAttachLpo(${q.id})">Attach LPO</button>`:''}
+      ${hasLpo?`<button type="button" class="bf-act-btn" onclick="bfQuoteDownloadLpo(${q.id})">Download LPO</button>`:''}
+      ${approved&&hasLpo?`<button type="button" class="bf-act-btn" onclick="bfQuoteAttachLpo(${q.id})">Replace LPO</button>`:''}
+    </div></td>
+  </tr>`;
+  }).join('')||'<tr><td colspan="6" style="padding:16px;color:var(--subtle)">No quotations yet. Open a project and create a quotation from its workspace.</td></tr>';
+  renderQuotesPlay();
+}
+
+async function bfSetScopeView(view,btn){
+  bdScopeView=view||'all';
+  document.querySelectorAll('[data-bd-view]').forEach(b=>b.classList.toggle('active',b.dataset.bdView===bdScopeView));
+  await loadBDData();
+}
+
+let quoteProjectId=null;
+
+function bfGoCreateQuoteFromProjects(){
+  bfSwitchView('projects',document.querySelector('.bf-view-tab[data-view="projects"]'));
+  bfToast('Open a project, then create a quotation there');
+}
+
+function bfOpenQuoteForProject(projectId){
+  bfOpenProjectDetail(projectId,'quotations');
+}
+
+function bfOpenQuotePlay(projectId){
+  const pid=Number(projectId||0);
+  if(pid){bfOpenProjectDetail(pid,'quotations');return;}
+  const tab=document.querySelector('.bf-view-tab[data-view="quotations"]');
+  bfSwitchView('quotations',tab);
+}
+
+/** Standalone quotes are not allowed — open a project workspace instead */
+function bfOpenQuotePrompt(){
+  bfGoCreateQuoteFromProjects();
+}
+
+function bfCloseQuoteModal(){
+  quoteProjectId=null;
+  const m=document.getElementById('bfQuoteModal');
+  if(m)m.classList.remove('open');
+}
+function bfOpenQuoteInWorkspace(){
+  const projectId=Number(document.getElementById('bfQuoteProjectId')?.value||quoteProjectId||0);
+  bfCloseQuoteModal();
+  if(!projectId){bfGoCreateQuoteFromProjects();return;}
+  bfOpenProjectDetail(projectId,'quotations');
+  setTimeout(()=>{ if(typeof pdOpenQuote==='function') pdOpenQuote(); },350);
+}
+async function bfSaveQuote(){ bfOpenQuoteInWorkspace(); }
+
+async function loadQuotations(){
+  try{
+    const data=await apiGet('/api/admin/bd/quotations');
+    quotations=data.quotations||[];
+  }catch(e){quotations=[];}
+  renderQuotations();
+}
+
+async function bfQuotePdf(id){
+  const token=localStorage.getItem('access_token');
+  try{
+    const r=await fetch(`/api/admin/bd/quotations/${id}/pdf`,{headers:{Authorization:'Bearer '+token}});
+    if(!r.ok)throw new Error('PDF failed');
+    const blob=await r.blob();
+    const url=URL.createObjectURL(blob);
+    window.open(url,'_blank');
+  }catch(e){bfToast(e.message||'PDF failed');}
+}
+function bfEnsureSigModal(cb){
+  if(!window.InjaazSignatureModal){bfToast('Signature pad failed to load — refresh the page');return;}
+  try{
+    const token=localStorage.getItem('access_token');
+    fetch('/api/auth/me',{headers:{Authorization:'Bearer '+(token||'')}})
+      .then(r=>r.ok?r.json():null)
+      .then(data=>{
+        const saved=data&&data.user&&data.user.default_signature;
+        if(saved) InjaazSignatureModal.setSavedSignature(saved);
+      }).catch(()=>{});
+  }catch(_){}
+  cb();
+}
+async function bfQuoteSubmit(id){
+  bfEnsureSigModal(()=>{
+    InjaazSignatureModal.open({
+      title:'Sign & submit quotation',
+      onApply: async function(dataUrl){
+        try{
+          await apiPost(`/api/admin/bd/quotations/${id}/submit`,{signature:dataUrl});
+          bfToast('Submitted for approval');await loadBDData();
+        }catch(e){bfToast(e.message||'Failed');}
+      }
+    });
+  });
+}
+function bfQuoteApprove(id){
+  bfEnsureSigModal(()=>{
+    InjaazSignatureModal.open({
+      title:'Approve quotation',
+      onApply: async function(dataUrl){
+        try{
+          await apiPost(`/api/admin/bd/quotations/${id}/approve`,{signature:dataUrl});
+          bfToast('Approved');await loadBDData();
+        }catch(e){bfToast(e.message||'Failed');}
+      }
+    });
+  });
+}
+async function bfQuoteReject(id){
+  const notes=prompt('Rejection notes (optional)')||'';
+  try{await apiPost(`/api/admin/bd/quotations/${id}/reject`,{notes});bfToast('Rejected');await loadBDData();}
+  catch(e){bfToast(e.message||'Failed');}
+}
+
+let _bfLpoQuoteId=null;
+function bfQuoteAttachLpo(id){
+  _bfLpoQuoteId=id;
+  const inp=document.getElementById('bfLpoFileInput');
+  if(!inp){bfToast('LPO picker failed to load — refresh the page');return;}
+  inp.value='';
+  inp.click();
+}
+async function bfLpoFileChosen(inp){
+  const file=inp&&inp.files&&inp.files[0];
+  const id=_bfLpoQuoteId;
+  _bfLpoQuoteId=null;
+  if(!file||!id) return;
+  try{
+    const token=localStorage.getItem('access_token');
+    const fd=new FormData();
+    fd.append('file',file);
+    const r=await fetch(`/api/admin/bd/quotations/${id}/lpo`,{method:'POST',headers:{Authorization:'Bearer '+(token||'')},body:fd});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||j.success===false) throw new Error(j.error||'LPO upload failed');
+    bfToast('LPO attached');
+    await loadBDData();
+  }catch(e){bfToast(e.message||'LPO upload failed');}
+  finally{if(inp) inp.value='';}
+}
+async function bfQuoteDownloadLpo(id){
+  const token=localStorage.getItem('access_token');
+  try{
+    const r=await fetch(`/api/admin/bd/quotations/${id}/lpo`,{headers:{Authorization:'Bearer '+(token||'')}});
+    if(!r.ok) throw new Error('LPO not found');
+    const blob=await r.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='lpo';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+  }catch(e){bfToast(e.message||'LPO download failed');}
+}
+
+async function bfSetFollowupStatus(id,status){
+  if(!id) return;
+  try{
+    await apiPut(`/api/admin/bd/followups/${id}`,{status});
+    bfToast(status==='done'?'Follow-up completed':'Follow-up reopened');
+    await loadBDData();
+  }catch(e){bfToast(e.message||'Failed to update follow-up');}
+}
+
+async function bfDeleteContact(id){
+  if(!id) return;
+  if(!window.confirm('Delete this contact?')) return;
+  try{
+    await apiDelete(`/api/admin/bd/contacts/${id}`);
+    bfToast('Contact deleted');
+    await loadBDData();
+  }catch(e){bfToast(e.message||'Failed to delete contact');}
+}
+
+async function bfDeleteProject(id){
+  if(!id) return;
+  if(!window.confirm('Delete this project? Quotations stay on file but are unlinked from the deal.')) return;
+  try{
+    await apiDelete(`/api/admin/bd/projects/${id}`);
+    bfToast('Project deleted');
+    await loadBDData();
+  }catch(e){bfToast(e.message||'Failed to delete project');}
+}
+
+function applyBdPayload(data,fromDemo){
+  projects=data.projects||[];
+  followups=data.followups||[];
+  contacts=data.contacts||[];
+  activityLog=data.activities||[];
+  if(Array.isArray(data.quotations)) quotations=data.quotations;
+  bdStats=data.stats||bdStats;
+  bdOwners=data.owners||[];
+  populateOwnerSelect();
+  populateOwnerFilter();
+  renderAll();
+  renderQuotations();
+  if(fromDemo){
+    bfToast('Showing sample pipeline data');
+  }
+}
+
 async function loadBDData(){
   try{
-    const data=await apiGet('/api/admin/bd/dashboard-data');
-    projects=data.projects||[];
-    followups=data.followups||[];
-    contacts=data.contacts||[];
-    activityLog=data.activities||[];
-    bdStats=data.stats||bdStats;
-    renderAll();
+    const params=[];
+    if(bdScopeView&&bdScopeView!=='all')params.push('view='+encodeURIComponent(bdScopeView));
+    if(bdOwnerFilter)params.push('owner_id='+encodeURIComponent(bdOwnerFilter));
+    const q=params.length?'?'+params.join('&'):'';
+    const data=await apiGet('/api/admin/bd/dashboard-data'+q);
+    applyBdPayload(data,false);
+    await loadQuotations();
   }catch(e){
-    bfToast('❌ Failed to load BD data');
+    bfToast(e.message||'Failed to load pipeline');
+    applyBdPayload({projects:[],followups:[],contacts:[],activities:[],owners:[],stats:bdStats},false);
   }
 }
 
@@ -858,16 +2047,70 @@ window.bfSetNav=bfSetNav;
 window.bfOpenModal=bfOpenModal;
 window.bfCloseModal=bfCloseModal;
 window.bfOpenProjectEditor=bfOpenProjectEditor;
+window.bfOpenProjectDetail=bfOpenProjectDetail;
+window.bfCloseProjectDetail=bfCloseProjectDetail;
 window.bfSaveProject=bfSaveProject;
 window.bfImportProjectsFromExcel=bfImportProjectsFromExcel;
 window.bfOpenContactPrompt=bfOpenContactPrompt;
+window.bfCloseContactModal=bfCloseContactModal;
+window.bfSaveContact=bfSaveContact;
 window.bfOpenFollowupPrompt=bfOpenFollowupPrompt;
+window.bfCloseFollowupModal=bfCloseFollowupModal;
+window.bfSaveFollowup=bfSaveFollowup;
 window.bfToast=bfToast;
 window.bfSetPipelineMode=bfSetPipelineMode;
+window.bfSetScopeView=bfSetScopeView;
+window.bfSetOwnerFilter=bfSetOwnerFilter;
+window.bfOpenQuotePrompt=bfOpenQuotePrompt;
+window.bfOpenQuoteForProject=bfOpenQuoteForProject;
+window.bfGoCreateQuoteFromProjects=bfGoCreateQuoteFromProjects;
+window.bfCloseQuoteModal=bfCloseQuoteModal;
+window.bfSaveQuote=bfSaveQuote;
+window.bfOpenQuoteInWorkspace=bfOpenQuoteInWorkspace;
+window.bfQuotePdf=bfQuotePdf;
+window.bfQuoteSubmit=bfQuoteSubmit;
+window.bfQuoteApprove=bfQuoteApprove;
+window.bfQuoteReject=bfQuoteReject;
+window.bfQuoteAttachLpo=bfQuoteAttachLpo;
+window.bfLpoFileChosen=bfLpoFileChosen;
+window.bfQuoteDownloadLpo=bfQuoteDownloadLpo;
+window.bfSetFollowupStatus=bfSetFollowupStatus;
+window.bfDeleteContact=bfDeleteContact;
+window.bfDeleteProject=bfDeleteProject;
+window.loadBDData=loadBDData;
+
+function bfToggleMobileSidebar(){
+  const sb=document.getElementById('bfSidebar');
+  const ov=document.getElementById('bfSidebarOverlay');
+  if(!sb)return;
+  sb.classList.toggle('open');
+  if(ov) ov.classList.toggle('active',sb.classList.contains('open'));
+}
+function bfCloseMobileSidebar(){
+  const sb=document.getElementById('bfSidebar');
+  const ov=document.getElementById('bfSidebarOverlay');
+  if(sb) sb.classList.remove('open');
+  if(ov) ov.classList.remove('active');
+}
+window.bfToggleMobileSidebar=bfToggleMobileSidebar;
+window.bfCloseMobileSidebar=bfCloseMobileSidebar;
+
+function bfOpenProjectFromQuery(){
+  try{
+    const params=new URLSearchParams(window.location.search);
+    const pid=params.get('project');
+    if(!pid)return;
+    const hash=(location.hash||'').replace(/^#/,'').trim();
+    const panel=['overview','contact','quotations','followups','activity','notes'].includes(hash)?hash:null;
+    bfOpenProjectDetail(pid,panel);
+  }catch(_){}
+}
 
 loadUser();
-loadBDData();
+loadBDData().then(bfOpenProjectFromQuery);
 })();
   </script>
 </body>
 </html>
+
+

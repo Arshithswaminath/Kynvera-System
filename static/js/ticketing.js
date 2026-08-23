@@ -223,10 +223,27 @@ function tktSetupImageUpload(dropZoneEl, fileInputEl, ticketId, gallery) {
   function _appendImageThumb(imgData, gallery) {
     const div = document.createElement('div');
     div.className = 'tkt-image-thumb';
-    div.innerHTML = `<img src="/tickets/images/${imgData.id}" alt="${imgData.filename}" loading="lazy">
-      <span class="tkt-img-cap">${imgData.caption || imgData.filename}</span>`;
-    div.addEventListener('click', () => tktOpenLightbox(`/tickets/images/${imgData.id}`));
+    div.dataset.imageId = imgData.id;
+    const cap = imgData.caption || imgData.filename || '';
+    div.innerHTML = `<img src="/tickets/images/${imgData.id}" alt="${cap}" loading="lazy">
+      <span class="tkt-img-cap">${cap}</span>
+      <button type="button" class="tkt-img-remove" data-image-id="${imgData.id}" aria-label="Remove photo">Remove</button>`;
+    div.addEventListener('click', (e) => {
+      if (e.target.closest('.tkt-img-remove')) return;
+      tktOpenLightbox(`/tickets/images/${imgData.id}`);
+    });
     gallery.appendChild(div);
+  }
+}
+
+async function tktDeleteTicketImage(ticketId, imageId, thumbEl) {
+  if (!ticketId || !imageId) return;
+  const res = await tktFetch(`/tickets/api/tickets/${ticketId}/images/${imageId}`, { method: 'DELETE' });
+  if (res.ok && res.data && res.data.success) {
+    tktToast('Image removed.', 'success');
+    thumbEl?.remove();
+  } else {
+    tktToast((res.data && res.data.error) || 'Could not remove image.', 'error');
   }
 }
 

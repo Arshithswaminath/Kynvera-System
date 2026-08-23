@@ -18,6 +18,7 @@
     hr_staff_appraisal: '/hr/staff-appraisal-form',
     hr_station_clearance: '/hr/station-clearance-form',
     hr_visa_renewal: '/hr/visa-renewal-form',
+    hr_asset_handover: '/hr/asset-handover-form',
   };
 
   function getHrSubmissionFullFormViewUrl(moduleType, submissionId) {

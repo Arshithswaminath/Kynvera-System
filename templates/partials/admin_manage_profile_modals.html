@@ -43,7 +43,7 @@
           <div class="form-group" style="margin-bottom:0;grid-column:1/-1;">
             <label class="form-label" for="profileEmploymentStartDate">Joined company (dashboard tenure)</label>
             <input type="date" id="profileEmploymentStartDate" class="form-control" autocomplete="off">
-            <p class="admin-profile-hint" style="margin-top: 0.25rem;">Optional. Shown as “Days with Injaaz” on the employee home dashboard.</p>
+            <p class="admin-profile-hint" style="margin-top: 0.25rem;">Optional. Shown as “Days with Kynvera” on the employee home dashboard.</p>
           </div>
         </div>
       </div>
@@ -131,9 +131,21 @@
             <input type="checkbox" id="accessProcurement" name="access_procurement_module">
             <label for="accessProcurement">Procurement module</label>
           </div>
-          <div class="checkbox-item">
-            <input type="checkbox" id="accessBusinessDev" name="access_business_development">
-            <label for="accessBusinessDev">Business development</label>
+          <div class="checkbox-item bd-access-card" id="accessBdItem">
+            <div class="bd-access-top">
+              <input type="checkbox" id="accessBusinessDev" name="access_business_development">
+              <label for="accessBusinessDev">Business development</label>
+            </div>
+            <div class="bd-access-subs" aria-label="Business development options">
+              <label class="bd-access-sub" for="accessSalesManager">
+                <input type="checkbox" id="accessSalesManager" name="access_sales_manager">
+                Sales manager (all pipelines)
+              </label>
+              <label class="bd-access-sub" for="accessQuotations">
+                <input type="checkbox" id="accessQuotations" name="access_quotations">
+                Prepare quotations
+              </label>
+            </div>
           </div>
           <div class="checkbox-item">
             <input type="checkbox" id="accessDocHub" name="can_access_dochub">
@@ -155,7 +167,7 @@
             <input type="checkbox" id="isTicketReporter" name="is_ticket_reporter">
             <label for="isTicketReporter">Designated ticket reporter (appears in "Reported By" list)</label>
           </div>
-          <div class="checkbox-item">
+          <div class="checkbox-item" hidden style="display:none !important">
             <input type="checkbox" id="accessQhsi" name="access_qhsi">
             <label for="accessQhsi">QHSE module (quality, health, safety &amp; environment)</label>
           </div>

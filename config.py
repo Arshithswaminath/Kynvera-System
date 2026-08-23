@@ -41,9 +41,6 @@ GOOGLE_DRIVE_CLIENT_ID = os.getenv("GOOGLE_DRIVE_CLIENT_ID", "")
 GOOGLE_DRIVE_CLIENT_SECRET = os.getenv("GOOGLE_DRIVE_CLIENT_SECRET", "")
 GOOGLE_DRIVE_REDIRECT_URI = os.getenv("GOOGLE_DRIVE_REDIRECT_URI", "")  # e.g. https://host/files/api/drive/callback
 
-# Google Maps (New Work Order location preview) — optional
-GOOGLE_MAPS_API_KEY = (os.getenv("GOOGLE_MAPS_API_KEY") or "").strip()
-
 # DATABASE - PostgreSQL for production (REQUIRED in production)
 # Fix for Render: Replace postgres:// with postgresql:// for SQLAlchemy compatibility
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -66,6 +63,11 @@ DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 # Strip whitespace — common copy/paste issue from Render/Upstash dashboards
 _redis = (os.getenv("REDIS_URL") or "").strip()
 REDIS_URL = _redis or None
+
+# Flask-Limiter honors this directly (Limiter reads app.config["RATELIMIT_ENABLED"]).
+# Defaults on in every real deployment; tests set RATELIMIT_ENABLED=false so a full
+# `pytest tests/` run doesn't blow through /api/auth/login's 5-per-minute limit.
+RATELIMIT_ENABLED = os.getenv("RATELIMIT_ENABLED", "true").lower() not in ("0", "false", "no", "off")
 
 # MMR module: optional schedule overrides (survive redeploys when GENERATED_DIR is ephemeral).
 # Set in Render dashboard if mmr_email_config.json is lost each deploy. See module_mmr.routes._load_config.
@@ -125,7 +127,7 @@ KYNVERA_MUNICIPALITY_APP_URL = (os.getenv("KYNVERA_MUNICIPALITY_APP_URL") or "")
 # Display name shown as a tag under the mobile menu bar (e.g. Municipality, Fire)
 KYNVERA_APP_NAME = (os.getenv("KYNVERA_APP_NAME") or "Municipality").strip()
 
-# Injaaz Assistant — optional LLM for natural chat (RAG over knowledge base)
+# Kynvera Assistant — optional LLM for natural chat (RAG over knowledge base)
 # Provider: "claude" (default, Anthropic) or "openai"
 ASSISTANT_LLM_PROVIDER = (os.getenv("ASSISTANT_LLM_PROVIDER") or "claude").strip().lower()
 ANTHROPIC_API_KEY = (os.getenv("ANTHROPIC_API_KEY") or "").strip()

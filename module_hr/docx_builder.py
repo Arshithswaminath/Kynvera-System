@@ -978,7 +978,7 @@ def _build_commencement(fd):
         ("Full Name", _fd(fd, "employee_name")),
         ("Position / Title", _fd(fd, "position")),
         ("Department", _fd(fd, "department")),
-        ("Organization", _fd(fd, "organization", "INJAAZ")),
+        ("Organization", _fd(fd, "organization", "Kynvera")),
         ("Contact Number", _fd(fd, "contacts")),
         ("Date of Joining (DD/MM/YYYY)", _fmt(fd.get("date_of_joining"))),
     ], cols=2)
@@ -1020,7 +1020,7 @@ def _build_duty_resumption(fd):
         ("Employee Name",   _fd(fd, "employee_name")),
         ("Employee ID",     _fd(fd, "employee_id")),
         ("Job Title",       _fd(fd, "job_title")),
-        ("Company",         _fd(fd, "company", "INJAAZ LLC")),
+        ("Company",         _fd(fd, "company", "Kynvera")),
     ], cols=4)
 
     _section_bar_numbered(doc, "02", "Leave & Resumption Dates")
@@ -1143,7 +1143,7 @@ def _build_visa_renewal(fd):
         ("Date",             _fmt(fd.get("form_date"))),
         ("Employee Name",    _fd(fd, "employee_name")),
         ("Employee ID",      _fd(fd, "employee_id")),
-        ("Employer",         _fd(fd, "employer", "INJAAZ")),
+        ("Employer",         _fd(fd, "employer", "Kynvera")),
         ("Position",         _fd(fd, "position")),
         ("Years Completed",  _fd(fd, "years_completed")),
         ("Decision",         dec),

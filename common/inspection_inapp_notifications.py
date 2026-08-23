@@ -12,7 +12,7 @@ from sqlalchemy import or_
 from app.models import Notification, User, db
 
 INSPECTION_MODULE_TYPES = frozenset({
-    'inspection', 'hvac_mep', 'civil', 'cleaning', 'qhsi_inspection', 'qhsi_staff_compliance',
+    'inspection', 'hvac_mep', 'civil', 'cleaning',
 })
 
 MODULE_DISPLAY = {
@@ -20,8 +20,6 @@ MODULE_DISPLAY = {
     'hvac_mep': 'Inspection',
     'civil': 'Inspection',
     'cleaning': 'Inspection',
-    'qhsi_inspection': 'QHSA Site Inspection',
-    'qhsi_staff_compliance': 'Staff Compliance (QHSI)',
 }
 
 

@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, ajman-municipality]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, ajman-municipality]
 
 jobs:
   test:
@@ -39,7 +39,7 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run pytest
-        run: pytest tests/ -q --maxfail=5
+        run: pytest tests/ -q --maxfail=5 --cov-fail-under=25
 
   lint:
     name: flake8

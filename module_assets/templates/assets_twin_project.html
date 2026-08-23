@@ -1,0 +1,368 @@
+{% set fm_page_title = project.name ~ ' — Digital Twin' %}
+{% set fm_topbar_title = 'Digital twin' %}
+{% include 'partials/fm_shell_start.html' %}
+
+  <nav class="twin-crumb" aria-label="Breadcrumb">
+    <a href="{{ url_for('assets_bp.assets_twin_page') }}">Digital twin</a>
+    <span aria-hidden="true">/</span>
+    <span>{{ project.name }}</span>
+  </nav>
+
+  <header class="fm-header twin-header">
+    <div>
+      <h1>{{ project.name }}</h1>
+      <p>{% if project.client_name %}{{ project.client_name }} · {% endif %}Pick a building and floor to open the drawing and see fed assets.</p>
+    </div>
+  </header>
+
+  <div class="twin-jump" id="twinJump">
+    <label>Building
+      <select class="fm-input" id="jumpBuilding" aria-label="Building">
+        <option value="">Select building…</option>
+      </select>
+    </label>
+    <label>Floor
+      <select class="fm-input" id="jumpFloor" aria-label="Floor" disabled>
+        <option value="">Select floor…</option>
+      </select>
+    </label>
+    <label>Room
+      <select class="fm-input" id="jumpRoom" aria-label="Room" disabled>
+        <option value="">All rooms</option>
+      </select>
+    </label>
+    <a class="fm-btn fm-btn-primary" id="jumpOpen" hidden>Open drawing</a>
+  </div>
+
+  <section class="twin-feed" id="twinFeed" hidden>
+    <div class="twin-feed-head">
+      <h2 id="twinFeedTitle">Assets</h2>
+      <p class="fm-muted" id="twinFeedHint"></p>
+    </div>
+    <ul class="twin-list" id="twinFeedList"></ul>
+    <p class="twin-feed-empty fm-muted" id="twinFeedEmpty" hidden>No assets fed for this building and floor yet.</p>
+    {% if can_write %}
+    <a class="fm-btn fm-btn-outline" id="twinFeedAdd" href="{{ url_for('assets_bp.assets_new_page') }}?project_id={{ project.id }}">Add asset</a>
+    {% endif %}
+  </section>
+
+  {% if floors %}
+  <div class="twin-floor-grid" id="twinFloorGrid">
+    {% for floor in floors %}
+    <a class="twin-floor-card twin-floor-card-link" href="{{ url_for('assets_bp.assets_twin_plan_page', plan_id=floor.id) }}"
+       data-plan-card
+       data-building="{{ floor.building or '' }}"
+       data-floor="{{ floor.floor or '' }}">
+      <span class="twin-floor-thumb">
+        <img src="{{ floor.display_url }}" alt="">
+      </span>
+      <span class="twin-floor-copy">
+        <strong>{{ floor.name }}</strong>
+        <span>{{ floor.building }}{% if floor.floor %} / {{ floor.floor }}{% endif %}</span>
+        <span>{{ floor.pin_count }} room{{ 's' if floor.pin_count != 1 else '' }}</span>
+        <span class="twin-hub-strip" aria-hidden="true">
+          {% if floor.crit or floor.warn or floor.ok %}
+          <i class="crit" style="flex:{{ floor.crit }}"></i>
+          <i class="warn" style="flex:{{ floor.warn }}"></i>
+          <i class="ok" style="flex:{{ floor.ok }}"></i>
+          {% else %}
+          <i class="empty"></i>
+          {% endif %}
+        </span>
+      </span>
+      <span class="twin-floor-open">Open</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="twin-hub-empty">No drawings yet.{% if can_write %} Add a floor plan below.{% endif %}</p>
+  {% endif %}
+
+  {% include 'partials/twin_missing_confirm.html' %}
+
+  {% if can_write %}
+  <details class="fm-panel twin-add-plan" {% if not floors %}open{% endif %}>
+    <summary>Add a floor plan</summary>
+    <p class="fm-muted">Export from AutoCAD, Revit, or PDF as PNG, JPG, or SVG. Then place pins and link each FM asset. DWG/RVT files are not read directly.</p>
+    {% include 'partials/twin_add_plan_form.html' %}
+  </details>
+  {% endif %}
+
+{% set fm_scripts %}
+<script>
+window.FM_TWIN_PROJECT_ID = {{ project.id }};
+window.FM_TWIN_CATALOG = {{ (catalog_buildings or [])|tojson }};
+window.FM_TWIN_ASSETS = {{ (location_assets or [])|tojson }};
+window.FM_TWIN_PLANS = {{ floors|tojson }};
+(function () {
+  const catalog = window.FM_TWIN_CATALOG || [];
+  const assets = window.FM_TWIN_ASSETS || [];
+  const plans = window.FM_TWIN_PLANS || [];
+  const buildingSel = document.getElementById('jumpBuilding');
+  const floorSel = document.getElementById('jumpFloor');
+  const roomSel = document.getElementById('jumpRoom');
+  const openBtn = document.getElementById('jumpOpen');
+  const feed = document.getElementById('twinFeed');
+  const feedTitle = document.getElementById('twinFeedTitle');
+  const feedHint = document.getElementById('twinFeedHint');
+  const feedList = document.getElementById('twinFeedList');
+  const feedEmpty = document.getElementById('twinFeedEmpty');
+  const feedAdd = document.getElementById('twinFeedAdd');
+  const canWrite = {{ 'true' if can_write else 'false' }};
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function samePlace(a, b) {
+    return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  }
+  function planFor(building, floor) {
+    return plans.find((p) => samePlace(p.building, building) && samePlace(p.floor || '', floor || '')) || null;
+  }
+  function locLabel(building, floor) {
+    return [building, floor].filter(Boolean).join(' / ') || 'this floor';
+  }
+  function draftHref(building, floor) {
+    const params = new URLSearchParams();
+    if (building) params.set('building', building);
+    if (floor) params.set('floor', floor);
+    return '/assets/twin/project/' + window.FM_TWIN_PROJECT_ID + '/draw?' + params.toString();
+  }
+  function catalogBuilding(name) {
+    return catalog.find((b) => b.name === name) || null;
+  }
+  function catalogFloor(building, floor) {
+    return ((catalogBuilding(building) || {}).floors || []).find((f) => f.name === floor) || null;
+  }
+  function fillSelect(sel, names, placeholder, selected) {
+    sel.innerHTML = '';
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = placeholder;
+    sel.appendChild(blank);
+    names.forEach((n) => {
+      const opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = n;
+      sel.appendChild(opt);
+    });
+    if (selected && names.indexOf(selected) >= 0) sel.value = selected;
+    sel.disabled = !names.length;
+  }
+  function addHref(building, floor, room) {
+    const params = new URLSearchParams();
+    params.set('project_id', String(window.FM_TWIN_PROJECT_ID));
+    if (building) params.set('building', building);
+    if (floor) params.set('floor', floor);
+    if (room) params.set('room', room);
+    return '/assets/new?' + params.toString();
+  }
+  function planHref(planId, assetCode, place) {
+    if (!planId) return '';
+    const params = new URLSearchParams();
+    if (assetCode) params.set('asset', assetCode);
+    if (place) params.set('place', '1');
+    const qs = params.toString();
+    return '/assets/twin/plan/' + planId + (qs ? '?' + qs : '');
+  }
+  function syncPlanForm(building, floor) {
+    const planB = document.getElementById('planBuilding');
+    const planF = document.getElementById('planFloor');
+    if (planB && building && planB.value !== building) {
+      planB.value = building;
+      planB.dispatchEvent(new Event('change'));
+    }
+    if (planF && floor) planF.value = floor;
+  }
+  function renderFeed() {
+    const building = buildingSel.value;
+    const floor = floorSel.value;
+    const room = roomSel ? roomSel.value : '';
+    document.querySelectorAll('[data-plan-card]').forEach((el) => {
+      const okB = !building || samePlace(el.dataset.building, building);
+      const okF = !floor || samePlace(el.dataset.floor, floor);
+      el.hidden = !(okB && okF);
+    });
+    const match = planFor(building, floor);
+    if (openBtn) {
+      openBtn.removeAttribute('data-missing');
+      openBtn.removeAttribute('data-open');
+      if (match && match.id) {
+        openBtn.hidden = false;
+        openBtn.href = '/assets/twin/plan/' + match.id;
+      } else if (building || floor) {
+        openBtn.hidden = false;
+        openBtn.href = draftHref(building, floor);
+        if (floor) openBtn.setAttribute('data-missing', locLabel(building, floor));
+      } else {
+        openBtn.hidden = true;
+        openBtn.removeAttribute('href');
+      }
+    }
+    if (!building) {
+      feed.hidden = true;
+      return;
+    }
+    feed.hidden = false;
+    const loc = [building, floor, room].filter(Boolean).join(' / ');
+    feedTitle.textContent = floor ? ('Assets on ' + loc) : ('Assets in ' + building);
+    const rooms = (catalogFloor(building, floor) || {}).rooms || [];
+    const roomNames = rooms.map((r) => r.name || r);
+    const rows = assets.filter((a) => {
+      if (a.building !== building) return false;
+      if (floor && (a.floor || '') !== floor) return false;
+      if (room && (a.room || '') !== room) return false;
+      return true;
+    });
+    feedList.innerHTML = rows.map((a) => {
+      const pinned = !!a.pinned_plan_id;
+      const destId = a.pinned_plan_id || (match && match.id);
+      const href = destId
+        ? planHref(destId, a.asset_id, !pinned && canWrite)
+        : (a.url || ('/assets/' + a.asset_id));
+      const on = pinned ? 'On drawing' : (destId ? 'Pin on drawing' : 'No drawing');
+      const chip = pinned ? 'ok' : 'warn';
+      const where = [a.room, a.asset_type].filter(Boolean).join(' · ');
+      return '<li><a class="twin-feed-row" href="' + esc(href) + '">'
+        + '<strong>' + esc(a.asset_id) + '</strong>'
+        + '<span>' + esc(a.name || '') + (where ? ' · ' + esc(where) : '') + '</span>'
+        + '<span class="twin-chip ' + chip + '">' + on + '</span></a></li>';
+    }).join('');
+    const covered = new Set(rows.map((a) => (a.room || '').trim()).filter(Boolean));
+    const missing = room ? [] : roomNames.filter((n) => n && !covered.has(n));
+    if (canWrite && floor && missing.length) {
+      feedList.innerHTML += missing.map((miss) => (
+        '<li class="twin-feed-miss">'
+        + '<span>No asset for ' + esc(miss) + '</span>'
+        + '<a class="twin-feed-miss-link" href="' + esc(addHref(building, floor, miss)) + '">Add asset</a></li>'
+      )).join('');
+    }
+    const empty = !rows.length && !(canWrite && floor && missing.length);
+    feedEmpty.hidden = !empty;
+    feedHint.textContent = match
+      ? 'Fed from FM Assets for this building and floor.'
+      : 'No drawing for this floor yet — add a floor plan below, or open an existing card.';
+    if (feedAdd) {
+      feedAdd.href = addHref(building, floor, room);
+      feedAdd.hidden = false;
+    }
+    syncPlanForm(building, floor);
+  }
+  const buildingNames = [];
+  catalog.forEach((b) => { if (b.name && buildingNames.indexOf(b.name) < 0) buildingNames.push(b.name); });
+  plans.forEach((p) => { if (p.building && buildingNames.indexOf(p.building) < 0) buildingNames.push(p.building); });
+  fillSelect(buildingSel, buildingNames, buildingNames.length ? 'Select building…' : 'No buildings yet', buildingNames.length === 1 ? buildingNames[0] : '');
+  function fillRooms() {
+    if (!roomSel) return;
+    const building = buildingSel.value;
+    const floor = floorSel.value;
+    const names = [];
+    ((catalogFloor(building, floor) || {}).rooms || []).forEach((r) => {
+      const n = r.name || r;
+      if (n && names.indexOf(n) < 0) names.push(n);
+    });
+    assets.forEach((a) => {
+      if (a.building !== building) return;
+      if (floor && (a.floor || '') !== floor) return;
+      if (a.room && names.indexOf(a.room) < 0) names.push(a.room);
+    });
+    fillSelect(roomSel, names, names.length ? 'All rooms' : 'No rooms on this floor', '');
+    renderFeed();
+  }
+  function fillFloors() {
+    const b = catalogBuilding(buildingSel.value);
+    const names = [];
+    ((b && b.floors) || []).forEach((f) => { if (f.name) names.push(f.name); });
+    plans.forEach((p) => {
+      if (p.building === buildingSel.value && p.floor && names.indexOf(p.floor) < 0) names.push(p.floor);
+    });
+    fillSelect(floorSel, names, names.length ? 'Select floor…' : 'No floors in this building', names.length === 1 ? names[0] : '');
+    fillRooms();
+  }
+  buildingSel.addEventListener('change', fillFloors);
+  floorSel.addEventListener('change', fillRooms);
+  roomSel?.addEventListener('change', renderFeed);
+  const confirmBox = document.getElementById('twinConfirm');
+  const confirmBody = document.getElementById('twinConfirmBody');
+  const confirmYes = document.getElementById('twinConfirmYes');
+  const confirmNo = document.getElementById('twinConfirmNo');
+  let pendingOpen = null;
+
+  function closeConfirm() {
+    if (confirmBox) confirmBox.hidden = true;
+    pendingOpen = null;
+  }
+  function goPending() {
+    const next = pendingOpen;
+    closeConfirm();
+    if (!next) return;
+    if (next.openAdd) {
+      const box = document.querySelector('.twin-add-plan');
+      if (box) {
+        box.open = true;
+        box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      document.getElementById('planForm')?.querySelector('input,select')?.focus();
+      return;
+    }
+    if (next.href) window.location.href = next.href;
+  }
+  confirmNo?.addEventListener('click', closeConfirm);
+  confirmYes?.addEventListener('click', goPending);
+  confirmBox?.addEventListener('click', (ev) => {
+    if (ev.target === confirmBox) closeConfirm();
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && confirmBox && !confirmBox.hidden) closeConfirm();
+  });
+  if (openBtn) {
+    openBtn.addEventListener('click', (ev) => {
+      const missing = openBtn.getAttribute('data-missing');
+      if (!missing) return;
+      ev.preventDefault();
+      pendingOpen = {
+        href: openBtn.getAttribute('href'),
+        openAdd: openBtn.getAttribute('data-open') === 'add',
+      };
+      if (confirmBody) {
+        confirmBody.textContent =
+          'There is no drawing for ' + missing + ' yet. Still want to open?';
+      }
+      if (confirmBox) confirmBox.hidden = false;
+      confirmYes?.focus();
+    });
+  }
+  fillFloors();
+
+  document.getElementById('planImage')?.addEventListener('change', (e) => {
+    const nameEl = document.getElementById('planImageName');
+    const file = e.target.files && e.target.files[0];
+    if (nameEl) nameEl.textContent = file ? file.name : 'PNG, JPG, or SVG';
+  });
+  document.getElementById('planForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const fd = new FormData(form);
+    const file = fd.get('image');
+    if (!(file && file.size)) fd.delete('image');
+    const res = await fetch('/assets/api/floor-plans', {
+      method: 'POST',
+      headers: fmAuthHeaders(),
+      body: fd,
+    });
+    let data = {};
+    try { data = await res.json(); } catch (_) {}
+    if (!res.ok || !data.success) {
+      fmNotify((data && data.error) || 'Could not save plan');
+      return;
+    }
+    window.location.href = '/assets/twin/plan/' + data.plan.id;
+  });
+})();
+</script>
+{% endset %}
+{% include 'partials/fm_shell_end.html' %}

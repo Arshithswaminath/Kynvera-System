@@ -1,143 +1,145 @@
 {% set fm_page_title = 'Digital Twin' %}
 {% set fm_topbar_title = 'Digital twin' %}
-{% set fm_head_extra %}
-<style>
-  .twin-stage { position: relative; background: #0f1f18; border-radius: 12px; overflow: hidden; min-height: 360px; }
-  .twin-stage img { width: 100%; display: block; opacity: 0.92; }
-  .twin-hotspot {
-    position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px;
-    border-radius: 50%; border: 2px solid #fff; cursor: pointer;
-    box-shadow: 0 0 0 3px rgba(0,0,0,.25);
-  }
-  .twin-hotspot.ok { background: #12b76a; }
-  .twin-hotspot.warn { background: #f79009; }
-  .twin-hotspot.crit { background: #f04438; }
-  .twin-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .twin-form .fm-full { grid-column: 1 / -1; }
-  @media (max-width: 768px) {
-    .twin-form { grid-template-columns: 1fr; }
-    .twin-hotspot {
-      min-width: 44px;
-      min-height: 44px;
-      padding: 12px;
-      box-sizing: content-box;
-    }
-  }
-</style>
-{% endset %}
+{% if current_plan is not defined %}
+  {% set current_plan = plans[0] if plans else none %}
+{% endif %}
 {% include 'partials/fm_shell_start.html' %}
 
-  <header class="fm-header">
+  <header class="fm-header twin-header">
     <div>
-      <h1>2D Digital Twin</h1>
-      <p>Floor-plan hotspots by room/asset status + Claude recommendations</p>
+      <nav class="twin-crumb" aria-label="Breadcrumb">
+        <a href="{{ url_for('assets_bp.assets_twin_page') }}">Digital twin</a>
+        {% if project %}
+        <span aria-hidden="true">/</span>
+        <a href="{{ url_for('assets_bp.assets_twin_project_page', project_id=project.id) }}">{{ project.name }}</a>
+        {% elif current_plan %}
+        <span aria-hidden="true">/</span>
+        <span>Unassigned</span>
+        {% endif %}
+        {% if current_plan %}
+        <span aria-hidden="true">/</span>
+        <span>{{ current_plan.name }}</span>
+        {% elif draft_floor or draft_building %}
+        <span aria-hidden="true">/</span>
+        <span>{{ draft_floor or draft_building }}</span>
+        {% endif %}
+      </nav>
+      <h1>{% if current_plan %}{{ current_plan.name }}{% elif draft_floor %}{{ draft_floor }}{% else %}2D Digital Twin{% endif %}</h1>
+      <p>{% if current_plan %}Live room status from work orders and assets.{% else %}Add a drawing for this floor.{% endif %}</p>
     </div>
   </header>
 
-  <section class="fm-panel">
-    <label>Floor plan
+  <div class="twin-bar">
+    <label class="twin-plan-label">Building
+      <select class="fm-input" id="jumpBuilding" aria-label="Building"></select>
+    </label>
+    <label class="twin-plan-label">Floor
+      <select class="fm-input" id="jumpFloor" aria-label="Floor"></select>
+    </label>
+    <label class="twin-plan-label" hidden>
+      Floor plan
       <select class="fm-input" id="planSelect">
-        <option value="">— Select —</option>
+        {% if not current_plan %}
+        <option value="">— Select a plan —</option>
+        {% endif %}
         {% for p in plans %}
-        <option value="{{ p.id }}" data-url="{{ p.image_url }}" data-hotspots='{{ p.hotspots|tojson }}'>{{ p.name }} ({{ p.building }}{% if p.floor %} / {{ p.floor }}{% endif %})</option>
+        <option value="{{ p.id }}" {% if current_plan and p.id == current_plan.id %}selected{% endif %}>{{ p.name }} ({{ p.building }}{% if p.floor %} / {{ p.floor }}{% endif %})</option>
         {% endfor %}
       </select>
     </label>
-    <div class="twin-stage" id="twinStage" style="margin-top:12px;">
-      <p class="fm-muted" style="padding:24px;color:#cfe7d8;">Select a floor plan to view room status.</p>
+    <div class="twin-zoom" hidden id="twinZoom">
+      <button type="button" class="fm-btn fm-btn-outline" id="zoomOutBtn" aria-label="Zoom out">−</button>
+      <span id="zoomLabel">100%</span>
+      <button type="button" class="fm-btn fm-btn-outline" id="zoomInBtn" aria-label="Zoom in">+</button>
+      <button type="button" class="fm-btn fm-btn-outline" id="zoomFitBtn">Fit</button>
     </div>
-    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-      <button type="button" class="fm-btn fm-btn-primary" id="recBtn" disabled>AI recommendations</button>
+    <div class="twin-bar-actions">
+      <button type="button" class="fm-btn fm-btn-outline" id="downloadPlanBtn" disabled aria-label="Download drawing with Kynvera logo">Download drawing</button>
+      <button type="button" class="fm-btn fm-btn-primary" id="recBtn" disabled>Recommendations</button>
+      {% if can_write %}
+      <button type="button" class="fm-btn fm-btn-outline" id="editBtn" disabled aria-pressed="false">Place pins</button>
+      <button type="button" class="fm-btn fm-btn-outline" id="savePinsBtn" disabled hidden>Save pins</button>
+      <button type="button" class="fm-btn fm-btn-outline twin-btn-danger" id="deletePlanBtn" disabled>Delete plan</button>
+      {% endif %}
     </div>
-    <div id="recOut" class="fm-notes" style="margin-top:12px;"></div>
-  </section>
+  </div>
 
-  {% if can_write %}
-  <section class="fm-panel">
-    <h2>Add floor plan</h2>
-    <form class="twin-form" id="planForm">
-      <label>Name<input class="fm-input" name="name" required></label>
-      <label>Building<input class="fm-input" name="building" required></label>
-      <label>Floor<input class="fm-input" name="floor"></label>
-      <label>Image URL<input class="fm-input" name="image_url" required placeholder="https://…"></label>
-      <label class="fm-full">Hotspots JSON
-        <textarea class="fm-input" name="hotspots" rows="3" placeholder='[{"room":"2.105","x_pct":42,"y_pct":55}]'></textarea>
-      </label>
-      <div class="fm-full"><button class="fm-btn fm-btn-primary" type="submit">Save plan</button></div>
-    </form>
-  </section>
+  <div class="twin-status" id="twinKpis" hidden>
+    <div class="twin-status-meta">
+      <div class="twin-status-total">
+        <strong id="kpiTotal">0</strong>
+        <span id="kpiTotalLabel">rooms on this floor</span>
+      </div>
+      <div class="twin-health-bar" id="kpiBar" aria-hidden="true"></div>
+    </div>
+    <div class="twin-status-filters" role="group" aria-label="Filter pins by status">
+      <button type="button" class="twin-filter twin-filter-crit" data-sev="crit" aria-pressed="false">
+        <span class="twin-filter-count" id="kpiCrit">0</span>
+        <span class="twin-filter-copy">
+          <span class="twin-filter-label">Critical</span>
+          <span class="twin-filter-hint">Needs attention</span>
+        </span>
+      </button>
+      <button type="button" class="twin-filter twin-filter-warn" data-sev="warn" aria-pressed="false">
+        <span class="twin-filter-count" id="kpiWarn">0</span>
+        <span class="twin-filter-copy">
+          <span class="twin-filter-label">Warning</span>
+          <span class="twin-filter-hint">Open work</span>
+        </span>
+      </button>
+      <button type="button" class="twin-filter twin-filter-ok" data-sev="ok" aria-pressed="false">
+        <span class="twin-filter-count" id="kpiOk">0</span>
+        <span class="twin-filter-copy">
+          <span class="twin-filter-label">Healthy</span>
+          <span class="twin-filter-hint">No issues</span>
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <div class="twin-workspace">
+    <div class="twin-map" id="twinMap">
+      <p class="twin-edit-banner" id="twinEditBanner" hidden>Click the drawing to drop a pin. Drag a marker to move it, then save.</p>
+      <div class="twin-stage" id="twinStage" role="application" aria-label="Floor plan">
+        <p class="twin-empty">Select a floor plan to see live room status.</p>
+      </div>
+      <div class="twin-legend-float" id="twinLegend" hidden aria-label="Pin legend">
+        <span><i class="twin-dot crit"></i> Critical</span>
+        <span><i class="twin-dot warn"></i> Warning</span>
+        <span><i class="twin-dot ok"></i> Healthy</span>
+      </div>
+      <div class="twin-place-cursor" id="twinPlaceCursor" hidden aria-hidden="true"></div>
+      <div class="twin-pin-tip" id="twinPinTip" hidden aria-hidden="true"></div>
+    </div>
+    <aside class="twin-side" id="twinSide" aria-label="Room details">
+      <div class="twin-side-empty" id="twinSideHint">
+        <strong>Select a pin</strong>
+        <p>Click a marker on the drawing to see linked assets and open work orders.</p>
+      </div>
+      <div id="twinPinPanel" hidden></div>
+      <div id="twinRecPanel" hidden></div>
+    </aside>
+  </div>
+
+  {% include 'partials/twin_missing_confirm.html' %}
+
+  {% if can_write and current_plan %}
+  <details class="fm-panel twin-add-plan">
+    <summary>Add another floor plan</summary>
+    <p class="fm-muted">Export from AutoCAD, Revit, or PDF as PNG, JPG, or SVG. Then place pins and link each FM asset. DWG/RVT files are not read directly.</p>
+    {% include 'partials/twin_add_plan_form.html' %}
+  </details>
   {% endif %}
 
 {% set fm_scripts %}
 <script>
-let currentPlanId = null;
-const stage = document.getElementById('twinStage');
-const recBtn = document.getElementById('recBtn');
-
-document.getElementById('planSelect')?.addEventListener('change', (e) => {
-  const opt = e.target.selectedOptions[0];
-  currentPlanId = opt?.value || null;
-  recBtn.disabled = !currentPlanId;
-  if (!currentPlanId) {
-    stage.innerHTML = '<p class="fm-muted" style="padding:24px;color:#cfe7d8;">Select a floor plan to view room status.</p>';
-    return;
-  }
-  let hotspots = [];
-  try { hotspots = JSON.parse(opt.dataset.hotspots || '[]'); } catch (_) {}
-  stage.innerHTML = `<img src="${opt.dataset.url}" alt="Floor plan">`;
-  hotspots.forEach(h => {
-    const el = document.createElement('button');
-    el.type = 'button';
-    el.className = 'twin-hotspot ' + (h.severity || 'ok');
-    el.style.left = (h.x_pct || 50) + '%';
-    el.style.top = (h.y_pct || 50) + '%';
-    el.title = h.room || 'Room';
-    el.addEventListener('click', () => {
-      alert((h.room || 'Room') + (h.note ? '\n' + h.note : ''));
-    });
-    stage.appendChild(el);
-  });
-});
-
-recBtn?.addEventListener('click', async () => {
-  if (!currentPlanId) return;
-  recBtn.disabled = true;
-  recBtn.textContent = 'Analyzing…';
-  const res = await fetch(`/assets/api/floor-plans/${currentPlanId}/recommend`, {
-    method: 'POST',
-    headers: fmAuthHeaders({'Content-Type': 'application/json'}),
-    body: '{}',
-  });
-  const data = await res.json();
-  recBtn.disabled = false;
-  recBtn.textContent = 'AI recommendations';
-  const out = document.getElementById('recOut');
-  if (!data.success) {
-    out.textContent = data.error || 'Failed';
-    return;
-  }
-  const lines = (data.recommendations || []).map(r =>
-    `• ${r.room || 'Area'} [${r.severity || 'info'}]: ${r.action || ''} — ${r.reason || ''}`
-  );
-  out.innerHTML = `<strong>${(data.summary || '').replace(/</g,'&lt;')}</strong><br><span class="fm-badge-estimate">method: llm_estimate</span><br>` +
-    lines.map(l => l.replace(/</g,'&lt;')).join('<br>');
-});
-
-document.getElementById('planForm')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  const payload = Object.fromEntries(fd.entries());
-  try { payload.hotspots = JSON.parse(payload.hotspots || '[]'); }
-  catch (_) { alert('Hotspots must be valid JSON'); return; }
-  const res = await fetch('/assets/api/floor-plans', {
-    method: 'POST',
-    headers: fmAuthHeaders({'Content-Type': 'application/json'}),
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json();
-  if (data.success) location.reload();
-  else alert(data.error || 'Save failed');
-});
+window.FM_TWIN_CAN_WRITE = {{ 'true' if can_write else 'false' }};
+window.FM_TWIN_DRAWING = true;
+window.FM_TWIN_PROJECT_ID = {{ project.id if project else 'null' }};
+window.FM_TWIN_PLANS = {{ (plans_payload or [])|tojson }};
+window.FM_TWIN_CATALOG = {{ (catalog_buildings or [])|tojson }};
+window.FM_TWIN_DRAFT = {% if not current_plan %}{{ {'building': draft_building or '', 'floor': draft_floor or ''}|tojson }}{% else %}null{% endif %};
 </script>
+<script src="{{ url_for('static', filename='js/fm-twin.js') }}?v=25"></script>
 {% endset %}
 {% include 'partials/fm_shell_end.html' %}

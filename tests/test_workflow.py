@@ -250,6 +250,130 @@ class TestMySubmissions:
             assert 'hr-pytest-other-user' in ids
             assert isinstance(data.get('live_activity_feed'), list)
 
+    def test_qhsi_forms_listed_on_submitted_forms_hidden_from_pending(
+        self, client, admin_auth_headers, standard_user, app
+    ):
+        """QHSE records appear on Submitted Forms so they can be viewed; pending queue still hides them."""
+        from app.models import Submission, db
+
+        with app.app_context():
+            db.session.add(Submission(
+                submission_id='QHSI-PYTEST-STAFF',
+                user_id=standard_user.id,
+                module_type='qhsi_staff_compliance',
+                site_name='Marina Towers',
+                status='submitted',
+                workflow_status='operations_manager_review',
+                form_data={'project_name': 'Marina Towers'},
+            ))
+            db.session.add(Submission(
+                submission_id='QHSI-PYTEST-INSP',
+                user_id=standard_user.id,
+                module_type='qhsi_inspection',
+                site_name='Marina Towers',
+                status='submitted',
+                workflow_status='operations_manager_review',
+                form_data={'project_name': 'Marina Towers'},
+            ))
+            db.session.commit()
+
+            listed = client.get(
+                '/api/workflow/submissions/my-submissions',
+                headers=admin_auth_headers,
+            )
+            assert listed.status_code == 200
+            listed_data = listed.get_json()
+            listed_ids = [s['submission_id'] for s in listed_data.get('submissions', [])]
+            assert 'QHSI-PYTEST-STAFF' in listed_ids
+            assert 'QHSI-PYTEST-INSP' in listed_ids
+            names = {
+                s['submission_id']: s.get('module_name')
+                for s in listed_data.get('submissions', [])
+            }
+            assert names['QHSI-PYTEST-STAFF'] == 'QHSI Staff Compliance'
+            assert names['QHSI-PYTEST-INSP'] == 'QHSI Inspection'
+
+            insp_page = client.get(
+                '/qhsi/inspection?edit=QHSI-PYTEST-INSP',
+                headers=admin_auth_headers,
+            )
+            assert insp_page.status_code == 200
+            staff_page = client.get(
+                '/qhsi/staff-compliance?edit=QHSI-PYTEST-STAFF',
+                headers=admin_auth_headers,
+            )
+            assert staff_page.status_code == 200
+
+            pending = client.get(
+                '/api/workflow/submissions/pending',
+                headers=admin_auth_headers,
+            )
+            assert pending.status_code == 200
+            pending_ids = [
+                s['submission_id'] for s in pending.get_json().get('submissions', [])
+            ]
+            assert 'QHSI-PYTEST-STAFF' not in pending_ids
+            assert 'QHSI-PYTEST-INSP' not in pending_ids
+
+    def test_nested_leave_form_data_is_viewable(
+        self, client, admin_auth_headers, admin_user, app
+    ):
+        """Legacy smoke-test shape (fields under form_data.data) still prints and hydrates."""
+        from app.models import Submission, db
+
+        with app.app_context():
+            sid = 'HR-LEAVE-NESTED-PYTEST'
+            db.session.add(Submission(
+                submission_id=sid,
+                user_id=admin_user.id,
+                module_type='hr_leave_application',
+                site_name='System Administrator',
+                status='submitted',
+                workflow_status='hr_review',
+                form_data={
+                    'form_type': 'leave_application',
+                    'submitted_by_name': 'System Administrator',
+                    'data': {
+                        'employee_name': 'Smoke Test User',
+                        'employee_id': 'SMOKE-001',
+                        'leave_type': 'Annual',
+                        'from_date': '2026-08-10',
+                        'to_date': '2026-08-12',
+                        'reason': 'Module functional smoke',
+                        'number_of_days': 3,
+                    },
+                },
+            ))
+            db.session.commit()
+
+            detail = client.get(
+                f'/api/workflow/submissions/{sid}',
+                headers=admin_auth_headers,
+            )
+            assert detail.status_code == 200
+            fd = detail.get_json().get('form_data') or {}
+            assert fd.get('employee_name') == 'Smoke Test User'
+            assert fd.get('first_day_of_leave') == '2026-08-10'
+            assert fd.get('last_day_of_leave') == '2026-08-12'
+            assert fd.get('total_days_requested') == 3
+            assert fd.get('leave_type') == 'annual'
+
+            printed = client.get(f'/hr/print/{sid}', headers=admin_auth_headers)
+            assert printed.status_code == 200
+            body = printed.get_data(as_text=True)
+            assert 'Smoke Test User' in body
+            assert 'SMOKE-001' in body
+
+            form_page = client.get(
+                f'/hr/leave-application-form?edit={sid}',
+                headers=admin_auth_headers,
+            )
+            assert form_page.status_code == 200
+
+            pdf = client.get(f'/hr/download-pdf/{sid}', headers=admin_auth_headers)
+            assert pdf.status_code == 200
+            assert pdf.headers.get('Content-Type', '').startswith('application/pdf')
+
     def test_inspection_hero_count_matches_my_submissions(
         self, client, app, admin_user, supervisor_user
     ):
@@ -309,6 +433,10 @@ class TestMySubmissions:
             assert stats.status_code == 200
             hero = stats.get_json()
             hero_count = int(hero['hero_metrics'][0]['value'])
+            assert hero['submitted'] == 2
+            assert hero['pending'] == 2
+            assert hero['approved'] == 0
+            assert hero['total'] == 2
 
             listing = client.get(
                 '/api/workflow/submissions/my-submissions?scope=inspection',

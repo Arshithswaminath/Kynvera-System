@@ -127,7 +127,7 @@ def _kv_table(pairs: list, normal, bold, col_widths=None) -> Table:
     return t
 
 
-def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_stream):
+def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_stream, location_map=None):
     """Main PDF builder entry point."""
     heading, normal, small, bold, center = _styles()
 
@@ -195,14 +195,24 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
     story.append(Spacer(1, 6))
 
     # ── Location ─────────────────────────────────────────────────────────────
+    loc_pairs = []
     if any([ticket.property_name, ticket.zone, ticket.sub_zone, ticket.base_unit]):
-        story += _section_header('Location', heading)
-        story.append(_kv_table([
+        loc_pairs = [
             ('Property', ticket.property_name or '—'),
             ('Zone', ticket.zone or '—'),
             ('Sub Zone', ticket.sub_zone or '—'),
             ('Base Unit', ticket.base_unit or '—'),
-        ], normal, bold))
+        ]
+    pin = location_map or {}
+    lat, lng = pin.get('lat'), pin.get('lng')
+    if lat is not None and lng is not None:
+        loc_pairs.append(('Map pin', f'{float(lat):.6f}, {float(lng):.6f}'))
+        source = pin.get('source')
+        if source:
+            loc_pairs.append(('Pin source', 'Base unit' if source == 'unit' else source.replace('_', ' ').title()))
+    if loc_pairs:
+        story += _section_header('Location', heading)
+        story.append(_kv_table(loc_pairs, normal, bold))
         story.append(Spacer(1, 6))
 
     # ── Work Description ──────────────────────────────────────────────────────

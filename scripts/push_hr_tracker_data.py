@@ -16,6 +16,9 @@ Usage (from repo root):
 Optional:
   python scripts/push_hr_tracker_data.py push --file tmp/hr_tracker_data_export.json
   python scripts/push_hr_tracker_data.py push --replace   # wipe target HR tracker tables first
+
+  # Restore local SQLite from 21 Aug 2026 live smoke Excel (not the 12 Aug JSON):
+  python scripts/push_hr_tracker_data.py restore-21aug
 """
 from __future__ import annotations
 
@@ -28,6 +31,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 DEFAULT_SQLITE = ROOT / "injaaz.db"
 DEFAULT_EXPORT = ROOT / "tmp" / "hr_tracker_data_export.json"
 
@@ -246,9 +251,129 @@ def push_postgres(payload: dict, database_url: str, *, replace: bool) -> None:
     print("Done.")
 
 
+def restore_from_21aug_excel() -> None:
+    """Import Hiring / Leave / Manpower from the 21 Aug 2026 live smoke Excel.
+
+    Uses smoke_artifacts/20260821_135721 (operations.kynvera.net at 13:57),
+    not tmp/hr_tracker_data_export.json (12 Aug).
+    """
+    import shutil
+    from io import BytesIO
+
+    os.environ["AUTO_SEED_DEMO_DATA"] = "0"
+
+    src = ROOT / "smoke_artifacts" / "20260821_135721" / "hr" / "xlsx"
+    hiring_xlsx = src / "hiring_export.xlsx"
+    leave_xlsx = src / "leave_tracker_export.xlsx"
+    manpower_xlsx = src / "manpower_export.xlsx"
+    missing = [p for p in (hiring_xlsx, leave_xlsx, manpower_xlsx) if not p.is_file()]
+    if missing:
+        raise SystemExit(f"Missing 21 Aug Excel: {', '.join(str(p) for p in missing)}")
+
+    from werkzeug.datastructures import FileStorage
+
+    def as_upload(path: Path) -> FileStorage:
+        return FileStorage(stream=BytesIO(path.read_bytes()), filename=path.name)
+
+    db_path = ROOT / "injaaz.db"
+    backup_dir = ROOT / "backups"
+    backup_dir.mkdir(exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if db_path.is_file():
+        dest = backup_dir / f"injaaz.db.before_hr_21aug_restore_{stamp}.db"
+        shutil.copy2(db_path, dest)
+        print(f"backed up sqlite -> {dest}")
+
+    from Injaaz import create_app
+    from app.models import (
+        HiringCandidate,
+        LeaveEmployee,
+        LeaveLog,
+        LeavePlan,
+        ManpowerVacancy,
+        User,
+        db,
+    )
+    from module_hr.hiring_documents import _clear_document_file, _seed_documents
+    from module_hr.hiring_excel import apply_hiring_import, parse_hiring_workbook
+    from module_hr.leave_excel import import_leave_workbook
+    from module_hr.manpower_excel import apply_manpower_import
+
+    app = create_app()
+    with app.app_context():
+        print("before:", {
+            "hiring": HiringCandidate.query.count(),
+            "leave_employees": LeaveEmployee.query.count(),
+            "leave_logs": LeaveLog.query.count(),
+            "vacancies": ManpowerVacancy.query.count(),
+        })
+        user = User.query.filter_by(role="admin").first() or User.query.first()
+
+        print("importing leave …")
+        leave_result = import_leave_workbook(as_upload(leave_xlsx))
+        db.session.commit()
+        print("leave:", leave_result)
+
+        print("importing hiring …")
+        hiring_result = apply_hiring_import(
+            parse_hiring_workbook(as_upload(hiring_xlsx)),
+            user,
+            seed_documents_fn=_seed_documents,
+            clear_document_file_fn=_clear_document_file,
+            update_existing=True,
+            orphan_action="delete",
+            id_conflict_action="replace",
+        )
+        db.session.commit()
+        print("hiring:", {k: hiring_result.get(k) for k in (
+            "created", "updated", "deleted", "skipped", "unchanged", "errors", "warnings",
+        )})
+
+        print("importing manpower (replace vacancies) …")
+        mp_result = apply_manpower_import(
+            as_upload(manpower_xlsx),
+            replace=True,
+            created_by=user.id if user else None,
+        )
+        db.session.commit()
+        print("manpower:", mp_result)
+
+        from sqlalchemy import or_
+
+        sample_cands = HiringCandidate.query.filter(
+            or_(
+                HiringCandidate.comments.ilike("%[SAMPLE]%"),
+                HiringCandidate.hr_ref.ilike("%SAMPLE%"),
+            )
+        ).all()
+        for cand in sample_cands:
+            print(f"removing sample candidate {cand.full_name}")
+            db.session.delete(cand)
+        for log in LeaveLog.query.filter(LeaveLog.notes.ilike("%[SAMPLE]%")).all():
+            db.session.delete(log)
+        for plan in LeavePlan.query.filter(LeavePlan.notes.ilike("%[SAMPLE]%")).all():
+            db.session.delete(plan)
+        db.session.commit()
+
+        print("after:", {
+            "hiring": HiringCandidate.query.count(),
+            "leave_employees": LeaveEmployee.query.count(),
+            "leave_logs": LeaveLog.query.count(),
+            "vacancies": ManpowerVacancy.query.count(),
+        })
+        for cand in HiringCandidate.query.order_by(HiringCandidate.full_name).all():
+            print(f"  candidate: {cand.full_name} | {cand.role} | {cand.hr_ref}")
+        print("leave staff (first 20):")
+        for emp in LeaveEmployee.query.order_by(LeaveEmployee.full_name).limit(20).all():
+            print(f"  {emp.emp_id} {emp.full_name}")
+        print("vacancies:", ManpowerVacancy.query.count())
+        print("restore source: smoke_artifacts/20260821_135721")
+        print("Done restoring 21 Aug HR trackers.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Export/push Leave + Manpower tracker data")
-    parser.add_argument("command", choices=("export", "push"))
+    parser.add_argument("command", choices=("export", "push", "restore-21aug"))
     parser.add_argument("--sqlite", type=Path, default=DEFAULT_SQLITE)
     parser.add_argument("--file", type=Path, default=DEFAULT_EXPORT)
     parser.add_argument(
@@ -260,6 +385,10 @@ def main() -> None:
 
     if args.command == "export":
         export_sqlite(args.sqlite, args.file)
+        return
+
+    if args.command == "restore-21aug":
+        restore_from_21aug_excel()
         return
 
     if not args.file.is_file():

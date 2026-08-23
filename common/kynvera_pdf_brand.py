@@ -16,6 +16,7 @@ from reportlab.lib.units import cm, inch, mm
 from reportlab.platypus import Image, Paragraph, Table, TableStyle
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT
+from reportlab.lib.utils import ImageReader
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,18 @@ def logo_or_text_paragraph(align=TA_RIGHT, font_size=10):
     )
 
 
+def _fitted_image_size(path, max_width, max_height):
+    """Return (width, height) that fit inside max bounds, preserving aspect ratio."""
+    try:
+        iw, ih = ImageReader(path).getSize()
+        if iw <= 0 or ih <= 0:
+            return max_width, max_height
+        scale = min(max_width / iw, max_height / ih)
+        return iw * scale, ih * scale
+    except Exception:
+        return max_width, max_height
+
+
 def draw_page_chrome(
     c,
     page_number: int,
@@ -128,12 +141,15 @@ def draw_page_chrome(
     header_title: str | None = None,
 ):
     """
-    Light header (coral top rule + wordmark + company) and footer with page numbers.
+    Light header (coral top rule + wordmark) and footer with page numbers.
+    The wordmark already reads "Kynvera"; company-name text is only drawn when
+    the logo is missing, or when header_title is a distinct document label.
     Call from a NumberedCanvas-style save() loop.
     """
     page_w, page_h = A4
-    hdr_h = 1.35 * cm
+    hdr_h = 1.42 * cm
     hdr_y = page_h - hdr_h
+    text_y = hdr_y + (hdr_h / 2) - 0.11 * cm
 
     # White header band
     c.setFillColor(WHITE)
@@ -145,18 +161,18 @@ def draw_page_chrome(
     c.line(0, page_h - 1, page_w, page_h - 1)
 
     logo_drawn = False
-    logo_w = 2.8 * cm
-    logo_h = 0.7 * cm
+    drawn_w = 0
     if show_wordmark:
         path = resolve_logo_path(prefer_wordmark=True)
         if path:
             try:
+                drawn_w, drawn_h = _fitted_image_size(path, 3.4 * cm, 0.82 * cm)
                 c.drawImage(
                     path,
                     left_margin,
-                    hdr_y + (hdr_h - logo_h) / 2,
-                    width=logo_w,
-                    height=logo_h,
+                    hdr_y + (hdr_h - drawn_h) / 2,
+                    width=drawn_w,
+                    height=drawn_h,
                     preserveAspectRatio=True,
                     mask="auto",
                 )
@@ -164,16 +180,22 @@ def draw_page_chrome(
             except Exception as exc:
                 logger.warning("Chrome wordmark draw failed: %s", exc)
 
-    name_x = left_margin + (logo_w + 0.2 * cm if logo_drawn else 0)
-    c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(TEXT_DARK)
-    label = header_title or COMPANY_NAME
-    c.drawString(name_x, hdr_y + 0.55 * cm, label)
+    label = (header_title or "").strip()
+    if logo_drawn and (not label or label.lower() == COMPANY_NAME.lower()):
+        label = None
+    elif not logo_drawn:
+        label = label or COMPANY_NAME
+
+    if label:
+        name_x = left_margin + (drawn_w + 0.28 * cm if logo_drawn else 0)
+        c.setFont("Helvetica-Bold", 8)
+        c.setFillColor(TEXT_DARK)
+        c.drawString(name_x, text_y, label)
 
     if report_title:
         c.setFont("Helvetica", 7.5)
         c.setFillColor(TEXT_MUTED)
-        c.drawRightString(page_w - right_margin, hdr_y + 0.55 * cm, report_title)
+        c.drawRightString(page_w - right_margin, text_y, report_title)
 
     # Hairline under header
     c.setStrokeColor(HAIRLINE)

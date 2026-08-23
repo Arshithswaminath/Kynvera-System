@@ -337,40 +337,27 @@ SAMPLE_PREDICTIONS = {
     },
 }
 
-# Simple SVG floor-plan data URL (no external dependency)
-FLOOR_PLAN_SVG = (
-    "data:image/svg+xml;utf8,"
-    "<svg xmlns='http://www.w3.org/2000/svg' width='800' height='500'>"
-    "<rect width='800' height='500' fill='%231a2e24'/>"
-    "<rect x='40' y='40' width='340' height='200' fill='%232a4a3a' stroke='%2388c9a0' stroke-width='2'/>"
-    "<text x='60' y='80' fill='%23cfe7d8' font-family='sans-serif' font-size='18'>Plant Room 1</text>"
-    "<rect x='420' y='40' width='340' height='200' fill='%232a4a3a' stroke='%2388c9a0' stroke-width='2'/>"
-    "<text x='440' y='80' fill='%23cfe7d8' font-family='sans-serif' font-size='18'>Room 2.105</text>"
-    "<rect x='40' y='280' width='720' height='180' fill='%232a4a3a' stroke='%2388c9a0' stroke-width='2'/>"
-    "<text x='60' y='320' fill='%23cfe7d8' font-family='sans-serif' font-size='18'>Corridor / Lift Lobby</text>"
-    "</svg>"
-)
-
+# CAD-style sample drawings (static SVG — not a data URL)
 SAMPLE_FLOOR_PLANS = [
     {
         'name': f'{SEED_TAG} Tower A — L3 Mechanical',
         'building': 'Tower A',
         'floor': 'L3',
-        'image_url': FLOOR_PLAN_SVG,
+        'image_url': '/static/img/fm-twin-l3.svg',
         'hotspots': [
             {'room': 'Plant Room 1', 'x_pct': 22, 'y_pct': 28, 'asset_ids': ['AST-0001', 'AST-0003']},
-            {'room': '2.105', 'x_pct': 68, 'y_pct': 28, 'asset_ids': ['AST-0002']},
-            {'room': 'Lobby Lift Lobby', 'x_pct': 50, 'y_pct': 72, 'asset_ids': ['AST-0005']},
+            {'room': '2.105', 'x_pct': 78, 'y_pct': 30, 'asset_ids': ['AST-0002']},
+            {'room': 'Lobby Lift Lobby', 'x_pct': 50, 'y_pct': 74, 'asset_ids': ['AST-0005']},
         ],
     },
     {
         'name': f'{SEED_TAG} Tower B — Roof Plant',
         'building': 'Tower B',
         'floor': 'Roof',
-        'image_url': FLOOR_PLAN_SVG,
+        'image_url': '/static/img/fm-twin-roof.svg',
         'hotspots': [
-            {'room': 'Roof Plant', 'x_pct': 45, 'y_pct': 40, 'asset_ids': ['AST-0008']},
-            {'room': '5.210', 'x_pct': 70, 'y_pct': 30, 'asset_ids': ['AST-0007']},
+            {'room': 'Roof Plant', 'x_pct': 31, 'y_pct': 41, 'asset_ids': ['AST-0008']},
+            {'room': '5.210', 'x_pct': 86, 'y_pct': 32, 'asset_ids': ['AST-0007']},
         ],
     },
 ]

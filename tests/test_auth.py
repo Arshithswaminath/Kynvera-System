@@ -375,3 +375,12 @@ class TestErrorResponseFormat:
             data = response.get_json()
             assert 'error_code' in data
             assert isinstance(data['error_code'], str)
+
+
+class TestHealthEndpoint:
+    def test_health_ok_when_users_table_exists(self, client):
+        response = client.get('/health')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data.get('database') == 'healthy'
+        assert data.get('status') == 'healthy'

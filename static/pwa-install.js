@@ -10,7 +10,7 @@ if ('serviceWorker' in navigator) {
           const newWorker = registration.installing;
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              if (confirm('A new version of Injaaz is available. Reload to update?')) {
+              if (confirm('A new version of Kynvera is available. Reload to update?')) {
                 window.location.reload();
               }
             }

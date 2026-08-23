@@ -24,6 +24,7 @@ HR_FORM_PATHS = [
     "/hr/staff-appraisal-form",
     "/hr/station-clearance-form",
     "/hr/visa-renewal-form",
+    "/hr/asset-handover-form",
 ]
 
 # Admin can access HR queue pages (see module_hr.routes guards)

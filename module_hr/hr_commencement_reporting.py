@@ -155,7 +155,7 @@ def resolve_commencement_reporting_to(
         return (
             None,
             (
-                "Reporting To: select your manager from the Injaaz account list "
+                "Reporting To: select your manager from the Kynvera account list "
                 "so they can sign the Reporting To block."
             ),
             None,

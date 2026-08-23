@@ -165,6 +165,12 @@ body.hr-dashboard .modules-section {
   box-shadow: 0 1px 3px rgba(255, 142, 104, 0.08);
 }
 
+/* Device Management: sit flush under the painted nav (5.5rem left a white strip). */
+body.dm-device-mgmt-page.has-main-nav {
+  --dm-nav-top: var(--nav-bar-h, calc(40px + 1.75rem + env(safe-area-inset-top, 0px)));
+  padding-top: var(--dm-nav-top) !important;
+}
+
 /* Device Management: module topbar (.dm-topbar) already divides content; strip nav hairline (same idea as DocHub v2). */
 body.dm-device-mgmt-page.has-main-nav .nav {
   border-bottom: none;
@@ -1003,6 +1009,42 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
   margin-bottom: 0.45rem;
 }
 
+/* Inspection hub — same metric-card chrome as the main dashboard */
+.inspection-dashboard .dashboard-widget-header {
+  padding: 12px 16px 10px;
+}
+.inspection-dashboard .dashboard-widget-body {
+  padding: 1.35rem 1.4rem;
+}
+.inspection-dashboard .inspection-stats-grid {
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 0;
+}
+.inspection-dashboard .dashboard-stat-card {
+  padding: 1.1rem 1.15rem;
+  min-height: 7rem;
+}
+.inspection-dashboard a.dashboard-stat-card {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.inspection-dashboard a.dashboard-stat-card:hover,
+.inspection-dashboard a.dashboard-stat-card:focus-visible {
+  border-color: rgba(255, 142, 104, 0.28);
+  box-shadow: 0 2px 8px rgba(255, 142, 104, 0.08);
+  outline: none;
+}
+.inspection-dashboard .dashboard-stat-icon {
+  margin-bottom: 0.65rem;
+}
+.inspection-dashboard .dashboard-stat-label {
+  margin-bottom: 0.45rem;
+}
+
 .dashboard-stat-card {
   background: #ffffff;
   background-color: #ffffff;
@@ -1171,6 +1213,20 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 
   .page-dashboard .dashboard-stat-icon {
     margin-bottom: 0.55rem !important;
+  }
+
+  .inspection-dashboard .dashboard-widget-body {
+    padding: 1.15rem 1.2rem;
+  }
+  .inspection-dashboard .inspection-stats-grid {
+    gap: 0.8rem;
+  }
+  .inspection-dashboard .dashboard-stat-card {
+    padding: 0.95rem 1rem;
+    min-height: 6.5rem;
+  }
+  .inspection-dashboard .dashboard-stat-icon {
+    margin-bottom: 0.55rem;
   }
   .dashboard-stat-value {
     font-size: 1.4rem;
@@ -1508,6 +1564,57 @@ body.page-dashboard .modules-section {
 
 .module-card:hover .module-arrow svg {
   transform: translateX(3px);
+}
+
+.module-card--soon {
+  cursor: default;
+  opacity: 0.92;
+}
+
+a.module-card--soon {
+  cursor: pointer;
+}
+
+.module-card--soon:hover {
+  transform: none;
+  border-color: var(--border-color);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04);
+}
+
+.module-card--soon .module-soon-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #9a3412;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  padding: 0.22rem 0.6rem;
+}
+
+.module-card--soon .module-arrow {
+  color: #c2410c;
+}
+
+.nav-soon-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9a3412;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  padding: 1px 7px;
+  line-height: 1.4;
 }
 
 /* ===========================================

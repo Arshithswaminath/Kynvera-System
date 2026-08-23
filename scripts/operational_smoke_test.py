@@ -228,6 +228,11 @@ def main() -> int:
         if cat_list:
             category = cat_list[0]
             fault_type = category
+    priority = 'medium'
+    pri_list = options.get('priorities') if isinstance(options, dict) else None
+    if isinstance(pri_list, list) and pri_list:
+        first = pri_list[0]
+        priority = first.get('value') if isinstance(first, dict) else str(first)
 
     create_body = {
         'title': f'Operational smoke test {int(time.time())}',
@@ -235,7 +240,7 @@ def main() -> int:
         'service_group': service_group,
         'category': category,
         'fault_type': fault_type,
-        'priority': 'P3',
+        'priority': priority,
         'work_description': 'Automated operational smoke test — safe to close.',
     }
 

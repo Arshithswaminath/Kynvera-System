@@ -13,6 +13,7 @@ from io import BytesIO
 import base64
 from common.utils import get_image_for_pdf
 from common.datetime_utils import utc_now_naive
+from common import kynvera_pdf_brand as brand
 
 # Try importing PIL for better image handling
 try:
@@ -395,7 +396,7 @@ def create_pdf_report(data, output_dir):
             ['Total Items Inspected:', str(len(data.get('items', [])))]
         ]
         
-        site_table = create_info_table(site_info_data, col_widths=[2.35*inch, 4.65*inch])
+        site_table = create_info_table(site_info_data)
         story.append(site_table)
         story.append(Spacer(1, 0.1*inch))
         
@@ -421,7 +422,7 @@ def create_pdf_report(data, output_dir):
                     ['Photos Attached:', str(len(item.get('photos', [])))]
                 ]
                 
-                item_table = create_info_table(item_details, col_widths=[2.35*inch, 4.65*inch])
+                item_table = create_info_table(item_details)
                 story.append(item_table)
                 story.append(Spacer(1, 0.06*inch))
                 
@@ -443,7 +444,6 @@ def create_pdf_report(data, output_dir):
         # MATERIALS REQUIRED SECTION
         materials = data.get('materials_required', [])
         if materials and isinstance(materials, list) and len(materials) > 0:
-            add_section_heading(story, "Materials Required")
             mat_headers = ['#', 'Material Name', 'Brand', 'Department', 'UOM', 'Qty', 'Unit Price (AED)', 'Line Total (AED)']
             mat_data = []
             materials_total = 0.0
@@ -462,33 +462,19 @@ def create_pdf_report(data, output_dir):
                     f"{unit_price:,.2f}",
                     f"{line_total:,.2f}",
                 ])
-            mat_col_widths = [0.3*inch, 1.8*inch, 0.9*inch, 0.8*inch, 0.5*inch, 0.45*inch, 0.9*inch, 0.95*inch]
-            mat_table_data = [mat_headers] + mat_data
-            mat_table = Table(mat_table_data, colWidths=mat_col_widths, repeatRows=1)
-            mat_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#125435')),
-                ('TEXTCOLOR',  (0, 0), (-1, 0), colors.white),
-                ('FONTNAME',   (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE',   (0, 0), (-1, 0), 8),
-                ('ALIGN',      (0, 0), (-1, 0), 'CENTER'),
-                ('FONTNAME',   (0, 1), (-1, -1), 'Helvetica'),
-                ('FONTSIZE',   (0, 1), (-1, -1), 8),
-                ('ALIGN',      (0, 1), (-1, -1), 'RIGHT'),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.white]),
-                ('GRID',       (0, 0), (-1, -1), 0.5, colors.HexColor('#BBDEFB')),
-                ('TOPPADDING', (0, 0), (-1, -1), 5),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-                ('LEFTPADDING', (0, 0), (-1, -1), 6),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-            ]))
-            story.append(mat_table)
-            story.append(Paragraph(
+            mat_col_widths = [0.35*inch, 1.7*inch, 0.9*inch, 0.85*inch, 0.5*inch, 0.45*inch, 1.1*inch, 1.15*inch]
+            mat_table = create_data_table(
+                mat_headers, mat_data, col_widths=mat_col_widths, numeric_cols=[0, 5, 6, 7]
+            )
+            grand_total = Paragraph(
                 f"<b>Materials Grand Total (AED):</b> {materials_total:,.2f}",
                 ParagraphStyle('MatGrandTotal', parent=getSampleStyleSheet()['Normal'],
                                alignment=TA_RIGHT, fontName='Helvetica-Bold', fontSize=10,
-                               spaceBefore=4, spaceAfter=4)
-            ))
-            story.append(Spacer(1, 0.15*inch))
+                               spaceBefore=6, spaceAfter=4)
+            )
+            append_section_keep_together(
+                story, "Materials Required", [mat_table, grand_total, Spacer(1, 0.15*inch)]
+            )
 
         # SIGNATURES PAGE - Professional format with all signatures
         signatures = {}
@@ -1050,9 +1036,9 @@ def create_pdf_report(data, output_dir):
                 if sig_rows:
                     sig_table = Table(sig_rows, colWidths=[2*inch, 3.5*inch])
                     sig_table.setStyle(TableStyle([
-                        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                        ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#125435')),
+                        ('GRID', (0, 0), (-1, -1), 0.4, brand.HAIRLINE),
                         ('BACKGROUND', (0, 0), (-1, -1), colors.white),
                         ('TOPPADDING', (0, 0), (-1, -1), 8),
                         ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
@@ -1109,10 +1095,10 @@ def create_pdf_report(data, output_dir):
             return (u_dict.get('full_name') or u_dict.get('username') or '').strip()
 
         _signoff_cell = ParagraphStyle(
-            'SignoffCell', parent=styles['Normal'], alignment=TA_RIGHT
+            'SignoffCell', parent=styles['Normal'], alignment=TA_LEFT
         )
         _signoff_cell_small = ParagraphStyle(
-            'SignoffCellSmall', parent=styles['Small'], alignment=TA_RIGHT
+            'SignoffCellSmall', parent=styles['Small'], alignment=TA_LEFT
         )
 
         def _make_sig_cell(sig_url, _sty):
@@ -1126,7 +1112,7 @@ def create_pdf_report(data, output_dir):
                 )
                 if prepared and draw_w > 0 and draw_h > 0:
                     sig_img = Image(prepared, width=draw_w, height=draw_h)
-                    sig_img.hAlign = 'RIGHT'
+                    sig_img.hAlign = 'LEFT'
                     return sig_img
                 return Paragraph('<i>Signature not available</i>', _signoff_cell_small)
             except Exception as _ex:
@@ -1147,7 +1133,7 @@ def create_pdf_report(data, output_dir):
 
         # Header row — use white text via inline XML so it shows on the dark background
         _hdr_style = ParagraphStyle(
-            'HdrCell', parent=styles['Normal'], textColor=colors.white, fontSize=9, alignment=TA_RIGHT
+            'HdrCell', parent=styles['Normal'], textColor=brand.TEXT_DARK, fontSize=9, alignment=TA_LEFT
         )
         signoff_rows = [[
             Paragraph('<b>Role</b>', _hdr_style),
@@ -1227,23 +1213,19 @@ def create_pdf_report(data, output_dir):
         signoff_table = Table(signoff_rows, colWidths=_COL_W, repeatRows=1)
         n = len(signoff_rows)
         ts = TableStyle([
-            # Header row
-            ('BACKGROUND',    (0, 0), (-1, 0),  colors.HexColor('#125435')),
-            ('TEXTCOLOR',     (0, 0), (-1, 0),  colors.white),
+            ('BACKGROUND',    (0, 0), (-1, 0),  brand.SOFT_WASH),
+            ('TEXTCOLOR',     (0, 0), (-1, 0),  brand.TEXT_DARK),
             ('FONTNAME',      (0, 0), (-1, 0),  'Helvetica-Bold'),
             ('FONTSIZE',      (0, 0), (-1, 0),  9),
-            # Data rows: white background so transparent signatures blend in
             ('BACKGROUND',    (0, 1), (-1, n-1), colors.white),
-            # Grid
-            ('GRID',          (0, 0), (-1, -1), 0.75, colors.HexColor('#125435')),
-            # Alignment
+            ('GRID',          (0, 0), (-1, -1), 0.4, brand.HAIRLINE),
+            ('LINEBELOW',     (0, 0), (-1, 0),  1.2, brand.PRIMARY),
             ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
-            ('ALIGN',         (0, 0), (-1, -1), 'RIGHT'),
-            # Padding
+            ('ALIGN',         (0, 0), (-1, -1), 'LEFT'),
             ('TOPPADDING',    (0, 0), (-1, -1), 8),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('LEFTPADDING',   (0, 0), (-1, -1), 6),
-            ('RIGHTPADDING',  (0, 0), (-1, -1), 6),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
         ])
         signoff_table.setStyle(ts)
 

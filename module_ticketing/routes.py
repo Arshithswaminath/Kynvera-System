@@ -31,8 +31,14 @@ from app.models import (
     TicketMaterial, TicketManpower, Notification,
     TicketProject, TicketProperty, TicketZone, TicketSubZone,
     TicketBaseUnit, TicketTitleTemplate, TicketSupervisorTeam,
+    TicketProjectSupervisor, TicketProjectTeamMember,
+    TicketVendor, TicketVendorTechnician, TicketProjectVendor,
+    TicketServiceGroup, TicketFaultCategory, TicketFaultCode,
+    TicketPriority, TicketHoldReason, TicketCancelReason,
     BDProject, TicketEmailIntake, Asset, TicketTriageLog, TicketAsset,
 )
+from module_ticketing import ticket_field_catalog as tkt_fields
+from module_ticketing import project_resources as tkt_resources
 from module_ticketing.tz_utils import to_gst, GST_OFFSET
 
 logger = logging.getLogger(__name__)
@@ -135,7 +141,7 @@ _IN_PROGRESS_QUEUE_STATUSES = frozenset({
 
 # Statuses at or beyond "Work Started" — the cost module (manpower/materials) only
 # unlocks once the technician has actually begun work on site, and locks again once
-# the service-provider supervisor has verified/submitted costs (`provider_closed`).
+# the supervisor verifies and closes the ticket.
 _COST_ENTRY_ALLOWED_STATUSES = frozenset({
     'work_started', 'work_completed', 'verification',
     # legacy
@@ -244,6 +250,11 @@ def _migrate_ticket_columns(app):
         # FM asset link + AI triage SLA
         ('asset_id',                       'INTEGER'),
         ('sla_hours',                      'INTEGER'),
+        # Location hierarchy FKs (names stay as snapshots)
+        ('property_id',                    'INTEGER'),
+        ('zone_id',                        'INTEGER'),
+        ('sub_zone_id',                    'INTEGER'),
+        ('base_unit_id',                   'INTEGER'),
     ]
     with app.app_context():
         try:
@@ -310,6 +321,94 @@ def _migrate_ticket_project_columns(app):
             logger.warning('Ticket project migration warning: %s', exc)
 
 
+def _migrate_add_columns(app, table, cols):
+    """Add missing columns on SQLite and PostgreSQL (create_all does not ALTER)."""
+    with app.app_context():
+        try:
+            db.create_all()
+            inspector = inspect(db.engine)
+            if table not in inspector.get_table_names():
+                return
+            existing = {col['name'] for col in inspector.get_columns(table)}
+            missing = [(name, typ) for name, typ in cols if name not in existing]
+            if not missing:
+                return
+            logger.info('Adding missing %s columns: %s', table, [name for name, _ in missing])
+            with db.engine.begin() as conn:
+                for col_name, col_sql in missing:
+                    try:
+                        conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {col_name} {col_sql}'))
+                        logger.info('Added column %s.%s', table, col_name)
+                    except Exception as exc:
+                        err = str(exc).lower()
+                        if 'already exists' in err or 'duplicate' in err:
+                            logger.info('Column %s.%s already exists, skipping', table, col_name)
+                        else:
+                            logger.warning('Could not add %s.%s: %s', table, col_name, exc)
+        except Exception as exc:
+            logger.warning('%s migration warning: %s', table, exc)
+
+
+def _migrate_unique_indexes(app, specs):
+    """CREATE UNIQUE INDEX IF NOT EXISTS for nullable business keys (codes)."""
+    with app.app_context():
+        try:
+            inspector = inspect(db.engine)
+            tables = set(inspector.get_table_names())
+            with db.engine.begin() as conn:
+                for table, column, index_name in specs:
+                    if table not in tables:
+                        continue
+                    try:
+                        conn.execute(text(
+                            f'CREATE UNIQUE INDEX IF NOT EXISTS {index_name} ON {table} ({column})'
+                        ))
+                    except Exception as exc:
+                        err = str(exc).lower()
+                        if 'already exists' in err or 'duplicate' in err:
+                            continue
+                        logger.warning('Could not create index %s: %s', index_name, exc)
+        except Exception as exc:
+            logger.warning('Location unique-index migration warning: %s', exc)
+
+
+def _migrate_ticket_property_columns(app):
+    """Add CRM metadata + map coordinates on location tables."""
+    _migrate_add_columns(app, 'ticket_properties', [
+        ('latitude', 'REAL'),
+        ('longitude', 'REAL'),
+        ('code', 'VARCHAR(64)'),
+        ('area', 'VARCHAR(160)'),
+        ('city', 'VARCHAR(120)'),
+        ('country', 'VARCHAR(120)'),
+        ('client_name', 'VARCHAR(160)'),
+        ('property_type', 'VARCHAR(80)'),
+        ('criticality', 'VARCHAR(80)'),
+        ('ownership_type', 'VARCHAR(80)'),
+        ('plot_no', 'VARCHAR(80)'),
+        ('external_ref', 'VARCHAR(80)'),
+        ('status', 'VARCHAR(40)'),
+        ('initiation_date', 'DATE'),
+    ])
+    _migrate_add_columns(app, 'ticket_zones', [
+        ('code', 'VARCHAR(64)'),
+    ])
+    _migrate_add_columns(app, 'ticket_sub_zones', [
+        ('code', 'VARCHAR(64)'),
+    ])
+    _migrate_add_columns(app, 'ticket_base_units', [
+        ('code', 'VARCHAR(64)'),
+        ('latitude', 'REAL'),
+        ('longitude', 'REAL'),
+    ])
+    _migrate_unique_indexes(app, [
+        ('ticket_properties', 'code', 'uq_ticket_properties_code'),
+        ('ticket_zones', 'code', 'uq_ticket_zones_code'),
+        ('ticket_sub_zones', 'code', 'uq_ticket_sub_zones_code'),
+        ('ticket_base_units', 'code', 'uq_ticket_base_units_code'),
+    ])
+
+
 EMAIL_INTAKE_USERNAME = 'email_intake'
 EMAIL_INTAKE_EMAIL = 'email-intake@injaaz.system'
 
@@ -347,7 +446,16 @@ def _on_register(state):
     """Run column migrations when the blueprint is first registered."""
     _migrate_ticket_columns(state.app)
     _migrate_ticket_project_columns(state.app)
+    _migrate_ticket_property_columns(state.app)
     _ensure_email_intake_user(state.app)
+    with state.app.app_context():
+        try:
+            db.create_all()
+            tkt_resources.seed_supervisor_roster_from_legacy()
+            tkt_resources.seed_sample_vendors_if_empty()
+            tkt_fields.seed_ticket_field_catalogs()
+        except Exception as exc:
+            logger.warning('Ticketing resource/catalog seed skipped: %s', exc)
 
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'}
@@ -365,6 +473,66 @@ def _current_user():
     except (TypeError, ValueError):
         return None
 
+
+
+def _has_map_coords(obj) -> bool:
+    return (
+        obj is not None
+        and obj.latitude is not None
+        and obj.longitude is not None
+        and abs(float(obj.latitude)) <= 90
+        and abs(float(obj.longitude)) <= 180
+    )
+
+
+def _ticket_location_map_payload(ticket):
+    """Pin payload for the ticket-detail map: unit coords, else property coords."""
+    path = ' / '.join(
+        p for p in [ticket.property_name, ticket.zone, ticket.sub_zone, ticket.base_unit] if p
+    )
+    unit = db.session.get(TicketBaseUnit, ticket.base_unit_id) if ticket.base_unit_id else None
+    prop = db.session.get(TicketProperty, ticket.property_id) if ticket.property_id else None
+    if prop is None and (ticket.property_name or '').strip():
+        q = TicketProperty.query.filter_by(name=ticket.property_name.strip(), is_active=True)
+        proj_name = (ticket.project or '').strip()
+        if proj_name:
+            proj = TicketProject.query.filter_by(name=proj_name).first()
+            if proj:
+                hit = q.filter_by(project_id=proj.id).first()
+                if hit:
+                    prop = hit
+        if prop is None:
+            rows = q.all()
+            with_c = [r for r in rows if _has_map_coords(r)]
+            if len(with_c) == 1:
+                prop = with_c[0]
+            elif len(rows) == 1:
+                prop = rows[0]
+
+    if not path and prop is None and unit is None:
+        return None
+
+    lat = lng = None
+    source = None
+    if _has_map_coords(unit):
+        lat, lng, source = float(unit.latitude), float(unit.longitude), 'unit'
+    elif _has_map_coords(prop):
+        lat, lng, source = float(prop.latitude), float(prop.longitude), 'property'
+
+    return {
+        'lat': lat,
+        'lng': lng,
+        'label': path or (prop.display_label() if prop else ''),
+        'ticket_id': ticket.ticket_id,
+        'project': ticket.project or '',
+        'property_id': prop.id if prop else None,
+        'property_name': ticket.property_name or (prop.name if prop else ''),
+        'zone': ticket.zone or '',
+        'sub_zone': ticket.sub_zone or '',
+        'base_unit': ticket.base_unit or (unit.name if unit else ''),
+        'base_unit_id': unit.id if unit else None,
+        'source': source,
+    }
 
 
 def _has_access(user: User) -> bool:
@@ -434,14 +602,25 @@ def _ticket_visibility_or_clause(user: User):
         Ticket.supervisor_id == user.id,
         Ticket.technician_id == user.id,
     ]
+    user_projects = tkt_resources.user_supervised_project_names_lower(user)
+    if user_projects:
+        clauses.append(db.func.lower(Ticket.project).in_(user_projects))
     if _user_in_supervisor_pool(user):
-        # Shared supervisor queue: open/pending only when unassigned or assigned to this user
-        clauses.append(
-            db.and_(
-                Ticket.status.in_(('pending_supervisor', 'open')),
-                db.or_(Ticket.assigned_to_id.is_(None), Ticket.assigned_to_id == user.id),
-            )
+        # Shared supervisor queue: open/pending only when the project has no roster
+        shared = db.and_(
+            Ticket.status.in_(('pending_supervisor', 'open')),
+            db.or_(Ticket.assigned_to_id.is_(None), Ticket.assigned_to_id == user.id),
         )
+        rostered = tkt_resources.rostered_project_names_lower()
+        if rostered:
+            shared = db.and_(
+                shared,
+                db.or_(
+                    Ticket.project.is_(None),
+                    db.func.lower(Ticket.project).notin_(rostered),
+                ),
+            )
+        clauses.append(shared)
     return db.or_(*clauses)
 
 
@@ -483,7 +662,13 @@ def _can_user_view_ticket(user: User, ticket: Ticket) -> bool:
         or ticket.technician_id == user.id
     ):
         return True
+    proj_low = (ticket.project or '').strip().lower()
+    if proj_low and proj_low in tkt_resources.user_supervised_project_names_lower(user):
+        return True
     if ticket.status in ('pending_supervisor', 'open') and _user_in_supervisor_pool(user):
+        rostered = tkt_resources.rostered_project_names_lower()
+        if proj_low and proj_low in rostered:
+            return False
         if ticket.assigned_to_id is None or ticket.assigned_to_id == user.id:
             return True
         return False
@@ -531,37 +716,28 @@ def _recalc_total_cost(ticket: Ticket):
         ticket.selling_price = None
 
 
-def _is_supervisor_of_ticket(user: User) -> bool:
-    """True if this user is designated as a supervisor (has a team or designation)."""
+def _is_supervisor_of_ticket(user: User, ticket: Ticket | None = None) -> bool:
+    """True if this user is designated as a supervisor (has a team, designation, or project roster)."""
     if user is None:
         return False
     if user.role == 'admin':
         return True
     des = (getattr(user, 'designation', None) or '').strip().lower()
-    return (
-        des == 'supervisor'
-        or TicketSupervisorTeam.query.filter_by(supervisor_id=user.id, is_active=True).first() is not None
-    )
+    if des == 'supervisor':
+        return True
+    if TicketSupervisorTeam.query.filter_by(supervisor_id=user.id, is_active=True).first() is not None:
+        return True
+    if ticket is not None and tkt_resources.user_on_project_supervisor_roster(user, ticket.project or ''):
+        return True
+    if TicketProjectSupervisor.query.filter_by(user_id=user.id).first() is not None:
+        return True
+    return False
 
 
 def _get_supervisor_team(supervisor_id: int) -> list:
     """Return active team members for the given supervisor."""
     entries = TicketSupervisorTeam.query.filter_by(supervisor_id=supervisor_id, is_active=True).all()
     return entries
-
-
-def _ticket_roster_fallback_workers():
-    rows = []
-    for d in _dummy_technicians():
-        rows.append({
-            'user_id': None,
-            'team_entry_id': None,
-            'code': d['code'],
-            'name': d['name'],
-            'speciality': d['speciality'],
-            'sidebar_row_id': d['code'],
-        })
-    return rows
 
 
 def _ticketing_team_workers_for_sidebar(supervisor_id: int) -> list:
@@ -584,26 +760,41 @@ def _ticketing_team_workers_for_sidebar(supervisor_id: int) -> list:
 
 
 def _ticketing_worker_pick_list(roster_supervisor_user_id):
-    """Prefer DB team for this supervisor account; fallback static demo roster."""
+    """Project/supervisor team members for manpower autocomplete (no dummy roster)."""
     if roster_supervisor_user_id:
-        real = _ticketing_team_workers_for_sidebar(roster_supervisor_user_id)
-        if real:
-            return real
-    return _ticket_roster_fallback_workers()
+        return _ticketing_team_workers_for_sidebar(roster_supervisor_user_id)
+    return []
 
 
-def _technician_users_available_for_team_add(supervisor_id: int):
-    excluded = (
-        db.session.query(TicketSupervisorTeam.technician_id)
-        .filter(TicketSupervisorTeam.supervisor_id == supervisor_id, TicketSupervisorTeam.is_active == True)  # noqa: E712
-        .distinct()
-        .all()
+def _technician_on_assign_roster(ticket: Ticket, technician: User) -> bool:
+    """True if the user is on the project team, supervisor team, or a linked vendor tech."""
+    if technician is None:
+        return False
+    in_sup_team = TicketSupervisorTeam.query.filter_by(
+        supervisor_id=ticket.supervisor_id or 0,
+        technician_id=technician.id,
+        is_active=True,
+    ).first()
+    if in_sup_team:
+        return True
+    tp = tkt_resources.find_project_by_name(ticket.project or '')
+    if not tp:
+        return False
+    if TicketProjectTeamMember.query.filter_by(project_id=tp.id, user_id=technician.id).first():
+        return True
+    vendor_ids = [
+        r[0] for r in
+        db.session.query(TicketProjectVendor.vendor_id).filter_by(project_id=tp.id).all()
+    ]
+    if not vendor_ids:
+        return False
+    return (
+        TicketVendorTechnician.query.filter(
+            TicketVendorTechnician.vendor_id.in_(vendor_ids),
+            TicketVendorTechnician.user_id == technician.id,
+        ).first()
+        is not None
     )
-    ex = [r[0] for r in excluded]
-    q = User.query.filter(User.designation == 'technician', User.is_active == True)  # noqa: E712
-    if ex:
-        q = q.filter(~User.id.in_(ex))
-    return q.order_by(User.full_name).all()
 
 
 def _is_ticket_assignment_supervisor(u: User) -> bool:
@@ -613,6 +804,8 @@ def _is_ticket_assignment_supervisor(u: User) -> bool:
     if (getattr(u, 'designation', None) or '').strip().lower() == 'supervisor':
         return True
     if TicketSupervisorTeam.query.filter_by(supervisor_id=u.id, is_active=True).first() is not None:
+        return True
+    if TicketProjectSupervisor.query.filter_by(user_id=u.id).first() is not None:
         return True
     return False
 
@@ -649,26 +842,14 @@ def _supervisor_assignees_for_dropdown(extra_user=None) -> list:
 
 
 def _resolve_project_supervisor_id(project_name: str) -> int | None:
-    """Return the ticketing supervisor user id for a configured project name, if any."""
-    if not project_name:
+    """Return the ticketing supervisor user id when the project has exactly one supervisor."""
+    sid = tkt_resources.resolve_single_project_supervisor_id(project_name or '')
+    if not sid:
         return None
-    pn = project_name.strip()
-    low = pn.lower()
-    if low in ('', 'standalone location'):
-        return None
-    tp = (
-        TicketProject.query.filter(
-            db.func.lower(TicketProject.name) == low,
-            TicketProject.is_active == True,  # noqa: E712
-        )
-        .first()
-    )
-    if not tp or not tp.supervisor_id:
-        return None
-    u = db.session.get(User, tp.supervisor_id)
+    u = db.session.get(User, sid)
     if not u or not u.is_active or not _is_ticket_assignment_supervisor(u):
         return None
-    return tp.supervisor_id
+    return sid
 
 
 def _apply_ticket_project_routing(ticket: Ticket) -> int | None:
@@ -713,55 +894,6 @@ def _get_sidebar_stats(user: User) -> dict:
         'pending_verification': statuses.count('pending_verification'),
         'resolved':             statuses.count('resolved'),
     }
-
-
-def _sample_vendor_companies() -> list:
-    """Sample service-provider vendors the municipality can assign work orders to."""
-    return [
-        {
-            'id': 'injaaz',
-            'name': 'Injaaz Facilities Management',
-            'technicians': [
-                {'code': 'TECH-001', 'name': 'Arshith Swaminath P', 'speciality': 'HVAC', 'user_id': None},
-                {'code': 'TECH-002', 'name': 'Fatima Noor', 'speciality': 'Electrical', 'user_id': None},
-            ],
-        },
-        {
-            'id': 'nafco',
-            'name': 'NAFCO Technical Services',
-            'technicians': [
-                {'code': 'TECH-003', 'name': 'Mohamed Fawaz', 'speciality': 'Plumbing', 'user_id': None},
-                {'code': 'TECH-004', 'name': 'Rafiq Ali', 'speciality': 'Civil', 'user_id': None},
-            ],
-        },
-        {
-            'id': 'emrill',
-            'name': 'Emrill Services LLC',
-            'technicians': [
-                {'code': 'TECH-005', 'name': 'Shamnad K', 'speciality': 'Cleaning', 'user_id': None},
-            ],
-        },
-        {
-            'id': 'fcc',
-            'name': 'FCC Facilities Contracting',
-            'technicians': [
-                {'code': 'TECH-006', 'name': 'Jerin Thomas', 'speciality': 'General Maintenance', 'user_id': None},
-            ],
-        },
-    ]
-
-
-def _dummy_technicians() -> list:
-    """Flattened demo technician pool grouped under sample vendor companies."""
-    rows = []
-    for co in _sample_vendor_companies():
-        for t in co['technicians']:
-            rows.append({
-                **t,
-                'vendor_id': co['id'],
-                'vendor_name': co['name'],
-            })
-    return rows
 
 
 def _add_note(ticket: Ticket, user: User, content: str, note_type: str = 'note'):
@@ -871,6 +1003,18 @@ def _notify_ops_close_pending(ticket: Ticket, body: str):
     title = f'Ready for Final Approval: {ticket.ticket_id}'
     for uid in _ops_overwatch_recipient_ids():
         _notify_user(uid, title, body, ntype='ticket_ops_approval', ticket_id=ticket.ticket_id)
+
+
+def _emit_ticket_closed_side_effects(ticket: Ticket, user):
+    """Audit, webhooks, completion + invoice emails after a ticket is closed."""
+    try:
+        from common.fm_integration import fm_log_audit, dispatch_webhooks
+        fm_log_audit(user.id, 'ticket_closed', 'ticket', ticket.ticket_id, None)
+        dispatch_webhooks('ticket.closed', ticket.to_dict())
+    except Exception:
+        pass
+    _send_completion_emails(ticket, user)
+    _send_invoice_emails(ticket)
 
 
 def _notify_new_draft_ticket(ticket: Ticket):
@@ -1080,13 +1224,8 @@ def dashboard():
 # List
 # ---------------------------------------------------------------------------
 
-@ticketing_bp.route('/list', methods=['GET'])
-@jwt_required()
-def ticket_list():
-    user = _current_user()
-    if not _has_access(user):
-        abort(403)
-
+def _filtered_visible_tickets(user: User):
+    """Visible tickets with list-page filters (status, priority, project, q)."""
     status_filter = request.args.get('status', '')
     priority_filter = request.args.get('priority', '')
     project_filter = request.args.get('project', '')
@@ -1094,7 +1233,6 @@ def ticket_list():
 
     q = _visible_tickets_base_query(user)
     if status_filter:
-        # Support comma-separated statuses (e.g. dashboard "Resolved" → resolved,closed)
         statuses = [s.strip() for s in status_filter.split(',') if s.strip()]
         if len(statuses) > 1:
             q = q.filter(Ticket.status.in_(statuses))
@@ -1112,7 +1250,17 @@ def ticket_list():
                 Ticket.work_description.ilike(f'%{search}%'),
             )
         )
+    return q, status_filter, priority_filter, project_filter, search
 
+
+@ticketing_bp.route('/list', methods=['GET'])
+@jwt_required()
+def ticket_list():
+    user = _current_user()
+    if not _has_access(user):
+        abort(403)
+
+    q, status_filter, priority_filter, project_filter, search = _filtered_visible_tickets(user)
     tickets = q.order_by(Ticket.created_at.desc()).all()
     all_users = User.query.filter_by(is_active=True).order_by(User.full_name).all()
 
@@ -1137,6 +1285,34 @@ def ticket_list():
         search=search,
         sidebar_stats=_get_sidebar_stats(user),
         active_page='ticketing',
+    )
+
+
+@ticketing_bp.route('/api/tickets/export', methods=['GET'])
+@jwt_required()
+def export_tickets():
+    """Excel register of tickets the caller can see, matching All Tickets filters."""
+    user = _current_user()
+    if not _has_access(user):
+        abort(403)
+    q, _, _, _, _ = _filtered_visible_tickets(user)
+    tickets = (
+        q.options(
+            joinedload(Ticket.reporter),
+            joinedload(Ticket.supervisor),
+            joinedload(Ticket.assigned_to),
+        )
+        .order_by(Ticket.created_at.desc())
+        .all()
+    )
+    from module_ticketing.ticket_excel import build_ticket_register
+    buf = build_ticket_register(tickets)
+    stamp = to_gst(datetime.now(timezone.utc).replace(tzinfo=None)).strftime('%Y%m%d')
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=f'tickets_{stamp}.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     )
 
 
@@ -1204,6 +1380,144 @@ def draft_ticket_review(ticket_id):
 # New ticket form
 # ---------------------------------------------------------------------------
 
+_SITE_GEOCODE_CACHE = {}
+_SITE_GEOCODE_CACHE_MAX = 200
+
+
+def _geocode_site_query(query: str):
+    """Resolve a site-path string via Nominatim (cached). Returns {lat, lng} or None."""
+    key = (query or '').strip().lower()
+    if len(key) < 3:
+        return None
+    if key in _SITE_GEOCODE_CACHE:
+        return _SITE_GEOCODE_CACHE[key]
+    hit = None
+    try:
+        resp = requests.get(
+            'https://nominatim.openstreetmap.org/search',
+            params={
+                'q': query.strip(),
+                'format': 'json',
+                'limit': 1,
+                'countrycodes': 'ae',
+            },
+            headers={'User-Agent': 'Kynvera-Injaaz/1.0 (service-tickets)'},
+            timeout=8,
+        )
+        resp.raise_for_status()
+        rows = resp.json() or []
+        if rows:
+            hit = {'lat': float(rows[0]['lat']), 'lng': float(rows[0]['lon'])}
+    except Exception:
+        logger.warning('Site geocode failed for %r', query, exc_info=True)
+        return None
+    if len(_SITE_GEOCODE_CACHE) >= _SITE_GEOCODE_CACHE_MAX:
+        _SITE_GEOCODE_CACHE.clear()
+    _SITE_GEOCODE_CACHE[key] = hit
+    return hit
+
+
+def _apply_coords(obj, lat, lng) -> bool:
+    try:
+        lat_f = float(lat)
+        lng_f = float(lng)
+    except (TypeError, ValueError):
+        return False
+    if not (-90.0 <= lat_f <= 90.0 and -180.0 <= lng_f <= 180.0):
+        return False
+    obj.latitude = lat_f
+    obj.longitude = lng_f
+    return True
+
+
+def _apply_property_coords(prop, lat, lng) -> bool:
+    return _apply_coords(prop, lat, lng)
+
+
+def _opt_int(val):
+    if val in (None, ''):
+        return None
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def _opt_str(val, maxlen=255):
+    if val is None:
+        return None
+    s = str(val).strip()
+    if not s:
+        return None
+    return s[:maxlen]
+
+
+def _apply_ticket_location(ticket, data):
+    """Set location FKs (when valid) and name snapshots from labels or rows."""
+    pid = _opt_int(data.get('property_id'))
+    zid = _opt_int(data.get('zone_id'))
+    szid = _opt_int(data.get('sub_zone_id'))
+    uid = _opt_int(data.get('base_unit_id'))
+
+    prop = db.session.get(TicketProperty, pid) if pid else None
+    zone = db.session.get(TicketZone, zid) if zid else None
+    sz = db.session.get(TicketSubZone, szid) if szid else None
+    unit = db.session.get(TicketBaseUnit, uid) if uid else None
+
+    if zone and prop and zone.property_id != prop.id:
+        zone = None
+    if sz and zone and sz.zone_id != zone.id:
+        sz = None
+    if unit and sz and unit.sub_zone_id != sz.id:
+        unit = None
+
+    ticket.property_id = prop.id if prop else None
+    ticket.zone_id = zone.id if zone else None
+    ticket.sub_zone_id = sz.id if sz else None
+    ticket.base_unit_id = unit.id if unit else None
+
+    snap_prop = _opt_str(data.get('property_name'))
+    snap_zone = _opt_str(data.get('zone'))
+    snap_sz = _opt_str(data.get('sub_zone'))
+    snap_unit = _opt_str(data.get('base_unit'))
+    ticket.property_name = snap_prop or (prop.display_label() if prop else None)
+    ticket.zone = snap_zone or (zone.display_label() if zone else None)
+    ticket.sub_zone = snap_sz or (sz.display_label() if sz else None)
+    ticket.base_unit = snap_unit or (unit.display_label() if unit else None)
+
+
+def _persist_geocode_to_property(property_id, hit):
+    if not property_id or not hit:
+        return False
+    try:
+        pid = int(property_id)
+    except (TypeError, ValueError):
+        return False
+    prop = db.session.get(TicketProperty, pid)
+    if not prop or not prop.is_active:
+        return False
+    if not _apply_coords(prop, hit['lat'], hit['lng']):
+        return False
+    db.session.commit()
+    return True
+
+
+def _persist_geocode_to_base_unit(base_unit_id, hit):
+    if not base_unit_id or not hit:
+        return False
+    try:
+        uid = int(base_unit_id)
+    except (TypeError, ValueError):
+        return False
+    unit = db.session.get(TicketBaseUnit, uid)
+    if not unit or not unit.is_active:
+        return False
+    if not _apply_coords(unit, hit['lat'], hit['lng']):
+        return False
+    db.session.commit()
+    return True
+
+
 @ticketing_bp.route('/new', methods=['GET'])
 @jwt_required()
 def new_ticket_form():
@@ -1223,8 +1537,30 @@ def new_ticket_form():
         procurement_materials=procurement_materials,
         sidebar_stats=_get_sidebar_stats(user),
         active_page='ticketing',
-        google_maps_api_key=(current_app.config.get('GOOGLE_MAPS_API_KEY') or ''),
     )
+
+
+@ticketing_bp.route('/api/geocode', methods=['GET'])
+@jwt_required()
+def api_geocode_site():
+    """Geocode a work-order site path for the New Work Order map preview."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    query = (request.args.get('q') or '').strip()
+    if len(query) < 3:
+        return jsonify({'success': False, 'error': 'Query too short'}), 400
+    hit = _geocode_site_query(query)
+    if not hit:
+        return jsonify({'success': False, 'error': 'No match'}), 404
+    saved = _persist_geocode_to_property(request.args.get('property_id'), hit)
+    saved_unit = _persist_geocode_to_base_unit(request.args.get('base_unit_id'), hit)
+    return jsonify({
+        'success': True,
+        'lat': hit['lat'],
+        'lng': hit['lng'],
+        'saved': bool(saved or saved_unit),
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -1235,6 +1571,10 @@ def new_ticket_form():
 # (see the "Email a ticket" help card in Settings). Mailjet Parse API POSTs parsed
 # JSON to our webhook; we do best-effort field extraction and create a
 # `status='draft'` ticket for supervisor review before it enters the workflow.
+
+def _intake_priorities() -> set[str]:
+    return tkt_fields.priority_values() or {'low', 'medium', 'high', 'critical'}
+
 
 _INTAKE_PRIORITIES = {'low', 'medium', 'high', 'critical'}
 
@@ -1342,11 +1682,11 @@ def _parse_intake_subject(subject: str) -> dict:
     parts = [p.strip() for p in s.split(' - ') if p.strip()]
     if len(parts) >= 3:
         result['category'] = parts[0] or None
-        if parts[1].lower() in _INTAKE_PRIORITIES:
+        if parts[1].lower() in _intake_priorities():
             result['priority'] = parts[1].lower()
         result['title'] = ' - '.join(parts[2:]).strip() or None
     elif len(parts) == 2:
-        if parts[0].lower() in _INTAKE_PRIORITIES:
+        if parts[0].lower() in _intake_priorities():
             result['priority'] = parts[0].lower()
             result['title'] = parts[1]
         else:
@@ -1608,6 +1948,10 @@ def create_ticket():
         if not data.get(field, '').strip():
             return jsonify({'success': False, 'error': f'Field "{field}" is required'}), 400
 
+    pri = data['priority'].strip()
+    if pri not in tkt_fields.priority_values():
+        return jsonify({'success': False, 'error': 'Invalid priority'}), 400
+
     proj_supervisor_id = _resolve_project_supervisor_id(data['project'].strip())
 
     reporter_id = user.id
@@ -1632,14 +1976,11 @@ def create_ticket():
         fault_type=data['fault_type'].strip(),
         priority=data['priority'].strip(),
         work_description=data['work_description'].strip(),
-        property_name=data.get('property_name', '').strip() or None,
-        zone=data.get('zone', '').strip() or None,
-        sub_zone=data.get('sub_zone', '').strip() or None,
-        base_unit=data.get('base_unit', '').strip() or None,
         is_chargeable=bool(data.get('is_chargeable', False)),
         projected_cost=float(data['projected_cost']) if data.get('projected_cost') else None,
         status='pending_supervisor',
     )
+    _apply_ticket_location(ticket, data)
 
     # Optional FM asset link(s) + AI-suggested SLA (human may have accepted on create form)
     asset_pk = data.get('asset_id')
@@ -1763,6 +2104,8 @@ def convert_draft(ticket_id):
     for field in required:
         if not (data.get(field) or '').strip():
             return jsonify({'success': False, 'error': f'Field "{field}" is required'}), 400
+    if data['priority'].strip() not in tkt_fields.priority_values():
+        return jsonify({'success': False, 'error': 'Invalid priority'}), 400
 
     ticket.title = data['title'].strip()
     ticket.project = data['project'].strip()
@@ -1771,10 +2114,7 @@ def convert_draft(ticket_id):
     ticket.fault_type = data['fault_type'].strip()
     ticket.priority = data['priority'].strip()
     ticket.work_description = data['work_description'].strip()
-    ticket.property_name = (data.get('property_name') or '').strip() or None
-    ticket.zone = (data.get('zone') or '').strip() or None
-    ticket.sub_zone = (data.get('sub_zone') or '').strip() or None
-    ticket.base_unit = (data.get('base_unit') or '').strip() or None
+    _apply_ticket_location(ticket, data)
     ticket.is_chargeable = bool(data.get('is_chargeable', False))
     if data.get('projected_cost'):
         try:
@@ -1873,18 +2213,17 @@ def ticket_detail(ticket_id):
     mp_total  = sum(e.total_cost or 0 for e in manpower_entries)
 
     # Supervisor workflow context
-    user_is_supervisor = _is_supervisor_of_ticket(user)
+    user_is_supervisor = _is_supervisor_of_ticket(user, ticket)
     roster_for_picks = ticket.supervisor_id if ticket.supervisor_id else (user.id if user_is_supervisor else None)
 
-    ticket_sidebar_team = _ticketing_team_workers_for_sidebar(user.id) if user_is_supervisor else []
-    if user_is_supervisor and not ticket_sidebar_team:
-        ticket_sidebar_team = _ticket_roster_fallback_workers()
-
-    worker_pick_list = _ticketing_worker_pick_list(roster_for_picks)
-    supervisor_own_team = _ticketing_team_workers_for_sidebar(user.id) if user_is_supervisor else []
+    project_team = tkt_resources.project_team_workers(ticket.project or '')
+    worker_pick_list = project_team or _ticketing_worker_pick_list(roster_for_picks)
+    supervisor_own_team = project_team or (
+        _ticketing_team_workers_for_sidebar(user.id) if user_is_supervisor else []
+    )
     if user_is_supervisor and not supervisor_own_team and ticket.supervisor_id:
         supervisor_own_team = _ticketing_team_workers_for_sidebar(ticket.supervisor_id)
-    technician_users_for_team_add = _technician_users_available_for_team_add(user.id) if user_is_supervisor else []
+    vendor_companies = tkt_resources.vendors_for_project_name(ticket.project or '')
 
     # Pricing preview (no overhead — actual price is the raw manpower + materials cost)
     base_cost   = mp_total + mat_total
@@ -1926,12 +2265,9 @@ def ticket_detail(ticket_id):
         ticketing_sees_all=sees_all,
         procurement_materials=procurement_materials,
         user_is_supervisor=user_is_supervisor,
-        ticket_sidebar_team=ticket_sidebar_team,
         worker_pick_list=worker_pick_list,
         supervisor_own_team=supervisor_own_team,
-        technician_users_for_team_add=technician_users_for_team_add,
-        vendor_companies=_sample_vendor_companies(),
-        supervisor_team=[],  # legacy template var (unused)
+        vendor_companies=vendor_companies,
         base_cost=base_cost,
         actual_price=actual_price,
         cost_entry_allowed=_cost_entry_allowed(ticket),
@@ -1943,6 +2279,7 @@ def ticket_detail(ticket_id):
         triage_accepted=triage_accepted,
         triage_parts=triage_parts,
         triage_tech_name=triage_tech_name,
+        location_map=_ticket_location_map_payload(ticket),
     )
 
 
@@ -1961,7 +2298,7 @@ def update_status(ticket_id):
     deny = _api_forbid_unless_ticket_visible(user, ticket)
     if deny:
         return deny
-    if not (_ticketing_sees_all_tickets(user) or _is_supervisor_of_ticket(user)):
+    if not (_ticketing_sees_all_tickets(user) or _is_supervisor_of_ticket(user, ticket)):
         return jsonify({
             'success': False,
             'error': 'Only supervisors or OPS / GM / Admin may set status from this control.',
@@ -1973,8 +2310,8 @@ def update_status(ticket_id):
     if new_status in ('closed', 'provider_closed'):
         return jsonify({
             'success': False,
-            'error': 'Closing must go through the two-stage flow: "Verify & Submit for Approval" '
-                     '(supervisor), then Operations final approval — it cannot be set manually.',
+            'error': 'Closing must go through "Verify & Close" (supervisor sign-off) — '
+                     'it cannot be set manually.',
         }), 400
 
     valid = {
@@ -2000,8 +2337,9 @@ def update_status(ticket_id):
 
     if store_status == 'cancelled':
         reason_key = (data.get('cancelled_reason') or data.get('reason') or 'other').strip()
-        if reason_key not in CANCEL_REASONS:
-            reason_key = 'other'
+        cancel_map = tkt_fields.cancel_reason_map()
+        if reason_key not in cancel_map:
+            return jsonify({'success': False, 'error': 'Invalid cancellation reason'}), 400
         ticket.status = 'cancelled'
         ticket.cancelled_reason = reason_key
         ticket.cancelled_at = now_naive.isoformat()
@@ -2017,8 +2355,9 @@ def update_status(ticket_id):
         if store_status == 'on_hold' and old_status != 'on_hold':
             ticket.previous_status = old_status
             hold_r = (data.get('on_hold_reason') or 'other').strip()
-            if hold_r not in ON_HOLD_REASONS:
-                hold_r = 'other'
+            hold_map = tkt_fields.hold_reason_map()
+            if hold_r not in hold_map:
+                return jsonify({'success': False, 'error': 'Invalid hold reason'}), 400
             ticket.on_hold_reason = hold_r
 
         if store_status not in ('cancelled', 'closed'):
@@ -2086,7 +2425,7 @@ def revoke_stage(ticket_id):
     deny = _api_forbid_unless_ticket_visible(user, ticket)
     if deny:
         return deny
-    if not (_ticketing_sees_all_tickets(user) or _is_supervisor_of_ticket(user)):
+    if not (_ticketing_sees_all_tickets(user) or _is_supervisor_of_ticket(user, ticket)):
         return jsonify({
             'success': False,
             'error': 'Only supervisors or OPS / GM / Admin may revoke a workflow stage.',
@@ -2330,6 +2669,39 @@ def upload_image(ticket_id):
     db.session.commit()
 
     return jsonify({'success': True, 'image': img.to_dict()})
+
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/images/<int:image_id>', methods=['DELETE'])
+@jwt_required()
+def delete_image(ticket_id, image_id):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    deny = _api_forbid_unless_ticket_visible(user, ticket)
+    if deny:
+        return deny
+    if ticket.status in ('closed', 'cancelled'):
+        return jsonify({'success': False, 'error': 'Cannot remove images from a closed ticket'}), 400
+
+    img = db.session.get(TicketImage, image_id)
+    if not img or img.ticket_id != ticket.id:
+        return jsonify({'success': False, 'error': 'Image not found'}), 404
+
+    path = img.file_path
+    caption = img.caption or img.filename
+    db.session.delete(img)
+    _add_note(ticket, user, f'Image removed: {caption}.', note_type='image')
+    db.session.commit()
+    if path:
+        try:
+            if os.path.isfile(path):
+                os.remove(path)
+        except OSError:
+            logger.warning('Could not delete ticket image file %s', path, exc_info=True)
+
+    return jsonify({'success': True})
 
 
 # ---------------------------------------------------------------------------
@@ -2588,17 +2960,15 @@ def delete_material(ticket_id, mat_id):
 @ticketing_bp.route('/api/tickets/<string:ticket_id>/close', methods=['POST'])
 @jwt_required()
 def close_ticket(ticket_id):
-    """Deprecated: superseded by the two-stage close flow (`supervisor-close` then
-    `ops-close`). Kept only so old clients get a clear error instead of silently
-    bypassing Stage 2 (client operations) approval.
+    """Deprecated: closing goes through `supervisor-close` (verify + signature).
+    Kept so old clients get a clear error instead of silently bypassing sign-off.
     """
     user = _current_user()
     if not _has_access(user):
         return jsonify({'success': False, 'error': 'Access denied'}), 403
     return jsonify({
         'success': False,
-        'error': 'Direct close is disabled. Use "Verify & Close" (supervisor) followed by '
-                 'operations final approval instead.',
+        'error': 'Direct close is disabled. Use "Verify & Close" (supervisor sign-off) instead.',
     }), 400
 
 
@@ -2606,11 +2976,37 @@ def close_ticket(ticket_id):
 # Technician self-service: advance status
 # ---------------------------------------------------------------------------
 
+def _complete_work_and_open_verification(ticket: Ticket, user, resolution_notes=None):
+    """Mark work done and move the ticket straight into Verification."""
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    notes_val = (resolution_notes or '').strip() or None
+    if notes_val:
+        ticket.technician_resolution_notes = notes_val
+    ticket.status = 'verification'
+    ticket.work_completed_at = now.isoformat()
+    ticket.resolved_at = now
+    _recalc_total_cost(ticket)
+    _add_note(
+        ticket, user,
+        f'Work completed by {user.full_name}. Ticket sent for verification.'
+        + (f' Notes: {notes_val}' if notes_val else ''),
+        note_type='status_change',
+    )
+    if ticket.supervisor_id and ticket.supervisor_id != user.id:
+        _notify_user(
+            ticket.supervisor_id,
+            f'Work Completed: {ticket.ticket_id}',
+            f'{user.full_name} completed work on "{ticket.title}". Ready for verification.',
+            ntype='ticket_completed', ticket_id=ticket.ticket_id,
+        )
+
+
 @ticketing_bp.route('/api/tickets/<string:ticket_id>/advance', methods=['POST'])
 @jwt_required()
 def advance_ticket(ticket_id):
     """
-    Technician-facing linear progress: assigned → site_attended → work_started → work_completed.
+    Technician-facing linear progress: assigned → site_attended → work_started → verification.
+    Marking work completed sends the ticket straight to verification.
     Supervisor / overwatch can also call this.
     """
     user = _current_user()
@@ -2624,15 +3020,16 @@ def advance_ticket(ticket_id):
 
     # Who can advance?
     is_tech = (ticket.technician_id == user.id or ticket.assigned_to_id == user.id)
-    if not is_tech and not _ticketing_sees_all_tickets(user) and not _is_supervisor_of_ticket(user):
+    if not is_tech and not _ticketing_sees_all_tickets(user) and not _is_supervisor_of_ticket(user, ticket):
         return jsonify({'success': False, 'error': 'Only the assigned technician or supervisor may advance this ticket'}), 403
 
     transitions = {
         'assigned':       'site_attended',
         'site_attended':  'work_started',
-        'work_started':   'work_completed',
+        'work_started':   'verification',
         # allow from legacy
         'in_progress':    'work_started',
+        'pending_parts':  'verification',
     }
     next_status = transitions.get(ticket.status)
     if not next_status:
@@ -2642,6 +3039,15 @@ def advance_ticket(ticket_id):
     now_str = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
     old_status = ticket.status
+    if next_status == 'verification' and old_status in ('work_started', 'pending_parts'):
+        _complete_work_and_open_verification(ticket, user, data.get('resolution_notes'))
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'status': 'verification',
+            'label': _STATUS_LABELS.get('verification', 'verification'),
+        })
+
     ticket.status = next_status
 
     # Record timestamps
@@ -2649,25 +3055,11 @@ def advance_ticket(ticket_id):
         ticket.site_attended_at = now_str
     elif next_status == 'work_started':
         ticket.work_started_at = now_str
-    elif next_status == 'work_completed':
-        ticket.work_completed_at = now_str
-        ticket.resolved_at = datetime.now(timezone.utc).replace(tzinfo=None)
-        notes_val = (data.get('resolution_notes') or '').strip() or None
-        if notes_val:
-            ticket.technician_resolution_notes = notes_val
 
     _add_note(ticket, user,
               f'Status advanced from "{_STATUS_LABELS.get(old_status, old_status)}" to '
               f'"{_STATUS_LABELS.get(next_status, next_status)}" by {user.full_name}.',
               note_type='status_change')
-
-    if next_status == 'work_completed' and ticket.supervisor_id:
-        _notify_user(
-            ticket.supervisor_id,
-            f'Work Completed: {ticket.ticket_id}',
-            f'Technician {user.full_name} completed work on "{ticket.title}". Ready for verification.',
-            ntype='ticket_completed', ticket_id=ticket.ticket_id,
-        )
 
     db.session.commit()
     return jsonify({'success': True, 'status': next_status, 'label': _STATUS_LABELS.get(next_status, next_status)})
@@ -2680,7 +3072,11 @@ def advance_ticket(ticket_id):
 @ticketing_bp.route('/api/tickets/<string:ticket_id>/begin-verification', methods=['POST'])
 @jwt_required()
 def begin_verification(ticket_id):
-    """Supervisor moves work_completed → verification so they can review before closing."""
+    """Legacy: work_completed already opens verification automatically.
+
+    Kept so older clients can still POST here; leftover work_completed tickets
+    are moved to verification.
+    """
     user = _current_user()
     if not _has_access(user):
         return jsonify({'success': False, 'error': 'Access denied'}), 403
@@ -2689,7 +3085,7 @@ def begin_verification(ticket_id):
     deny = _api_forbid_unless_ticket_visible(user, ticket)
     if deny:
         return deny
-    if not _is_supervisor_of_ticket(user):
+    if not _is_supervisor_of_ticket(user, ticket):
         return jsonify({'success': False, 'error': 'Only supervisors may begin verification'}), 403
 
     if ticket.status not in ('work_completed', 'pending_verification'):
@@ -2724,15 +3120,16 @@ def hold_ticket(ticket_id):
 
     data = request.get_json(silent=True) or {}
     reason_key = (data.get('reason') or 'other').strip()
-    if reason_key not in ON_HOLD_REASONS:
-        reason_key = 'other'
+    hold_map = tkt_fields.hold_reason_map()
+    if reason_key not in hold_map:
+        return jsonify({'success': False, 'error': 'Invalid hold reason'}), 400
     notes = (data.get('notes') or '').strip() or None
 
     ticket.previous_status = ticket.status
     ticket.on_hold_reason = reason_key
     ticket.status = 'on_hold'
 
-    reason_label = ON_HOLD_REASONS[reason_key]
+    reason_label = hold_map[reason_key]
     msg = f'Ticket placed on hold — {reason_label}.'
     if notes:
         msg += f' Notes: {notes}'
@@ -2797,7 +3194,7 @@ def cancel_ticket(ticket_id):
     # Only supervisor/overwatch/reporter can cancel
     can_cancel = (
         _ticketing_sees_all_tickets(user)
-        or _is_supervisor_of_ticket(user)
+        or _is_supervisor_of_ticket(user, ticket)
         or ticket.reporter_id == user.id
     )
     if not can_cancel:
@@ -2805,15 +3202,16 @@ def cancel_ticket(ticket_id):
 
     data = request.get_json(silent=True) or {}
     reason_key = (data.get('reason') or 'other').strip()
-    if reason_key not in CANCEL_REASONS:
-        reason_key = 'other'
+    cancel_map = tkt_fields.cancel_reason_map()
+    if reason_key not in cancel_map:
+        return jsonify({'success': False, 'error': 'Invalid cancellation reason'}), 400
     notes = (data.get('notes') or '').strip() or None
 
     ticket.status = 'cancelled'
     ticket.cancelled_reason = reason_key
     ticket.cancelled_at = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
-    reason_label = CANCEL_REASONS[reason_key]
+    reason_label = cancel_map[reason_key]
     msg = f'Ticket cancelled — {reason_label}. By {user.full_name}.'
     if notes:
         msg += f' Notes: {notes}'
@@ -2877,7 +3275,7 @@ def assign_technician(ticket_id):
     deny = _api_forbid_unless_ticket_visible(user, ticket)
     if deny:
         return deny
-    if not (_is_supervisor_of_ticket(user) or _ticketing_sees_all_tickets(user)):
+    if not (_is_supervisor_of_ticket(user, ticket) or _ticketing_sees_all_tickets(user)):
         return jsonify({'success': False, 'error': 'Only supervisors or OPS / GM / Admin can assign technicians'}), 403
 
     data = request.get_json(silent=True) or {}
@@ -2901,15 +3299,15 @@ def assign_technician(ticket_id):
             and not _ticketing_sees_all_tickets(user)
         )
         if strictly_supervisor_lane:
-            in_team = TicketSupervisorTeam.query.filter_by(
+            in_own_team = TicketSupervisorTeam.query.filter_by(
                 supervisor_id=user.id,
                 technician_id=technician.id,
                 is_active=True,
             ).first()
-            if not in_team:
+            if not in_own_team and not _technician_on_assign_roster(ticket, technician):
                 return jsonify({
                     'success': False,
-                    'error': 'That technician is not on your vendor team.',
+                    'error': 'That technician is not on this project team or vendor roster.',
                 }), 403
 
         ticket.technician_id = technician.id
@@ -2933,9 +3331,14 @@ def assign_technician(ticket_id):
                      f'You have been assigned to work order {ticket.ticket_id}: "{ticket.title}".',
                      ntype='ticket_assigned', ticket_id=ticket.ticket_id)
     elif tech_name:
-        # Demo vendor technician path (no linked system user).
+        # Named vendor technician with no login user — keep the supervisor as owner
+        # so the work order stays actionable in-app.
         ticket.technician_id = None
-        ticket.assigned_to_id = None
+        owner_id = ticket.supervisor_id or (
+            user.id if _is_supervisor_of_ticket(user, ticket) else ticket.assigned_to_id
+        )
+        if owner_id:
+            ticket.assigned_to_id = owner_id
         display_name = tech_name
         who = _actor_with_supervisor(ticket, user)
         code_bit = f' ({tech_code})' if tech_code else ''
@@ -2973,13 +3376,12 @@ def mark_completed(ticket_id):
     if deny:
         return deny
 
-    # Assigned technician, overwatch (admin/ops/GM), or owning supervisor (dummy-tech) can mark complete.
+    # Assigned technician, overwatch (admin/ops/GM), or the ticket supervisor can mark complete.
     is_assigned_technician = (ticket.technician_id == user.id or ticket.assigned_to_id == user.id)
-    is_owning_supervisor = (ticket.supervisor_id == user.id and not ticket.technician_id)
     if (
         not _ticketing_sees_all_tickets(user)
         and not is_assigned_technician
-        and not is_owning_supervisor
+        and not _is_supervisor_of_ticket(user, ticket)
     ):
         return jsonify({'success': False, 'error': 'Only assigned technician/supervisor can mark this complete'}), 403
 
@@ -2988,24 +3390,9 @@ def mark_completed(ticket_id):
 
     data = request.get_json(silent=True) or {}
     resolution_notes = (data.get('resolution_notes') or '').strip() or None
-    ticket.technician_resolution_notes = resolution_notes
-    ticket.status = 'work_completed'
-    ticket.work_completed_at = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
-    ticket.resolved_at = datetime.now(timezone.utc).replace(tzinfo=None)
-
-    _recalc_total_cost(ticket)
-    _add_note(ticket, user,
-              f'Work completed by {user.full_name}. Awaiting supervisor verification.'
-              + (f' Notes: {resolution_notes}' if resolution_notes else ''),
-              note_type='status_change')
-
-    # Notify the supervisor
-    if ticket.supervisor_id:
-        _notify_user(ticket.supervisor_id, f'Work Order Awaiting Verification: {ticket.ticket_id}',
-                     f'Technician {user.full_name} has completed work on {ticket.ticket_id}. Please verify and close.',
-                     ntype='ticket_verification', ticket_id=ticket.ticket_id)
+    _complete_work_and_open_verification(ticket, user, resolution_notes)
     db.session.commit()
-    return jsonify({'success': True, 'status': 'work_completed'})
+    return jsonify({'success': True, 'status': 'verification'})
 
 
 # ---------------------------------------------------------------------------
@@ -3015,10 +3402,7 @@ def mark_completed(ticket_id):
 @ticketing_bp.route('/api/tickets/<string:ticket_id>/supervisor-close', methods=['POST'])
 @jwt_required()
 def supervisor_close(ticket_id):
-    """Stage 1 of the two-stage close: service-provider supervisor verifies work,
-    sets the markup, and signs off. This does NOT fully close the ticket — it moves
-    to `provider_closed`, awaiting Stage 2 (client operations) approval via `ops_close()`.
-    """
+    """Supervisor verifies work, sets markup, signs off, and closes the ticket."""
     user = _current_user()
     if not _has_access(user):
         return jsonify({'success': False, 'error': 'Access denied'}), 403
@@ -3027,11 +3411,11 @@ def supervisor_close(ticket_id):
     deny = _api_forbid_unless_ticket_visible(user, ticket)
     if deny:
         return deny
-    if not _is_supervisor_of_ticket(user):
+    if not _is_supervisor_of_ticket(user, ticket):
         return jsonify({'success': False, 'error': 'Only supervisors can close tickets via this route'}), 403
 
     if ticket.status not in ('pending_verification', 'verification', 'work_completed'):
-        return jsonify({'success': False, 'error': f'Ticket must be in pending_verification to close. Current: {ticket.status}'}), 400
+        return jsonify({'success': False, 'error': f'Ticket must be in verification to close. Current: {ticket.status}'}), 400
 
     data = request.get_json(silent=True) or {}
 
@@ -3060,27 +3444,22 @@ def supervisor_close(ticket_id):
     ticket.close_signed_by  = signed_by
     ticket.close_signed_role = signed_role
     ticket.close_notes = ver_notes
-    ticket.status     = 'provider_closed'
+    ticket.status    = 'closed'
+    ticket.closed_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
     _recalc_total_cost(ticket)
 
     markup_label = f'{int(markup_pct)}%' if markup_pct else 'No markup'
     _add_note(ticket, user,
-              f'Ticket verified by service-provider supervisor {user.full_name} ({signed_role}). '
-              f'Markup applied: {markup_label}. Selling price: AED {ticket.selling_price or 0:.2f}. '
-              f'Awaiting final approval from operations.',
+              f'Ticket verified and closed by {user.full_name} ({signed_role or "Supervisor"}). '
+              f'Markup applied: {markup_label}. Selling price: AED {ticket.selling_price or 0:.2f}.',
               note_type='status_change')
 
     db.session.commit()
-    _notify_ops_close_pending(
-        ticket,
-        f'Ticket {ticket.ticket_id} — "{ticket.title}" has been verified by the supervisor '
-        f'and is awaiting your final sign-off to close and issue the invoice.',
-    )
-    db.session.commit()
+    _emit_ticket_closed_side_effects(ticket, user)
     return jsonify({
         'success': True,
-        'status': 'provider_closed',
+        'status': 'closed',
         'actual_price': ticket.actual_price,
         'selling_price': ticket.selling_price,
         'markup_pct': ticket.markup_pct,
@@ -3094,9 +3473,8 @@ def supervisor_close(ticket_id):
 @ticketing_bp.route('/api/tickets/<string:ticket_id>/ops-close', methods=['POST'])
 @jwt_required()
 def ops_close(ticket_id):
-    """Stage 2 of the two-stage close: client operations (Operations Manager /
-    General Manager / Admin) gives final sign-off, actually closing the ticket
-    and triggering invoice generation/routing.
+    """Legacy close for tickets already in `provider_closed` (old two-stage flow).
+    New tickets close when the supervisor verifies.
     """
     user = _current_user()
     if not _has_access(user):
@@ -3137,14 +3515,7 @@ def ops_close(ticket_id):
               note_type='status_change')
 
     db.session.commit()
-    try:
-        from common.fm_integration import fm_log_audit, dispatch_webhooks
-        fm_log_audit(user.id, 'ticket_closed', 'ticket', ticket.ticket_id, None)
-        dispatch_webhooks('ticket.closed', ticket.to_dict())
-    except Exception:
-        pass
-    _send_completion_emails(ticket, user)
-    _send_invoice_emails(ticket)
+    _emit_ticket_closed_side_effects(ticket, user)
     return jsonify({
         'success': True,
         'status': 'closed',
@@ -3385,7 +3756,7 @@ def _send_invoice_emails(ticket: Ticket):
             <tr><td style="padding:6px; font-weight:bold;">Project</td><td style="padding:6px;">{ticket.project}</td></tr>
             <tr><td style="padding:6px; font-weight:bold;">Location</td><td style="padding:6px;">{' / '.join(filter(None, [ticket.property_name, ticket.zone, ticket.sub_zone, ticket.base_unit]))}</td></tr>
             <tr><td style="padding:6px; font-weight:bold;">Invoice Total</td><td style="padding:6px;">AED {amount or 0:.2f}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Approved by</td><td style="padding:6px;">{ticket.ops_close_signed_by} ({ticket.ops_close_signed_role or 'Operations'})</td></tr>
+            <tr><td style="padding:6px; font-weight:bold;">Approved by</td><td style="padding:6px;">{ticket.ops_close_signed_by or ticket.close_signed_by or 'N/A'}{(' (' + (ticket.ops_close_signed_role or ticket.close_signed_role or '') + ')') if (ticket.ops_close_signed_role or ticket.close_signed_role) else ''}</td></tr>
             <tr><td style="padding:6px; font-weight:bold;">Closed at</td><td style="padding:6px;">{to_gst(ticket.closed_at).strftime('%d %b %Y %H:%M') if ticket.closed_at else 'N/A'} (GST)</td></tr>
           </table>
           <hr style="margin-top:20px;"/>
@@ -3425,7 +3796,10 @@ def download_pdf(ticket_id):
 
     from module_ticketing.ticket_pdf_builder import build_ticket_pdf
     buf = io.BytesIO()
-    build_ticket_pdf(ticket, notes, images, materials, manpower_entries, buf)
+    build_ticket_pdf(
+        ticket, notes, images, materials, manpower_entries, buf,
+        location_map=_ticket_location_map_payload(ticket),
+    )
     buf.seek(0)
 
     return send_file(
@@ -3574,26 +3948,8 @@ except ImportError:
 
 
 def _ticket_dropdown_tail():
-    """Shared priority & manpower options."""
-    return {
-        'priorities': [
-            {'value': 'low', 'label': 'Low'},
-            {'value': 'medium', 'label': 'Medium'},
-            {'value': 'high', 'label': 'High'},
-            {'value': 'critical', 'label': 'Critical'},
-        ],
-        'manpower_hours': [
-            {'value': '0.25', 'label': '15 minutes'},
-            {'value': '0.5', 'label': '30 minutes'},
-            {'value': '0.75', 'label': '45 minutes'},
-            {'value': '1', 'label': '1 hour'},
-            {'value': '2', 'label': '2 hours'},
-            {'value': '3', 'label': '3+ hours'},
-            {'value': '4', 'label': '4 hours'},
-            {'value': '6', 'label': '6 hours'},
-            {'value': '8', 'label': '8 hours (full day)'},
-        ],
-    }
+    """Shared priority, reason, and manpower options."""
+    return tkt_fields.dropdown_tail()
 
 
 _LEGACY_CLASSIFICATION_OPTIONS = {
@@ -3629,13 +3985,27 @@ def get_options():
     if not _has_access(user):
         return jsonify({'success': False}), 403
 
+    tkt_fields.seed_ticket_field_catalogs()
+    tail = _ticket_dropdown_tail()
+    db_opts = tkt_fields.classification_options()
+    if db_opts:
+        options = {
+            'service_groups': db_opts['service_groups'],
+            'categories': db_opts['categories'],
+            'fault_types': [],
+            'fault_catalog': db_opts['fault_catalog'],
+            'use_fault_catalog': db_opts['use_fault_catalog'],
+            'fault_catalog_meta': db_opts['fault_catalog_meta'],
+            **tail,
+        }
+        return jsonify({'success': True, 'options': options})
+
     bundle = (
         _tkt_fault_catalog.load_bundle()
         if _tkt_fault_catalog is not None
         else None
     )
 
-    tail = _ticket_dropdown_tail()
     fault_meta = {'count': 0, 'source_file': None, 'version': None}
     if bundle and bundle.get('fault_catalog'):
         fc_list = bundle['fault_catalog']
@@ -3644,8 +4014,6 @@ def get_options():
             'source_file': bundle.get('catalog_source_file'),
             'version': bundle.get('catalog_version', 1),
         }
-
-    if bundle and bundle.get('fault_catalog'):
         options = {
             'service_groups': bundle['service_groups'],
             'categories': bundle['categories_by_service_group'],
@@ -3689,6 +4057,7 @@ def settings_page():
         'ticket_settings.html',
         user=user,
         ticketing_can_manage_fault_catalog=_is_admin(user),
+        ticketing_can_manage_locations=_is_admin(user),
         intake_email=intake_email,
         sidebar_stats=_get_sidebar_stats(user),
         active_page='ticketing',
@@ -3726,6 +4095,9 @@ def settings_rebuild_fault_catalog():
         src_label = safe_name or "uploaded.xls"
         row_count = fault_catalog_build.rebuild_from_path(tmp_path, src_label)
         source_saved = src_label
+        bundle = _tkt_fault_catalog.load_bundle() if _tkt_fault_catalog is not None else None
+        if bundle and bundle.get('fault_catalog'):
+            tkt_fields.upsert_fault_bundle(bundle, deactivate_missing=True)
     except ValueError as e:
         logger.warning('fault catalog rebuild parse failed: %s', e)
         return jsonify({'success': False, 'error': str(e)}), 400
@@ -3744,6 +4116,62 @@ def settings_rebuild_fault_catalog():
         'row_count': row_count,
         'source_file': source_saved,
     })
+
+
+def _save_ssml_upload(storage) -> Path | None:
+    if not storage or not getattr(storage, 'filename', ''):
+        return None
+    safe_name = secure_filename(storage.filename)
+    lower = safe_name.lower()
+    if lower.endswith('.xlsx') or lower.endswith('.csv'):
+        raise ValueError('Upload the XML SpreadsheetML .xls export, not XLSX/CSV')
+    fd, raw_tmp = tempfile.mkstemp(suffix='.xls')
+    os.close(fd)
+    path = Path(raw_tmp)
+    storage.save(path)
+    return path
+
+
+@ticketing_bp.route('/api/settings/location-import', methods=['POST'])
+@jwt_required()
+def settings_import_locations():
+    """Admin-only: upsert Property / Zone / Sub Zone / Base Unit from SpreadsheetML."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+    if not _is_admin(user):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+
+    tmp_paths: list[Path] = []
+    try:
+        files = {}
+        for key in ('property', 'zone', 'sub_zone', 'base_unit'):
+            storage = request.files.get(key)
+            path = _save_ssml_upload(storage)
+            if path is not None:
+                tmp_paths.append(path)
+                files[key] = path
+        if not files:
+            return jsonify({'success': False, 'error': 'Upload at least one location spreadsheet'}), 400
+
+        from module_ticketing.location_catalog import import_location_files
+
+        report = import_location_files(files)
+    except ValueError as e:
+        logger.warning('location import parse failed: %s', e)
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception:
+        logger.exception('location import failed')
+        db.session.rollback()
+        return jsonify({'success': False, 'error': 'Import failed'}), 500
+    finally:
+        for p in tmp_paths:
+            try:
+                p.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+    return jsonify({'success': True, **report})
 
 
 # ── Projects ────────────────────────────────────────────────────────────────
@@ -3933,7 +4361,12 @@ def settings_list_projects():
         .order_by(TicketProject.sort_order, TicketProject.name)
         .all()
     )
-    return jsonify({'success': True, 'projects': [p.to_dict(with_property_count=True) for p in projects]})
+    standalone_count = TicketProperty.query.filter_by(project_id=None, is_active=True).count()
+    return jsonify({
+        'success': True,
+        'projects': [p.to_dict(with_property_count=True) for p in projects],
+        'standalone_count': standalone_count,
+    })
 
 
 @ticketing_bp.route('/api/settings/projects', methods=['POST'])
@@ -3986,6 +4419,10 @@ def settings_create_project():
         ops_emails=ops_emails,
     )
     db.session.add(p)
+    db.session.flush()
+    if sup_uid:
+        db.session.add(TicketProjectSupervisor(project_id=p.id, user_id=sup_uid))
+        tkt_resources.sync_primary_supervisor(p)
     db.session.commit()
     return jsonify({'success': True, 'project': p.to_dict(with_property_count=True)}), 201
 
@@ -4006,11 +4443,6 @@ def settings_update_project(pid):
         p.client_name = (data['client_name'] or '').strip() or None
     if 'description' in data:
         p.description = (data['description'] or '').strip() or None
-    if 'supervisor_id' in data:
-        sup_uid, err = _validate_supervisor_pick(data.get('supervisor_id'))
-        if err:
-            return jsonify({'success': False, 'error': err}), 400
-        p.supervisor_id = sup_uid
     if 'bd_project_id' in data:
         bid, err = _validate_bd_project_link(data.get('bd_project_id'))
         if err:
@@ -4060,7 +4492,812 @@ def settings_delete_project(pid):
     return jsonify({'success': True})
 
 
+@ticketing_bp.route('/api/settings/projects/<int:pid>/pdf', methods=['GET'])
+@jwt_required()
+def settings_project_pack_pdf(pid):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False}), 403
+    project = db.session.get(TicketProject, pid)
+    if not project or not project.is_active:
+        abort(404)
+    from module_ticketing.project_pack_pdf import build_project_pack_pdf, project_pack_filename
+    buf = io.BytesIO()
+    try:
+        build_project_pack_pdf(project, buf)
+    except Exception:
+        logger.exception('Project pack PDF failed for project %s', pid)
+        return jsonify({'success': False, 'error': 'Could not build project PDF'}), 500
+    buf.seek(0)
+    return send_file(
+        buf,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=project_pack_filename(project),
+    )
+
+
+def _require_admin_settings():
+    user = _current_user()
+    if not _has_access(user):
+        return None, (jsonify({'success': False, 'error': 'Forbidden'}), 403)
+    if not _is_admin(user):
+        return None, (jsonify({'success': False, 'error': 'Admin only'}), 403)
+    return user, None
+
+
+def _project_or_404(pid):
+    p = db.session.get(TicketProject, pid)
+    if not p or not p.is_active:
+        return None
+    return p
+
+
+@ticketing_bp.route('/api/settings/projects/<int:pid>/resources', methods=['GET'])
+@jwt_required()
+def settings_project_resources(pid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    p = _project_or_404(pid)
+    if not p:
+        abort(404)
+    return jsonify({'success': True, **tkt_resources.resources_payload(p)})
+
+
+@ticketing_bp.route('/api/settings/team-options', methods=['GET'])
+@jwt_required()
+def settings_team_options():
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    pid = request.args.get('project_id', type=int)
+    taken = set()
+    if pid:
+        taken = {
+            r[0] for r in
+            db.session.query(TicketProjectTeamMember.user_id).filter_by(project_id=pid).all()
+        }
+    rows = tkt_resources.eligible_team_users(pid) if pid else (
+        User.query.filter(
+            User.is_active == True,  # noqa: E712
+            db.or_(
+                User.designation == 'technician',
+                User.id.in_(
+                    db.session.query(TicketSupervisorTeam.technician_id)
+                    .filter(TicketSupervisorTeam.is_active == True)  # noqa: E712
+                ),
+            ),
+        ).order_by(User.full_name).all()
+    )
+    if pid is None and taken:
+        rows = [u for u in rows if u.id not in taken]
+    return jsonify({
+        'success': True,
+        'users': [
+            {
+                'id': u.id,
+                'name': u.full_name or u.username,
+                'username': u.username,
+                'speciality': (getattr(u, 'job_designation', None) or '').strip() or 'Technician',
+            }
+            for u in rows
+        ],
+    })
+
+
+@ticketing_bp.route('/api/settings/projects/<int:pid>/supervisors', methods=['POST'])
+@jwt_required()
+def settings_add_project_supervisor(pid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    p = _project_or_404(pid)
+    if not p:
+        abort(404)
+    data = request.get_json(silent=True) or {}
+    uid, verr = _validate_supervisor_pick(data.get('user_id'))
+    if verr:
+        return jsonify({'success': False, 'error': verr}), 400
+    if not uid:
+        return jsonify({'success': False, 'error': 'user_id required'}), 400
+    existing = TicketProjectSupervisor.query.filter_by(project_id=p.id, user_id=uid).first()
+    if existing:
+        return jsonify({'success': True, 'supervisor': existing.to_dict(), 'already': True})
+    link = TicketProjectSupervisor(project_id=p.id, user_id=uid)
+    db.session.add(link)
+    db.session.flush()
+    tkt_resources.sync_primary_supervisor(p)
+    db.session.commit()
+    return jsonify({'success': True, 'supervisor': link.to_dict()}), 201
+
+
+@ticketing_bp.route('/api/settings/projects/<int:pid>/supervisors/<int:user_id>', methods=['DELETE'])
+@jwt_required()
+def settings_remove_project_supervisor(pid, user_id):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    p = _project_or_404(pid)
+    if not p:
+        abort(404)
+    link = TicketProjectSupervisor.query.filter_by(project_id=p.id, user_id=user_id).first()
+    if not link:
+        abort(404)
+    db.session.delete(link)
+    db.session.flush()
+    tkt_resources.sync_primary_supervisor(p)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@ticketing_bp.route('/api/settings/projects/<int:pid>/team', methods=['POST'])
+@jwt_required()
+def settings_add_project_team_member(pid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    p = _project_or_404(pid)
+    if not p:
+        abort(404)
+    data = request.get_json(silent=True) or {}
+    try:
+        uid = int(data.get('user_id'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'user_id required'}), 400
+    member = db.session.get(User, uid)
+    if not member or not member.is_active:
+        return jsonify({'success': False, 'error': 'User not found'}), 404
+    existing = TicketProjectTeamMember.query.filter_by(project_id=p.id, user_id=uid).first()
+    if existing:
+        return jsonify({'success': True, 'member': existing.to_dict(), 'already': True})
+    link = TicketProjectTeamMember(project_id=p.id, user_id=uid)
+    db.session.add(link)
+    db.session.commit()
+    return jsonify({'success': True, 'member': link.to_dict()}), 201
+
+
+@ticketing_bp.route('/api/settings/projects/<int:pid>/team/<int:user_id>', methods=['DELETE'])
+@jwt_required()
+def settings_remove_project_team_member(pid, user_id):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    p = _project_or_404(pid)
+    if not p:
+        abort(404)
+    link = TicketProjectTeamMember.query.filter_by(project_id=p.id, user_id=user_id).first()
+    if not link:
+        abort(404)
+    db.session.delete(link)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@ticketing_bp.route('/api/settings/vendors', methods=['GET'])
+@jwt_required()
+def settings_list_vendors():
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    rows = TicketVendor.query.filter_by(is_active=True).order_by(TicketVendor.name).all()
+    return jsonify({'success': True, 'vendors': [v.to_dict() for v in rows]})
+
+
+def _upsert_vendor_technicians(vendor: TicketVendor, techs: list):
+    existing = {t.id: t for t in vendor.technicians}
+    keep = set()
+    for item in techs or []:
+        if not isinstance(item, dict):
+            continue
+        name = (item.get('name') or '').strip()
+        if not name:
+            continue
+        tid = item.get('id')
+        row = existing.get(int(tid)) if tid not in (None, '') else None
+        if row is None:
+            row = TicketVendorTechnician(vendor_id=vendor.id, name=name)
+            db.session.add(row)
+        else:
+            row.name = name
+            keep.add(row.id)
+        row.speciality = (item.get('speciality') or '').strip() or None
+        row.code = (item.get('code') or '').strip() or None
+        uid = item.get('user_id')
+        try:
+            row.user_id = int(uid) if uid not in (None, '') else None
+        except (TypeError, ValueError):
+            row.user_id = None
+        if row.id:
+            keep.add(row.id)
+    if techs is not None:
+        for tid, row in existing.items():
+            if tid not in keep:
+                db.session.delete(row)
+
+
+@ticketing_bp.route('/api/settings/vendors', methods=['POST'])
+@jwt_required()
+def settings_create_vendor():
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'success': False, 'error': 'Name required'}), 400
+    v = TicketVendor(
+        name=name,
+        contact_name=(data.get('contact_name') or '').strip() or None,
+        contact_email=(data.get('contact_email') or '').strip() or None,
+        contact_phone=(data.get('contact_phone') or '').strip() or None,
+        notes=(data.get('notes') or '').strip() or None,
+        is_active=True,
+    )
+    db.session.add(v)
+    db.session.flush()
+    _upsert_vendor_technicians(v, data.get('technicians') or [])
+    project_id = data.get('project_id')
+    if project_id:
+        p = _project_or_404(int(project_id))
+        if p and not TicketProjectVendor.query.filter_by(project_id=p.id, vendor_id=v.id).first():
+            db.session.add(TicketProjectVendor(project_id=p.id, vendor_id=v.id))
+    db.session.commit()
+    return jsonify({'success': True, 'vendor': v.to_dict()}), 201
+
+
+@ticketing_bp.route('/api/settings/vendors/<int:vid>', methods=['PUT'])
+@jwt_required()
+def settings_update_vendor(vid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    v = db.session.get(TicketVendor, vid)
+    if not v:
+        abort(404)
+    data = request.get_json(silent=True) or {}
+    if 'name' in data:
+        name = (data.get('name') or '').strip()
+        if not name:
+            return jsonify({'success': False, 'error': 'Name required'}), 400
+        v.name = name
+    for field in ('contact_name', 'contact_email', 'contact_phone', 'notes'):
+        if field in data:
+            setattr(v, field, (data.get(field) or '').strip() or None)
+    if 'is_active' in data:
+        v.is_active = bool(data['is_active'])
+    if 'technicians' in data:
+        _upsert_vendor_technicians(v, data.get('technicians') or [])
+    db.session.commit()
+    return jsonify({'success': True, 'vendor': v.to_dict()})
+
+
+@ticketing_bp.route('/api/settings/projects/<int:pid>/vendors', methods=['POST'])
+@jwt_required()
+def settings_attach_project_vendor(pid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    p = _project_or_404(pid)
+    if not p:
+        abort(404)
+    data = request.get_json(silent=True) or {}
+    try:
+        vid = int(data.get('vendor_id'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'vendor_id required'}), 400
+    v = db.session.get(TicketVendor, vid)
+    if not v or not v.is_active:
+        return jsonify({'success': False, 'error': 'Vendor not found'}), 404
+    existing = TicketProjectVendor.query.filter_by(project_id=p.id, vendor_id=vid).first()
+    if existing:
+        d = v.to_dict()
+        d['link_id'] = existing.id
+        return jsonify({'success': True, 'vendor': d, 'already': True})
+    link = TicketProjectVendor(project_id=p.id, vendor_id=vid)
+    db.session.add(link)
+    db.session.commit()
+    d = v.to_dict()
+    d['link_id'] = link.id
+    return jsonify({'success': True, 'vendor': d}), 201
+
+
+@ticketing_bp.route('/api/settings/projects/<int:pid>/vendors/<int:vid>', methods=['DELETE'])
+@jwt_required()
+def settings_detach_project_vendor(pid, vid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    p = _project_or_404(pid)
+    if not p:
+        abort(404)
+    link = TicketProjectVendor.query.filter_by(project_id=p.id, vendor_id=vid).first()
+    if not link:
+        abort(404)
+    db.session.delete(link)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+# ── Ticket field catalogs ────────────────────────────────────────────────────
+
+@ticketing_bp.route('/api/settings/classification', methods=['GET'])
+@jwt_required()
+def settings_classification_tree():
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    tkt_fields.seed_ticket_field_catalogs()
+    return jsonify({'success': True, 'service_groups': tkt_fields.classification_tree(include_inactive=True)})
+
+
+@ticketing_bp.route('/api/settings/service-groups', methods=['POST'])
+@jwt_required()
+def settings_create_service_group():
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'success': False, 'error': 'Name required'}), 400
+    g = TicketServiceGroup(
+        name=name,
+        sort_order=int(data.get('sort_order') or 0),
+        is_active=True,
+    )
+    db.session.add(g)
+    db.session.commit()
+    return jsonify({'success': True, 'service_group': g.to_dict()}), 201
+
+
+@ticketing_bp.route('/api/settings/service-groups/<int:gid>', methods=['PUT'])
+@jwt_required()
+def settings_update_service_group(gid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    g = db.session.get(TicketServiceGroup, gid)
+    if not g:
+        abort(404)
+    data = request.get_json(silent=True) or {}
+    if 'name' in data:
+        name = (data.get('name') or '').strip()
+        if not name:
+            return jsonify({'success': False, 'error': 'Name required'}), 400
+        g.name = name
+    if 'sort_order' in data:
+        g.sort_order = int(data.get('sort_order') or 0)
+    if 'is_active' in data:
+        g.is_active = bool(data['is_active'])
+    db.session.commit()
+    return jsonify({'success': True, 'service_group': g.to_dict()})
+
+
+@ticketing_bp.route('/api/settings/service-groups/<int:gid>', methods=['DELETE'])
+@jwt_required()
+def settings_delete_service_group(gid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    g = db.session.get(TicketServiceGroup, gid)
+    if not g:
+        abort(404)
+    g.is_active = False
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@ticketing_bp.route('/api/settings/categories', methods=['POST'])
+@jwt_required()
+def settings_create_category():
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    try:
+        sgid = int(data.get('service_group_id'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'service_group_id required'}), 400
+    g = db.session.get(TicketServiceGroup, sgid)
+    if not g:
+        return jsonify({'success': False, 'error': 'Service group not found'}), 404
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'success': False, 'error': 'Name required'}), 400
+    c = TicketFaultCategory(
+        service_group_id=g.id, name=name,
+        sort_order=int(data.get('sort_order') or 0), is_active=True,
+    )
+    db.session.add(c)
+    db.session.commit()
+    return jsonify({'success': True, 'category': c.to_dict()}), 201
+
+
+@ticketing_bp.route('/api/settings/categories/<int:cid>', methods=['PUT'])
+@jwt_required()
+def settings_update_category(cid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    c = db.session.get(TicketFaultCategory, cid)
+    if not c:
+        abort(404)
+    data = request.get_json(silent=True) or {}
+    if 'name' in data:
+        name = (data.get('name') or '').strip()
+        if not name:
+            return jsonify({'success': False, 'error': 'Name required'}), 400
+        c.name = name
+    if 'sort_order' in data:
+        c.sort_order = int(data.get('sort_order') or 0)
+    if 'is_active' in data:
+        c.is_active = bool(data['is_active'])
+    db.session.commit()
+    return jsonify({'success': True, 'category': c.to_dict()})
+
+
+@ticketing_bp.route('/api/settings/categories/<int:cid>', methods=['DELETE'])
+@jwt_required()
+def settings_delete_category(cid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    c = db.session.get(TicketFaultCategory, cid)
+    if not c:
+        abort(404)
+    c.is_active = False
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@ticketing_bp.route('/api/settings/fault-codes', methods=['POST'])
+@jwt_required()
+def settings_create_fault_code():
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    try:
+        cid = int(data.get('category_id'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'category_id required'}), 400
+    cat = db.session.get(TicketFaultCategory, cid)
+    if not cat:
+        return jsonify({'success': False, 'error': 'Category not found'}), 404
+    code = (data.get('code') or '').strip()
+    name = (data.get('name') or data.get('fault_code_name') or '').strip()
+    if not code or not name:
+        return jsonify({'success': False, 'error': 'Code and name required'}), 400
+    dur = data.get('duration_mins')
+    try:
+        dur_i = int(dur) if dur not in (None, '') else None
+    except (TypeError, ValueError):
+        dur_i = None
+    row = TicketFaultCode(
+        category_id=cat.id,
+        code=code,
+        name=name,
+        duration_mins=dur_i,
+        suggested_title=(data.get('suggested_title') or '').strip()[:255] or None,
+        suggested_work_description=(data.get('suggested_work_description') or '').strip() or None,
+        sort_order=int(data.get('sort_order') or 0),
+        is_active=True,
+    )
+    db.session.add(row)
+    db.session.commit()
+    return jsonify({'success': True, 'fault_code': row.to_dict()}), 201
+
+
+@ticketing_bp.route('/api/settings/fault-codes/<int:fid>', methods=['PUT'])
+@jwt_required()
+def settings_update_fault_code(fid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    row = db.session.get(TicketFaultCode, fid)
+    if not row:
+        abort(404)
+    data = request.get_json(silent=True) or {}
+    if 'code' in data:
+        code = (data.get('code') or '').strip()
+        if not code:
+            return jsonify({'success': False, 'error': 'Code required'}), 400
+        row.code = code
+    if 'name' in data or 'fault_code_name' in data:
+        name = (data.get('name') or data.get('fault_code_name') or '').strip()
+        if not name:
+            return jsonify({'success': False, 'error': 'Name required'}), 400
+        row.name = name
+    if 'duration_mins' in data:
+        dur = data.get('duration_mins')
+        try:
+            row.duration_mins = int(dur) if dur not in (None, '') else None
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Invalid duration_mins'}), 400
+    if 'suggested_title' in data:
+        row.suggested_title = (data.get('suggested_title') or '').strip()[:255] or None
+    if 'suggested_work_description' in data:
+        row.suggested_work_description = (data.get('suggested_work_description') or '').strip() or None
+    if 'sort_order' in data:
+        row.sort_order = int(data.get('sort_order') or 0)
+    if 'is_active' in data:
+        row.is_active = bool(data['is_active'])
+    db.session.commit()
+    return jsonify({'success': True, 'fault_code': row.to_dict()})
+
+
+@ticketing_bp.route('/api/settings/fault-codes/<int:fid>', methods=['DELETE'])
+@jwt_required()
+def settings_delete_fault_code(fid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    row = db.session.get(TicketFaultCode, fid)
+    if not row:
+        abort(404)
+    if tkt_fields.ticket_uses_fault(row):
+        row.is_active = False
+    else:
+        row.is_active = False
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+def _list_simple_catalog(model):
+    return model.query.order_by(model.sort_order, model.id).all()
+
+
+@ticketing_bp.route('/api/settings/priorities', methods=['GET'])
+@jwt_required()
+def settings_list_priorities():
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    tkt_fields.seed_ticket_field_catalogs()
+    return jsonify({'success': True, 'priorities': [r.to_dict() for r in _list_simple_catalog(TicketPriority)]})
+
+
+@ticketing_bp.route('/api/settings/priorities', methods=['POST'])
+@jwt_required()
+def settings_create_priority():
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    label = (data.get('label') or '').strip()
+    if not label:
+        return jsonify({'success': False, 'error': 'Label required'}), 400
+    value = (data.get('value') or '').strip() or tkt_fields.slugify_key(label, fallback='priority')
+    if TicketPriority.query.filter_by(value=value).first():
+        return jsonify({'success': False, 'error': 'Priority value already exists'}), 400
+    row = TicketPriority(
+        value=value,
+        label=label,
+        sla_hint=(data.get('sla_hint') or '').strip() or None,
+        hint=(data.get('hint') or '').strip() or None,
+        sort_order=int(data.get('sort_order') or 0),
+        is_active=True,
+    )
+    db.session.add(row)
+    db.session.commit()
+    return jsonify({'success': True, 'priority': row.to_dict()}), 201
+
+
+@ticketing_bp.route('/api/settings/priorities/<int:rid>', methods=['PUT'])
+@jwt_required()
+def settings_update_priority(rid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    row = db.session.get(TicketPriority, rid)
+    if not row:
+        abort(404)
+    data = request.get_json(silent=True) or {}
+    if 'label' in data:
+        label = (data.get('label') or '').strip()
+        if not label:
+            return jsonify({'success': False, 'error': 'Label required'}), 400
+        row.label = label
+    if 'sla_hint' in data:
+        row.sla_hint = (data.get('sla_hint') or '').strip() or None
+    if 'hint' in data:
+        row.hint = (data.get('hint') or '').strip() or None
+    if 'sort_order' in data:
+        row.sort_order = int(data.get('sort_order') or 0)
+    if 'is_active' in data:
+        row.is_active = bool(data['is_active'])
+    db.session.commit()
+    return jsonify({'success': True, 'priority': row.to_dict()})
+
+
+@ticketing_bp.route('/api/settings/priorities/<int:rid>', methods=['DELETE'])
+@jwt_required()
+def settings_delete_priority(rid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    row = db.session.get(TicketPriority, rid)
+    if not row:
+        abort(404)
+    row.is_active = False
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@ticketing_bp.route('/api/settings/hold-reasons', methods=['GET'])
+@jwt_required()
+def settings_list_hold_reasons():
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    tkt_fields.seed_ticket_field_catalogs()
+    return jsonify({'success': True, 'reasons': [r.to_dict() for r in _list_simple_catalog(TicketHoldReason)]})
+
+
+@ticketing_bp.route('/api/settings/hold-reasons', methods=['POST'])
+@jwt_required()
+def settings_create_hold_reason():
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    label = (data.get('label') or '').strip()
+    if not label:
+        return jsonify({'success': False, 'error': 'Label required'}), 400
+    key = (data.get('key') or '').strip() or tkt_fields.slugify_key(label, fallback='reason')
+    if TicketHoldReason.query.filter_by(key=key).first():
+        return jsonify({'success': False, 'error': 'Reason key already exists'}), 400
+    row = TicketHoldReason(key=key, label=label, sort_order=int(data.get('sort_order') or 0), is_active=True)
+    db.session.add(row)
+    db.session.commit()
+    return jsonify({'success': True, 'reason': row.to_dict()}), 201
+
+
+@ticketing_bp.route('/api/settings/hold-reasons/<int:rid>', methods=['PUT'])
+@jwt_required()
+def settings_update_hold_reason(rid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    row = db.session.get(TicketHoldReason, rid)
+    if not row:
+        abort(404)
+    data = request.get_json(silent=True) or {}
+    if 'label' in data:
+        label = (data.get('label') or '').strip()
+        if not label:
+            return jsonify({'success': False, 'error': 'Label required'}), 400
+        row.label = label
+    if 'sort_order' in data:
+        row.sort_order = int(data.get('sort_order') or 0)
+    if 'is_active' in data:
+        row.is_active = bool(data['is_active'])
+    db.session.commit()
+    return jsonify({'success': True, 'reason': row.to_dict()})
+
+
+@ticketing_bp.route('/api/settings/hold-reasons/<int:rid>', methods=['DELETE'])
+@jwt_required()
+def settings_delete_hold_reason(rid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    row = db.session.get(TicketHoldReason, rid)
+    if not row:
+        abort(404)
+    row.is_active = False
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@ticketing_bp.route('/api/settings/cancel-reasons', methods=['GET'])
+@jwt_required()
+def settings_list_cancel_reasons():
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    tkt_fields.seed_ticket_field_catalogs()
+    return jsonify({'success': True, 'reasons': [r.to_dict() for r in _list_simple_catalog(TicketCancelReason)]})
+
+
+@ticketing_bp.route('/api/settings/cancel-reasons', methods=['POST'])
+@jwt_required()
+def settings_create_cancel_reason():
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    label = (data.get('label') or '').strip()
+    if not label:
+        return jsonify({'success': False, 'error': 'Label required'}), 400
+    key = (data.get('key') or '').strip() or tkt_fields.slugify_key(label, fallback='reason')
+    if TicketCancelReason.query.filter_by(key=key).first():
+        return jsonify({'success': False, 'error': 'Reason key already exists'}), 400
+    row = TicketCancelReason(key=key, label=label, sort_order=int(data.get('sort_order') or 0), is_active=True)
+    db.session.add(row)
+    db.session.commit()
+    return jsonify({'success': True, 'reason': row.to_dict()}), 201
+
+
+@ticketing_bp.route('/api/settings/cancel-reasons/<int:rid>', methods=['PUT'])
+@jwt_required()
+def settings_update_cancel_reason(rid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    row = db.session.get(TicketCancelReason, rid)
+    if not row:
+        abort(404)
+    data = request.get_json(silent=True) or {}
+    if 'label' in data:
+        label = (data.get('label') or '').strip()
+        if not label:
+            return jsonify({'success': False, 'error': 'Label required'}), 400
+        row.label = label
+    if 'sort_order' in data:
+        row.sort_order = int(data.get('sort_order') or 0)
+    if 'is_active' in data:
+        row.is_active = bool(data['is_active'])
+    db.session.commit()
+    return jsonify({'success': True, 'reason': row.to_dict()})
+
+
+@ticketing_bp.route('/api/settings/cancel-reasons/<int:rid>', methods=['DELETE'])
+@jwt_required()
+def settings_delete_cancel_reason(rid):
+    user, err = _require_admin_settings()
+    if err:
+        return err
+    row = db.session.get(TicketCancelReason, rid)
+    if not row:
+        abort(404)
+    row.is_active = False
+    db.session.commit()
+    return jsonify({'success': True})
+
+
 # ── Location Tree ────────────────────────────────────────────────────────────
+
+def _location_property_branch(prop):
+    """Nested dict for one active property (zones → sub-zones → units)."""
+    proD = prop.to_dict()
+    proD['zones'] = []
+    for zone in prop.zones.filter_by(is_active=True).order_by(TicketZone.name):
+        zD = zone.to_dict()
+        zD['sub_zones'] = []
+        for sz in zone.sub_zones.filter_by(is_active=True).order_by(TicketSubZone.name):
+            szD = sz.to_dict()
+            szD['base_units'] = [
+                u.to_dict()
+                for u in sz.base_units.filter_by(is_active=True).order_by(TicketBaseUnit.name)
+            ]
+            zD['sub_zones'].append(szD)
+        proD['zones'].append(zD)
+    return proD
+
+
+def _location_counts(properties):
+    zones = sub_zones = units = 0
+    for prop in properties:
+        zlist = prop.get('zones') or []
+        zones += len(zlist)
+        for zone in zlist:
+            slist = zone.get('sub_zones') or []
+            sub_zones += len(slist)
+            for sz in slist:
+                units += len(sz.get('base_units') or [])
+    return {
+        'property': len(properties),
+        'zone': zones,
+        'sub_zone': sub_zones,
+        'base_unit': units,
+    }
+
+
+def _standalone_properties_query():
+    return TicketProperty.query.filter_by(project_id=None, is_active=True).order_by(TicketProperty.name)
+
 
 @ticketing_bp.route('/api/settings/location-tree', methods=['GET'])
 @jwt_required()
@@ -4074,38 +5311,241 @@ def settings_location_tree():
     tree = []
     for proj in projects:
         pd = proj.to_dict()
-        pd['properties'] = []
-        for prop in proj.properties.filter_by(is_active=True).order_by(TicketProperty.name):
-            proD = prop.to_dict()
-            proD['zones'] = []
-            for zone in prop.zones.filter_by(is_active=True).order_by(TicketZone.name):
-                zD = zone.to_dict()
-                zD['sub_zones'] = []
-                for sz in zone.sub_zones.filter_by(is_active=True).order_by(TicketSubZone.name):
-                    szD = sz.to_dict()
-                    szD['base_units'] = [u.to_dict() for u in sz.base_units.filter_by(is_active=True).order_by(TicketBaseUnit.name)]
-                    zD['sub_zones'].append(szD)
-                proD['zones'].append(zD)
-            pd['properties'].append(proD)
+        pd['properties'] = [
+            _location_property_branch(prop)
+            for prop in proj.properties.filter_by(is_active=True).order_by(TicketProperty.name)
+        ]
         tree.append(pd)
 
-    # Also return standalone properties (not linked to any project)
-    standalone = TicketProperty.query.filter_by(project_id=None, is_active=True).order_by(TicketProperty.name).all()
-    standalone_list = []
-    for prop in standalone:
-        proD = prop.to_dict()
-        proD['zones'] = []
-        for zone in prop.zones.filter_by(is_active=True).order_by(TicketZone.name):
-            zD = zone.to_dict()
-            zD['sub_zones'] = []
-            for sz in zone.sub_zones.filter_by(is_active=True).order_by(TicketSubZone.name):
-                szD = sz.to_dict()
-                szD['base_units'] = [u.to_dict() for u in sz.base_units.filter_by(is_active=True).order_by(TicketBaseUnit.name)]
-                zD['sub_zones'].append(szD)
-            proD['zones'].append(zD)
-        standalone_list.append(proD)
-
+    standalone_list = [_location_property_branch(prop) for prop in _standalone_properties_query().all()]
     return jsonify({'success': True, 'tree': tree, 'standalone_properties': standalone_list})
+
+
+@ticketing_bp.route('/api/settings/projects/<int:pid>/location-tree', methods=['GET'])
+@jwt_required()
+def settings_project_location_tree(pid):
+    """Nested locations for a single project (workspace page)."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False}), 403
+    proj = db.session.get(TicketProject, pid)
+    if not proj or not proj.is_active:
+        abort(404)
+    properties = [
+        _location_property_branch(prop)
+        for prop in proj.properties.filter_by(is_active=True).order_by(TicketProperty.name)
+    ]
+    return jsonify({
+        'success': True,
+        'standalone': False,
+        'project': proj.to_dict(with_property_count=True),
+        'properties': properties,
+        'counts': _location_counts(properties),
+    })
+
+
+@ticketing_bp.route('/api/settings/standalone/location-tree', methods=['GET'])
+@jwt_required()
+def settings_standalone_location_tree():
+    """Nested locations for properties not linked to a project."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False}), 403
+    properties = [_location_property_branch(prop) for prop in _standalone_properties_query().all()]
+    return jsonify({
+        'success': True,
+        'standalone': True,
+        'project': None,
+        'properties': properties,
+        'counts': _location_counts(properties),
+    })
+
+
+def _workspace_location_tree(pid=None, *, standalone=False):
+    if standalone:
+        return [_location_property_branch(prop) for prop in _standalone_properties_query().all()], None
+    proj = db.session.get(TicketProject, pid)
+    if not proj or not proj.is_active:
+        return None, None
+    properties = [
+        _location_property_branch(prop)
+        for prop in proj.properties.filter_by(is_active=True).order_by(TicketProperty.name)
+    ]
+    return properties, proj
+
+
+def _send_location_xlsx(buf, filename):
+    buf.seek(0)
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+
+
+@ticketing_bp.route('/api/settings/locations/excel-template', methods=['GET'])
+@jwt_required()
+def settings_location_excel_template():
+    """Blank 4-sheet workbook matching the location import layout."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False}), 403
+    from module_ticketing.location_excel import build_location_workbook
+    return _send_location_xlsx(build_location_workbook(), 'location_template.xlsx')
+
+
+@ticketing_bp.route('/api/settings/projects/<int:pid>/locations/export', methods=['GET'])
+@jwt_required()
+def settings_project_location_export(pid):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False}), 403
+    properties, proj = _workspace_location_tree(pid)
+    if proj is None:
+        abort(404)
+    from module_ticketing.location_excel import build_location_workbook, download_filename
+    return _send_location_xlsx(
+        build_location_workbook(properties),
+        download_filename(proj.name or 'project'),
+    )
+
+
+@ticketing_bp.route('/api/settings/standalone/locations/export', methods=['GET'])
+@jwt_required()
+def settings_standalone_location_export():
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False}), 403
+    properties, _ = _workspace_location_tree(standalone=True)
+    from module_ticketing.location_excel import build_location_workbook
+    return _send_location_xlsx(build_location_workbook(properties), 'unlinked_properties.xlsx')
+
+
+def _import_workspace_xlsx(*, project_id=None, standalone=False):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+    if not _is_admin(user):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    storage = request.files.get('file')
+    if not storage or not getattr(storage, 'filename', ''):
+        return jsonify({'success': False, 'error': 'Upload an Excel file (.xlsx)'}), 400
+    lower = (secure_filename(storage.filename) or '').lower()
+    if not lower.endswith('.xlsx'):
+        return jsonify({'success': False, 'error': 'Upload the .xlsx template (not CSV or old .xls)'}), 400
+    try:
+        from module_ticketing.location_excel import import_location_xlsx
+        report = import_location_xlsx(storage, project_id=project_id, standalone=standalone)
+    except ValueError as e:
+        logger.warning('location xlsx import parse failed: %s', e)
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception:
+        logger.exception('location xlsx import failed')
+        db.session.rollback()
+        return jsonify({'success': False, 'error': 'Import failed'}), 500
+    return jsonify({'success': True, **report})
+
+
+@ticketing_bp.route('/api/settings/projects/<int:pid>/locations/import', methods=['POST'])
+@jwt_required()
+def settings_project_location_import(pid):
+    proj = db.session.get(TicketProject, pid)
+    if not proj or not proj.is_active:
+        abort(404)
+    return _import_workspace_xlsx(project_id=pid)
+
+
+@ticketing_bp.route('/api/settings/standalone/locations/import', methods=['POST'])
+@jwt_required()
+def settings_standalone_location_import():
+    return _import_workspace_xlsx(standalone=True)
+
+
+@ticketing_bp.route('/settings/locations/standalone', methods=['GET'])
+@jwt_required()
+def settings_standalone_locations_page():
+    user = _current_user()
+    if not _has_access(user):
+        abort(403)
+    back_tab = (request.args.get('from') or 'locations').strip()
+    if back_tab not in ('locations', 'projects'):
+        back_tab = 'locations'
+    return render_template(
+        'ticket_project_locations.html',
+        user=user,
+        standalone=True,
+        project=None,
+        back_tab=back_tab,
+        sidebar_stats=_get_sidebar_stats(user),
+        active_page='ticketing',
+        ticketing_can_manage_locations=_is_admin(user),
+    )
+
+
+@ticketing_bp.route('/settings/locations/<int:project_id>', methods=['GET'])
+@jwt_required()
+def settings_project_locations_page(project_id):
+    user = _current_user()
+    if not _has_access(user):
+        abort(403)
+    proj = db.session.get(TicketProject, project_id)
+    if not proj or not proj.is_active:
+        abort(404)
+    back_tab = (request.args.get('from') or 'locations').strip()
+    if back_tab not in ('locations', 'projects'):
+        back_tab = 'locations'
+    return render_template(
+        'ticket_project_locations.html',
+        user=user,
+        standalone=False,
+        project=proj.to_dict(with_property_count=True),
+        back_tab=back_tab,
+        sidebar_stats=_get_sidebar_stats(user),
+        active_page='ticketing',
+        ticketing_can_manage_locations=_is_admin(user),
+    )
+
+
+def _code_in_use(model, code, exclude_id=None):
+    code = _opt_str(code, 64)
+    if not code:
+        return False
+    q = model.query.filter_by(code=code)
+    if exclude_id is not None:
+        q = q.filter(model.id != exclude_id)
+    return q.first() is not None
+
+
+def _fill_property_metadata(p, data, *, creating=False):
+    """Apply optional CRM fields. Returns an error string or None."""
+    if 'name' in data or creating:
+        name = _opt_str(data.get('name'), 255)
+        if creating and not name:
+            return 'Name required'
+        if name:
+            p.name = name
+    if 'code' in data or (creating and data.get('code')):
+        code = _opt_str(data.get('code'), 64)
+        if _code_in_use(TicketProperty, code, exclude_id=None if creating else p.id):
+            return 'Property code already in use'
+        p.code = code
+    if 'project_id' in data or creating:
+        raw = data.get('project_id')
+        p.project_id = _opt_int(raw) if raw not in (None, '') else None
+    for field, maxlen in (
+        ('area', 160), ('city', 120), ('country', 120), ('client_name', 160),
+        ('property_type', 80), ('criticality', 80), ('ownership_type', 80),
+        ('plot_no', 80), ('external_ref', 80), ('status', 40),
+    ):
+        if field in data or (creating and data.get(field)):
+            setattr(p, field, _opt_str(data.get(field), maxlen))
+    if 'latitude' in data and 'longitude' in data:
+        lat, lng = data.get('latitude'), data.get('longitude')
+        if lat not in (None, '') and lng not in (None, ''):
+            if not _apply_property_coords(p, lat, lng):
+                return 'Invalid coordinates'
+    return None
 
 
 @ticketing_bp.route('/api/settings/properties', methods=['POST'])
@@ -4115,16 +5555,35 @@ def settings_create_property():
     if not _has_access(user):
         return jsonify({'success': False}), 403
     data = request.get_json(silent=True) or {}
-    name = (data.get('name') or '').strip()
-    if not name:
-        return jsonify({'success': False, 'error': 'Name required'}), 400
-    p = TicketProperty(
-        name=name,
-        project_id=int(data['project_id']) if data.get('project_id') else None,
-    )
+    p = TicketProperty()
+    err = _fill_property_metadata(p, data, creating=True)
+    if err:
+        return jsonify({'success': False, 'error': err}), 400
     db.session.add(p)
+    db.session.flush()
+    if p.latitude is None:
+        hit = _geocode_site_query(f'{p.name}, Ajman, UAE')
+        if hit:
+            _apply_property_coords(p, hit['lat'], hit['lng'])
     db.session.commit()
     return jsonify({'success': True, 'property': p.to_dict()}), 201
+
+
+@ticketing_bp.route('/api/settings/properties/<int:pid>', methods=['PUT', 'PATCH'])
+@jwt_required()
+def settings_update_property(pid):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False}), 403
+    p = db.session.get(TicketProperty, pid)
+    if not p:
+        abort(404)
+    data = request.get_json(silent=True) or {}
+    err = _fill_property_metadata(p, data, creating=False)
+    if err:
+        return jsonify({'success': False, 'error': err}), 400
+    db.session.commit()
+    return jsonify({'success': True, 'property': p.to_dict()})
 
 
 @ticketing_bp.route('/api/settings/properties/<int:pid>', methods=['DELETE'])
@@ -4152,10 +5611,36 @@ def settings_create_zone():
     property_id = data.get('property_id')
     if not name or not property_id:
         return jsonify({'success': False, 'error': 'Name and property_id required'}), 400
-    z = TicketZone(name=name, property_id=int(property_id))
+    z = TicketZone(name=name, property_id=int(property_id), code=_opt_str(data.get('code'), 64))
+    if z.code and _code_in_use(TicketZone, z.code):
+        return jsonify({'success': False, 'error': 'Zone code already in use'}), 400
     db.session.add(z)
     db.session.commit()
     return jsonify({'success': True, 'zone': z.to_dict()}), 201
+
+
+@ticketing_bp.route('/api/settings/zones/<int:zid>', methods=['PATCH', 'PUT'])
+@jwt_required()
+def settings_update_zone(zid):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False}), 403
+    z = db.session.get(TicketZone, zid)
+    if not z:
+        abort(404)
+    data = request.get_json(silent=True) or {}
+    if 'name' in data:
+        name = _opt_str(data.get('name'), 255)
+        if not name:
+            return jsonify({'success': False, 'error': 'Name required'}), 400
+        z.name = name
+    if 'code' in data:
+        code = _opt_str(data.get('code'), 64)
+        if _code_in_use(TicketZone, code, exclude_id=z.id):
+            return jsonify({'success': False, 'error': 'Zone code already in use'}), 400
+        z.code = code
+    db.session.commit()
+    return jsonify({'success': True, 'zone': z.to_dict()})
 
 
 @ticketing_bp.route('/api/settings/zones/<int:zid>', methods=['DELETE'])
@@ -4183,10 +5668,36 @@ def settings_create_sub_zone():
     zone_id = data.get('zone_id')
     if not name or not zone_id:
         return jsonify({'success': False, 'error': 'Name and zone_id required'}), 400
-    sz = TicketSubZone(name=name, zone_id=int(zone_id))
+    sz = TicketSubZone(name=name, zone_id=int(zone_id), code=_opt_str(data.get('code'), 64))
+    if sz.code and _code_in_use(TicketSubZone, sz.code):
+        return jsonify({'success': False, 'error': 'Sub-zone code already in use'}), 400
     db.session.add(sz)
     db.session.commit()
     return jsonify({'success': True, 'sub_zone': sz.to_dict()}), 201
+
+
+@ticketing_bp.route('/api/settings/sub-zones/<int:szid>', methods=['PATCH', 'PUT'])
+@jwt_required()
+def settings_update_sub_zone(szid):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False}), 403
+    sz = db.session.get(TicketSubZone, szid)
+    if not sz:
+        abort(404)
+    data = request.get_json(silent=True) or {}
+    if 'name' in data:
+        name = _opt_str(data.get('name'), 255)
+        if not name:
+            return jsonify({'success': False, 'error': 'Name required'}), 400
+        sz.name = name
+    if 'code' in data:
+        code = _opt_str(data.get('code'), 64)
+        if _code_in_use(TicketSubZone, code, exclude_id=sz.id):
+            return jsonify({'success': False, 'error': 'Sub-zone code already in use'}), 400
+        sz.code = code
+    db.session.commit()
+    return jsonify({'success': True, 'sub_zone': sz.to_dict()})
 
 
 @ticketing_bp.route('/api/settings/sub-zones/<int:szid>', methods=['DELETE'])
@@ -4214,10 +5725,42 @@ def settings_create_base_unit():
     sub_zone_id = data.get('sub_zone_id')
     if not name or not sub_zone_id:
         return jsonify({'success': False, 'error': 'Name and sub_zone_id required'}), 400
-    u = TicketBaseUnit(name=name, sub_zone_id=int(sub_zone_id))
+    u = TicketBaseUnit(name=name, sub_zone_id=int(sub_zone_id), code=_opt_str(data.get('code'), 64))
+    if u.code and _code_in_use(TicketBaseUnit, u.code):
+        return jsonify({'success': False, 'error': 'Base unit code already in use'}), 400
+    if 'latitude' in data and 'longitude' in data:
+        if not _apply_coords(u, data.get('latitude'), data.get('longitude')):
+            return jsonify({'success': False, 'error': 'Invalid coordinates'}), 400
     db.session.add(u)
     db.session.commit()
     return jsonify({'success': True, 'base_unit': u.to_dict()}), 201
+
+
+@ticketing_bp.route('/api/settings/base-units/<int:uid>', methods=['PATCH', 'PUT'])
+@jwt_required()
+def settings_update_base_unit(uid):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False}), 403
+    u = db.session.get(TicketBaseUnit, uid)
+    if not u:
+        abort(404)
+    data = request.get_json(silent=True) or {}
+    if 'name' in data:
+        name = _opt_str(data.get('name'), 255)
+        if not name:
+            return jsonify({'success': False, 'error': 'Name required'}), 400
+        u.name = name
+    if 'code' in data:
+        code = _opt_str(data.get('code'), 64)
+        if _code_in_use(TicketBaseUnit, code, exclude_id=u.id):
+            return jsonify({'success': False, 'error': 'Base unit code already in use'}), 400
+        u.code = code
+    if 'latitude' in data and 'longitude' in data:
+        if not _apply_coords(u, data.get('latitude'), data.get('longitude')):
+            return jsonify({'success': False, 'error': 'Invalid coordinates'}), 400
+    db.session.commit()
+    return jsonify({'success': True, 'base_unit': u.to_dict()})
 
 
 @ticketing_bp.route('/api/settings/base-units/<int:uid>', methods=['DELETE'])

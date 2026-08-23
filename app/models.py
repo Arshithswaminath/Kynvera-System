@@ -1,5 +1,5 @@
 """
-Database Models for Injaaz App
+Database Models for Kynvera
 SQLAlchemy ORM models for PostgreSQL/SQLite
 """
 import json
@@ -42,7 +42,9 @@ class User(db.Model):
     access_cleaning = db.Column(db.Boolean, default=False)  # Cleaning form access
     access_hr = db.Column(db.Boolean, default=False)  # HR module access
     access_procurement_module = db.Column(db.Boolean, default=False)  # Procurement module access
-    access_business_development = db.Column(db.Boolean, default=False)  # BD email + inspection BD reviewer (when no conflicting designation)
+    access_business_development = db.Column(db.Boolean, default=False)  # BD pipeline + email + inspection BD reviewer (when no conflicting designation)
+    access_sales_manager = db.Column(db.Boolean, default=False)  # BD: view all salespeople's pipelines
+    access_quotations = db.Column(db.Boolean, default=False)  # BD: create/edit/submit quotations
     access_report_generation = db.Column(db.Boolean, default=False)  # MMR / Report Generation hub
     access_submitted_forms = db.Column(db.Boolean, default=False)  # "My submitted forms" workflow hub
     access_ticketing = db.Column(db.Boolean, default=False)  # Ticketing / Work Order module
@@ -150,6 +152,8 @@ class User(db.Model):
             'access_hr': getattr(self, 'access_hr', False) if self.role != 'admin' else True,
             'access_procurement_module': getattr(self, 'access_procurement_module', False) if self.role != 'admin' else True,
             'access_business_development': getattr(self, 'access_business_development', False) if self.role != 'admin' else True,
+            'access_sales_manager': getattr(self, 'access_sales_manager', False) if self.role != 'admin' else True,
+            'access_quotations': getattr(self, 'access_quotations', False) if self.role != 'admin' else True,
             'access_report_generation': getattr(self, 'access_report_generation', False) if self.role != 'admin' else True,
             'access_submitted_forms': getattr(self, 'access_submitted_forms', False) if self.role != 'admin' else True,
             'access_ticketing': getattr(self, 'access_ticketing', False) if self.role != 'admin' else True,
@@ -511,11 +515,12 @@ class BDProject(db.Model):
     name = db.Column(db.String(255), nullable=False, index=True)
     company = db.Column(db.String(255), nullable=False, index=True)
     stage = db.Column(db.String(30), default='prospecting', index=True)  # prospecting, qualifying, proposal, negotiation, closing
-    status = db.Column(db.String(20), default='active', index=True)  # active, prospect, proposal, won, lost
+    status = db.Column(db.String(20), default='active', index=True)  # active, prospect, proposal, won, lost, under_renewal
     priority = db.Column(db.String(10), default='med')  # high, med, low
     value_amount = db.Column(db.Float, default=0.0)
     progress = db.Column(db.Integer, default=0)
-    owner = db.Column(db.String(120), nullable=True)
+    owner = db.Column(db.String(120), nullable=True)  # display name (legacy / denormalized)
+    owner_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
     next_action = db.Column(db.String(255), nullable=True)
     expected_close_date = db.Column(db.Date, nullable=True)
     notes = db.Column(db.Text, nullable=True)
@@ -525,28 +530,38 @@ class BDProject(db.Model):
     created_at = db.Column(db.DateTime, default=_utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
 
+    owner_user = db.relationship('User', foreign_keys=[owner_user_id],
+                                 backref=db.backref('owned_bd_projects', lazy='dynamic'))
+
     def to_dict(self):
         value_amount = float(self.value_amount or 0)
+        owner_name = None
+        if self.owner_user:
+            owner_name = self.owner_user.full_name or self.owner_user.username
+        owner_name = owner_name or self.owner or 'Unassigned'
         return {
             'id': self.id,
             'name': self.name,
             'co': self.company,
             'company': self.company,
             'icon': '🏢',
-            'bg': '#e8f5ee',
+            'bg': '#fff4ef',
             'stage': self.stage,
             'status': self.status,
             'priority': self.priority,
             'valueAmount': value_amount,
-            'value': f'${value_amount:,.0f}',
+            'value': f'AED {value_amount:,.0f}',
             'progress': max(0, min(100, int(self.progress or 0))),
-            'owner': self.owner or 'Unassigned',
+            'owner': owner_name,
+            'ownerUserId': self.owner_user_id,
+            'owner_user_id': self.owner_user_id,
             'next': self.next_action or 'No action',
             'nextDate': self.expected_close_date.isoformat() if self.expected_close_date else '',
             'expectedCloseDate': self.expected_close_date.isoformat() if self.expected_close_date else None,
             'notes': self.notes,
             'primaryContactName': self.primary_contact_name,
             'primaryContactEmail': self.primary_contact_email,
+            'createdBy': self.created_by,
             'createdAt': self.created_at.isoformat() if self.created_at else None,
             'updatedAt': self.updated_at.isoformat() if self.updated_at else None
         }
@@ -635,7 +650,7 @@ class BDActivity(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     icon = db.Column(db.String(10), default='📝')
-    bg = db.Column(db.String(20), default='#e8f5ee')
+    bg = db.Column(db.String(20), default='#fff4ef')
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=True)
     badge = db.Column(db.String(120), nullable=True)
@@ -647,7 +662,7 @@ class BDActivity(db.Model):
         return {
             'id': self.id,
             'icon': self.icon or '📝',
-            'bg': self.bg or '#e8f5ee',
+            'bg': self.bg or '#fff4ef',
             'title': self.title,
             'desc': self.description or '',
             'badge': self.badge or '',
@@ -657,6 +672,215 @@ class BDActivity(db.Model):
 
     def __repr__(self):
         return f'<BDActivity {self.id} - {self.title}>'
+
+
+QUOTATION_DEFAULT_INTRO = (
+    'With reference to our discussion, we are pleased to quote for the following:'
+)
+QUOTATION_DEFAULT_NOTES = (
+    'VAT excluded in the quote.\n'
+    'Prices may change at any time; new prices apply unless the client confirms '
+    'and the advance payment is received.'
+)
+QUOTATION_DEFAULT_EXCLUSIONS = (
+    'Any civil work is excluded and remains the client\'s scope.\n'
+    'Any additional requirement or variation will be quoted separately.'
+)
+QUOTATION_DEFAULT_TERMS = (
+    'Validity : 10 Days\n'
+    'Delivery : as per stock availability at the time of approval and advance payment clearance\n'
+    'Payment : 50% advance, 50% after completion\n'
+    'Please confirm your acceptance to enable us to proceed, assuring you of our best services at all times.'
+)
+QUOTATION_DEFAULT_SIGNATORY_NAME = 'Business Development'
+QUOTATION_DEFAULT_SIGNATORY_EMAIL = ''
+QUOTATION_DEFAULT_SIGNATORY_PHONE = ''
+QUOTATION_DEFAULT_SIGNOFF_LABEL = 'Thanks & Regards'
+
+
+class Quotation(db.Model):
+    """Sales quotation / proposal linked to a BD deal."""
+    __tablename__ = 'quotations'
+
+    id = db.Column(db.Integer, primary_key=True)
+    quote_no = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    ref_no = db.Column(db.String(80), nullable=True, index=True)
+    bd_project_id = db.Column(db.Integer, db.ForeignKey('bd_projects.id', ondelete='SET NULL'), nullable=True, index=True)
+    company_name = db.Column(db.String(255), nullable=False)
+    contact_name = db.Column(db.String(160), nullable=True)
+    contact_email = db.Column(db.String(255), nullable=True)
+    kind_attn = db.Column(db.String(160), nullable=True)
+    client_tel = db.Column(db.String(60), nullable=True)
+    subject = db.Column(db.String(500), nullable=True)
+    project_name = db.Column(db.String(255), nullable=True)
+    intro_text = db.Column(db.Text, nullable=True)
+    quote_date = db.Column(db.Date, nullable=False, default=lambda: _utcnow().date())
+    valid_until = db.Column(db.Date, nullable=True)
+    status = db.Column(db.String(30), default='draft', index=True)
+    subtotal = db.Column(db.Float, default=0.0)
+    discount_amount = db.Column(db.Float, default=0.0)
+    tax_pct = db.Column(db.Float, default=5.0)
+    tax_amount = db.Column(db.Float, default=0.0)
+    grand_total = db.Column(db.Float, default=0.0)
+    amount_in_words = db.Column(db.String(400), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    notes_text = db.Column(db.Text, nullable=True)
+    exclusions_text = db.Column(db.Text, nullable=True)
+    terms_text = db.Column(db.Text, nullable=True)
+    signatory_name = db.Column(db.String(160), nullable=True)
+    signatory_email = db.Column(db.String(255), nullable=True)
+    signatory_phone = db.Column(db.String(60), nullable=True)
+    signoff_label = db.Column(db.String(120), nullable=True)
+    prepared_signature = db.Column(db.Text, nullable=True)
+    submitted_at = db.Column(db.DateTime, nullable=True)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    approved_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    approval_signature = db.Column(db.Text, nullable=True)
+    approval_notes = db.Column(db.Text, nullable=True)
+    rejected_at = db.Column(db.DateTime, nullable=True)
+    rejection_notes = db.Column(db.Text, nullable=True)
+    lpo_filename = db.Column(db.String(255), nullable=True)
+    lpo_path = db.Column(db.String(512), nullable=True)
+    lpo_cloud_url = db.Column(db.String(512), nullable=True)
+    owner_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    bd_project = db.relationship('BDProject', foreign_keys=[bd_project_id],
+                                 backref=db.backref('quotations', lazy='dynamic'))
+    approved_by = db.relationship('User', foreign_keys=[approved_by_id])
+    owner_user = db.relationship('User', foreign_keys=[owner_user_id],
+                                 backref=db.backref('owned_quotations', lazy='dynamic'))
+    created_by = db.relationship('User', foreign_keys=[created_by_id],
+                                 backref=db.backref('created_quotations', lazy='dynamic'))
+    items = db.relationship('QuotationItem', backref='quotation',
+                            cascade='all, delete-orphan', lazy='select',
+                            order_by='QuotationItem.id')
+    attachments = db.relationship('QuotationAttachment', backref='quotation',
+                                  cascade='all, delete-orphan', lazy='select',
+                                  order_by='QuotationAttachment.id')
+
+    def to_dict(self, include_items=True):
+        data = {
+            'id': self.id,
+            'quote_no': self.quote_no,
+            'ref_no': self.ref_no or self.quote_no,
+            'bd_project_id': self.bd_project_id,
+            'bd_project_name': self.bd_project.name if self.bd_project else None,
+            'company_name': self.company_name,
+            'contact_name': self.contact_name,
+            'contact_email': self.contact_email,
+            'kind_attn': self.kind_attn,
+            'client_tel': self.client_tel,
+            'subject': self.subject,
+            'project_name': self.project_name,
+            'intro_text': self.intro_text or QUOTATION_DEFAULT_INTRO,
+            'quote_date': self.quote_date.isoformat() if self.quote_date else None,
+            'valid_until': self.valid_until.isoformat() if self.valid_until else None,
+            'status': self.status,
+            'subtotal': self.subtotal,
+            'discount_amount': self.discount_amount or 0.0,
+            'tax_pct': self.tax_pct,
+            'tax_amount': self.tax_amount,
+            'grand_total': self.grand_total,
+            'amount_in_words': self.amount_in_words,
+            'notes': self.notes,
+            'notes_text': self.notes_text or QUOTATION_DEFAULT_NOTES,
+            'exclusions_text': self.exclusions_text or QUOTATION_DEFAULT_EXCLUSIONS,
+            'terms_text': self.terms_text or QUOTATION_DEFAULT_TERMS,
+            'signatory_name': self.signatory_name or QUOTATION_DEFAULT_SIGNATORY_NAME,
+            'signatory_email': self.signatory_email or QUOTATION_DEFAULT_SIGNATORY_EMAIL,
+            'signatory_phone': self.signatory_phone or QUOTATION_DEFAULT_SIGNATORY_PHONE,
+            'signoff_label': self.signoff_label or QUOTATION_DEFAULT_SIGNOFF_LABEL,
+            'prepared_signature': self.prepared_signature,
+            'has_prepared_signature': bool(self.prepared_signature),
+            'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None,
+            'approved_at': self.approved_at.isoformat() if self.approved_at else None,
+            'approved_by_id': self.approved_by_id,
+            'approved_by_name': (
+                (self.approved_by.full_name or self.approved_by.username)
+                if self.approved_by else None
+            ),
+            'has_approval_signature': bool(self.approval_signature),
+            'rejection_notes': self.rejection_notes,
+            'lpo_filename': self.lpo_filename,
+            'lpo_url': self.lpo_cloud_url or (
+                f'/api/admin/bd/quotations/{self.id}/lpo' if self.lpo_path else None
+            ),
+            'owner_user_id': self.owner_user_id,
+            'created_by_id': self.created_by_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'can_prepare': True,
+        }
+        if include_items:
+            data['items'] = [it.to_dict() for it in self.items]
+            data['attachments'] = [a.to_dict() for a in self.attachments]
+        return data
+
+    def __repr__(self):
+        return f'<Quotation {self.quote_no}>'
+
+
+class QuotationItem(db.Model):
+    __tablename__ = 'quotation_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    quotation_id = db.Column(db.Integer, db.ForeignKey('quotations.id', ondelete='CASCADE'),
+                             nullable=False, index=True)
+    description = db.Column(db.String(255), nullable=False)
+    details = db.Column(db.Text, nullable=True)
+    quantity = db.Column(db.Float, default=1.0)
+    unit = db.Column(db.String(40), nullable=True)
+    unit_price = db.Column(db.Float, default=0.0)
+    total_price = db.Column(db.Float, default=0.0)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'quotation_id': self.quotation_id,
+            'description': self.description,
+            'details': self.details,
+            'quantity': self.quantity,
+            'unit': self.unit,
+            'unit_price': self.unit_price,
+            'total_price': self.total_price,
+        }
+
+    def __repr__(self):
+        return f'<QuotationItem {self.id} {self.description}>'
+
+
+class QuotationAttachment(db.Model):
+    """Supporting documents attached to a quotation (besides LPO on header)."""
+    __tablename__ = 'quotation_attachments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    quotation_id = db.Column(db.Integer, db.ForeignKey('quotations.id', ondelete='CASCADE'),
+                             nullable=False, index=True)
+    filename = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(512), nullable=True)
+    cloud_url = db.Column(db.String(512), nullable=True)
+    uploaded_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    uploaded_at = db.Column(db.DateTime, default=_utcnow)
+
+    uploaded_by = db.relationship('User', foreign_keys=[uploaded_by_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'quotation_id': self.quotation_id,
+            'filename': self.filename,
+            'url': self.cloud_url or (
+                f'/api/admin/bd/quotations/{self.quotation_id}/attachments/{self.id}'
+                if self.file_path else None
+            ),
+            'uploaded_at': self.uploaded_at.isoformat() if self.uploaded_at else None,
+        }
+
+    def __repr__(self):
+        return f'<QuotationAttachment {self.id} {self.filename}>'
 
 
 class AdminPersonalProject(db.Model):
@@ -856,7 +1080,7 @@ class DocHubAccess(db.Model):
 
 
 class KnowledgeBaseEntry(db.Model):
-    """Admin-managed knowledge records that feed the Injaaz assistant brain."""
+    """Admin-managed knowledge records that feed the Kynvera assistant brain."""
     __tablename__ = 'knowledge_base_entries'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -1113,11 +1337,29 @@ class TicketProject(db.Model):
     def to_dict(self, *, with_property_count=False):
         sup = self.supervisor_user
         bp = self.bd_project
+        roster = []
+        try:
+            roster = [
+                link.to_dict()
+                for link in self.supervisor_links.order_by(TicketProjectSupervisor.id).all()
+            ]
+        except Exception:
+            roster = []
+        names = [r.get('name') for r in roster if r.get('name')]
+        if names:
+            if len(names) == 1:
+                summary = names[0]
+            else:
+                summary = f'{names[0]} + {len(names) - 1} more'
+        else:
+            summary = None
         d = {
             'id': self.id, 'name': self.name,
             'client_name': self.client_name, 'description': self.description,
             'supervisor_id': self.supervisor_id,
-            'supervisor_name': sup.full_name if sup else None,
+            'supervisor_name': summary or (sup.full_name if sup else None),
+            'supervisor_count': len(roster),
+            'supervisors': roster,
             'bd_project_id': self.bd_project_id,
             'bd_project_label': (
                 f'{bp.name} — {bp.company}' if bp else None
@@ -1138,21 +1380,75 @@ class TicketProject(db.Model):
         return f'<TicketProject {self.name}>'
 
 
+def _location_display_label(name, *, area=None, code=None):
+    """Human label that keeps duplicate CRM names distinct (name — area (code))."""
+    label = (name or '').strip() or 'Untitled'
+    area = (area or '').strip()
+    code = (code or '').strip()
+    if area:
+        label = f'{label} — {area}'
+    if code:
+        label = f'{label} ({code})'
+    return label
+
+
 class TicketProperty(db.Model):
-    """Location: Property level (belongs to a project)"""
+    """Location: Property level (belongs to a project).
+
+    latitude/longitude pin the site on the New Work Order map. Zones and
+    sub-zones inherit this pin. Base units may store their own pin and fall
+    back to the property when unset.
+    CRM exports distinguish sites by Property Code (names can repeat).
+    """
     __tablename__ = 'ticket_properties'
 
     id = db.Column(db.Integer, primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey('ticket_projects.id', ondelete='CASCADE'), nullable=True)
-    name = db.Column(db.String(160), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    code = db.Column(db.String(64), nullable=True, unique=True, index=True)
+    area = db.Column(db.String(160), nullable=True)
+    city = db.Column(db.String(120), nullable=True)
+    country = db.Column(db.String(120), nullable=True)
+    client_name = db.Column(db.String(160), nullable=True)
+    property_type = db.Column(db.String(80), nullable=True)
+    criticality = db.Column(db.String(80), nullable=True)
+    ownership_type = db.Column(db.String(80), nullable=True)
+    plot_no = db.Column(db.String(80), nullable=True)
+    external_ref = db.Column(db.String(80), nullable=True)
+    status = db.Column(db.String(40), nullable=True)
+    initiation_date = db.Column(db.Date, nullable=True)
 
     zones = db.relationship('TicketZone', backref='property',
                             lazy='dynamic', cascade='all, delete-orphan',
                             order_by='TicketZone.name')
 
+    def display_label(self):
+        return _location_display_label(self.name, area=self.area, code=self.code)
+
     def to_dict(self, with_zones=False):
-        d = {'id': self.id, 'name': self.name, 'project_id': self.project_id}
+        d = {
+            'id': self.id,
+            'name': self.name,
+            'label': self.display_label(),
+            'project_id': self.project_id,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
+            'code': self.code,
+            'area': self.area,
+            'city': self.city,
+            'country': self.country,
+            'client_name': self.client_name,
+            'property_type': self.property_type,
+            'criticality': self.criticality,
+            'ownership_type': self.ownership_type,
+            'plot_no': self.plot_no,
+            'external_ref': self.external_ref,
+            'status': self.status,
+            'initiation_date': self.initiation_date.isoformat() if self.initiation_date else None,
+        }
         if with_zones:
             d['zones'] = [z.to_dict(with_sub_zones=True) for z in self.zones]
         return d
@@ -1164,15 +1460,25 @@ class TicketZone(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     property_id = db.Column(db.Integer, db.ForeignKey('ticket_properties.id', ondelete='CASCADE'), nullable=False)
-    name = db.Column(db.String(160), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
+    code = db.Column(db.String(64), nullable=True, unique=True, index=True)
 
     sub_zones = db.relationship('TicketSubZone', backref='zone',
                                 lazy='dynamic', cascade='all, delete-orphan',
                                 order_by='TicketSubZone.name')
 
+    def display_label(self):
+        return _location_display_label(self.name, code=self.code)
+
     def to_dict(self, with_sub_zones=False):
-        d = {'id': self.id, 'name': self.name, 'property_id': self.property_id}
+        d = {
+            'id': self.id,
+            'name': self.name,
+            'label': self.display_label(),
+            'property_id': self.property_id,
+            'code': self.code,
+        }
         if with_sub_zones:
             d['sub_zones'] = [s.to_dict(with_units=True) for s in self.sub_zones]
         return d
@@ -1184,31 +1490,59 @@ class TicketSubZone(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     zone_id = db.Column(db.Integer, db.ForeignKey('ticket_zones.id', ondelete='CASCADE'), nullable=False)
-    name = db.Column(db.String(160), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
+    code = db.Column(db.String(64), nullable=True, unique=True, index=True)
 
     base_units = db.relationship('TicketBaseUnit', backref='sub_zone',
                                  lazy='dynamic', cascade='all, delete-orphan',
                                  order_by='TicketBaseUnit.name')
 
+    def display_label(self):
+        return _location_display_label(self.name, code=self.code)
+
     def to_dict(self, with_units=False):
-        d = {'id': self.id, 'name': self.name, 'zone_id': self.zone_id}
+        d = {
+            'id': self.id,
+            'name': self.name,
+            'label': self.display_label(),
+            'zone_id': self.zone_id,
+            'code': self.code,
+        }
         if with_units:
             d['base_units'] = [u.to_dict() for u in self.base_units]
         return d
 
 
 class TicketBaseUnit(db.Model):
-    """Location: Base unit (apartment, room, office, etc.)"""
+    """Location: Base unit (apartment, room, office, etc.).
+
+    Optional latitude/longitude pin this unit on the New Work Order map.
+    When unset, the parent property pin is used.
+    """
     __tablename__ = 'ticket_base_units'
 
     id = db.Column(db.Integer, primary_key=True)
     sub_zone_id = db.Column(db.Integer, db.ForeignKey('ticket_sub_zones.id', ondelete='CASCADE'), nullable=False)
-    name = db.Column(db.String(160), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
+    code = db.Column(db.String(64), nullable=True, unique=True, index=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+
+    def display_label(self):
+        return _location_display_label(self.name, code=self.code)
 
     def to_dict(self):
-        return {'id': self.id, 'name': self.name, 'sub_zone_id': self.sub_zone_id}
+        return {
+            'id': self.id,
+            'name': self.name,
+            'label': self.display_label(),
+            'sub_zone_id': self.sub_zone_id,
+            'code': self.code,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
+        }
 
 
 class TicketTitleTemplate(db.Model):
@@ -1273,6 +1607,327 @@ class TicketSupervisorTeam(db.Model):
         return f'<TicketSupervisorTeam sup={self.supervisor_id} tech={self.technician_id}>'
 
 
+class TicketProjectSupervisor(db.Model):
+    """Project-scoped supervisor roster (Resource Management)."""
+    __tablename__ = 'ticket_project_supervisors'
+
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('ticket_projects.id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('project_id', 'user_id', name='uq_tkt_project_supervisor'),
+    )
+
+    project = db.relationship('TicketProject', backref=db.backref('supervisor_links', lazy='dynamic', cascade='all, delete-orphan'))
+    user = db.relationship('User', foreign_keys=[user_id])
+
+    def to_dict(self):
+        u = self.user
+        return {
+            'id': self.id,
+            'project_id': self.project_id,
+            'user_id': self.user_id,
+            'name': (u.full_name or u.username) if u else None,
+            'username': u.username if u else None,
+            'designation': getattr(u, 'designation', None) if u else None,
+        }
+
+
+class TicketProjectTeamMember(db.Model):
+    """Project-scoped team members (technicians) for ticket assignment."""
+    __tablename__ = 'ticket_project_team_members'
+
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('ticket_projects.id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('project_id', 'user_id', name='uq_tkt_project_team_member'),
+    )
+
+    project = db.relationship('TicketProject', backref=db.backref('team_links', lazy='dynamic', cascade='all, delete-orphan'))
+    user = db.relationship('User', foreign_keys=[user_id])
+
+    def to_dict(self):
+        u = self.user
+        speciality = ''
+        if u:
+            speciality = (getattr(u, 'job_designation', None) or '').strip() or 'Technician'
+        return {
+            'id': self.id,
+            'project_id': self.project_id,
+            'user_id': self.user_id,
+            'name': (u.full_name or u.username) if u else None,
+            'username': u.username if u else None,
+            'speciality': speciality,
+        }
+
+
+class TicketVendor(db.Model):
+    """Vendor company that can be attached to ticketing projects."""
+    __tablename__ = 'ticket_vendors'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(160), nullable=False)
+    contact_name = db.Column(db.String(160), nullable=True)
+    contact_email = db.Column(db.String(255), nullable=True)
+    contact_phone = db.Column(db.String(80), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    technicians = db.relationship(
+        'TicketVendorTechnician', backref='vendor',
+        lazy='dynamic', cascade='all, delete-orphan',
+        order_by='TicketVendorTechnician.name',
+    )
+    project_links = db.relationship(
+        'TicketProjectVendor', backref='vendor',
+        lazy='dynamic', cascade='all, delete-orphan',
+    )
+
+    def to_dict(self, *, with_technicians=True):
+        d = {
+            'id': self.id,
+            'name': self.name,
+            'contact_name': self.contact_name,
+            'contact_email': self.contact_email,
+            'contact_phone': self.contact_phone,
+            'notes': self.notes,
+            'is_active': self.is_active,
+        }
+        if with_technicians:
+            techs = [t.to_dict() for t in self.technicians]
+            d['technicians'] = techs
+            d['technician_count'] = len(techs)
+        return d
+
+    def to_assign_dict(self):
+        """Shape expected by ticket detail vendor picker."""
+        techs = []
+        for t in self.technicians:
+            techs.append({
+                'code': t.code or f'VEND-TECH-{t.id}',
+                'name': t.name,
+                'speciality': t.speciality or 'Technician',
+                'user_id': t.user_id,
+            })
+        return {
+            'id': str(self.id),
+            'name': self.name,
+            'technicians': techs,
+        }
+
+
+class TicketVendorTechnician(db.Model):
+    """Named technician on a vendor company (optional login user)."""
+    __tablename__ = 'ticket_vendor_technicians'
+
+    id = db.Column(db.Integer, primary_key=True)
+    vendor_id = db.Column(db.Integer, db.ForeignKey('ticket_vendors.id', ondelete='CASCADE'), nullable=False, index=True)
+    name = db.Column(db.String(160), nullable=False)
+    speciality = db.Column(db.String(120), nullable=True)
+    code = db.Column(db.String(64), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'vendor_id': self.vendor_id,
+            'name': self.name,
+            'speciality': self.speciality,
+            'code': self.code,
+            'user_id': self.user_id,
+        }
+
+
+class TicketProjectVendor(db.Model):
+    """Attaches a vendor company to a ticketing project."""
+    __tablename__ = 'ticket_project_vendors'
+
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('ticket_projects.id', ondelete='CASCADE'), nullable=False, index=True)
+    vendor_id = db.Column(db.Integer, db.ForeignKey('ticket_vendors.id', ondelete='CASCADE'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('project_id', 'vendor_id', name='uq_tkt_project_vendor'),
+    )
+
+    project = db.relationship('TicketProject', backref=db.backref('vendor_links', lazy='dynamic', cascade='all, delete-orphan'))
+
+
+class TicketServiceGroup(db.Model):
+    """Configurable ticket service group (Ticket Fields)."""
+    __tablename__ = 'ticket_service_groups'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    sort_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+
+    categories = db.relationship(
+        'TicketFaultCategory', backref='service_group',
+        lazy='dynamic', cascade='all, delete-orphan',
+        order_by='TicketFaultCategory.sort_order, TicketFaultCategory.name',
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'sort_order': self.sort_order or 0,
+            'is_active': self.is_active,
+        }
+
+
+class TicketFaultCategory(db.Model):
+    """Fault category under a service group."""
+    __tablename__ = 'ticket_fault_categories'
+
+    id = db.Column(db.Integer, primary_key=True)
+    service_group_id = db.Column(
+        db.Integer, db.ForeignKey('ticket_service_groups.id', ondelete='CASCADE'),
+        nullable=False, index=True,
+    )
+    name = db.Column(db.String(120), nullable=False)
+    sort_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+
+    fault_codes = db.relationship(
+        'TicketFaultCode', backref='category',
+        lazy='dynamic', cascade='all, delete-orphan',
+        order_by='TicketFaultCode.sort_order, TicketFaultCode.code',
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'service_group_id': self.service_group_id,
+            'name': self.name,
+            'sort_order': self.sort_order or 0,
+            'is_active': self.is_active,
+        }
+
+
+class TicketFaultCode(db.Model):
+    """Individual fault code under a category."""
+    __tablename__ = 'ticket_fault_codes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    category_id = db.Column(
+        db.Integer, db.ForeignKey('ticket_fault_categories.id', ondelete='CASCADE'),
+        nullable=False, index=True,
+    )
+    code = db.Column(db.String(64), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    duration_mins = db.Column(db.Integer, nullable=True)
+    suggested_title = db.Column(db.String(255), nullable=True)
+    suggested_work_description = db.Column(db.Text, nullable=True)
+    root_cause_applicability = db.Column(db.String(255), nullable=True)
+    sort_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+
+    def fault_pick_value(self):
+        code = (self.code or '').strip()
+        name = (self.name or '').strip()
+        if code and name:
+            return f'{code}: {name}'[:512]
+        return (code or name)[:512]
+
+    def to_dict(self):
+        cat = self.category
+        sg = cat.service_group if cat else None
+        pick = self.fault_pick_value()
+        name = (self.name or '').strip()
+        cat_name = cat.name if cat else ''
+        sg_name = sg.name if sg else ''
+        return {
+            'id': self.id,
+            'category_id': self.category_id,
+            'catalog_id': self.id,
+            'fault_code': self.code,
+            'fault_code_name': self.name,
+            'fault_category': cat_name,
+            'service_group': sg_name,
+            'duration_mins': self.duration_mins,
+            'root_cause_applicability': self.root_cause_applicability,
+            'fault_pick_value': pick,
+            'search_label': f'{name} · {cat_name} · {sg_name}' if name else f'{cat_name} · {sg_name}',
+            'suggested_title': self.suggested_title or '',
+            'suggested_work_description': self.suggested_work_description or '',
+            'sort_order': self.sort_order or 0,
+            'is_active': self.is_active,
+        }
+
+
+class TicketPriority(db.Model):
+    """Configurable ticket priority (value slug is immutable after create)."""
+    __tablename__ = 'ticket_priorities'
+
+    id = db.Column(db.Integer, primary_key=True)
+    value = db.Column(db.String(40), nullable=False, unique=True)
+    label = db.Column(db.String(80), nullable=False)
+    sla_hint = db.Column(db.String(80), nullable=True)
+    hint = db.Column(db.String(255), nullable=True)
+    sort_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'value': self.value,
+            'label': self.label,
+            'sla_hint': self.sla_hint,
+            'hint': self.hint,
+            'sort_order': self.sort_order or 0,
+            'is_active': self.is_active,
+        }
+
+
+class TicketHoldReason(db.Model):
+    __tablename__ = 'ticket_hold_reasons'
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(60), nullable=False, unique=True)
+    label = db.Column(db.String(160), nullable=False)
+    sort_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'key': self.key,
+            'label': self.label,
+            'sort_order': self.sort_order or 0,
+            'is_active': self.is_active,
+        }
+
+
+class TicketCancelReason(db.Model):
+    __tablename__ = 'ticket_cancel_reasons'
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(60), nullable=False, unique=True)
+    label = db.Column(db.String(160), nullable=False)
+    sort_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'key': self.key,
+            'label': self.label,
+            'sort_order': self.sort_order or 0,
+            'is_active': self.is_active,
+        }
+
+
 class Ticket(db.Model):
     """Work order / complaint tickets"""
     __tablename__ = 'tickets'
@@ -1299,11 +1954,15 @@ class Ticket(db.Model):
     title = db.Column(db.String(255), nullable=False)
     work_description = db.Column(db.Text, nullable=False)
 
-    # Location
-    property_name = db.Column(db.String(160), nullable=True)
-    zone = db.Column(db.String(120), nullable=True)
-    sub_zone = db.Column(db.String(120), nullable=True)
-    base_unit = db.Column(db.String(120), nullable=True)
+    # Location (name snapshots for history/email; FKs for cascade when names repeat)
+    property_name = db.Column(db.String(255), nullable=True)
+    zone = db.Column(db.String(255), nullable=True)
+    sub_zone = db.Column(db.String(255), nullable=True)
+    base_unit = db.Column(db.String(255), nullable=True)
+    property_id = db.Column(db.Integer, db.ForeignKey('ticket_properties.id', ondelete='SET NULL'), nullable=True, index=True)
+    zone_id = db.Column(db.Integer, db.ForeignKey('ticket_zones.id', ondelete='SET NULL'), nullable=True, index=True)
+    sub_zone_id = db.Column(db.Integer, db.ForeignKey('ticket_sub_zones.id', ondelete='SET NULL'), nullable=True, index=True)
+    base_unit_id = db.Column(db.Integer, db.ForeignKey('ticket_base_units.id', ondelete='SET NULL'), nullable=True, index=True)
 
     # Financial
     is_chargeable = db.Column(db.Boolean, default=False)
@@ -1333,13 +1992,13 @@ class Ticket(db.Model):
     work_started_at = db.Column(db.Text, nullable=True)
     work_completed_at = db.Column(db.Text, nullable=True)
 
-    # Closing info — Stage 1: service-provider supervisor verification (`supervisor-close`)
+    # Closing info — supervisor verification (`supervisor-close`)
     close_notes = db.Column(db.Text, nullable=True)
     close_signature = db.Column(db.Text, nullable=True)   # base64 data-URL
     close_signed_by = db.Column(db.String(160), nullable=True)
     close_signed_role = db.Column(db.String(120), nullable=True)
 
-    # Closing info — Stage 2: client operations final approval (`ops-close`)
+    # Closing info — leftover ops sign-off (`ops-close`) for tickets already provider_closed
     ops_close_notes = db.Column(db.Text, nullable=True)
     ops_close_signature = db.Column(db.Text, nullable=True)   # base64 data-URL
     ops_close_signed_by = db.Column(db.String(160), nullable=True)
@@ -1434,6 +2093,10 @@ class Ticket(db.Model):
             'zone': self.zone,
             'sub_zone': self.sub_zone,
             'base_unit': self.base_unit,
+            'property_id': self.property_id,
+            'zone_id': self.zone_id,
+            'sub_zone_id': self.sub_zone_id,
+            'base_unit_id': self.base_unit_id,
             'is_chargeable': self.is_chargeable,
             'projected_cost': self.projected_cost,
             'total_cost': self.total_cost,
@@ -1502,6 +2165,12 @@ class Asset(db.Model):
     building = db.Column(db.String(160), nullable=True, index=True)
     floor = db.Column(db.String(80), nullable=True)
     room = db.Column(db.String(80), nullable=True)
+    project_id = db.Column(
+        db.Integer,
+        db.ForeignKey('ticket_projects.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+    )
     manufacturer = db.Column(db.String(160), nullable=True)
     model = db.Column(db.String(160), nullable=True)
     serial_number = db.Column(db.String(160), nullable=True, index=True)
@@ -1517,6 +2186,8 @@ class Asset(db.Model):
     longitude = db.Column(db.Float, nullable=True)
     created_at = db.Column(db.DateTime, default=_utcnow)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    project = db.relationship('TicketProject', foreign_keys=[project_id])
 
     def image_list(self):
         if not self.image_urls:
@@ -1537,6 +2208,8 @@ class Asset(db.Model):
             'building': self.building,
             'floor': self.floor,
             'room': self.room,
+            'project_id': self.project_id,
+            'project_name': self.project.name if self.project else None,
             'manufacturer': self.manufacturer,
             'model': self.model,
             'serial_number': self.serial_number,
@@ -1597,8 +2270,14 @@ class FloorPlan(db.Model):
     floor = db.Column(db.String(80), nullable=True, index=True)
     name = db.Column(db.String(200), nullable=False)
     image_url = db.Column(db.String(512), nullable=False)
-    # hotspots: [{room, x_pct, y_pct, asset_ids?}]
+    # hotspots: [{room, x_pct, y_pct, asset_ids?, severity?}]
     hotspots = db.Column(JSON, nullable=True)
+    project_id = db.Column(
+        db.Integer,
+        db.ForeignKey('ticket_projects.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+    )
     created_at = db.Column(db.DateTime, default=_utcnow)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
 
@@ -1609,6 +2288,7 @@ class FloorPlan(db.Model):
             'floor': self.floor,
             'name': self.name,
             'image_url': self.image_url,
+            'project_id': self.project_id,
             'hotspots': self.hotspots or [],
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
@@ -2545,7 +3225,31 @@ LEAVE_TRACKER_MONTH_LABELS = {
 }
 LEAVE_SICK_ENTITLEMENT = 15
 LEAVE_TYPES = ('sick', 'annual')
-LEAVE_COMPANIES = ('INJAAZ', 'Tourism', 'L&P')
+LEAVE_COMPANIES = ('Kynvera', 'Tourism', 'L&P')
+
+
+def normalize_leave_company(value, default='Kynvera'):
+    """Map stored/imported company labels onto LEAVE_COMPANIES (legacy INJAAZ → Kynvera)."""
+    raw = (value or '').strip()
+    if not raw:
+        return default
+    key = raw.upper().replace(' LLC', '').strip()
+    if key in ('INJAAZ', 'KYNVERA'):
+        return 'Kynvera'
+    for company in LEAVE_COMPANIES:
+        if company.lower() == raw.lower():
+            return company
+    return None
+
+
+def leave_company_db_values(company):
+    """DB values that count as this UI company, including legacy INJAAZ rows."""
+    norm = normalize_leave_company(company, default=None)
+    if norm == 'Kynvera':
+        return ('Kynvera', 'INJAAZ')
+    if norm:
+        return (norm,)
+    return (company,) if company else ('Kynvera',)
 
 # Sick-used thresholds for UI / Excel highlighting
 LEAVE_SICK_ALERT_WARNING = 10   # approaching
@@ -2578,7 +3282,7 @@ class LeaveEmployee(db.Model):
     emp_id = db.Column(db.String(40), nullable=False, unique=True, index=True)
     full_name = db.Column(db.String(200), nullable=False, index=True)
     designation = db.Column(db.String(160))
-    company = db.Column(db.String(40), nullable=False, default='INJAAZ', index=True)
+    company = db.Column(db.String(40), nullable=False, default='Kynvera', index=True)
     annual_entitlement = db.Column(db.Integer, nullable=True)
     active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=_utcnow)
@@ -2641,7 +3345,7 @@ class LeaveEmployee(db.Model):
             'emp_id': self.emp_id,
             'full_name': self.full_name,
             'designation': self.designation or '',
-            'company': self.company or '',
+            'company': normalize_leave_company(self.company) or self.company or '',
             'annual_entitlement': entitlement,
             'active': bool(self.active),
             'sick': {
@@ -3311,3 +4015,86 @@ class DatabaseBackup(db.Model):
 
     def __repr__(self):
         return f'<DatabaseBackup {self.id} {self.filename} {self.status}>'
+
+
+class AutomationJob(db.Model):
+    """Saved schedule + destination settings for a catalog automation job."""
+    __tablename__ = 'automation_jobs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(80), unique=True, nullable=False, index=True)
+    enabled = db.Column(db.Boolean, default=True, nullable=False)
+    schedule_hour = db.Column(db.Integer, default=20, nullable=False)
+    schedule_minute = db.Column(db.Integer, default=0, nullable=False)
+    timezone = db.Column(db.String(64), default='Asia/Dubai', nullable=False)
+    to_emails = db.Column(db.Text, nullable=True)
+    save_to_files = db.Column(db.Boolean, default=True, nullable=False)
+    send_email = db.Column(db.Boolean, default=True, nullable=False)
+    sync_drive = db.Column(db.Boolean, default=True, nullable=False)
+    last_run_at = db.Column(db.DateTime, nullable=True)
+    last_success_at = db.Column(db.DateTime, nullable=True)
+    last_error = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    runs = db.relationship(
+        'AutomationRun',
+        back_populates='job',
+        lazy='dynamic',
+        cascade='all, delete-orphan',
+        order_by='desc(AutomationRun.started_at)',
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'slug': self.slug,
+            'enabled': bool(self.enabled),
+            'schedule_hour': int(self.schedule_hour if self.schedule_hour is not None else 20),
+            'schedule_minute': int(self.schedule_minute if self.schedule_minute is not None else 0),
+            'timezone': (self.timezone or 'Asia/Dubai').strip() or 'Asia/Dubai',
+            'to_emails': (self.to_emails or '').strip(),
+            'save_to_files': bool(self.save_to_files),
+            'send_email': bool(self.send_email),
+            'sync_drive': bool(self.sync_drive),
+            'last_run_at': self.last_run_at.isoformat() if self.last_run_at else None,
+            'last_success_at': self.last_success_at.isoformat() if self.last_success_at else None,
+            'last_error': self.last_error or '',
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<AutomationJob {self.slug} enabled={self.enabled}>'
+
+
+class AutomationRun(db.Model):
+    """One execution of an automation job (manual, cron, or startup catch-up)."""
+    __tablename__ = 'automation_runs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey('automation_jobs.id'), nullable=False, index=True)
+    trigger = db.Column(db.String(20), nullable=False, default='manual')  # manual | scheduler | catchup
+    status = db.Column(db.String(20), nullable=False, default='running')  # running | ok | warning | error | skipped
+    detail = db.Column(JSON, nullable=True)
+    error_message = db.Column(db.String(500), nullable=True)
+    started_at = db.Column(db.DateTime, default=_utcnow, index=True)
+    finished_at = db.Column(db.DateTime, nullable=True)
+
+    job = db.relationship('AutomationJob', back_populates='runs')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'job_id': self.job_id,
+            'slug': self.job.slug if self.job else '',
+            'trigger': self.trigger or 'manual',
+            'status': self.status or '',
+            'detail': self.detail or {},
+            'error_message': self.error_message or '',
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'finished_at': self.finished_at.isoformat() if self.finished_at else None,
+        }
+
+    def __repr__(self):
+        return f'<AutomationRun {self.id} job={self.job_id} {self.status}>'

@@ -1,0 +1,66 @@
+<form class="twin-form" id="planForm">
+  {% if project %}
+  <input type="hidden" name="project_id" value="{{ project.id }}">
+  {% endif %}
+  <label>Name<input class="fm-input" name="name" required placeholder="Tower A — L3 Mechanical"></label>
+  {% if catalog_buildings %}
+  <label>Building
+    <select class="fm-input" name="building" id="planBuilding" required>
+      <option value="">Select building…</option>
+      {% for b in catalog_buildings %}
+      <option value="{{ b.name }}" {% if default_building == b.name %}selected{% endif %}>{{ b.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Floor
+    <select class="fm-input" name="floor" id="planFloor">
+      <option value="">Select floor…</option>
+    </select>
+  </label>
+  {% else %}
+  <label>Building<input class="fm-input" name="building" required placeholder="Tower A" value="{{ default_building or '' }}"></label>
+  <label>Floor<input class="fm-input" name="floor" placeholder="L3"></label>
+  {% endif %}
+  <label class="twin-file">Drawing
+    <span class="twin-file-row">
+      <span class="twin-file-btn">Choose file</span>
+      <span class="twin-file-name" id="planImageName">PNG, JPG, or SVG</span>
+    </span>
+    <input class="twin-file-input" type="file" name="image" id="planImage" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+  </label>
+  <details class="twin-advanced fm-full">
+    <summary>Image URL instead of a file</summary>
+    <label class="twin-url-label">URL
+      <input class="fm-input" name="image_url" placeholder="https://… or leave blank for a placeholder">
+    </label>
+  </details>
+  <div class="fm-full fm-form-actions">
+    <button class="fm-btn fm-btn-primary" type="submit">Save plan</button>
+  </div>
+</form>
+{% if catalog_buildings %}
+<script>
+(function () {
+  const catalog = {{ catalog_buildings|tojson }};
+  const buildingSel = document.getElementById('planBuilding');
+  const floorSel = document.getElementById('planFloor');
+  if (!buildingSel || !floorSel) return;
+  const preferred = {{ (current_plan.floor if current_plan is defined and current_plan else '')|tojson }};
+  function fillFloors() {
+    const b = catalog.find((row) => row.name === buildingSel.value);
+    const floors = (b && b.floors) || [];
+    floorSel.innerHTML = '<option value="">Select floor…</option>';
+    floors.forEach((f) => {
+      const opt = document.createElement('option');
+      opt.value = f.name;
+      opt.textContent = f.name;
+      if (preferred && f.name === preferred) opt.selected = true;
+      floorSel.appendChild(opt);
+    });
+    floorSel.disabled = !floors.length;
+  }
+  fillFloors();
+  buildingSel.addEventListener('change', fillFloors);
+})();
+</script>
+{% endif %}

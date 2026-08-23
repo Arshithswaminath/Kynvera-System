@@ -549,7 +549,7 @@ def rebuild_visa_renewal():
     doc.add_paragraph()
 
     para6 = doc.add_paragraph()
-    r = para6.add_run("INJAAZ LLC")
+    r = para6.add_run("Kynvera")
     r.bold = True
     r.font.name = FONT_NAME
 

@@ -521,7 +521,7 @@
       if (isAdminTarget) {
         modNote.hidden = false;
         modNote.textContent = 'Administrators have full access to all modules by policy.';
-        ['accessHvac', 'accessCivil', 'accessCleaning', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessQhsi', 'accessFiles'].forEach(function (id) {
+        ['accessHvac', 'accessCivil', 'accessCleaning', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessSalesManager', 'accessQuotations', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessQhsi', 'accessFiles'].forEach(function (id) {
           const cb = document.getElementById(id);
           if (cb) {
             cb.checked = true;
@@ -537,7 +537,11 @@
         document.getElementById('accessHr').checked = !!user.access_hr;
         document.getElementById('accessProcurement').checked = !!user.access_procurement_module;
         const bd = document.getElementById('accessBusinessDev');
-        if (bd) bd.checked = !!user.access_business_development;
+        if (bd) bd.checked = !!user.access_business_development || !!user.access_sales_manager;
+        const sm = document.getElementById('accessSalesManager');
+        if (sm) sm.checked = !!user.access_sales_manager;
+        const aq = document.getElementById('accessQuotations');
+        if (aq) aq.checked = !!user.access_quotations;
         const dh = document.getElementById('accessDocHub');
         if (dh) dh.checked = user.can_access_dochub !== false;
         const rg = document.getElementById('accessReportGen');
@@ -832,7 +836,10 @@
           payload.access_cleaning = document.getElementById('accessCleaning').checked;
           payload.access_hr = document.getElementById('accessHr').checked;
           payload.access_procurement_module = document.getElementById('accessProcurement').checked;
-          payload.access_business_development = document.getElementById('accessBusinessDev').checked;
+          const salesMgrOn = !!(document.getElementById('accessSalesManager') && document.getElementById('accessSalesManager').checked);
+          payload.access_sales_manager = salesMgrOn;
+          payload.access_quotations = !!(document.getElementById('accessQuotations') && document.getElementById('accessQuotations').checked);
+          payload.access_business_development = !!(document.getElementById('accessBusinessDev') && document.getElementById('accessBusinessDev').checked) || salesMgrOn;
           payload.access_report_generation = document.getElementById('accessReportGen').checked;
           payload.access_submitted_forms = document.getElementById('accessSubmittedForms').checked;
           const tgx = document.getElementById('accessTicketing');

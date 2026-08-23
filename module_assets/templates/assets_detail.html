@@ -6,7 +6,7 @@
     <div>
       <p class="fm-eyebrow"><a href="{{ url_for('assets_bp.assets_dashboard') }}">Assets</a> · {{ asset.asset_id }}</p>
       <h1>{{ asset.name }}</h1>
-      <p>{{ asset.asset_type or 'Equipment' }}{% if asset.building %} · {{ asset.building }}{% endif %}{% if asset.floor %} / {{ asset.floor }}{% endif %}{% if asset.room %} / {{ asset.room }}{% endif %}</p>
+      <p>{{ asset.asset_type or 'Equipment' }}{% if asset.project %} · {{ asset.project.name }}{% endif %}{% if asset.building %} · {{ asset.building }}{% endif %}{% if asset.floor %} / {{ asset.floor }}{% endif %}{% if asset.room %} / {{ asset.room }}{% endif %}</p>
     </div>
     <div class="fm-header-actions">
       {% if can_write %}
@@ -66,6 +66,33 @@
         <p class="fm-muted"><code id="predMethod">method: {% if last_prediction %}{{ last_prediction.method }}{% else %}llm_estimate{% endif %}</code></p>
       </div>
     </div>
+  </section>
+
+  <section class="fm-panel">
+    <div class="fm-panel-head">
+      <h2>Linked drawings</h2>
+      <a class="fm-btn fm-btn-outline" href="{{ url_for('assets_bp.assets_twin_page') }}">Digital twin</a>
+    </div>
+    {% if drawings %}
+    <div class="fm-drawing-list">
+      {% for d in drawings %}
+      <a class="fm-drawing-card" href="{{ d.twin_url }}">
+        <span class="fm-drawing-thumb">
+          {% if d.display_url %}
+          <img src="{{ d.display_url }}" alt="">
+          {% endif %}
+        </span>
+        <span class="fm-drawing-copy">
+          <strong>{{ d.name }}</strong>
+          <span>{{ d.location }}{% if d.room %} · {{ d.room }}{% endif %}</span>
+        </span>
+        <span class="fm-drawing-go">Open</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="fm-empty">This asset is not on a 2D floor plan yet. Open Digital twin, place a pin, and tick this asset.</p>
+    {% endif %}
   </section>
 
   <section class="fm-panel">

@@ -10,8 +10,8 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/qhsi-module.css') }}?v=14">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=23">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/qhsi-module.css') }}?v=15">
   <style>
     :root {
       --primary: #ff8e68;
@@ -42,7 +42,8 @@
         {% set module_back_extra_class = 'back-btn' %}
         {% include 'partials/module_back_link.html' %}
         <h1 class="hero-title">Quality, <span class="hero-title-accent">Health &amp; Safety</span></h1>
-        <p class="hero-subtitle">Staff compliance, training bookings, and unified site inspections — one module for your quality team across every project.</p>
+        <p class="qhse-soon-kicker">Under construction · Coming soon</p>
+        <p class="hero-subtitle">Staff kit &amp; PPE, training bookings, and site inspections are being finished. Check back shortly.</p>
       </div>
       <div class="hero-right">
         <div class="dashboard-widget qhsi-stats-widget">
@@ -69,11 +70,11 @@
                 <span class="bento-stat__value" id="qhsi-stat-kit-issues">0</span>
                 <span class="bento-stat__label">Kit issues (import)</span>
               </div>
-              <a class="bento-tile bento-stat span-3 bento--info" href="{{ url_for('qhsi.training_page') }}">
+              <div class="bento-tile bento-stat span-3 bento--info">
                 <span class="bento-stat__icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg></span>
                 <span class="bento-stat__value" id="qhsi-stat-training">{{ ss.training_upcoming }}</span>
                 <span class="bento-stat__label">Upcoming trainings</span>
-              </a>
+              </div>
               <a class="bento-tile bento-stat span-3 bento--success" href="/workflow/submitted-forms?scope=inspection&workflow=approved" id="qhsi-stat-approved-card">
                 <span class="bento-stat__icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>
                 <span class="bento-stat__value" id="qhsi-stat-approved">{{ ss.approved }}</span>
@@ -88,9 +89,14 @@
 
   <section class="modules-section qhsi-modules-section" id="modules">
     <div class="modules-inner">
+      <div class="qhse-soon-banner" role="status">
+        <strong>Under construction</strong>
+        <span>QHSE is coming soon. Forms and dashboards below are not yet in production use.</span>
+      </div>
       <h2 class="modules-section-label">QHSE Activities</h2>
       <div class="modules-grid" id="qhsiActivitiesGrid">
-        <a href="{{ url_for('qhsi.staff_compliance_form') }}" class="module-card">
+        <div class="module-card module-card--soon" aria-disabled="true">
+          <span class="module-soon-badge">Coming soon</span>
           <div class="card-body">
             <span class="module-number">Compliance</span>
             <div class="module-icon">
@@ -98,10 +104,11 @@
             </div>
             <h2 class="module-title">Staff Kit &amp; PPE</h2>
             <p class="module-description">Record uniforms, company-issued safety equipment, and dress standards per employee and project.</p>
-            <span class="module-arrow">Open form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+            <span class="module-arrow">Coming soon</span>
           </div>
-        </a>
-        <a href="{{ url_for('qhsi.training_page') }}" class="module-card">
+        </div>
+        <div class="module-card module-card--soon" aria-disabled="true">
+          <span class="module-soon-badge">Coming soon</span>
           <div class="card-body">
             <span class="module-number">Training</span>
             <div class="module-icon">
@@ -109,10 +116,11 @@
             </div>
             <h2 class="module-title">Training &amp; Meetings</h2>
             <p class="module-description">Schedule quality-team trainings, inductions, and project meetings with attendees and locations.</p>
-            <span class="module-arrow">Book session <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+            <span class="module-arrow">Coming soon</span>
           </div>
-        </a>
-        <a href="{{ url_for('qhsi.inspection_form') }}" class="module-card">
+        </div>
+        <div class="module-card module-card--soon" aria-disabled="true">
+          <span class="module-soon-badge">Coming soon</span>
           <div class="card-body">
             <span class="module-number">Inspection</span>
             <div class="module-icon">
@@ -120,13 +128,12 @@
             </div>
             <h2 class="module-title">Site Inspection</h2>
             <p class="module-description">One form for HVAC, Civil, or Cleaning — photos per finding, routed to Operations Manager.</p>
-            <span class="module-arrow">Start inspection <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+            <span class="module-arrow">Coming soon</span>
           </div>
-        </a>
+        </div>
       </div>
       <div class="qhsi-import-banner" id="qhseDashImportBanner" style="display:none">
         <p id="qhseDashImportText">Excel import active — compliance metrics loaded from your file.</p>
-        <a href="{{ url_for('qhsi.staff_compliance_form') }}">Manage import →</a>
       </div>
     </div>
   </section>

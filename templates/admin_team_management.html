@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   <meta name="theme-color" content="#ff8e68">
-  <title>Users &amp; Teams | Injaaz Admin</title>
+  <title>Users &amp; Teams | Kynvera</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
   {% include 'partials/caveat_font.html' %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-manage-profile-modal.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-manage-profile-modal.css') }}?v=4">
   <style>
   /* ── Design tokens ─────────────────────────────────────────────────────── */
   :root {
@@ -50,10 +50,19 @@
     font-size: 15px;
     line-height: 1.45;
   }
-  body.has-main-nav { padding-top: 5.5rem; }
+  /* Match dashboard.css --nav-bar-h (not a larger fixed rem) or a gray strip
+     shows between the fixed global nav and this shell. */
+  body.has-main-nav {
+    --tm-nav-h: var(--nav-bar-h, calc(40px + 1.75rem + env(safe-area-inset-top, 0px)));
+    padding-top: var(--tm-nav-h);
+  }
 
   /* ── Layout ─────────────────────────────────────────────────────────────── */
-  .tm-app-root { display: flex; min-height: calc(100vh - 5.5rem); }
+  .tm-app-root {
+    display: flex;
+    min-height: calc(100vh - var(--tm-nav-h, 4.75rem));
+    min-height: calc(100dvh - var(--tm-nav-h, 4.75rem));
+  }
   .tm-sidebar {
     width: 220px;
     flex-shrink: 0;
@@ -62,13 +71,13 @@
     display: flex;
     flex-direction: column;
     position: sticky;
-    top: 5.5rem;
-    height: calc(100vh - 5.5rem);
+    top: var(--tm-nav-h, 0px);
+    height: calc(100vh - var(--tm-nav-h, 0px));
+    height: calc(100dvh - var(--tm-nav-h, 0px));
     overflow-y: auto;
   }
-  .tm-main { flex: 1; min-width: 0; padding: 1.5rem 1.75rem 3rem; }
+  .tm-main { flex: 1; min-width: 0; padding: 1.1rem 1.75rem 3rem; }
   @media (max-width: 768px) {
-    body.has-main-nav { padding-top: max(5rem, calc(4.5rem + env(safe-area-inset-top, 0px))); }
     .tm-app-root { flex-direction: column; min-height: auto; }
     .tm-sidebar {
       width: 100%;
@@ -293,7 +302,7 @@
     margin-bottom: 1.25rem;
   }
   .tm-tab {
-    padding: .7rem 1.3rem; font-size: .92rem; font-weight: 700;
+    padding: .7rem 1rem; font-size: .92rem; font-weight: 700;
     color: var(--tm-muted); cursor: pointer; border: none; background: none;
     border-bottom: 2.5px solid transparent; margin-bottom: -2px;
     display: flex; align-items: center; gap: .45rem;
@@ -329,13 +338,14 @@
     display: inline-flex; align-items: center; gap: .45rem;
     padding: .6rem 1.1rem; border-radius: var(--tm-r); font-size: .88rem; font-weight: 700;
     cursor: pointer; border: 1.5px solid transparent; min-height: 40px; transition: background .15s, transform .12s;
-    white-space: nowrap;
+    white-space: nowrap; text-decoration: none; color: inherit;
+    font-family: inherit;
   }
   .tm-btn:active { transform: translateY(1px); }
   .tm-btn-primary { background: var(--tm-green); color: #fff; }
-  .tm-btn-primary:hover { background: var(--tm-green2); }
+  .tm-btn-primary:hover { background: var(--tm-green2); color: #fff; }
   .tm-btn-outline { background: var(--tm-card); color: var(--tm-green); border-color: var(--tm-line); }
-  .tm-btn-outline:hover { background: #edf7f2; border-color: #c0ecd4; }
+  .tm-btn-outline:hover { background: #edf7f2; border-color: #c0ecd4; color: var(--tm-green); }
   .tm-btn-ghost { background: transparent; color: var(--tm-muted); border-color: transparent; }
   .tm-btn-ghost:hover { background: #f1f5f9; color: var(--tm-ink); }
   .tm-btn-danger { background: #b91c1c; color: #fff; }
@@ -614,6 +624,26 @@
     color: var(--tm-muted); margin: 1rem 0 .5rem; display: flex; align-items: center; gap: .5rem;
   }
   .tm-section-label::after { content: ''; flex: 1; height: 1px; background: var(--tm-line); }
+  .tm-login-card {
+    margin-top: .35rem;
+    padding: .9rem 1rem;
+    border: 1.5px solid var(--tm-line);
+    border-radius: 12px;
+    background: #f8fbf9;
+  }
+  .tm-login-check {
+    display: flex; align-items: flex-start; gap: .65rem;
+    cursor: pointer; user-select: none;
+  }
+  .tm-login-check input {
+    margin-top: .2rem; width: 16px; height: 16px; flex-shrink: 0;
+    accent-color: var(--tm-green);
+  }
+  .tm-login-check strong { display: block; font-size: .9rem; color: var(--tm-ink); }
+  .tm-login-hint { display: block; margin-top: .2rem; font-size: .78rem; color: var(--tm-muted); line-height: 1.4; font-weight: 500; }
+  #techConvertActions:not([hidden]) {
+    display: flex; justify-content: flex-end; margin-top: .85rem;
+  }
 
   /* ── Import area ─────────────────────────────────────────────────────────── */
   .tm-import-zone {
@@ -649,7 +679,7 @@
   /* ── Responsive table scroll ─────────────────────────────────────────────── */
   .tm-table-scroll { overflow-x: auto; }
   </style>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/injz-profile-mgmt-theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/injz-profile-mgmt-theme.css') }}?v=4">
 </head>
 <body class="has-main-nav">
   {% include 'partials/main_navbar.html' with context %}
@@ -666,19 +696,19 @@
         <div class="sb-section-label">People</div>
         <button class="sb-nav-item active" id="sideStaff" onclick="switchView('staff')">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
-          Staffs
+          System users
           <span class="sb-badge" id="sbStaffCount">0</span>
         </button>
         <button class="sb-nav-item" id="sideTech" onclick="switchView('tech')">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z"/></svg>
-          Technicians
+          Staffs
           <span class="sb-badge" id="sbTechCount">0</span>
         </button>
         <hr class="sb-divider">
         <div class="sb-section-label">Quick Actions</div>
         <button class="sb-nav-item" onclick="openTechModal()">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-          Add Technician
+          Add Staff
         </button>
         <button class="sb-nav-item" onclick="openImportModal()">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
@@ -689,7 +719,7 @@
           Excel Template
         </button>
       </nav>
-      {% set files_save_label = 'Team Management — Technicians' %}
+      {% set files_save_label = 'Team Management — Staff' %}
       {% include 'partials/files_save_menu_card.html' %}
       <div class="sb-footer">
         <a href="/admin/dashboard" class="sb-back-link">
@@ -708,7 +738,7 @@
           {% set module_back_url = '/admin/dashboard' %}
           {% include 'partials/module_back_link.html' %}
           <h1>Users & Teams</h1>
-          <p>Central place for staff logins (roles, passwords, profiles) and the field technician roster. The admin dashboard shows a live count summary only.</p>
+          <p>System users have logins. Staffs are the field roster — convert any staff member to a system user without retyping their details.</p>
         </div>
         <div class="tm-header-actions">
           <button class="tm-btn tm-btn-outline" onclick="downloadTemplate()">
@@ -719,13 +749,13 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
             Import Excel
           </button>
-          <a class="tm-btn tm-btn-outline" href="/admin/dashboard?tool=create_user" title="Add a new user account">
+          <button type="button" class="tm-btn tm-btn-outline" onclick="openCreateLoginModal()" title="Add a new user account">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
             Create login
-          </a>
+          </button>
           <button class="tm-btn tm-btn-primary" onclick="openTechModal()">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-            Add Technician
+            Add Staff
           </button>
         </div>
       </div>
@@ -736,19 +766,19 @@
           <div class="tm-kpi-icon green">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#ff8e68" width="22" height="22"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
           </div>
-          <div><div class="tm-kpi-lbl">Total Staff</div><div class="tm-kpi-val" id="kpiStaff">—</div></div>
+          <div><div class="tm-kpi-lbl">System users</div><div class="tm-kpi-val" id="kpiStaff">—</div></div>
         </div>
         <div class="tm-kpi-card">
           <div class="tm-kpi-icon blue">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#2563eb" width="22" height="22"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z"/></svg>
           </div>
-          <div><div class="tm-kpi-lbl">Technicians</div><div class="tm-kpi-val" id="kpiTech">—</div></div>
+          <div><div class="tm-kpi-lbl">Staffs</div><div class="tm-kpi-val" id="kpiTech">—</div></div>
         </div>
         <div class="tm-kpi-card">
           <div class="tm-kpi-icon amber">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#d97706" width="22" height="22"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
           </div>
-          <div><div class="tm-kpi-lbl">Active Technicians</div><div class="tm-kpi-val" id="kpiActive">—</div></div>
+          <div><div class="tm-kpi-lbl">Active staff</div><div class="tm-kpi-val" id="kpiActive">—</div></div>
         </div>
         <div class="tm-kpi-card">
           <div class="tm-kpi-icon red">
@@ -762,12 +792,12 @@
       <div class="tm-tabs" role="tablist">
         <button class="tm-tab active" id="tabBtnStaff" role="tab" aria-selected="true" onclick="switchTab('staff')">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
-          Staffs
+          System users
           <span class="tm-tab-count" id="tabStaffCount">0</span>
         </button>
         <button class="tm-tab" id="tabBtnTech" role="tab" aria-selected="false" onclick="switchTab('tech')">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z"/></svg>
-          Technicians
+          Staffs
           <span class="tm-tab-count" id="tabTechCount">0</span>
         </button>
       </div>
@@ -777,7 +807,7 @@
         <div class="tm-toolbar" style="flex-wrap:wrap;">
           <div class="tm-search-wrap">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
-            <input type="search" class="tm-search" id="staffSearch" placeholder="Search staff…" oninput="filterStaff()" autocomplete="off">
+            <input type="search" class="tm-search" id="staffSearch" placeholder="Search system users…" oninput="filterStaff()" autocomplete="off">
           </div>
           <select class="tm-select" id="staffRoleFilter" onchange="filterStaff()">
             <option value="">All roles</option>
@@ -789,10 +819,10 @@
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
-          <a href="/admin/dashboard?tool=create_user" class="tm-btn tm-btn-primary tm-btn-sm" title="Opens admin dashboard modal to add a login" style="margin-left:auto;">
+          <button type="button" class="tm-btn tm-btn-primary tm-btn-sm" onclick="openCreateLoginModal()" title="Add a new user account" style="margin-left:auto;">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
             Create login
-          </a>
+          </button>
         </div>
         <div class="tm-staff-grid" id="staffGrid">
           <div class="tm-empty-state" style="grid-column:1/-1;">
@@ -807,7 +837,7 @@
         <div class="tm-toolbar">
           <div class="tm-search-wrap">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
-            <input type="search" class="tm-search" id="techSearch" placeholder="Search technicians…" oninput="filterTech()" autocomplete="off">
+            <input type="search" class="tm-search" id="techSearch" placeholder="Search staff…" oninput="filterTech()" autocomplete="off">
           </div>
           <select class="tm-select" id="techStatusFilter" onchange="filterTech()">
             <option value="">All status</option>
@@ -823,7 +853,7 @@
           </select>
           <button class="tm-btn tm-btn-primary tm-btn-sm" onclick="openTechModal()" style="margin-left:auto;">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-            Add Technician
+            Add Staff
           </button>
         </div>
         <div class="tm-table-scroll">
@@ -831,7 +861,7 @@
             <table class="tm-table" id="techTable">
               <thead>
                 <tr>
-                  <th>Technician</th>
+                  <th>Staff</th>
                   <th>Supervisor</th>
                   <th>Employee ID</th>
                   <th>Designation</th>
@@ -855,10 +885,10 @@
           </div>
           <div class="tm-empty-state" id="techEmptyState" style="display:none;">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="48" height="48"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z"/></svg>
-            <h3>No technicians yet</h3>
-            <p>Add your first technician manually or import a filled Excel template.</p>
+            <h3>No staff yet</h3>
+            <p>Add your first staff member manually or import a filled Excel template.</p>
             <div style="margin-top:1rem;display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;">
-              <button class="tm-btn tm-btn-primary" onclick="openTechModal()">Add Technician</button>
+              <button class="tm-btn tm-btn-primary" onclick="openTechModal()">Add Staff</button>
               <button class="tm-btn tm-btn-blue" onclick="openImportModal()">Import Excel</button>
             </div>
           </div>
@@ -874,7 +904,7 @@
   <div class="tm-modal-veil" id="techModal" aria-hidden="true" aria-modal="true" role="dialog" aria-labelledby="techModalTitle">
     <div class="tm-modal">
       <div class="tm-modal-head green-head">
-        <h3 id="techModalTitle">Add Technician</h3>
+        <h3 id="techModalTitle">Add Staff</h3>
         <button class="tm-modal-close" id="techModalClose" aria-label="Close">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
         </button>
@@ -902,9 +932,27 @@
               <option value="">— None —</option>
             </select>
             <p style="margin-top:.45rem;font-size:.78rem;color:var(--tm-muted);line-height:1.35;">
-              Shows who manages this technician in the roster. Active supervisor, Operations Manager, or General Manager accounts only.
+              Shows who manages this staff member in the roster. Active supervisor, Operations Manager, or General Manager accounts only.
             </p>
           </div>
+        </div>
+        <div class="tm-section-label" id="techLoginSectionLabel">System user</div>
+        <div class="tm-login-card" id="techLoginCard">
+          <label class="tm-login-check" id="techCreateLoginLabel">
+            <input type="checkbox" id="techCreateLogin" checked>
+            <span>
+              <strong id="techLoginTitle">Create a system user</strong>
+              <span class="tm-login-hint" id="techLoginHint">Uses this person’s name, email, phone, supervisor, job title, and join date. They can sign in and be assigned work orders.</span>
+            </span>
+          </label>
+          <div class="tm-form-grid tm-login-fields" id="techLoginFields">
+            <div class="tm-fld required"><label for="techLoginUsername">Username</label><input type="text" id="techLoginUsername" placeholder="e.g. ahmed.rashidi" autocomplete="off" spellcheck="false"></div>
+            <div class="tm-fld"><label for="techLoginPassword">Password (optional)</label><input type="password" id="techLoginPassword" placeholder="Blank uses the standard temporary password" autocomplete="new-password"></div>
+          </div>
+          <div id="techConvertActions" hidden>
+            <button type="button" class="tm-btn tm-btn-primary" id="techConvertBtn">Convert to system user</button>
+          </div>
+          <p id="techAlreadyLoginNote" hidden class="tm-login-hint" style="margin-top:.65rem;">This staff member already has a system account. Use Manage login on their row to edit it.</p>
         </div>
         <div class="tm-section-label">Employment Details</div>
         <div class="tm-form-grid">
@@ -927,7 +975,64 @@
         <button class="tm-btn tm-btn-ghost" id="techModalCancel">Cancel</button>
         <button class="tm-btn tm-btn-primary" id="techModalSave">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-          Save Technician
+          Save Staff
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       Create login (staff / any designation) — same shell as Add Technician
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="tm-modal-veil" id="createLoginModal" aria-hidden="true" aria-modal="true" role="dialog" aria-labelledby="createLoginModalTitle">
+    <div class="tm-modal">
+      <div class="tm-modal-head green-head">
+        <h3 id="createLoginModalTitle">Create login</h3>
+        <button type="button" class="tm-modal-close" id="createLoginModalClose" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="tm-modal-body">
+        <div class="tm-section-label">Account</div>
+        <div class="tm-form-grid">
+          <div class="tm-fld required"><label for="cuUsername">Username</label><input type="text" id="cuUsername" autocomplete="off" spellcheck="false"></div>
+          <div class="tm-fld required"><label for="cuEmail">Email</label><input type="email" id="cuEmail" autocomplete="off"></div>
+          <div class="tm-fld col-span-2"><label for="cuFullName">Full name</label><input type="text" id="cuFullName" autocomplete="name"></div>
+          <div class="tm-fld col-span-2"><label for="cuPassword">Password (optional)</label>
+            <input type="password" id="cuPassword" autocomplete="new-password" placeholder="Leave blank for the standard temporary password">
+          </div>
+          <div class="tm-fld"><label for="cuDesignation">Designation</label>
+            <select id="cuDesignation">
+              <option value="">None</option>
+              <option value="employee" selected>Employee</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="operations_manager">Operations manager</option>
+              <option value="business_development">Business development</option>
+              <option value="procurement">Procurement</option>
+              <option value="general_manager">General manager</option>
+              <option value="hr_manager">HR manager</option>
+              <option value="technician">Technician</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div class="tm-fld"><label for="cuJoined">Joined company</label><input type="date" id="cuJoined"></div>
+          <div class="tm-fld col-span-2"><label for="cuJobDesignation">Job title (HR)</label><input type="text" id="cuJobDesignation" maxlength="160" placeholder="Optional" autocomplete="off"></div>
+          <div class="tm-fld col-span-2">
+            <label for="cuReportingManager">Reporting manager (technician supervisor)</label>
+            <select id="cuReportingManager">
+              <option value="">— None —</option>
+            </select>
+            <p style="margin-top:.45rem;font-size:.78rem;color:var(--tm-muted);line-height:1.35;">
+              Used when designation is Technician: the supervisor who signs their HR forms first.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="tm-modal-foot">
+        <button type="button" class="tm-btn tm-btn-ghost" id="createLoginModalCancel">Cancel</button>
+        <button type="button" class="tm-btn tm-btn-primary" id="createLoginSave">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+          Create account
         </button>
       </div>
     </div>
@@ -939,7 +1044,7 @@
   <div class="tm-modal-veil" id="importModal" aria-hidden="true" aria-modal="true" role="dialog" aria-labelledby="importModalTitle">
     <div class="tm-modal" style="max-width:520px;">
       <div class="tm-modal-head green-head">
-        <h3 id="importModalTitle">Import Technicians from Excel</h3>
+        <h3 id="importModalTitle">Import Staff from Excel</h3>
         <button class="tm-modal-close" id="importModalClose" aria-label="Close">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
         </button>
@@ -1005,7 +1110,7 @@
   <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-  <script>window.FILES_SAVE_MODULE = 'technicians'; window.FILES_SAVE_MODULE_LABEL = 'Team Management — Technicians';</script>
+  <script>window.FILES_SAVE_MODULE = 'technicians'; window.FILES_SAVE_MODULE_LABEL = 'Team Management — Staff';</script>
   <script src="{{ url_for('static', filename='js/files-save.js') }}?v=16"></script>
   <script src="{{ url_for('static', filename='js/admin-manage-profile-modal.js') }}"></script>
 
@@ -1036,7 +1141,8 @@
     el.textContent = msg;
     el.className = type === 'error' ? 'error show' : 'show';
     clearTimeout(_toastTimer);
-    _toastTimer = setTimeout(() => el.classList.remove('show'), 3800);
+    const hold = /password/i.test(msg) ? 8000 : 3800;
+    _toastTimer = setTimeout(() => el.classList.remove('show'), hold);
   }
 
   function initials(name) {
@@ -1083,7 +1189,8 @@
   const MODULE_LABELS = {
     access_hvac: 'Inspection', access_civil: 'Inspection', access_cleaning: 'Inspection',
     access_hr: 'HR', access_procurement_module: 'Procurement', access_files: 'Files',
-    access_business_development: 'BD', access_report_generation: 'Reports',
+    access_business_development: 'BD', access_sales_manager: 'BD mgr', access_quotations: 'Quotes',
+    access_report_generation: 'Reports',
     access_submitted_forms: 'Submitted', access_ticketing: 'Ticketing',
   };
   const DESIG_BADGE_LABELS = {
@@ -1111,13 +1218,13 @@
     return job || desig || '';
   }
 
-  function _isStaffRosterRow(u) {
-    return (u.designation || '').toLowerCase().trim() !== 'technician';
+  function _isStaffRosterRow(_u) {
+    return true;
   }
 
   async function loadStaff() {
     const res = await apiFetch('/users');
-    if (!res.ok) { tmToast('Failed to load staff.', 'error'); return; }
+    if (!res.ok) { tmToast('Failed to load system users.', 'error'); return; }
     const raw = res.data.users || res.data.data?.users || res.data.data || res.data || [];
     const rows = Array.isArray(raw) ? raw : [];
     _allAdminUsersRaw = rows;
@@ -1144,7 +1251,7 @@
   function renderStaff(list) {
     const grid = document.getElementById('staffGrid');
     if (!list.length) {
-      grid.innerHTML = `<div class="tm-empty-state" style="grid-column:1/-1;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="48" height="48"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg><h3>No staff found</h3><p>Try adjusting your search or filters.</p></div>`;
+      grid.innerHTML = `<div class="tm-empty-state" style="grid-column:1/-1;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="48" height="48"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 1 1 5.25 0Z"/></svg><h3>No system users found</h3><p>Try adjusting your search or filters, or create a login.</p></div>`;
       return;
     }
     grid.innerHTML = list.map((u, idx) => {
@@ -1216,10 +1323,11 @@
     }
     fill('techSupervisorFilter', '<option value="">All supervisors</option>');
     fill('techSupervisorUser', '<option value="">— None —</option>');
+    fill('cuReportingManager', '<option value="">— None —</option>');
   }
   async function loadTechnicians() {
     const res = await apiFetch('/technicians');
-    if (!res.ok) { tmToast('Failed to load technicians.', 'error'); return; }
+    if (!res.ok) { tmToast('Failed to load staff.', 'error'); return; }
     _techData = (res.data.data?.technicians || res.data.technicians || []);
     buildDeptFilter();
     renderTechnicians(_techData);
@@ -1277,9 +1385,10 @@
     empty.style.display = 'none';
     tbody.innerHTML = list.map(t => {
       const isLogin = t.source === 'login';
+      const hasLogin = isLogin || !!t.has_login;
       const safeName = (t.full_name || '').replace(/'/g, "\\'");
-      const loginChip = isLogin
-        ? '<span class="tm-tech-login-badge" title="Has an Injaaz login — opens account &amp; password settings">App account</span>'
+      const loginChip = hasLogin
+        ? '<span class="tm-tech-login-badge" title="Has a system login">System user</span>'
         : '';
       const rowClick = isLogin
         ? `class="tm-table-row--clickable" tabindex="0" role="button"
@@ -1289,15 +1398,18 @@
         : `class="tm-table-row--clickable" tabindex="0" role="button"
              onclick="openTechEditModal(${t.id})"
              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openTechEditModal(${t.id});}"
-             title="Click anywhere on this row to edit technician"`;
-      const actions = isLogin
-        ? `<div class="tm-table-actions">
-            <button type="button" class="tm-btn tm-btn-outline tm-btn-sm" onclick="event.stopPropagation();openUserProfileModal(${t.user_id})" title="Manage login profile">
+             title="Click anywhere on this row to edit staff"`;
+      const manageLoginBtn = hasLogin && t.user_id
+        ? `<button type="button" class="tm-btn tm-btn-outline tm-btn-sm" onclick="event.stopPropagation();openUserProfileModal(${t.user_id})" title="Manage login profile">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
               Manage login
-            </button>
-          </div>`
+            </button>`
+        : '';
+      const actions = isLogin
+        ? `<div class="tm-table-actions">${manageLoginBtn}</div>`
         : `<div class="tm-table-actions">
+            ${manageLoginBtn}
+            ${(!hasLogin && !isLogin) ? `<button type="button" class="tm-btn tm-btn-outline tm-btn-sm" onclick="event.stopPropagation();openTechEditModal(${t.id}, { convert: true })" title="Convert to system user">Convert</button>` : ''}
             <button type="button" class="tm-btn tm-btn-outline tm-btn-sm" onclick="event.stopPropagation();openTechEditModal(${t.id})" title="Edit">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
               Edit
@@ -1308,7 +1420,7 @@
           </div>`;
       return `
       <tr ${rowClick}>
-        <td data-label="Technician">
+        <td data-label="Staff">
           <div class="tm-tech-identity">
             <div class="tm-avatar blue" style="width:36px;height:36px;border-radius:10px;font-size:.82rem;flex-shrink:0;">${initials(t.full_name)}</div>
             <div class="tm-tech-name-block">
@@ -1336,26 +1448,83 @@
   }
 
   /* ── Technician Modal ─────────────────────────────────────────────── */
+  function suggestTechUsername() {
+    const emp = (document.getElementById('techEmpId').value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const name = (document.getElementById('techFullName').value || '').trim().toLowerCase()
+      .replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
+    return emp || name || '';
+  }
+
+  function syncTechLoginFields() {
+    const on = document.getElementById('techCreateLogin').checked;
+    const fields = document.getElementById('techLoginFields');
+    const emailFld = document.getElementById('techEmail')?.closest('.tm-fld');
+    fields.hidden = !on;
+    if (emailFld) emailFld.classList.toggle('required', on);
+    if (on) {
+      const userEl = document.getElementById('techLoginUsername');
+      if (!userEl.value.trim()) userEl.value = suggestTechUsername();
+    }
+  }
+
+  function setTechLoginMode(mode) {
+    const card = document.getElementById('techLoginCard');
+    const lab = document.getElementById('techLoginSectionLabel');
+    const checkLabel = document.getElementById('techCreateLoginLabel');
+    const convertActions = document.getElementById('techConvertActions');
+    const already = document.getElementById('techAlreadyLoginNote');
+    const title = document.getElementById('techLoginTitle');
+    const hint = document.getElementById('techLoginHint');
+    const fields = document.getElementById('techLoginFields');
+    const show = mode !== 'hidden';
+    card.style.display = show ? '' : 'none';
+    if (lab) lab.style.display = show ? '' : 'none';
+    already.hidden = mode !== 'already';
+    convertActions.hidden = mode !== 'convert';
+    checkLabel.style.display = mode === 'create' ? '' : 'none';
+    document.getElementById('techCreateLogin').checked = mode === 'create';
+    if (mode === 'create') {
+      title.textContent = 'Create a system user';
+      hint.textContent = 'Uses this person’s name, email, phone, supervisor, job title, and join date. They can sign in and be assigned work orders.';
+      fields.hidden = false;
+    } else if (mode === 'convert') {
+      title.textContent = 'Convert to system user';
+      hint.textContent = 'Keeps this staff member’s name, email, phone, supervisor, job title, join date, and other roster details.';
+      fields.hidden = false;
+      const userEl = document.getElementById('techLoginUsername');
+      if (!userEl.dataset.manual) userEl.value = suggestTechUsername();
+    } else if (mode === 'already') {
+      title.textContent = 'System user';
+      hint.textContent = '';
+      fields.hidden = true;
+    }
+    if (mode === 'create') syncTechLoginFields();
+  }
+
   function openTechModal() {
-    document.getElementById('techModalTitle').textContent = 'Add Technician';
+    document.getElementById('techModalTitle').textContent = 'Add Staff';
     document.getElementById('techEditId').value = '';
-    ['techEmpId','techFullName','techDesig','techDept','techSpec','techPhone','techEmail','techNotes'].forEach(id => document.getElementById(id).value = '');
+    ['techEmpId','techFullName','techDesig','techDept','techSpec','techPhone','techEmail','techNotes','techLoginUsername','techLoginPassword'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('techSalary').value = '';
     document.getElementById('techJoining').value = '';
     document.getElementById('techStatus').value = 'active';
     document.getElementById('techSupervisorUser').value = '';
+    const userEl = document.getElementById('techLoginUsername');
+    userEl.value = '';
+    delete userEl.dataset.manual;
+    setTechLoginMode('create');
     openModal('techModal');
     setTimeout(() => document.getElementById('techEmpId').focus(), 200);
   }
 
-  function openTechEditModal(techId) {
+  function openTechEditModal(techId, opts) {
     if (techId < 0) {
       openUserProfileModal(-techId);
       return;
     }
     const t = _techData.find(x => x.id === techId);
     if (!t) return;
-    document.getElementById('techModalTitle').textContent = 'Edit Technician';
+    document.getElementById('techModalTitle').textContent = 'Edit Staff';
     document.getElementById('techEditId').value = t.id;
     document.getElementById('techEmpId').value = t.employee_id || '';
     document.getElementById('techFullName').value = t.full_name || '';
@@ -1369,9 +1538,32 @@
     document.getElementById('techStatus').value = t.status || 'active';
     document.getElementById('techNotes').value = t.notes || '';
     document.getElementById('techSupervisorUser').value = t.supervisor_user_id ? String(t.supervisor_user_id) : '';
+    document.getElementById('techLoginPassword').value = '';
+    const userEl = document.getElementById('techLoginUsername');
+    delete userEl.dataset.manual;
+    userEl.value = '';
+    if (t.has_login) setTechLoginMode('already');
+    else setTechLoginMode('convert');
     openModal('techModal');
-    setTimeout(() => document.getElementById('techFullName').focus(), 200);
+    setTimeout(() => {
+      const focusId = (opts && opts.convert) ? 'techLoginUsername' : 'techFullName';
+      document.getElementById(focusId).focus();
+    }, 200);
   }
+
+  document.getElementById('techCreateLogin').addEventListener('change', syncTechLoginFields);
+  ['techEmpId', 'techFullName'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+      const convertOpen = !document.getElementById('techConvertActions').hidden;
+      if (!document.getElementById('techCreateLogin').checked && !convertOpen) return;
+      const userEl = document.getElementById('techLoginUsername');
+      const suggested = suggestTechUsername();
+      if (!userEl.dataset.manual) userEl.value = suggested;
+    });
+  });
+  document.getElementById('techLoginUsername').addEventListener('input', function () {
+    this.dataset.manual = this.value.trim() ? '1' : '';
+  });
 
   document.getElementById('techModalSave').addEventListener('click', async () => {
     const editId = document.getElementById('techEditId').value;
@@ -1398,6 +1590,14 @@
     if (!payload.employee_id || !payload.full_name) {
       tmToast('Employee ID and Full Name are required.', 'error'); return;
     }
+    const createLogin = !isEdit && document.getElementById('techCreateLogin').checked;
+    if (createLogin) {
+      payload.create_login = true;
+      payload.username = document.getElementById('techLoginUsername').value.trim();
+      payload.password = document.getElementById('techLoginPassword').value;
+      if (!payload.username) { tmToast('Username is required to create an app login.', 'error'); return; }
+      if (!payload.email) { tmToast('Email is required to create an app login.', 'error'); return; }
+    }
     const btn = document.getElementById('techModalSave');
     btn.disabled = true;
     const prevHtml = btn.innerHTML;
@@ -1410,9 +1610,79 @@
     btn.disabled = false;
     btn.innerHTML = prevHtml;
     if (!res.ok) { tmToast(res.data?.message || res.data?.error || 'Failed to save.', 'error'); return; }
-    tmToast(isEdit ? 'Technician updated.' : 'Technician added.', 'success');
+    const body = res.data.data || res.data;
+    let msg = isEdit ? 'Staff updated.' : (body.login_created ? 'Staff and system user created.' : 'Staff added.');
+    if (body.temp_password) msg += ' Temporary password: ' + body.temp_password;
+    tmToast(msg, 'success');
     closeModal('techModal');
-    await loadTechnicians();
+    await Promise.all([loadTechnicians(), loadStaff()]);
+  });
+
+  document.getElementById('techConvertBtn').addEventListener('click', async () => {
+    const editId = document.getElementById('techEditId').value;
+    if (!editId) return;
+    const email = document.getElementById('techEmail').value.trim();
+    const username = document.getElementById('techLoginUsername').value.trim() || suggestTechUsername();
+    if (!email) { tmToast('Email is required to convert staff to a system user.', 'error'); return; }
+    if (!username) { tmToast('Username is required to convert staff to a system user.', 'error'); return; }
+    const name = document.getElementById('techFullName').value.trim();
+    if (!name) { tmToast('Full name is required.', 'error'); return; }
+
+    const savePayload = {
+      employee_id: document.getElementById('techEmpId').value.trim(),
+      full_name: name,
+      designation: document.getElementById('techDesig').value.trim(),
+      department: document.getElementById('techDept').value.trim(),
+      specialization: document.getElementById('techSpec').value.trim(),
+      phone: document.getElementById('techPhone').value.trim(),
+      email,
+      salary: document.getElementById('techSalary').value || null,
+      joining_date: document.getElementById('techJoining').value || null,
+      status: document.getElementById('techStatus').value,
+      notes: document.getElementById('techNotes').value.trim(),
+      supervisor_user_id: document.getElementById('techSupervisorUser').value.trim() === ''
+        ? null
+        : parseInt(document.getElementById('techSupervisorUser').value.trim(), 10),
+    };
+    const btn = document.getElementById('techConvertBtn');
+    btn.disabled = true;
+    const prev = btn.textContent;
+    btn.textContent = 'Converting…';
+    const saved = await apiFetch(`/technicians/${editId}`, {
+      method: 'PUT',
+      body: JSON.stringify(savePayload),
+    });
+    if (!saved.ok) {
+      btn.disabled = false;
+      btn.textContent = prev;
+      tmToast(saved.data?.message || saved.data?.error || 'Could not save staff details.', 'error');
+      return;
+    }
+    const converted = await apiFetch(`/technicians/${editId}/create-login`, {
+      method: 'POST',
+      body: JSON.stringify({
+        username,
+        password: document.getElementById('techLoginPassword').value,
+        email,
+        phone: savePayload.phone,
+        full_name: name,
+        designation: savePayload.designation,
+        joining_date: savePayload.joining_date,
+        supervisor_user_id: savePayload.supervisor_user_id,
+      }),
+    });
+    btn.disabled = false;
+    btn.textContent = prev;
+    if (!converted.ok) {
+      tmToast(converted.data?.message || converted.data?.error || 'Could not convert to a system user.', 'error');
+      return;
+    }
+    const body = converted.data.data || converted.data;
+    let msg = 'Staff converted to a system user.';
+    if (body.temp_password) msg += ' Temporary password: ' + body.temp_password;
+    tmToast(msg, 'success');
+    closeModal('techModal');
+    await Promise.all([loadTechnicians(), loadStaff()]);
   });
 
   /* ── Delete ───────────────────────────────────────────────────────── */
@@ -1429,7 +1699,7 @@
     const res = await apiFetch(`/technicians/${_techPendingDelete}`, { method: 'DELETE' });
     btn.disabled = false;
     if (!res.ok) { tmToast(res.data?.message || 'Failed to delete.', 'error'); return; }
-    tmToast('Technician deleted.', 'success');
+    tmToast('Staff deleted.', 'success');
     closeModal('deleteModal');
     _techPendingDelete = null;
     await loadTechnicians();
@@ -1491,13 +1761,13 @@
       resultBox.style.background = '#d1fae5';
       resultBox.style.color = '#065f46';
       resultBox.style.border = '1.5px solid #6ee7b7';
-      let msg = `✓ ${payload.created} technician(s) imported successfully.`;
+      let msg = `✓ ${payload.created} staff imported successfully.`;
       if (payload.skipped) msg += ` ${payload.skipped} skipped (duplicate Employee ID).`;
       if (payload.errors?.length) msg += `\n⚠ ${payload.errors.slice(0, 3).join('; ')}`;
       resultBox.textContent = msg;
       if (payload.created > 0) {
         await loadTechnicians();
-        setTimeout(() => { closeModal('importModal'); tmToast(`${payload.created} technician(s) imported.`); }, 1600);
+        setTimeout(() => { closeModal('importModal'); tmToast(`${payload.created} staff imported.`); }, 1600);
       }
     } else {
       resultBox.style.background = '#fee2e2';
@@ -1525,8 +1795,60 @@
     el.setAttribute('aria-hidden', 'true');
   }
 
+  /* ── Create login modal ───────────────────────────────────────────── */
+  function openCreateLoginModal() {
+    ['cuUsername','cuEmail','cuFullName','cuPassword','cuJobDesignation'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    document.getElementById('cuDesignation').value = 'employee';
+    document.getElementById('cuJoined').value = '';
+    document.getElementById('cuReportingManager').value = '';
+    openModal('createLoginModal');
+    setTimeout(() => document.getElementById('cuUsername').focus(), 200);
+  }
+
+  document.getElementById('createLoginSave').addEventListener('click', async () => {
+    const payload = {
+      username: document.getElementById('cuUsername').value.trim(),
+      email: document.getElementById('cuEmail').value.trim(),
+      full_name: document.getElementById('cuFullName').value.trim() || null,
+      password: document.getElementById('cuPassword').value,
+      designation: document.getElementById('cuDesignation').value || null,
+      employment_start_date: document.getElementById('cuJoined').value || '',
+      job_designation: document.getElementById('cuJobDesignation').value.trim(),
+      role: 'user',
+    };
+    const rm = document.getElementById('cuReportingManager').value;
+    if (rm) {
+      const n = parseInt(rm, 10);
+      if (!Number.isNaN(n)) payload.reporting_manager_id = n;
+    }
+    if (!payload.username || !payload.email) {
+      tmToast('Username and email are required.', 'error');
+      return;
+    }
+    const btn = document.getElementById('createLoginSave');
+    btn.disabled = true;
+    const prevHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="tm-spinner"></span> Creating…';
+    const res = await apiFetch('/users', { method: 'POST', body: JSON.stringify(payload) });
+    btn.disabled = false;
+    btn.innerHTML = prevHtml;
+    if (!res.ok) {
+      tmToast(res.data?.message || res.data?.error || 'Failed to create login.', 'error');
+      return;
+    }
+    const body = res.data.data || res.data;
+    let msg = res.data.message || body.message || 'Login created.';
+    if (body.temp_password) msg += ' Temporary password: ' + body.temp_password;
+    tmToast(msg, 'success');
+    closeModal('createLoginModal');
+    await Promise.all([loadStaff(), loadTechnicians()]);
+  });
+
   // Wire close buttons
-  ['techModal','importModal','deleteModal'].forEach(id => {
+  ['techModal','importModal','deleteModal','createLoginModal'].forEach(id => {
     const veil = document.getElementById(id);
     veil.addEventListener('click', e => { if (e.target === veil) closeModal(id); });
   });
@@ -1536,8 +1858,10 @@
   document.getElementById('importModalCancel').addEventListener('click', () => closeModal('importModal'));
   document.getElementById('deleteModalClose').addEventListener('click', () => closeModal('deleteModal'));
   document.getElementById('deleteModalCancel').addEventListener('click', () => closeModal('deleteModal'));
+  document.getElementById('createLoginModalClose').addEventListener('click', () => closeModal('createLoginModal'));
+  document.getElementById('createLoginModalCancel').addEventListener('click', () => closeModal('createLoginModal'));
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { ['techModal','importModal','deleteModal'].forEach(closeModal); }
+    if (e.key === 'Escape') { ['techModal','importModal','deleteModal','createLoginModal'].forEach(closeModal); }
   });
 
   /* ═══════════════════════════════════════════════════════════════════════
@@ -1557,7 +1881,12 @@
     await Promise.all([loadStaff(), loadSupervisorPickList(), loadTechnicians()]);
     try {
       const u = new URL(window.location.href);
-      if ((u.searchParams.get('tool') || '').trim() === 'profile') {
+      const tool = (u.searchParams.get('tool') || '').trim();
+      if (tool === 'create_user') {
+        u.searchParams.delete('tool');
+        history.replaceState({}, '', u.pathname + (u.searchParams.toString() ? ('?' + u.searchParams.toString()) : '') + u.hash);
+        openCreateLoginModal();
+      } else if (tool === 'profile') {
         const id = parseInt(String(u.searchParams.get('user_id') || '').trim(), 10);
         u.searchParams.delete('tool');
         u.searchParams.delete('user_id');

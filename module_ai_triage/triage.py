@@ -31,7 +31,7 @@ TRIAGE_SCHEMA = {
 }
 
 SYSTEM_PROMPT = (
-    'You are an FM work-order triage assistant for Injaaz. '
+    'You are an FM work-order triage assistant for Kynvera. '
     'Given a ticket description, location, optional asset history, and a roster of '
     'assignable technicians (User accounts), suggest priority, SLA hours, technician_id, '
     'and required_parts. '

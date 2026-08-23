@@ -15,7 +15,6 @@
               <h1 class="bento-tile__hd-title">Staff Kit &amp; PPE Record</h1>
               <p class="bento-tile__hd-sub">QHSE staff compliance</p>
             </div>
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="" class="bento-hero-logo">
           </div>
         </div>
 
@@ -29,12 +28,18 @@
           </div>
           <div class="bento-tile__body qhse-import-body">
             <div class="qhse-import-form__row">
-              <input type="file" name="file" accept=".xlsx,.xls,.csv" required>
-              <button type="submit" class="btn-primary" data-import-btn>Import file</button>
-              <button type="button" class="btn-secondary" data-qhse-template>Download template</button>
+              <label class="qhse-file-pick">
+                <input type="file" name="file" accept=".xlsx,.xls,.csv">
+                <span class="qhse-file-pick__btn">Choose file</span>
+                <span class="qhse-file-pick__name" data-file-name>No file chosen</span>
+              </label>
+              <div class="qhse-import-form__actions">
+                <button type="submit" class="btn-primary" data-import-btn>Import file</button>
+                <button type="button" class="btn-secondary" data-qhse-template>Download template</button>
+              </div>
             </div>
             <p class="qhse-import-hint">Supports one row per kit item (Employee, Project, Item, Condition) or wide format with kit columns.</p>
-            <p class="qhse-import-status" data-import-status></p>
+            <p class="qhse-import-status" data-import-status hidden></p>
             <div id="qhseImportSummary" class="qhse-import-summary-wrap"></div>
           </div>
         </form>
@@ -52,12 +57,12 @@
                 <div class="fld"><label class="fld-lbl">Employee name <span class="req">*</span></label><input class="fld-inp" name="employee_name" required autocomplete="name"></div>
                 <div class="fld"><label class="fld-lbl">Employee ID</label><input class="fld-inp" name="employee_id" autocomplete="off"></div>
                 <div class="fld"><label class="fld-lbl">Project <span class="req">*</span></label><input class="fld-inp" name="project_name" id="project_name" list="projectList" required></div>
-                <datalist id="projectList"></datalist>
                 <div class="fld"><label class="fld-lbl">Record date <span class="req">*</span></label><input type="date" class="fld-inp" name="record_date" required></div>
                 <div class="fld"><label class="fld-lbl">Department</label><input class="fld-inp" name="department"></div>
                 <div class="fld"><label class="fld-lbl">Supervisor</label><input class="fld-inp" name="supervisor_name"></div>
                 <div class="fld fw"><label class="fld-lbl">Notes</label><textarea class="fld-inp" name="notes" rows="2" placeholder="Overall comments for this record…"></textarea></div>
               </div>
+              <datalist id="projectList"></datalist>
             </div>
           </section>
 
@@ -69,7 +74,7 @@
               </div>
             </div>
             <div class="bento-tile__body">
-              <p style="margin:0 0 0.75rem;font-size:0.85rem;line-height:1.55;color:#6b7280">Add each uniform, PPE, or ID-badge item below with its condition and photos. Mark anything worn or missing so Operations can action a replacement.</p>
+              <p class="qhse-help-copy">Add each uniform, PPE, or ID-badge item below with its condition and photos. Mark anything worn or missing so Operations can action a replacement.</p>
               <div class="bento-chips">
                 <div class="bento-chip"><span class="bento-chip__val" data-kit-total>0</span><span class="bento-chip__lbl">Items</span></div>
                 <div class="bento-chip"><span class="bento-chip__val" data-kit-issues>0</span><span class="bento-chip__lbl">Issues</span></div>
@@ -105,7 +110,7 @@
   <script>window.FILES_SAVE_MODULE = 'qhsi'; window.FILES_SAVE_MODULE_LABEL = 'QHSE — Staff Compliance';</script>
   <script src="{{ url_for('static', filename='js/files-save.js') }}?v=16"></script>
   <script src="{{ url_for('static', filename='js/qhsi-ui.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/qhsi-import.js') }}?v=1"></script>
-  <script src="{{ url_for('static', filename='js/qhsi-staff.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/qhsi-import.js') }}?v=2"></script>
+  <script src="{{ url_for('static', filename='js/qhsi-staff.js') }}?v=2"></script>
 {% include 'partials/qhse_shell_close.html' with context %}
 </html>

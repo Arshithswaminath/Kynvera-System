@@ -9,6 +9,7 @@ from flask import Blueprint, render_template, request, jsonify, current_app, red
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.orm.attributes import flag_modified
 from app.models import db, User, Submission, Notification
+from common.document_display import HIDDEN_QHSI_MODULE_TYPES
 from common.form_data_utils import shallow_copy_form_data as _mutable_form_data
 from common.datetime_utils import (
     format_naive_utc_in_dubai,
@@ -1702,6 +1703,25 @@ def get_hr_submissions():
 # NOTIFICATION API ROUTES
 # ============================================
 
+def _is_hidden_qhsi_notification(notification, hidden_submission_ids):
+    sid = notification.submission_id or ''
+    if sid in hidden_submission_ids or sid.upper().startswith('QHSI-'):
+        return True
+    blob = f"{notification.title or ''} {notification.message or ''}".upper()
+    return 'QHSI' in blob or 'QHSA SITE' in blob
+
+
+def _hidden_qhsi_submission_ids(submission_ids):
+    ids = [sid for sid in (submission_ids or []) if sid]
+    if not ids:
+        return set()
+    rows = Submission.query.with_entities(Submission.submission_id).filter(
+        Submission.submission_id.in_(ids),
+        Submission.module_type.in_(tuple(HIDDEN_QHSI_MODULE_TYPES)),
+    ).all()
+    return {row[0] for row in rows}
+
+
 @hr_bp.route('/api/notifications')
 @jwt_required()
 @_exempt_global_rate_limit
@@ -1714,11 +1734,15 @@ def get_notifications():
     # Get user's notifications, most recent first
     notifications = Notification.query.filter_by(user_id=user.id).order_by(
         Notification.created_at.desc()
-    ).limit(50).all()
+    ).limit(80).all()
+    hidden_ids = _hidden_qhsi_submission_ids([n.submission_id for n in notifications])
+    notifications = [n for n in notifications if not _is_hidden_qhsi_notification(n, hidden_ids)][:50]
     
     # Count unread
-    unread_count = Notification.query.filter_by(user_id=user.id, is_read=False).count()
-    total_count = Notification.query.filter_by(user_id=user.id).count()
+    unread_rows = Notification.query.filter_by(user_id=user.id, is_read=False).all()
+    hidden_unread_ids = _hidden_qhsi_submission_ids([n.submission_id for n in unread_rows])
+    unread_count = sum(1 for n in unread_rows if not _is_hidden_qhsi_notification(n, hidden_unread_ids))
+    total_count = len(notifications)
     
     return jsonify({
         'success': True,
@@ -1737,7 +1761,9 @@ def get_unread_count():
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    unread_count = Notification.query.filter_by(user_id=user.id, is_read=False).count()
+    unread_rows = Notification.query.filter_by(user_id=user.id, is_read=False).all()
+    hidden_unread_ids = _hidden_qhsi_submission_ids([n.submission_id for n in unread_rows])
+    unread_count = sum(1 for n in unread_rows if not _is_hidden_qhsi_notification(n, hidden_unread_ids))
     total_count = Notification.query.filter_by(user_id=user.id).count()
     
     return jsonify({

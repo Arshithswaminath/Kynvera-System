@@ -26,10 +26,10 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/signature-display.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard-shell.css') }}?v=42">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard-shell.css') }}?v=45">
   <!-- Neat-glow styles for main content only (see .container.admin-content.admin-neat-glow) -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-neat-glow.css') }}?v=35">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/injz-profile-mgmt-theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/injz-profile-mgmt-theme.css') }}?v=4">
 </head>
 <body class="has-main-nav admin-dh-page admin-v2 admin-v4">
   {% set active_page = 'admin' %}
@@ -2444,7 +2444,7 @@
         if (isAdminTarget) {
           modNote.hidden = false;
           modNote.textContent = 'Administrators have full access to all modules by policy.';
-          ['accessInspection', 'accessHvac', 'accessCivil', 'accessCleaning', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessQhsi', 'accessFiles'].forEach((id) => {
+          ['accessInspection', 'accessHvac', 'accessCivil', 'accessCleaning', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessSalesManager', 'accessQuotations', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessQhsi', 'accessFiles'].forEach((id) => {
             const cb = document.getElementById(id);
             if (cb) { cb.checked = true; cb.disabled = true; }
           });
@@ -2460,7 +2460,11 @@
           document.getElementById('accessHr').checked = !!user.access_hr;
           document.getElementById('accessProcurement').checked = !!user.access_procurement_module;
           const bd = document.getElementById('accessBusinessDev');
-          if (bd) bd.checked = !!user.access_business_development;
+          if (bd) bd.checked = !!user.access_business_development || !!user.access_sales_manager;
+          const sm = document.getElementById('accessSalesManager');
+          if (sm) sm.checked = !!user.access_sales_manager;
+          const aq = document.getElementById('accessQuotations');
+          if (aq) aq.checked = !!user.access_quotations;
           const dh = document.getElementById('accessDocHub');
           if (dh) dh.checked = user.can_access_dochub !== false;
           const rg = document.getElementById('accessReportGen');
@@ -2922,7 +2926,10 @@
         document.getElementById('accessCleaning').checked = inspVal;
         payload.access_hr = document.getElementById('accessHr').checked;
         payload.access_procurement_module = document.getElementById('accessProcurement').checked;
-        payload.access_business_development = document.getElementById('accessBusinessDev').checked;
+        const salesMgrOn = !!(document.getElementById('accessSalesManager') && document.getElementById('accessSalesManager').checked);
+        payload.access_sales_manager = salesMgrOn;
+        payload.access_quotations = !!(document.getElementById('accessQuotations') && document.getElementById('accessQuotations').checked);
+        payload.access_business_development = !!(document.getElementById('accessBusinessDev') && document.getElementById('accessBusinessDev').checked) || salesMgrOn;
         payload.access_report_generation = document.getElementById('accessReportGen').checked;
         payload.access_submitted_forms = document.getElementById('accessSubmittedForms').checked;
         payload.access_ticketing = document.getElementById('accessTicketing')?.checked || false;

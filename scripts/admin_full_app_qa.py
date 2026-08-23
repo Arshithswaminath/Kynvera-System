@@ -188,7 +188,7 @@ def section_tickets_assets():
                 json={
                     "technician_name": "QA Tech",
                     "technician_code": "TECH-QA",
-                    "vendor_company": "Injaaz Facilities Management",
+                    "vendor_company": "Kynvera",
                 },
             )
 
@@ -281,24 +281,17 @@ def section_hr():
     else:
         warn("HR: no submissions to export PDF/DOCX")
 
-    # Hiring / leave / manpower excel templates if exposed
     for path, label in [
-        ("/hr/hiring/api/export", "HR hiring export"),
-        ("/hr/leave-tracker/api/export", "HR leave-tracker export"),
-        ("/hr/manpower-tracker/api/export", "HR manpower export"),
-        ("/hr/hiring/export", "HR hiring export alt"),
-        ("/hr/leave-tracker/export-excel", "HR leave export alt"),
+        ("/hr/api/hiring/export", "HR hiring export"),
+        ("/hr/api/hiring/import-template", "HR hiring import template"),
+        ("/hr/api/leave-tracker/export", "HR leave-tracker export"),
+        ("/hr/api/leave-tracker/template", "HR leave-tracker template"),
+        ("/hr/api/manpower/export", "HR manpower export"),
+        ("/hr/api/manpower/template", "HR manpower template"),
     ]:
         r = api("GET", path)
-        if r.status_code == 404:
-            continue
-        if r.status_code == 200 and (r.content[:2] == b"PK" or len(r.content) > 50):
-            check(label, True)
-        elif r.status_code in (200, 400, 403):
-            warn(f"{label}: {r.status_code} (endpoint present)")
-            check(label, True, f"status={r.status_code}")
-        else:
-            check(label, False, f"status={r.status_code}")
+        ok = r.status_code == 200 and (r.content or b"").startswith(b"PK")
+        check(label, ok, f"{path} → {r.status_code} bytes={len(r.content or b'')}")
 
 
 # ─── Inspection + Workflow ───────────────────────────────────────────

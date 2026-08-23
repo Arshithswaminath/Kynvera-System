@@ -58,8 +58,61 @@
     updateKitSummary();
   }
 
+  function setNamed(form, name, value) {
+    if (!form || value == null || value === '') return;
+    var field = form.elements[name];
+    if (field) field.value = value;
+  }
+
+  function enterStaffViewMode() {
+    var btn = document.getElementById('btnSubmitStaff');
+    if (btn) btn.style.display = 'none';
+    var add = document.getElementById('btnAddKit');
+    if (add) add.style.display = 'none';
+  }
+
+  function fillKitRow(wrap, item) {
+    if (!wrap || !item) return;
+    var typeSel = wrap.querySelector('.kit-type');
+    var condSel = wrap.querySelector('.kit-condition');
+    var comments = wrap.querySelector('.kit-comments');
+    if (typeSel && item.type) typeSel.value = item.type;
+    if (condSel && item.condition) condSel.value = item.condition;
+    if (comments && item.comments) comments.value = item.comments;
+  }
+
+  function loadExistingStaff(sid) {
+    return fetch('/api/workflow/submissions/' + encodeURIComponent(sid), {
+      headers: QhsiUi.authHeaders(),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (payload) {
+        if (!payload || payload.success === false) return;
+        var fd = payload.form_data || {};
+        var f = document.getElementById('staffForm');
+        setNamed(f, 'employee_name', fd.employee_name);
+        setNamed(f, 'employee_id', fd.employee_id);
+        setNamed(f, 'project_name', fd.project_name || payload.site_name);
+        setNamed(f, 'record_date', (fd.record_date || payload.visit_date || '').toString().slice(0, 10));
+        setNamed(f, 'department', fd.department);
+        setNamed(f, 'supervisor_name', fd.supervisor_name);
+        setNamed(f, 'notes', fd.notes || fd.note);
+        var items = fd.kit_items || fd.items || [];
+        if (Array.isArray(items) && items.length) {
+          items.forEach(function (item) {
+            addKitRow();
+            fillKitRow(kitRows[kitRows.length - 1], item);
+          });
+        }
+        enterStaffViewMode();
+      })
+      .catch(function () { /* ignore */ });
+  }
+
   document.getElementById('btnAddKit').onclick = addKitRow;
-  addKitRow();
+  var editSid = new URLSearchParams(location.search).get('edit');
+  if (!editSid) addKitRow();
+  else loadExistingStaff(editSid);
 
   var rd = document.querySelector('[name=record_date]');
   if (rd) rd.max = new Date().toISOString().slice(0, 10);

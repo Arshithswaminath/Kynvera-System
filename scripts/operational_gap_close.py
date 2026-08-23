@@ -223,7 +223,7 @@ def gap_ticket_lifecycle(base, admin_user, admin_pass):
     )
     expect('assign technician', st, payload)
 
-    for step in ('site_attended', 'work_started', 'work_completed'):
+    for step in ('site_attended', 'work_started'):
         st, payload = req(
             base, 'POST', f'/tickets/api/tickets/{tid}/advance',
             token=tech_token, body={'resolution_notes': 'Gap-close work done'},
@@ -233,10 +233,10 @@ def gap_ticket_lifecycle(base, admin_user, admin_pass):
             break
 
     st, payload = req(
-        base, 'POST', f'/tickets/api/tickets/{tid}/begin-verification',
-        token=sup_token, body={},
+        base, 'POST', f'/tickets/api/tickets/{tid}/advance',
+        token=tech_token, body={'resolution_notes': 'Gap-close work done'},
     )
-    expect('begin verification', st, payload, allowed=(200,), warn_on=(400,))
+    expect('advance → verification', st, payload)
 
     st, payload = req(
         base, 'POST', f'/tickets/api/tickets/{tid}/supervisor-close',
@@ -249,19 +249,7 @@ def gap_ticket_lifecycle(base, admin_user, admin_pass):
             'verification_notes': 'Gap-close verified',
         },
     )
-    expect('supervisor-close → provider_closed', st, payload)
-
-    st, payload = req(
-        base, 'POST', f'/tickets/api/tickets/{tid}/ops-close',
-        token=admin_token,
-        body={
-            'signature': SIG,
-            'signed_by': 'System Administrator',
-            'signed_role': 'Admin',
-            'notes': 'Gap-close final ops approval',
-        },
-    )
-    expect('ops-close → closed', st, payload)
+    expect('supervisor-close → closed', st, payload)
     if st == 200:
         record('ticket final status', payload.get('status') == 'closed', str(payload.get('status')))
 

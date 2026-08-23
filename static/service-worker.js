@@ -166,7 +166,7 @@ self.addEventListener('push', (event) => {
   };
 
   event.waitUntil(
-    self.registration.showNotification('Injaaz Report', options)
+    self.registration.showNotification('Kynvera Report', options)
   );
 });
 

@@ -192,6 +192,42 @@ def _clear_vacancy_candidate_slot(vac: ManpowerVacancy, *, clear_identity: bool)
     vac.updated_at = utc_now_naive()
 
 
+def _occupant_snapshot(vac: ManpowerVacancy) -> dict[str, Any]:
+    """Board fields that travel with a person when their link is switched."""
+    return {
+        'candidate_name': vac.candidate_name,
+        'contact_number': vac.contact_number,
+        'status': vac.status,
+        'date_joined': vac.date_joined,
+        'hiring_candidate_id': vac.hiring_candidate_id,
+    }
+
+
+def _apply_board_identity(vac: ManpowerVacancy, snap: dict[str, Any]) -> None:
+    """Copy typed name/contact/status only — never the hiring_candidate_id FK."""
+    vac.candidate_name = snap.get('candidate_name')
+    vac.contact_number = snap.get('contact_number')
+    vac.status = snap.get('status') or 'open'
+    vac.date_joined = snap.get('date_joined')
+    vac.updated_at = utc_now_naive()
+
+
+def _sql_set_hiring_candidate(vacancy_id: int, hiring_candidate_id: Optional[int]) -> None:
+    """Write hiring_candidate_id as its own SQL statement.
+
+    SQLite unique checks fire per row inside executemany, so ORM flushes that
+    update the old and new vacancy together can fail even in one transaction.
+    """
+    db.session.execute(
+        text(
+            'UPDATE manpower_vacancies '
+            'SET hiring_candidate_id = :hid, updated_at = :ts '
+            'WHERE id = :id'
+        ),
+        {'hid': hiring_candidate_id, 'ts': utc_now_naive(), 'id': vacancy_id},
+    )
+
+
 def assign_candidate_to_vacancy(
     candidate_id: int,
     vacancy_id: int,
@@ -201,6 +237,9 @@ def assign_candidate_to_vacancy(
     """
     Link candidate ↔ vacancy (1:1).
     Returns (candidate, vacancy, error_message).
+
+    A project switch only moves hiring_candidate_id. Occupant name/contact/status
+    on the two vacancies are swapped so nobody is wiped from the board.
     """
     ensure_staffing_link_schema()
     candidate = db.session.get(HiringCandidate, candidate_id)
@@ -225,10 +264,28 @@ def assign_candidate_to_vacancy(
                 f'Candidate is already assigned to vacancy #{other_vac.id}. '
                 'Unassign first.'
             )
-        # Switch away: free the previous slot and empty its candidate/contact cells
-        _clear_vacancy_candidate_slot(other_vac, clear_identity=True)
+        target_snap = _occupant_snapshot(vac)
+        source_snap = _occupant_snapshot(other_vac)
+        displaced_link_id = target_snap['hiring_candidate_id']
+        if displaced_link_id == candidate.id:
+            displaced_link_id = None
 
-    if vac.hiring_candidate_id and vac.hiring_candidate_id != candidate.id:
+        # 1) Drop both FKs first (own SQL statements) so unique index is free.
+        #    Refresh so commit cannot write the old FK values back via ORM.
+        _sql_set_hiring_candidate(other_vac.id, None)
+        _sql_set_hiring_candidate(vac.id, None)
+        db.session.refresh(other_vac, attribute_names=['hiring_candidate_id'])
+        db.session.refresh(vac, attribute_names=['hiring_candidate_id'])
+
+        # 2) Target occupant (e.g. typed Biju) moves onto the vacated slot.
+        _apply_board_identity(other_vac, target_snap)
+        if displaced_link_id:
+            _sql_set_hiring_candidate(other_vac.id, displaced_link_id)
+            db.session.refresh(other_vac, attribute_names=['hiring_candidate_id'])
+
+        # 3) Keep this candidate's board identity; Hiring Docs status is applied below.
+        _apply_board_identity(vac, source_snap)
+    elif vac.hiring_candidate_id and vac.hiring_candidate_id != candidate.id:
         return None, None, (
             f'Vacancy #{vac.id} is already linked to another candidate. Unassign first.'
         )

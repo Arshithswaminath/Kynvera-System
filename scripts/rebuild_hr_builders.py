@@ -132,7 +132,7 @@ def _build_commencement(story, fd, styles):
         [_flv("Position",     _fd(fd, "position")),
          _flv("Contacts",     _fd(fd, "contacts"))],                         # r3
         [_flv("Department",   _fd(fd, "department")),
-         _flv("Organization", _fd(fd, "organization", "INJAAZ LLC"))],       # r4
+         _flv("Organization", _fd(fd, "organization", "Kynvera"))],       # r4
         [_flv("Date of Joining", _fmt(fd.get("date_of_joining"))), ""],      # r5
         [_fsec("Bank Account Details:"), ""],                                # r6
         [_flv("Bank Name", _fd(fd, "bank_name")), ""],                       # r7
@@ -189,7 +189,7 @@ def _build_duty_resumption(story, fd, styles):
         [_flv("Employee Name", _fd(fd, "employee_name")),
          _flv("Employee ID",   _fd(fd, "employee_id"))],                     # r1
         [_flv("Job Title",     _fd(fd, "job_title")),
-         _flv("Company",       _fd(fd, "company", "INJAAZ LLC"))],           # r2
+         _flv("Company",       _fd(fd, "company", "Kynvera"))],           # r2
         [_fsec("Leave Information:"), ""],                                   # r3
         [_flv("Leave Started",  _fmt(fd.get("leave_started"))),
          _flv("Leave Ended",    _fmt(fd.get("leave_ended")))],               # r4
@@ -317,7 +317,7 @@ def _build_visa_renewal(story, fd, styles):
 
     name       = _fd(fd, "employee_name")
     emp_id     = _fd(fd, "employee_id")
-    employer   = _fd(fd, "employer", "INJAAZ LLC")
+    employer   = _fd(fd, "employer", "Kynvera")
     position   = _fd(fd, "position")
     years      = _fd(fd, "years_completed")
     form_date  = _fmt(fd.get("form_date"))
@@ -349,7 +349,7 @@ def _build_visa_renewal(story, fd, styles):
         [Paragraph("", VAL)],                                               # r14 blank
         [_fsig("Signature of Employee", fd.get("employee_signature"))],     # r15 sig
         [Paragraph("", VAL)],                                               # r16 blank
-        [Paragraph("<b>INJAAZ LLC</b>", VAL)],                              # r17
+        [Paragraph("<b>Kynvera</b>", VAL)],                              # r17
     ]
 
     t = Table(rows, colWidths=[CW])

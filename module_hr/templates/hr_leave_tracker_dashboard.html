@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=111">
-          <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-leave-tracker.css') }}?v=29">
+          <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-leave-tracker.css') }}?v=30">
   {% set active_page = 'hr' %}
 </head>
 <body class="hh-page lt-page">
@@ -58,7 +58,7 @@
         </div>
         <select id="ltCompany" class="hh-select" aria-label="Company filter">
           <option value="all">All companies</option>
-          <option value="INJAAZ">INJAAZ</option>
+          <option value="Kynvera">Kynvera</option>
           <option value="Tourism">Tourism</option>
           <option value="L&P">L&amp;P</option>
         </select>
@@ -197,7 +197,7 @@
             </select>
             <select id="ltLogCompanyFilter" class="hh-select lt-filter-compact" aria-label="Company filter">
               <option value="all">All companies</option>
-              <option value="INJAAZ">INJAAZ</option>
+              <option value="Kynvera">Kynvera</option>
               <option value="Tourism">Tourism</option>
               <option value="L&P">L&amp;P</option>
             </select>
@@ -217,6 +217,14 @@
                 <input type="date" id="ltLogCreatedFrom" class="hh-select lt-filter-date" lang="en-GB" aria-label="Created from">
                 <span class="lt-filter-range-sep">to</span>
                 <input type="date" id="ltLogCreatedTo" class="hh-select lt-filter-date" lang="en-GB" aria-label="Created to">
+              </span>
+            </label>
+            <label class="lt-date-field">
+              <span class="lt-date-field-label">Edited</span>
+              <span class="lt-date-pair">
+                <input type="date" id="ltLogEditedFrom" class="hh-select lt-filter-date" lang="en-GB" aria-label="Edited from">
+                <span class="lt-filter-range-sep">to</span>
+                <input type="date" id="ltLogEditedTo" class="hh-select lt-filter-date" lang="en-GB" aria-label="Edited to">
               </span>
             </label>
             <button type="button" class="hh-btn hh-btn-ghost hh-btn-sm lt-logs-clear" id="ltLogsClearFilters" hidden>Clear filters</button>
@@ -254,13 +262,17 @@
                   <span class="lt-th-label">Notes</span>
                   <button type="button" class="lt-col-filter-btn" data-col-filter="log_notes" aria-label="Filter Notes" title="Filter Notes">▾</button>
                 </th>
-                <th class="lt-th-filterable" data-col="log_created">
-                  <span class="lt-th-label">Created</span>
-                  <button type="button" class="lt-col-filter-btn" data-col-filter="log_created" aria-label="Filter Created" title="Filter Created">▾</button>
+                <th class="lt-th-sortable" data-sort-col="log_created">
+                  <button type="button" class="lt-sort-btn" data-sort-col="log_created" aria-label="Sort by Created" title="Sort Created">
+                    <span class="lt-th-label">Created</span>
+                    <span class="lt-sort-ind" aria-hidden="true"></span>
+                  </button>
                 </th>
-                <th class="lt-th-filterable" data-col="log_edited">
-                  <span class="lt-th-label">Edited</span>
-                  <button type="button" class="lt-col-filter-btn" data-col-filter="log_edited" aria-label="Filter Edited" title="Filter Edited">▾</button>
+                <th class="lt-th-sortable" data-sort-col="log_edited">
+                  <button type="button" class="lt-sort-btn" data-sort-col="log_edited" aria-label="Sort by Edited" title="Sort Edited">
+                    <span class="lt-th-label">Edited</span>
+                    <span class="lt-sort-ind" aria-hidden="true"></span>
+                  </button>
                 </th>
                 <th></th>
               </tr>
@@ -445,6 +457,6 @@
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
   <script>window.FILES_SAVE_MODULE = 'leave'; window.FILES_SAVE_MODULE_LABEL = 'Leave Tracker';</script>
   <script src="{{ url_for('static', filename='js/files-save.js') }}?v=16"></script>
-  <script src="{{ url_for('static', filename='js/hr-leave-tracker.js') }}?v=19"></script>
+  <script src="{{ url_for('static', filename='js/hr-leave-tracker.js') }}?v=20"></script>
 </body>
 </html>

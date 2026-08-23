@@ -23,6 +23,7 @@ from app.models import (
     LEAVE_TRACKER_MONTH_LABELS,
     LEAVE_TRACKER_MONTHS,
     LEAVE_TRACKER_YEAR,
+    normalize_leave_company,
     LEAVE_TYPES,
     LeaveEmployee,
     LeaveLog,
@@ -603,14 +604,9 @@ def import_leave_workbook(file_storage) -> dict[str, Any]:
                 desig = ''
                 if 'Designation' in col and row[col['Designation']]:
                     desig = str(row[col['Designation']]).strip()
-                company = 'INJAAZ'
+                company = 'Kynvera'
                 if 'Company' in col and row[col['Company']]:
-                    company = str(row[col['Company']]).strip()
-                    if company not in LEAVE_COMPANIES:
-                        for c in LEAVE_COMPANIES:
-                            if c.lower() == company.lower():
-                                company = c
-                                break
+                    company = normalize_leave_company(row[col['Company']]) or 'Kynvera'
                 ent = None
                 if 'Annual Entitlement' in col:
                     ent = _parse_int(row[col['Annual Entitlement']])
@@ -759,17 +755,14 @@ def import_leave_workbook(file_storage) -> dict[str, Any]:
             if not emp:
                 name = str(row[col['Name']]).strip() if 'Name' in col and row[col['Name']] else str(emp_raw)
                 desig = str(row[col['Designation']]).strip() if 'Designation' in col and row[col['Designation']] else ''
-                company = str(row[col['Company']]).strip() if 'Company' in col and row[col['Company']] else 'INJAAZ'
-                if company not in LEAVE_COMPANIES:
-                    for c in LEAVE_COMPANIES:
-                        if c.lower() == company.lower():
-                            company = c
-                            break
+                company = normalize_leave_company(
+                    row[col['Company']] if 'Company' in col and row[col['Company']] else None
+                ) or 'Kynvera'
                 emp = LeaveEmployee(
                     emp_id=str(emp_raw).strip(),
                     full_name=name,
                     designation=desig,
-                    company=company if company in LEAVE_COMPANIES else 'INJAAZ',
+                    company=company if company in LEAVE_COMPANIES else 'Kynvera',
                 )
                 db.session.add(emp)
                 db.session.flush()
@@ -861,7 +854,7 @@ def import_leave_workbook(file_storage) -> dict[str, Any]:
 
 def parse_staff_list_workbook(path_or_file) -> list[dict[str, str]]:
     """
-    Parse Injaaz staff list Excel (sheets INJAAZ / Tourism / L&P).
+    Parse staff list Excel (sheets Kynvera / Tourism / L&P; legacy INJAAZ still accepted).
     Returns list of {emp_id, full_name, designation, company}.
     """
     wb = load_workbook(path_or_file, data_only=True)
@@ -869,13 +862,9 @@ def parse_staff_list_workbook(path_or_file) -> list[dict[str, str]]:
     seen: set[str] = set()
 
     for sheet_name in wb.sheetnames:
-        company = sheet_name.strip()
-        if company not in LEAVE_COMPANIES:
-            # allow case-insensitive match
-            matched = next((c for c in LEAVE_COMPANIES if c.lower() == company.lower()), None)
-            if not matched:
-                continue
-            company = matched
+        company = normalize_leave_company(sheet_name.strip(), default=None)
+        if not company:
+            continue
 
         ws = wb[sheet_name]
         header_row = None
@@ -948,7 +937,7 @@ def seed_employees_from_staff_list(path_or_file, replace_inactive: bool = False)
             emp_id=item['emp_id'],
             full_name=item['full_name'],
             designation=item.get('designation') or '',
-            company=item.get('company') or 'INJAAZ',
+            company=normalize_leave_company(item.get('company')) or 'Kynvera',
             active=True,
         )
         db.session.add(emp)

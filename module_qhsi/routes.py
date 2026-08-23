@@ -68,21 +68,65 @@ def _latest_import_batch(user):
         return None
 
 
+def _as_stats_dict(raw):
+    """Normalize stored import stats (string JSON, nested stats, or alias keys)."""
+    if not raw:
+        return {}
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (TypeError, ValueError):
+            return {}
+    if not isinstance(raw, dict):
+        return {}
+    out = dict(raw)
+    nested = out.get('stats')
+    if isinstance(nested, dict):
+        for key, value in nested.items():
+            out.setdefault(key, value)
+    if out.get('employees') is None and out.get('employee_count') is not None:
+        out['employees'] = out['employee_count']
+    if out.get('kit_lines') is None and out.get('row_count') is not None:
+        out['kit_lines'] = out['row_count']
+    if out.get('compliant') is None and out.get('ok') is not None:
+        out['compliant'] = out['ok']
+    if out.get('issues') is None and out.get('issue') is not None:
+        out['issues'] = out['issue']
+    return out
+
+
 def _import_stats(user):
+    empty = {
+        'has_import': False,
+        'batch': None,
+        'employees': 0,
+        'kit_lines': 0,
+        'compliant': 0,
+        'issues': 0,
+        'missing': 0,
+        'non_compliant': 0,
+        'compliance_rate': 0.0,
+    }
     batch = _latest_import_batch(user)
     if not batch:
-        return {
-            'has_import': False,
-            'batch': None,
-            'employees': 0,
-            'kit_lines': 0,
-            'compliant': 0,
-            'issues': 0,
-            'missing': 0,
-            'non_compliant': 0,
-            'compliance_rate': 0.0,
-        }
-    stats = dict(batch.stats_json or {})
+        return empty
+
+    stats = _as_stats_dict(batch.stats_json)
+    required = ('employees', 'kit_lines', 'compliant', 'issues', 'missing', 'compliance_rate')
+    if any(stats.get(key) is None for key in required):
+        rows = list(batch.rows or [])
+        if rows:
+            from module_qhsi.excel_import import stats_from_rows
+            computed = stats_from_rows([row.to_dict() for row in rows])
+            for key, value in computed.items():
+                if stats.get(key) is None:
+                    stats[key] = value
+        stats.setdefault('employees', batch.employee_count or 0)
+        stats.setdefault('kit_lines', batch.row_count or 0)
+        for key in ('compliant', 'issues', 'missing', 'non_compliant'):
+            stats.setdefault(key, 0)
+        stats.setdefault('compliance_rate', 0.0)
+
     stats['has_import'] = True
     stats['batch'] = batch.to_dict()
     return stats

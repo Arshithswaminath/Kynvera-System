@@ -767,6 +767,12 @@
         return '/hr/print/' + encodeURIComponent(submissionId || '');
       }
       const slug = inspectionModuleSlug(m);
+      if (slug === 'qhsi_staff_compliance') {
+        return '/qhsi/staff-compliance?edit=' + encodeURIComponent(submissionId || '');
+      }
+      if (slug === 'qhsi_inspection') {
+        return '/qhsi/inspection?edit=' + encodeURIComponent(submissionId || '');
+      }
       return '/' + slug + '/form?edit=' + encodeURIComponent(submissionId || '');
     }
     

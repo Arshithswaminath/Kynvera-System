@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=16">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=24">
   <style>
     :root {
       --primary: #ff8e68;
@@ -29,26 +29,6 @@
     }
     .inspection-modules-section::before {
       display: none;
-    }
-    .inspection-stats-widget .dashboard-stats-grid {
-      margin-bottom: 0;
-    }
-    .inspection-stats-grid {
-      grid-template-columns: 1fr 1fr;
-    }
-    a.dashboard-stat-card {
-      text-decoration: none;
-      color: inherit;
-      display: block;
-      transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
-      cursor: pointer;
-    }
-    a.dashboard-stat-card:hover,
-    a.dashboard-stat-card:focus-visible {
-      transform: translateY(-2px);
-      border-color: var(--primary-light);
-      box-shadow: 0 6px 18px rgba(18, 84, 53, 0.10);
-      outline: none;
     }
   </style>
 </head>
@@ -75,21 +55,25 @@
           </div>
           <div class="dashboard-widget-body">
             <div class="dashboard-stats-grid inspection-stats-grid" id="inspection-stats-grid">
-              <a href="/workflow/submitted-forms?scope=inspection" class="dashboard-stat-card" id="stat-submitted">
-                <div class="stat-value" id="stat-submitted-count">—</div>
-                <div class="stat-label">Submitted</div>
+              <a href="/workflow/submitted-forms?scope=inspection" class="dashboard-stat-card dashboard-stat-card--clickable" id="stat-submitted" data-href="/workflow/submitted-forms?scope=inspection" title="Open submitted inspection forms">
+                <div class="dashboard-stat-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+                <span class="dashboard-stat-label">Submitted</span>
+                <span class="dashboard-stat-value" id="stat-submitted-count">—</span>
               </a>
-              <a href="/workflow/pending-reviews?scope=inspection" class="dashboard-stat-card" id="stat-pending">
-                <div class="stat-value" id="stat-pending-count">—</div>
-                <div class="stat-label">Pending</div>
+              <a href="/workflow/pending-reviews?scope=inspection" class="dashboard-stat-card dashboard-stat-card--clickable" id="stat-pending" data-href="/workflow/pending-reviews?scope=inspection" title="Open pending inspection reviews">
+                <div class="dashboard-stat-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                <span class="dashboard-stat-label">Pending</span>
+                <span class="dashboard-stat-value" id="stat-pending-count">—</span>
               </a>
-              <a href="/workflow/submitted-forms?scope=inspection&status=approved" class="dashboard-stat-card" id="stat-approved">
-                <div class="stat-value" id="stat-approved-count">—</div>
-                <div class="stat-label">Approved</div>
+              <a href="/workflow/submitted-forms?scope=inspection&status=approved" class="dashboard-stat-card dashboard-stat-card--clickable" id="stat-approved" data-href="/workflow/submitted-forms?scope=inspection&status=approved" title="Open approved inspection forms">
+                <div class="dashboard-stat-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                <span class="dashboard-stat-label">Approved</span>
+                <span class="dashboard-stat-value" id="stat-approved-count">—</span>
               </a>
-              <a href="/workflow/submitted-forms?scope=inspection" class="dashboard-stat-card" id="stat-total">
-                <div class="stat-value" id="stat-total-count">—</div>
-                <div class="stat-label">Total</div>
+              <a href="/workflow/submitted-forms?scope=inspection" class="dashboard-stat-card dashboard-stat-card--clickable" id="stat-total" data-href="/workflow/submitted-forms?scope=inspection" title="Open all inspection forms">
+                <div class="dashboard-stat-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
+                <span class="dashboard-stat-label">Total</span>
+                <span class="dashboard-stat-value" id="stat-total-count">—</span>
               </a>
             </div>
           </div>
@@ -117,28 +101,6 @@
 
   {% include 'partials/module_app_footer.html' %}
 
-  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-  <script>
-    (function () {
-      const token = localStorage.getItem('access_token');
-      if (!token) return;
-      fetch('/api/workflow/inspection-dashboard-stats', {
-        headers: { 'Authorization': 'Bearer ' + token }
-      })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (data) {
-          if (!data) return;
-          const set = function (id, val) {
-            const el = document.getElementById(id);
-            if (el) el.textContent = (val == null ? '—' : String(val));
-          };
-          set('stat-submitted-count', data.submitted);
-          set('stat-pending-count', data.pending);
-          set('stat-approved-count', data.approved);
-          set('stat-total-count', data.total);
-        })
-        .catch(function () {});
-    })();
-  </script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=21"></script>
 </body>
 </html>

@@ -5,18 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   <title>Work Order Settings — Kynvera</title>
   {% include 'partials/caveat_font.html' ignore missing %}
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=8">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <style>
-    /* Inter typography — Work Order Settings */
+    /* Kynvera product UI — system/SF stack from design tokens */
     .tkt-settings-ios {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-family: var(--font-sans, var(--font-ui, -apple-system, BlinkMacSystemFont, system-ui, sans-serif));
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
@@ -27,18 +24,50 @@
     .tkt-settings-ios .settings-tab {
       font-family: inherit;
     }
+    .tkt-settings-ios .tkt-btn,
+    .tkt-settings-ios .tkt-btn-primary,
+    .tkt-settings-ios .tkt-btn-outline,
+    .tkt-settings-ios .tkt-btn-icon,
+    .tkt-settings-ios a.tkt-btn,
+    .tkt-settings-ios .proj-action-bar,
+    .tkt-settings-ios .proj-action-bar > a,
+    .tkt-settings-ios .proj-action-bar > button {
+      box-shadow: none;
+    }
+    .tkt-settings-ios .tkt-btn:hover,
+    .tkt-settings-ios .tkt-btn:focus,
+    .tkt-settings-ios .tkt-btn:active,
+    .tkt-settings-ios .tkt-btn-primary:hover,
+    .tkt-settings-ios .tkt-btn-primary:focus,
+    .tkt-settings-ios .tkt-btn-primary:active {
+      box-shadow: none;
+    }
 
     .tkt-container { max-width: 1400px !important; padding-left: 28px; padding-right: 28px; }
-    .settings-tabs { display:flex; gap:0; border-bottom:2px solid #e2e8f0; margin-bottom:24px; }
+    .settings-tabs { display:flex; gap:0; border-bottom:1px solid var(--tkt-border); margin-bottom:24px; }
     .settings-tab {
       padding:10px 22px; font-size:.875rem; font-weight:600; cursor:pointer;
-      color:#64748b; border-bottom:2.5px solid transparent; margin-bottom:-2px;
+      color:var(--tkt-text-2); border-bottom:2.5px solid transparent; margin-bottom:-1px;
       transition:color .15s, border-color .15s; background:none; border-top:none; border-left:none; border-right:none;
     }
     .settings-tab.active { color:var(--tkt-accent-deep); border-bottom-color:var(--tkt-accent); }
     .settings-tab:hover { color:var(--tkt-accent-deep); }
     .settings-panel { display:none; }
     .settings-panel.active { display:block; }
+    .settings-subtabs { display:flex; gap:0; border-bottom:1px solid var(--tkt-border); margin:0 0 18px; flex-wrap:wrap; }
+    .settings-subtab {
+      padding:8px 16px; font-size:.8rem; font-weight:600; cursor:pointer;
+      color:var(--tkt-text-2); border:none; background:none; border-bottom:2.5px solid transparent; margin-bottom:-1px;
+    }
+    .settings-subtab.active { color:var(--tkt-accent-deep); border-bottom-color:var(--tkt-accent); }
+    .settings-subpanel { display:none; }
+    .settings-subpanel.active { display:block; }
+    .cls-sg { border:1px solid #e2e8f0; border-radius:10px; margin-bottom:10px; background:#fff; }
+    .cls-sg-head { display:flex; align-items:center; gap:8px; padding:10px 12px; cursor:pointer; }
+    .cls-sg-body { display:none; padding:0 12px 12px; }
+    .cls-sg.open .cls-sg-body { display:block; }
+    .cls-cat { margin:8px 0 8px 12px; padding:8px 10px; border-left:3px solid #ffedd5; }
+    .field-list { display:flex; flex-direction:column; gap:8px; }
 
     .loc-tree { font-size:.875rem; }
     .loc-node { margin-left:0; }
@@ -53,6 +82,33 @@
     .loc-node-children.open { display:block; }
     .loc-node-label { flex:1; font-weight:600; color:#1e293b; }
     .loc-node-sub { font-size:.75rem; color:#94a3b8; }
+    .loc-node.loc-hidden { display:none; }
+    .loc-node-children.loc-force-open { display:block; }
+    .loc-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size:.7rem; font-weight:600; color:#c2440c;
+      background:#fff4ed; border-radius:4px; padding:1px 6px;
+    }
+    .loc-import {
+      border:1px solid var(--tkt-border); border-radius: var(--tkt-radius-lg); padding:16px 18px;
+      background: var(--tkt-surface-2); margin-bottom:18px;
+    }
+    .loc-import h4 { margin:0 0 6px; font-size:.88rem; color:var(--tkt-text); }
+    .loc-import p { margin:0 0 10px; font-size:.8rem; color:var(--tkt-text-2); line-height:1.45; }
+    .loc-import-grid {
+      display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+      gap:10px; margin-bottom:10px;
+    }
+    .loc-import-grid label { font-size:.72rem; font-weight:600; color:var(--tkt-text-2); display:block; margin-bottom:4px; }
+    .loc-import-result { font-size:.8rem; color:var(--tkt-text); margin:8px 0 0; white-space:pre-wrap; }
+    .loc-search-row { display:flex; gap:10px; align-items:flex-end; margin-bottom:16px; flex-wrap:wrap; }
+    .loc-index-grid { display:flex; flex-direction:column; gap:10px; }
+    .loc-edit-panel {
+      display:none; margin:4px 10px 8px 32px; padding:10px;
+      border:1px solid #e2e8f0; border-radius:8px; background:#fff;
+    }
+    .loc-edit-panel.open { display:block; }
+    .loc-edit-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; }
     .loc-add-row {
       display:flex; gap:8px; padding:6px 10px 6px 12px; align-items:center; margin-top:2px;
     }
@@ -65,21 +121,21 @@
     }
     .proj-card {
       display:flex; align-items:center; gap:10px; padding:12px 16px;
-      border:1px solid #e2e8f0; border-radius:10px; background:#fff;
-      transition:box-shadow .15s;
+      border:1px solid var(--tkt-border); border-radius: var(--tkt-radius-lg); background:#fff;
+      transition:box-shadow .15s, background .15s;
     }
-    .proj-card:hover { box-shadow:0 2px 10px rgba(30,58,95,.08); }
-    .proj-card-name { font-weight:700;font-size:.9rem; color:#1e293b; }
-    .proj-card-meta { font-size:.78rem; color:#64748b; }
+    .proj-card:hover { box-shadow: var(--tkt-shadow-sm); }
+    .proj-card-name { font-weight:700;font-size:.9rem; color:var(--tkt-text); }
+    .proj-card-meta { font-size:.78rem; color:var(--tkt-text-2); }
     .proj-card-sup {
-      font-size:.74rem; color:#475569; margin-top:4px;
+      font-size:.74rem; color:var(--tkt-text-2); margin-top:4px;
       display:flex; align-items:center; gap:6px;
     }
     .proj-card-ios {
-      border: 0.889px solid rgba(60, 60, 67, 0.12);
-      border-radius: 12px;
+      border: 1px solid var(--tkt-border);
+      border-radius: var(--tkt-radius-lg);
       background: #fff;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      box-shadow: var(--tkt-shadow-xs);
     }
     .proj-card-ios .proj-card {
       border: none;
@@ -97,7 +153,73 @@
       outline: 2px solid #ff8e68;
       outline-offset: 2px;
     }
-    .proj-card-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+    .proj-card-actions { display:flex; align-items:center; flex-shrink:0; margin-left:auto; }
+    .proj-action-bar {
+      display: inline-flex;
+      align-items: stretch;
+      background: #f7f7f8;
+      border: 1px solid rgba(60, 60, 67, 0.12);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .proj-action-bar > a,
+    .proj-action-bar > button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 36px;
+      padding: 0 13px;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      color: #3c3c43;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      line-height: 1;
+      text-decoration: none;
+      cursor: pointer;
+      white-space: nowrap;
+      position: relative;
+      box-shadow: none;
+      transform: none;
+    }
+    .proj-action-bar > a + a,
+    .proj-action-bar > a + button,
+    .proj-action-bar > button + button {
+      box-shadow: inset 1px 0 0 rgba(60, 60, 67, 0.1);
+    }
+    .proj-action-bar > a:hover,
+    .proj-action-bar > button:hover {
+      background: rgba(255, 142, 104, 0.1);
+      color: #c24a24;
+    }
+    .proj-action-bar > a:focus-visible,
+    .proj-action-bar > button:focus-visible {
+      outline: 2px solid #ff8e68;
+      outline-offset: -2px;
+      z-index: 1;
+    }
+    .proj-action-bar > a:active,
+    .proj-action-bar > button:active { background: rgba(255, 142, 104, 0.16); }
+    .proj-action-bar svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .proj-action-bar .is-icon { min-width: 40px; padding: 0 11px; }
+    .proj-action-bar .proj-pdf-btn.is-busy { opacity: 0.55; pointer-events: none; }
+    .proj-action-bar .proj-delete-btn { color: #8e8e93; }
+    .proj-action-bar .proj-delete-btn:hover {
+      background: rgba(255, 59, 48, 0.1);
+      color: #c62828;
+    }
+    @media (max-width: 768px) {
+      .proj-card { flex-wrap: wrap; align-items: flex-start; }
+      .proj-card-actions { flex-basis: 100%; margin: 4px 0 0; }
+      .proj-action-bar { width: 100%; }
+      .proj-action-bar > a,
+      .proj-action-bar > button { flex: 1 1 0; min-height: 44px; }
+      .proj-action-bar .is-icon { flex: 0 0 48px; }
+    }
 
     /* ─── Project detail modal (iOS sheet style) ─── */
     .proj-ios-modal {
@@ -338,12 +460,12 @@
     .proj-ios-btn-secondary:active, .proj-ios-btn-primary:active { opacity: 0.72; }
 
     /* ─── Fault catalog tab — fill viewport, scroll inside table ─── */
-    #tab-faults.active {
+    #tab-fields.active {
       display: flex !important;
       flex-direction: column;
       min-height: calc(100svh - 13.5rem);
     }
-    #tab-faults .fault-cat-card {
+    #tab-fields .fault-cat-card {
       flex: 1 1 auto;
       display: flex;
       flex-direction: column;
@@ -351,7 +473,7 @@
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
       -webkit-font-smoothing: antialiased;
     }
-    #tab-faults .fault-cat-card .tkt-card-body {
+    #tab-fields .fault-cat-card .tkt-card-body {
       flex: 1 1 auto;
       display: flex;
       flex-direction: column;
@@ -360,7 +482,7 @@
       overflow: hidden;
       padding: 18px 22px !important;
     }
-    #tab-faults .fault-cat-browse-stack {
+    #tab-fields .fault-cat-browse-stack {
       flex: 1 1 auto;
       display: none;
       flex-direction: column;
@@ -368,7 +490,7 @@
       gap: 0;
       margin-top: 14px;
     }
-    #tab-faults .fault-cat-browse-stack.is-visible { display: flex; }
+    #tab-fields .fault-cat-browse-stack.is-visible { display: flex; }
 
     .fault-cat-meta {
       flex: 0 0 auto;
@@ -380,7 +502,7 @@
     }
     .fault-cat-meta strong { font-weight: 600; color: rgba(60, 60, 67, 0.75); }
 
-    #tab-faults .fault-cat-toolbar {
+    #tab-fields .fault-cat-toolbar {
       flex: 0 0 auto;
       display: flex;
       flex-wrap: wrap;
@@ -465,7 +587,7 @@
       white-space: nowrap;
     }
 
-    #tab-faults .fault-cat-rebuild {
+    #tab-fields .fault-cat-rebuild {
       flex: 0 0 auto;
       margin-top: 4px;
       margin-bottom: 0 !important;
@@ -475,21 +597,21 @@
       background: rgba(247, 247, 248, 0.65);
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
-    #tab-faults .fault-cat-rebuild h4 {
+    #tab-fields .fault-cat-rebuild h4 {
       margin: 0 0 10px !important;
       font-size: 15px !important;
       font-weight: 600;
       letter-spacing: -0.02em;
     }
-    #tab-faults .fault-cat-rebuild p { font-size: 13px !important; line-height: 1.45 !important; }
-    #tab-faults .fault-cat-rebuild .tkt-btn-primary {
+    #tab-fields .fault-cat-rebuild p { font-size: 13px !important; line-height: 1.45 !important; }
+    #tab-fields .fault-cat-rebuild .tkt-btn-primary {
       background: var(--tkt-accent) !important;
       border-radius: 10px;
       font-weight: 600;
       letter-spacing: -0.02em;
       font-size: 15px !important;
     }
-    #tab-faults .fault-cat-rebuild .tkt-btn-primary:hover {
+    #tab-fields .fault-cat-rebuild .tkt-btn-primary:hover {
       background: var(--tkt-accent-hover) !important;
     }
     #faultCatCountNote { flex: 0 0 auto; margin-top: 10px !important; margin-bottom: 0 !important; }
@@ -500,6 +622,7 @@
 {% set active_page = active_page | default('ticketing') %}
 {% include 'partials/main_navbar.html' with context %}
 {% set ticketing_can_manage_fault_catalog = ticketing_can_manage_fault_catalog|default(false) %}
+{% set ticketing_can_manage_locations = ticketing_can_manage_locations|default(false) %}
 <div class="dh-page-root tkt-dh-page-root">
 {% include 'partials/tkt_sidebar.html' with context %}
 <div class="tkt-dh-main">
@@ -518,9 +641,9 @@
     <!-- Tabs -->
     <div class="settings-tabs">
       <button class="settings-tab active" data-tab="projects">Projects</button>
+      <button class="settings-tab" data-tab="resources">Resource Management</button>
       <button class="settings-tab" data-tab="locations">Location Hierarchy</button>
-      <button class="settings-tab" data-tab="titles">Title Templates</button>
-      <button class="settings-tab" data-tab="faults">Fault codes</button>
+      <button class="settings-tab" data-tab="fields">Ticket Fields</button>
       <button class="settings-tab" data-tab="email-intake">Email a Ticket</button>
     </div>
 
@@ -543,16 +666,10 @@
                 <label>Client Name</label>
                 <input class="tkt-input" id="projClient" type="text" placeholder="e.g. Al Futtaim Group">
               </div>
-              <div class="tkt-field">
-                <label>Assigned supervisor</label>
-                <select class="tkt-select" id="projSupervisor">
-                  <option value="">— Shared queue (all supervisors) —</option>
-                </select>
-                <span style="font-size:.72rem;color:#64748b;">New tickets for this project go to this supervisor&apos;s queue.</span>
-              </div>
               <div class="tkt-field" style="grid-column:1/-1;">
                 <label>Linked BD deal (optional)</label>
                 <select class="tkt-select" id="projBdLink"><option value="">— Not linked —</option></select>
+                <span style="font-size:.72rem;color:#64748b;">Supervisors, team members, and vendors are assigned under Resource Management.</span>
               </div>
               <div class="tkt-field">
                 <label>Project end date</label>
@@ -598,41 +715,279 @@
       </div>
     </div>
 
-    <!-- ── Location Hierarchy Tab ── -->
-    <div class="settings-panel" id="tab-locations">
+    <!-- ── Resource Management Tab ── -->
+    <div class="settings-panel" id="tab-resources">
       <div class="tkt-card">
         <div class="tkt-card-header">
-          <h3>Location Hierarchy</h3>
-          <span style="font-size:.78rem;color:#64748b;">Property → Zone → Sub Zone → Base Unit</span>
+          <h3>Resource Management</h3>
         </div>
         <div class="tkt-card-body">
-          <p style="font-size:.85rem;color:#64748b;margin:0 0 16px;">Add properties linked to projects. Each property contains zones, which contain sub-zones and base units (apartments, offices, rooms, etc.).</p>
-
-          <!-- Add property -->
-          <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap;">
-            <div class="tkt-field" style="flex:1;min-width:180px;">
-              <label>Property Name <span class="req">*</span></label>
-              <input class="tkt-input" id="newPropName" type="text" placeholder="e.g. Tower A, Villa Block 5…">
+          <div id="rmPicker">
+            <p style="font-size:.85rem;color:var(--tkt-text-2);margin:0 0 14px;">Choose a project to manage its supervisors, team members, and vendors. Login accounts are created in Admin → Users &amp; Teams.</p>
+            <div class="tkt-field kyn-proj-search">
+              <label for="rmProjectFilter">Search projects</label>
+              <input class="tkt-input" id="rmProjectFilter" type="search" placeholder="Name or client…" autocomplete="off">
             </div>
-            <div class="tkt-field" style="flex:1;min-width:160px;">
-              <label>Linked Project</label>
-              <select class="tkt-select" id="newPropProject">
-                <option value="">— No project —</option>
-              </select>
-            </div>
-            <button class="tkt-btn tkt-btn-primary tkt-btn-sm" style="align-self:flex-end;" id="addPropBtn">Add Property</button>
+            <div class="tkt-empty" id="rmEmptyProjects" style="display:none;"><p>No projects yet. Add one on the Projects tab first.</p></div>
+            <div class="kyn-proj-grid" id="rmProjectGrid"></div>
           </div>
 
-          <div style="display:flex;flex-direction:column;gap:12px;">
-            <div class="tkt-empty" id="locEmpty"><p>No locations configured yet.</p></div>
-            <div class="loc-tree" id="locationTree"></div>
+          <div id="rmWorkspace" style="display:none;">
+            <div class="rm-selected-bar">
+              <button type="button" class="rm-back-btn" id="rmBackToProjects">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+                All projects
+              </button>
+              <div class="rm-selected-copy">
+                <h3 id="rmSelectedName">Project</h3>
+                <p id="rmSelectedMeta" class="rm-selected-meta"></p>
+              </div>
+            </div>
+            <select class="tkt-select kyn-visually-hidden" id="rmProjectSelect" aria-hidden="true" tabindex="-1">
+              <option value="">— Select a project —</option>
+            </select>
+            <div class="rm-section-tabs" role="tablist" aria-label="Project resources">
+              <button type="button" class="rm-section-tab active" role="tab" aria-selected="true" data-rm-section="supervisors">
+                Supervisors <span class="rm-tab-count" id="rmCountSup">0</span>
+              </button>
+              <button type="button" class="rm-section-tab" role="tab" aria-selected="false" data-rm-section="team">
+                Team <span class="rm-tab-count" id="rmCountTeam">0</span>
+              </button>
+              <button type="button" class="rm-section-tab" role="tab" aria-selected="false" data-rm-section="vendors">
+                Vendors <span class="rm-tab-count" id="rmCountVend">0</span>
+              </button>
+            </div>
+
+            <div id="rmBody">
+              <div class="settings-subpanel active" id="rm-supervisors">
+                <div class="rm-panel">
+                  <p class="rm-panel-hint">Supervisors review and close work orders. With none assigned, tickets use the shared queue.</p>
+                  <div class="rm-add-bar">
+                    <label class="kyn-visually-hidden" for="rmAddSupervisor">Add supervisor</label>
+                    <select class="tkt-select" id="rmAddSupervisor"></select>
+                    <button type="button" class="tkt-btn tkt-btn-primary" id="rmAddSupervisorBtn" disabled>Add</button>
+                  </div>
+                  <div class="rm-roster" id="rmSupervisorList"></div>
+                </div>
+              </div>
+              <div class="settings-subpanel" id="rm-team">
+                <div class="rm-panel">
+                  <p class="rm-panel-hint">Team members are technicians and staff who can be assigned work on this project.</p>
+                  <div class="rm-add-bar">
+                    <label class="kyn-visually-hidden" for="rmAddTeam">Add team member</label>
+                    <select class="tkt-select" id="rmAddTeam"></select>
+                    <button type="button" class="tkt-btn tkt-btn-primary" id="rmAddTeamBtn" disabled>Add</button>
+                  </div>
+                  <div class="rm-roster" id="rmTeamList"></div>
+                </div>
+              </div>
+              <div class="settings-subpanel" id="rm-vendors">
+                <div class="rm-panel">
+                  <p class="rm-panel-hint">Attach a vendor already in the directory, or create a new company for this project.</p>
+                  <div class="rm-add-bar rm-add-bar--vendors">
+                    <label class="kyn-visually-hidden" for="rmAttachVendor">Attach existing vendor</label>
+                    <select class="tkt-select" id="rmAttachVendor"></select>
+                    <button type="button" class="tkt-btn tkt-btn-outline" id="rmAttachVendorBtn" disabled>Attach</button>
+                    <button type="button" class="tkt-btn tkt-btn-primary" id="rmNewVendorBtn">New vendor</button>
+                  </div>
+                  <div class="tkt-inline-form" id="rmNewVendorForm">
+                    <div class="tkt-inline-form-grid">
+                      <div class="tkt-field">
+                        <label>Company name <span class="req">*</span></label>
+                        <input class="tkt-input" id="rmVendorName" type="text" placeholder="e.g. NAFCO Technical Services">
+                      </div>
+                      <div class="tkt-field">
+                        <label>Contact email</label>
+                        <input class="tkt-input" id="rmVendorEmail" type="email">
+                      </div>
+                      <div class="tkt-field">
+                        <label>Contact phone</label>
+                        <input class="tkt-input" id="rmVendorPhone" type="text">
+                      </div>
+                      <div class="tkt-field" style="grid-column:1/-1;">
+                        <label>Technicians</label>
+                        <div id="rmVendorTechRows" class="rm-vendor-tech-rows"></div>
+                        <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" id="rmAddVendorTechRow" style="margin-top:8px;">Add technician</button>
+                        <span style="display:block;font-size:.72rem;color:#64748b;margin-top:6px;">Optional login user lets that technician open and advance the work order.</span>
+                      </div>
+                    </div>
+                    <div class="rm-vendor-form-actions">
+                      <button type="button" class="tkt-btn tkt-btn-outline" id="rmCancelVendorBtn">Cancel</button>
+                      <button type="button" class="tkt-btn tkt-btn-primary" id="rmSaveVendorBtn">Save vendor</button>
+                    </div>
+                  </div>
+                  <div class="rm-roster" id="rmVendorList"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ── Title Templates Tab ── -->
-    <div class="settings-panel" id="tab-titles">
+    <!-- ── Location Hierarchy Tab ── -->
+    <div class="settings-panel" id="tab-locations">
+      <div class="tkt-card">
+        <div class="tkt-card-header">
+          <h3>Location Hierarchy</h3>
+          <span style="font-size:.78rem;color:var(--tkt-text-2);">Property → Zone → Sub Zone → Base Unit</span>
+        </div>
+        <div class="tkt-card-body">
+          <p style="font-size:.85rem;color:var(--tkt-text-2);margin:0 0 16px;">Open a project to manage its Property → Zone → Sub Zone → Base Unit list. Duplicate names stay distinct by code and area. CRM import below is global and merges by code.</p>
+
+          {% if ticketing_can_manage_locations %}
+          <div class="loc-import">
+            <h4>Import from CRM spreadsheets (admin)</h4>
+            <p>Upload the XML SpreadsheetML exports (often named <code>.xls</code>): Property, Zone, Sub Zone, Base Unit. Merge by code — existing demo locations are kept. Unmatched child rows (duplicate property names without an area match) are reported, not copied onto every site.</p>
+            <div class="loc-import-grid">
+              <div>
+                <label for="locFileProperty">Property</label>
+                <input type="file" id="locFileProperty" accept=".xls,.xml,application/vnd.ms-excel,text/xml">
+              </div>
+              <div>
+                <label for="locFileZone">Zone</label>
+                <input type="file" id="locFileZone" accept=".xls,.xml,application/vnd.ms-excel,text/xml">
+              </div>
+              <div>
+                <label for="locFileSubZone">Sub Zone</label>
+                <input type="file" id="locFileSubZone" accept=".xls,.xml,application/vnd.ms-excel,text/xml">
+              </div>
+              <div>
+                <label for="locFileUnit">Base Unit</label>
+                <input type="file" id="locFileUnit" accept=".xls,.xml,application/vnd.ms-excel,text/xml">
+              </div>
+            </div>
+            <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" id="locImportBtn">Import locations</button>
+            <p class="loc-import-result" id="locImportHint"></p>
+          </div>
+          {% endif %}
+
+          <div class="tkt-empty" id="locEmpty" style="display:none;"><p>No projects yet. Add a project on the Projects tab, or import CRM locations below.</p></div>
+          <div class="kyn-proj-grid" id="locationIndex"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Ticket Fields Tab ── -->
+    <div class="settings-panel" id="tab-fields">
+      <div class="settings-subtabs">
+        <button type="button" class="settings-subtab active" data-subtab="classification">Classification</button>
+        <button type="button" class="settings-subtab" data-subtab="priorities">Priorities</button>
+        <button type="button" class="settings-subtab" data-subtab="reasons">Hold / Cancel reasons</button>
+        <button type="button" class="settings-subtab" data-subtab="titles">Title Templates</button>
+      </div>
+
+      <div class="settings-subpanel active" id="subtab-classification">
+        <div class="tkt-card" style="margin-bottom:16px;">
+          <div class="tkt-card-header">
+            <h3>Service groups, categories &amp; fault codes</h3>
+          </div>
+          <div class="tkt-card-body">
+            <p style="font-size:.85rem;color:#64748b;margin:0 0 14px;">Add or edit classification used on new work orders. Soft-deleting hides an item from the form without changing historical tickets.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;">
+              <div class="tkt-field" style="flex:1;min-width:180px;margin:0;">
+                <label>New service group</label>
+                <input class="tkt-input" id="clsNewSg" type="text" placeholder="e.g. HVAC systems">
+              </div>
+              <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" id="clsAddSgBtn">Add group</button>
+            </div>
+            <div id="clsTree"></div>
+          </div>
+        </div>
+        <div class="tkt-card fault-cat-card">
+          <div class="tkt-card-header">
+            <h3>Fault code catalog</h3>
+          </div>
+          <div class="tkt-card-body fault-cat-card-body">
+            <p class="fault-cat-meta" id="faultCatMeta">Loading…</p>
+            <div class="tkt-empty" id="faultCatEmpty" style="display:none;">
+              <p>No fault catalog yet. Add codes above or import a spreadsheet.</p>
+            </div>
+
+            {% if ticketing_can_manage_fault_catalog %}
+            <div class="fault-cat-rebuild">
+              <h4>Import from spreadsheet (admin)</h4>
+              <p>Upload the XML SpreadsheetML export (often named <code>.xls</code>) with columns Fault Code, Fault Code Name, Fault Category, Service Group. Existing codes are upserted into the database catalog.</p>
+              <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+                <input type="file" id="faultCatFile" accept=".xls,.xml,application/vnd.ms-excel,text/xml">
+                <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" id="faultCatRebuildBtn">Import catalog</button>
+              </div>
+              <p id="faultCatRebuildHint" style="margin-top:8px;margin-bottom:0;"></p>
+            </div>
+            {% endif %}
+
+            <div id="faultCatBrowseStack" class="fault-cat-browse-stack" aria-live="polite">
+              <div class="fault-cat-toolbar" id="faultCatToolbar">
+                <div class="tkt-field" style="flex:1;min-width:200px;">
+                  <label>Search</label>
+                  <input class="tkt-input" type="search" id="faultCatFilter" placeholder="Code, name, category, service group…" autocomplete="off">
+                </div>
+                <div class="tkt-field" style="min-width:200px;">
+                  <label>Service group</label>
+                  <select class="tkt-select" id="faultCatSgFilter">
+                    <option value="">All</option>
+                  </select>
+                </div>
+              </div>
+              <div class="fault-cat-table-wrap" id="faultCatalogTableWrap">
+                <table class="fault-cat-table">
+                  <thead>
+                    <tr>
+                      <th>Code</th>
+                      <th>Name</th>
+                      <th>Category</th>
+                      <th>Service group</th>
+                      <th>Mins</th>
+                    </tr>
+                  </thead>
+                  <tbody id="faultCatalogBody"></tbody>
+                </table>
+              </div>
+              <p class="fault-cat-meta" id="faultCatCountNote" style="display:none;"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-subpanel" id="subtab-priorities">
+        <div class="tkt-card">
+          <div class="tkt-card-header"><h3>Priorities</h3></div>
+          <div class="tkt-card-body">
+            <p style="font-size:.85rem;color:#64748b;margin:0 0 14px;">Labels and SLA hints shown on new work orders. The stored value (slug) cannot be renamed after create.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;">
+              <div class="tkt-field" style="margin:0;min-width:140px;"><label>Label</label><input class="tkt-input" id="priLabel" placeholder="e.g. Urgent"></div>
+              <div class="tkt-field" style="margin:0;min-width:120px;"><label>SLA hint</label><input class="tkt-input" id="priSla" placeholder="e.g. 4h"></div>
+              <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" id="priAddBtn">Add priority</button>
+            </div>
+            <div class="field-list" id="priList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-subpanel" id="subtab-reasons">
+        <div class="tkt-card" style="margin-bottom:16px;">
+          <div class="tkt-card-header"><h3>Hold reasons</h3></div>
+          <div class="tkt-card-body">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;">
+              <div class="tkt-field" style="margin:0;flex:1;min-width:180px;"><label>Label</label><input class="tkt-input" id="holdLabel" placeholder="e.g. Waiting for access"></div>
+              <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" id="holdAddBtn">Add</button>
+            </div>
+            <div class="field-list" id="holdList"></div>
+          </div>
+        </div>
+        <div class="tkt-card">
+          <div class="tkt-card-header"><h3>Cancel reasons</h3></div>
+          <div class="tkt-card-body">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;">
+              <div class="tkt-field" style="margin:0;flex:1;min-width:180px;"><label>Label</label><input class="tkt-input" id="cancelLabel" placeholder="e.g. Duplicate"></div>
+              <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" id="cancelAddBtn">Add</button>
+            </div>
+            <div class="field-list" id="cancelList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-subpanel" id="subtab-titles">
       <div class="tkt-card">
         <div class="tkt-card-header">
           <h3>Title Templates &amp; Description Templates</h3>
@@ -685,62 +1040,6 @@
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- ── Fault codes Tab ── -->
-    <div class="settings-panel" id="tab-faults">
-      <div class="tkt-card fault-cat-card">
-        <div class="tkt-card-header">
-          <h3>Fault code catalog</h3>
-        </div>
-        <div class="tkt-card-body fault-cat-card-body">
-          <p class="fault-cat-meta" id="faultCatMeta">Loading…</p>
-          <div class="tkt-empty" id="faultCatEmpty" style="display:none;">
-            <p>No fault catalog is deployed. Place <code>module_ticketing/data/fault_codes.json</code> or ask an admin to rebuild from the spreadsheet.</p>
-          </div>
-
-          {% if ticketing_can_manage_fault_catalog %}
-          <div class="fault-cat-rebuild">
-            <h4>Rebuild from spreadsheet (admin)</h4>
-            <p>Upload the XML SpreadsheetML export (often named <code>.xls</code>) with columns Fault Code, Fault Code Name, Fault Category, Service Group. This overwrites the bundled JSON used by new work orders.</p>
-            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
-              <input type="file" id="faultCatFile" accept=".xls,.xml,application/vnd.ms-excel,text/xml">
-              <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" id="faultCatRebuildBtn">Rebuild catalog</button>
-            </div>
-            <p id="faultCatRebuildHint" style="margin-top:8px;margin-bottom:0;"></p>
-          </div>
-          {% endif %}
-
-          <div id="faultCatBrowseStack" class="fault-cat-browse-stack" aria-live="polite">
-            <div class="fault-cat-toolbar" id="faultCatToolbar">
-              <div class="tkt-field" style="flex:1;min-width:200px;">
-                <label>Search</label>
-                <input class="tkt-input" type="search" id="faultCatFilter" placeholder="Code, name, category, service group…" autocomplete="off">
-              </div>
-              <div class="tkt-field" style="min-width:200px;">
-                <label>Service group</label>
-                <select class="tkt-select" id="faultCatSgFilter">
-                  <option value="">All</option>
-                </select>
-              </div>
-            </div>
-            <div class="fault-cat-table-wrap" id="faultCatalogTableWrap">
-              <table class="fault-cat-table">
-                <thead>
-                  <tr>
-                    <th>Code</th>
-                    <th>Name</th>
-                    <th>Category</th>
-                    <th>Service group</th>
-                    <th>Mins</th>
-                  </tr>
-                </thead>
-                <tbody id="faultCatalogBody"></tbody>
-              </table>
-            </div>
-            <p class="fault-cat-meta" id="faultCatCountNote" style="display:none;"></p>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -752,7 +1051,7 @@
         </div>
         <div class="tkt-card-body">
           <p style="font-size:.88rem;color:#475569;line-height:1.6;margin-top:0;">
-            Anyone can raise a work order by sending an email to the address below — no Injaaz
+            Anyone can raise a work order by sending an email to the address below — no Kynvera
             login required. The system reads the email and creates a <strong>draft ticket</strong>;
             a supervisor then reviews it under <a href="{{ url_for('ticketing.draft_tickets') }}">Draft Tickets</a>
             and converts it into an active work order. Following the format below helps the system
@@ -873,17 +1172,17 @@ Attached two photos.</pre>
           <input class="tkt-input" id="projModalValue" type="number" step="0.01" min="0" placeholder="Optional">
         </div>
         <div class="tkt-field" style="margin:0;">
-          <label for="projModalSupervisor">Assigned supervisor</label>
-          <select class="tkt-select" id="projModalSupervisor"></select>
-          <span style="font-size:12px;color:rgba(60,60,67,.48);margin-top:6px;display:block;line-height:1.35;">
-            New work orders that select this project are routed to this supervisor&apos;s queue. Leave unset for the shared supervisor pool.
-          </span>
+          <label>Supervisors &amp; resources</label>
+          <p style="font-size:13px;color:#475569;margin:6px 0 0;line-height:1.45;">
+            Managed in Resource Management.
+            <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" id="projModalOpenResources" style="margin-top:8px;">Open Resource Management</button>
+          </p>
         </div>
         <div class="tkt-field" style="margin:0;">
           <label for="projModalFinanceEmails">Client finance email(s)</label>
           <input class="tkt-input" id="projModalFinanceEmails" type="text" placeholder="finance@client.gov.ae, ...">
           <span style="font-size:12px;color:rgba(60,60,67,.48);margin-top:6px;display:block;line-height:1.35;">
-            The closing invoice is emailed here once operations gives final approval. Comma-separated.
+            The closing invoice is emailed here when the supervisor verifies and closes the ticket. Comma-separated.
           </span>
         </div>
         <div class="tkt-field" style="margin:0;">
@@ -909,6 +1208,7 @@ Attached two photos.</pre>
 <script src="{{ url_for('static', filename='js/ticketing.js') }}"></script>
 <script>
 const TKT_FAULT_REBUILD_URL = {{ url_for('ticketing.settings_rebuild_fault_catalog')|tojson }};
+const TKT_LOC_IMPORT_URL = {{ url_for('ticketing.settings_import_locations')|tojson }};
 // ── Tab switching ─────────────────────────────────────────
 function activateSettingsTab(tabName) {
   const tab = document.querySelector(`.settings-tab[data-tab="${tabName}"]`);
@@ -920,17 +1220,37 @@ function activateSettingsTab(tabName) {
   panel.classList.add('active');
   return true;
 }
+function activateFieldsSubtab(name) {
+  document.querySelectorAll('.settings-subtab').forEach(t => t.classList.toggle('active', t.dataset.subtab === name));
+  document.querySelectorAll('#tab-fields > .settings-subpanel').forEach(p => {
+    p.classList.toggle('active', p.id === 'subtab-' + name);
+  });
+}
 document.querySelectorAll('.settings-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     activateSettingsTab(tab.dataset.tab);
     const url = new URL(window.location.href);
     url.searchParams.set('tab', tab.dataset.tab);
+    if (tab.dataset.tab !== 'resources') url.searchParams.delete('project');
     history.replaceState(null, '', url);
   });
 });
 (function openTabFromQuery() {
-  const tab = new URLSearchParams(window.location.search).get('tab');
-  if (tab) activateSettingsTab(tab);
+  const params = new URLSearchParams(window.location.search);
+  let tab = params.get('tab');
+  const sub = params.get('subtab');
+  const projectId = params.get('project');
+  if (tab === 'titles' || tab === 'faults') {
+    activateSettingsTab('fields');
+    activateFieldsSubtab(tab === 'titles' ? 'titles' : 'classification');
+  } else if (tab) {
+    activateSettingsTab(tab);
+    if (tab === 'fields' && sub) activateFieldsSubtab(sub);
+  }
+  if (projectId && tab === 'resources') {
+    const sel = document.getElementById('rmProjectSelect');
+    if (sel) sel.dataset.pending = projectId;
+  }
 })();
 
 // ── Copy intake email ─────────────────────────────────────
@@ -943,7 +1263,7 @@ document.getElementById('copyIntakeEmailBtn')?.addEventListener('click', () => {
 // ── Load options ──────────────────────────────────────────
 let _options = {};
 let _projects = [];
-let _locationTree = [];
+let _standaloneCount = 0;
 let _supervisors = [];
 let _bdProjects = [];
 
@@ -1020,28 +1340,28 @@ function fillSupervisorDropdown(el, selectedId) {
 }
 
 async function loadAll() {
-  const [optRes, projRes, locRes, tmplRes, supRes, bdRes] = await Promise.all([
+  const [optRes, projRes, tmplRes, supRes, bdRes] = await Promise.all([
     tktFetch('/tickets/api/options'),
     tktFetch('/tickets/api/settings/projects'),
-    tktFetch('/tickets/api/settings/location-tree'),
     tktFetch('/tickets/api/settings/title-templates'),
     tktFetch('/tickets/api/settings/supervisor-options'),
     tktFetch('/tickets/api/settings/bd-active-projects'),
   ]);
   _options = optRes.data.options || {};
   _projects = projRes.data.projects || [];
-  _locationTree = locRes.data.tree || [];
+  _standaloneCount = typeof projRes.data.standalone_count === 'number' ? projRes.data.standalone_count : 0;
   _supervisors = (supRes.ok && supRes.data.success) ? (supRes.data.supervisors || []) : [];
   _bdProjects = (bdRes.ok && bdRes.data.success) ? (bdRes.data.projects || []) : [];
 
-  fillSupervisorDropdown(document.getElementById('projSupervisor'), '');
   fillBdProjectDropdown(document.getElementById('projBdLink'), '');
   renderProjects(_projects);
-  renderLocationTree(_locationTree, locRes.data.standalone_properties || []);
+  renderLocationIndex();
   renderTemplates(tmplRes.data.templates || []);
   populateProjectDropdowns();
   populateOptionDropdowns();
   renderFaultCatalogTab();
+  fillRmProjectSelect();
+  loadTicketFieldSettings();
 }
 
 // ── Projects ──────────────────────────────────────────────
@@ -1073,10 +1393,13 @@ function openProjectModal(id) {
   document.getElementById('projModalRoSup').textContent = p.supervisor_name || 'Shared queue';
   const routeEl = document.getElementById('projModalRoRouting');
   const pnm = p.name || 'this project';
-  if (p.supervisor_name) {
+  const sc = p.supervisor_count || (p.supervisors || []).length;
+  if (sc > 1) {
+    routeEl.textContent = `Work orders tagged with “${pnm}” go to this project’s supervisor pool (${sc} supervisors).`;
+  } else if (p.supervisor_name) {
     routeEl.textContent = `Work orders tagged with “${pnm}” are queued for ${p.supervisor_name}.`;
   } else {
-    routeEl.textContent = `Work orders tagged with “${pnm}” use the shared supervisor queue until you assign a supervisor.`;
+    routeEl.textContent = `Work orders tagged with “${pnm}” use the shared supervisor queue until you assign supervisors in Resource Management.`;
   }
   const descRo = document.getElementById('projModalRoDesc');
   if (p.description && String(p.description).trim()) {
@@ -1111,7 +1434,6 @@ function openProjectModal(id) {
   document.getElementById('projModalName').value = p.name || '';
   document.getElementById('projModalClient').value = p.client_name || '';
   document.getElementById('projModalDesc').value = p.description || '';
-  fillSupervisorDropdown(document.getElementById('projModalSupervisor'), p.supervisor_id);
   fillBdProjectDropdown(document.getElementById('projModalBd'), p.bd_project_id);
   document.getElementById('projModalEnd').value = (p.project_end_date || '').slice(0, 10);
   document.getElementById('projModalRenew').value = (p.renewal_date || '').slice(0, 10);
@@ -1142,12 +1464,6 @@ async function saveProjectModal() {
   const id = parseInt(sid, 10);
   const name = document.getElementById('projModalName').value.trim();
   if (!name) { tktToast('Project name required.', 'error'); return; }
-  const supEl = document.getElementById('projModalSupervisor');
-  let supVal = null;
-  if (supEl && supEl.value) {
-    const n = parseInt(supEl.value, 10);
-    if (Number.isFinite(n)) supVal = n;
-  }
   const bdEl = document.getElementById('projModalBd');
   let bdVal = null;
   if (bdEl && bdEl.value) {
@@ -1163,7 +1479,6 @@ async function saveProjectModal() {
       name,
       client_name: document.getElementById('projModalClient').value.trim(),
       description: document.getElementById('projModalDesc').value.trim(),
-      supervisor_id: supVal,
       bd_project_id: bdVal,
       project_end_date: endVal || null,
       renewal_date: renewVal || null,
@@ -1176,6 +1491,7 @@ async function saveProjectModal() {
     const ix = _projects.findIndex(x => x.id === id);
     if (ix >= 0) _projects[ix] = res.data.project;
     renderProjects(_projects);
+    renderLocationIndex();
     populateProjectDropdowns();
     closeProjectModal();
     tktToast('Project saved.', 'success');
@@ -1197,9 +1513,15 @@ function renderProjects(list) {
   list.forEach(p => {
     const wrap = document.createElement('div');
     wrap.className = 'proj-card-ios';
-    const supLine = p.supervisor_name
-      ? `<span class="proj-card-sup"><strong style="font-weight:600;color:#334155;">Supervisor</strong> ${tktEsc(p.supervisor_name)}</span>`
-      : `<span class="proj-card-sup" style="color:#94a3b8;">Supervisor: shared queue</span>`;
+    const sc = p.supervisor_count || (p.supervisors || []).length;
+    let supLine;
+    if (sc > 1) {
+      supLine = `<span class="proj-card-sup"><strong style="font-weight:600;color:#334155;">Supervisors</strong> ${tktEsc(p.supervisor_name)}</span>`;
+    } else if (p.supervisor_name) {
+      supLine = `<span class="proj-card-sup"><strong style="font-weight:600;color:#334155;">Supervisor</strong> ${tktEsc(p.supervisor_name)}</span>`;
+    } else {
+      supLine = `<span class="proj-card-sup" style="color:#94a3b8;">Supervisor: shared queue</span>`;
+    }
     const descPreview = p.description
       ? `<div class="proj-card-meta" style="margin-top:6px;white-space:pre-wrap;max-height:3.2em;overflow:hidden;">${tktEsc(p.description)}</div>`
       : '';
@@ -1216,10 +1538,19 @@ function renderProjects(list) {
           ${descPreview}
         </div>
         <div class="proj-card-actions">
-          <span class="tkt-btn tkt-btn-primary tkt-btn-sm" style="border-radius:10px;font-weight:600;pointer-events:none;">Details</span>
-          <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm tkt-btn-icon proj-delete-btn" title="Remove project">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
-          </button>
+          <div class="proj-action-bar" role="group" aria-label="Project actions">
+            <a class="proj-locations-btn" href="/tickets/settings/locations/${p.id}?from=projects" title="Manage locations">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
+              Locations
+            </a>
+            <button type="button" class="proj-details-btn" title="Open project details">Details</button>
+            <button type="button" class="proj-pdf-btn is-icon" data-project-id="${p.id}" data-project-name="${tktEsc(p.name)}" title="Download PDF" aria-label="Download PDF">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12M12 16.5V3"/></svg>
+            </button>
+            <button type="button" class="proj-delete-btn is-icon" title="Remove project" aria-label="Remove project">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+            </button>
+          </div>
         </div>
       </div>`;
     el.appendChild(wrap);
@@ -1232,6 +1563,28 @@ function renderProjects(list) {
         openProjectModal(p.id);
       }
     });
+    const actions = wrap.querySelector('.proj-card-actions');
+    if (actions) {
+      actions.addEventListener('click', (ev) => ev.stopPropagation());
+    }
+    const locBtn = wrap.querySelector('.proj-locations-btn');
+    if (locBtn) {
+      locBtn.addEventListener('click', (ev) => ev.stopPropagation());
+    }
+    const detailsBtn = wrap.querySelector('.proj-details-btn');
+    if (detailsBtn) {
+      detailsBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        openProjectModal(p.id);
+      });
+    }
+    const pdfBtn = wrap.querySelector('.proj-pdf-btn');
+    if (pdfBtn) {
+      pdfBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        downloadProjectPdf(p.id, p.name);
+      });
+    }
     const delBtn = wrap.querySelector('.proj-delete-btn');
     if (delBtn) {
       delBtn.addEventListener('click', (ev) => {
@@ -1266,12 +1619,6 @@ document.getElementById('cancelProjectBtn').addEventListener('click', () => {
 document.getElementById('saveProjectBtn').addEventListener('click', async () => {
   const name = document.getElementById('projName').value.trim();
   if (!name) { tktToast('Project name required.', 'error'); return; }
-  const supEl = document.getElementById('projSupervisor');
-  let supRaw = null;
-  if (supEl && supEl.value) {
-    const n = parseInt(supEl.value, 10);
-    if (Number.isFinite(n)) supRaw = n;
-  }
   const bdLink = document.getElementById('projBdLink');
   let bdId = null;
   if (bdLink && bdLink.value) {
@@ -1286,7 +1633,6 @@ document.getElementById('saveProjectBtn').addEventListener('click', async () => 
       name,
       client_name: document.getElementById('projClient').value.trim(),
       description: document.getElementById('projDesc').value.trim(),
-      supervisor_id: supRaw,
       bd_project_id: bdId,
       project_end_date: cEnd || null,
       renewal_date: cRenew || null,
@@ -1298,6 +1644,7 @@ document.getElementById('saveProjectBtn').addEventListener('click', async () => 
   if (res.ok && res.data.success) {
     _projects.push(res.data.project);
     renderProjects(_projects);
+    renderLocationIndex();
     populateProjectDropdowns();
     document.getElementById('addProjectForm').classList.remove('open');
     document.getElementById('projName').value = '';
@@ -1308,8 +1655,8 @@ document.getElementById('saveProjectBtn').addEventListener('click', async () => 
     document.getElementById('projCreateValue').value = '';
     document.getElementById('projFinanceEmails').value = '';
     document.getElementById('projOpsEmails').value = '';
-    fillSupervisorDropdown(document.getElementById('projSupervisor'), '');
     fillBdProjectDropdown(document.getElementById('projBdLink'), '');
+    fillRmProjectSelect();
     tktToast('Project added.', 'success');
   } else { tktToast(res.data.error || 'Failed.', 'error'); }
 });
@@ -1348,195 +1695,163 @@ document.getElementById('saveProjectBtn').addEventListener('click', async () => 
   hintFromBd(document.getElementById('projModalBd'), document.getElementById('projModalClient'), document.getElementById('projModalValue'));
 })();
 
+async function downloadProjectPdf(id, name) {
+  const btn = document.querySelector(`.proj-pdf-btn[data-project-id="${id}"]`);
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('is-busy');
+    btn.setAttribute('aria-busy', 'true');
+  }
+  try {
+    const headers = {};
+    const token = localStorage.getItem('access_token');
+    if (token) headers.Authorization = 'Bearer ' + token;
+    const res = await fetch(`/tickets/api/settings/projects/${id}/pdf`, {
+      credentials: 'include',
+      headers,
+    });
+    if (!res.ok) throw new Error('download failed');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const slug = String(name || 'project').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+    a.href = url;
+    a.download = (slug || 'project') + '-pack.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    tktToast('Project PDF downloaded.', 'success');
+  } catch (err) {
+    tktToast('Could not download project PDF.', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('is-busy');
+      btn.removeAttribute('aria-busy');
+    }
+  }
+}
+
 async function deleteProject(id) {
   if (!confirm('Remove this project?')) return;
   const res = await tktFetch(`/tickets/api/settings/projects/${id}`, { method: 'DELETE' });
   if (res.ok) {
     _projects = _projects.filter(p => p.id !== id);
     renderProjects(_projects);
+    renderLocationIndex();
     tktToast('Removed.', 'success');
   }
 }
 
 // ── Location Tree ─────────────────────────────────────────
 function populateProjectDropdowns() {
-  const sel = document.getElementById('newPropProject');
-  if (!sel) return;
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">— No project —</option>';
-  _projects.forEach(p => {
-    sel.insertAdjacentHTML('beforeend', `<option value="${p.id}" ${String(p.id)===cur?'selected':''}>${p.name}</option>`);
-  });
+  fillRmProjectSelect();
 }
 
-function renderLocationTree(tree, standalone) {
-  const el = document.getElementById('locationTree');
+function locWorkspaceUrl(projectId) {
+  return `/tickets/settings/locations/${projectId}?from=locations`;
+}
+
+function renderLocationIndex() {
+  const el = document.getElementById('locationIndex');
   const empty = document.getElementById('locEmpty');
   if (!el) return;
   el.innerHTML = '';
-
-  const allProps = [];
-  tree.forEach(proj => allProps.push(...(proj.properties || [])));
-  allProps.push(...standalone);
-
-  if (!allProps.length) {
+  const list = _projects || [];
+  if (!list.length && !_standaloneCount) {
     if (empty) empty.style.display = '';
+  } else if (empty) {
+    empty.style.display = 'none';
+  }
+
+  list.forEach((p) => {
+    const pc = typeof p.properties_count === 'number' ? p.properties_count : 0;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'kyn-proj-card';
+    btn.innerHTML = `
+      <div class="kyn-proj-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z"/></svg>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div class="kyn-proj-name">${tktEsc(p.name)}</div>
+        <div class="kyn-proj-meta">${p.client_name ? tktEsc(p.client_name) : 'No client'} · ${pc === 1 ? '1 property' : pc + ' properties'}</div>
+      </div>
+      <span class="tkt-btn tkt-btn-primary tkt-btn-sm" style="pointer-events:none;">Open</span>`;
+    btn.addEventListener('click', () => { window.location.href = locWorkspaceUrl(p.id); });
+    el.appendChild(btn);
+  });
+
+  const stand = document.createElement('button');
+  stand.type = 'button';
+  stand.className = 'kyn-proj-card is-muted';
+  const sc = _standaloneCount || 0;
+  stand.innerHTML = `
+    <div class="kyn-proj-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m0 0v2.25m0-2.25h6.75m-6.75 0H5.25M15 9.75h.008v.008H15V9.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM12 12.75h.008v.008H12v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM9 15.75h.008v.008H9v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
+    </div>
+    <div style="flex:1;min-width:0;">
+      <div class="kyn-proj-name">Unlinked properties</div>
+      <div class="kyn-proj-meta">${sc === 1 ? '1 property not linked to a project' : sc + ' properties not linked to a project'}</div>
+    </div>
+    <span class="tkt-btn tkt-btn-outline tkt-btn-sm" style="pointer-events:none;">Open</span>`;
+  stand.addEventListener('click', () => { window.location.href = '/tickets/settings/locations/standalone?from=locations'; });
+  el.appendChild(stand);
+}
+
+document.getElementById('locImportBtn')?.addEventListener('click', async () => {
+  const hint = document.getElementById('locImportHint');
+  const btn = document.getElementById('locImportBtn');
+  const fd = new FormData();
+  const mapping = [
+    ['property', 'locFileProperty'],
+    ['zone', 'locFileZone'],
+    ['sub_zone', 'locFileSubZone'],
+    ['base_unit', 'locFileUnit'],
+  ];
+  let any = false;
+  mapping.forEach(([key, id]) => {
+    const inp = document.getElementById(id);
+    if (inp && inp.files && inp.files[0]) {
+      fd.append(key, inp.files[0]);
+      any = true;
+    }
+  });
+  if (!any) {
+    tktToast('Choose at least one spreadsheet file.', 'error');
     return;
   }
-  if (empty) empty.style.display = 'none';
-
-  // Group by project
-  tree.forEach(proj => {
-    if (!proj.properties.length) return;
-    const section = document.createElement('div');
-    section.style.cssText = 'margin-bottom:20px;';
-    section.innerHTML = `<div style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.06em;margin-bottom:8px;">${proj.name}</div>`;
-    proj.properties.forEach(prop => section.appendChild(buildPropNode(prop)));
-    el.appendChild(section);
-  });
-  if (standalone.length) {
-    const section = document.createElement('div');
-    section.style.cssText = 'margin-bottom:20px;';
-    section.innerHTML = '<div style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:.06em;margin-bottom:8px;">Other Properties</div>';
-    standalone.forEach(prop => section.appendChild(buildPropNode(prop)));
-    el.appendChild(section);
-  }
-}
-
-function buildPropNode(prop) {
-  const wrap = document.createElement('div');
-  wrap.className = 'loc-node';
-  wrap.id = `prop-${prop.id}`;
-  wrap.innerHTML = `
-    <div class="loc-node-header" onclick="toggleLocNode(this)">
-      <svg class="loc-node-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#ff8e68" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z"/></svg>
-      <span class="loc-node-label">${prop.name}</span>
-      <button class="tkt-btn tkt-btn-danger tkt-btn-sm tkt-btn-icon" onclick="event.stopPropagation();deleteProp(${prop.id})" title="Delete">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
-      </button>
-    </div>
-    <div class="loc-node-children">
-      ${(prop.zones||[]).map(z => buildZoneHTML(z)).join('')}
-      <div class="loc-add-row">
-        <input type="text" placeholder="Add zone…" id="zone-input-${prop.id}">
-        <button class="tkt-btn tkt-btn-outline tkt-btn-sm" onclick="addZone(${prop.id})">+ Zone</button>
-      </div>
-    </div>`;
-  return wrap;
-}
-
-function buildZoneHTML(zone) {
-  return `<div class="loc-node" id="zone-${zone.id}" style="margin-top:4px;">
-    <div class="loc-node-header" onclick="toggleLocNode(this)">
-      <svg class="loc-node-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#7c3aed" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"/></svg>
-      <span class="loc-node-label" style="font-weight:600;">${zone.name}</span>
-      <span class="loc-node-sub">${(zone.sub_zones||[]).length} sub-zones</span>
-      <button class="tkt-btn tkt-btn-danger tkt-btn-sm tkt-btn-icon" onclick="event.stopPropagation();deleteZone(${zone.id})" title="Delete">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
-      </button>
-    </div>
-    <div class="loc-node-children">
-      ${(zone.sub_zones||[]).map(sz => buildSubZoneHTML(sz)).join('')}
-      <div class="loc-add-row">
-        <input type="text" placeholder="Add sub-zone…" id="sz-input-${zone.id}">
-        <button class="tkt-btn tkt-btn-outline tkt-btn-sm" onclick="addSubZone(${zone.id})">+ Sub Zone</button>
-      </div>
-    </div>
-  </div>`;
-}
-
-function buildSubZoneHTML(sz) {
-  return `<div class="loc-node" id="sz-${sz.id}" style="margin-top:3px;">
-    <div class="loc-node-header" onclick="toggleLocNode(this)">
-      <svg class="loc-node-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#0891b2" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/></svg>
-      <span class="loc-node-label" style="font-weight:500;">${sz.name}</span>
-      <span class="loc-node-sub">${(sz.base_units||[]).length} units</span>
-      <button class="tkt-btn tkt-btn-danger tkt-btn-sm tkt-btn-icon" onclick="event.stopPropagation();deleteSz(${sz.id})" title="Delete">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="10" height="10"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
-      </button>
-    </div>
-    <div class="loc-node-children">
-      <div style="display:flex;flex-wrap:wrap;gap:6px;padding:4px 10px;">
-        ${(sz.base_units||[]).map(u => `<span style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px;font-size:.78rem;display:inline-flex;align-items:center;gap:5px;">${u.name}
-          <button onclick="deleteUnit(${u.id})" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:.9rem;line-height:1;padding:0;">×</button>
-        </span>`).join('')}
-      </div>
-      <div class="loc-add-row">
-        <input type="text" placeholder="Add base unit (apt, room…)" id="unit-input-${sz.id}">
-        <button class="tkt-btn tkt-btn-outline tkt-btn-sm" onclick="addUnit(${sz.id})">+ Unit</button>
-      </div>
-    </div>
-  </div>`;
-}
-
-function toggleLocNode(header) {
-  const icon = header.querySelector('.loc-node-icon');
-  const children = header.nextElementSibling;
-  if (!children) return;
-  icon.classList.toggle('open');
-  children.classList.toggle('open');
-}
-
-document.getElementById('addPropBtn').addEventListener('click', async () => {
-  const name = document.getElementById('newPropName').value.trim();
-  if (!name) { tktToast('Property name required.', 'error'); return; }
-  const projId = document.getElementById('newPropProject').value || null;
-  const res = await tktFetch('/tickets/api/settings/properties', {
-    method: 'POST', body: JSON.stringify({ name, project_id: projId }),
-  });
+  btn.disabled = true;
+  if (hint) hint.textContent = 'Uploading and importing…';
+  const res = await tktFetch(TKT_LOC_IMPORT_URL, { method: 'POST', body: fd });
+  btn.disabled = false;
   if (res.ok && res.data.success) {
-    document.getElementById('newPropName').value = '';
-    tktToast('Property added.', 'success');
-    await reloadTree();
-  } else { tktToast(res.data.error || 'Failed.', 'error'); }
+    const c = res.data.counts || {};
+    const unresolved = res.data.unresolved_count || 0;
+    const lines = [
+      `Properties +${c.properties_created || 0} / updated ${c.properties_updated || 0}`,
+      `Zones +${c.zones_created || 0} · Sub-zones +${c.sub_zones_created || 0} · Units +${c.base_units_created || 0}`,
+      `Projects created ${c.projects_created || 0} · properties linked ${c.properties_linked || 0}`,
+      unresolved ? `${unresolved} unmatched child rows (not imported).` : 'No unmatched child rows.',
+    ];
+    if (hint) hint.textContent = lines.join('\n');
+    tktToast('Locations imported.', 'success');
+    mapping.forEach(([, id]) => {
+      const inp = document.getElementById(id);
+      if (inp) inp.value = '';
+    });
+    const projRes = await tktFetch('/tickets/api/settings/projects');
+    _projects = projRes.data.projects || _projects;
+    _standaloneCount = typeof projRes.data.standalone_count === 'number' ? projRes.data.standalone_count : _standaloneCount;
+    renderProjects(_projects);
+    populateProjectDropdowns();
+    renderLocationIndex();
+  } else {
+    if (hint) hint.textContent = res.data.error || 'Import failed.';
+    tktToast(res.data.error || 'Import failed.', 'error');
+  }
 });
-
-async function addZone(propId) {
-  const inp = document.getElementById(`zone-input-${propId}`);
-  const name = inp.value.trim();
-  if (!name) { tktToast('Zone name required.', 'error'); return; }
-  const res = await tktFetch('/tickets/api/settings/zones', {
-    method: 'POST', body: JSON.stringify({ name, property_id: propId }),
-  });
-  if (res.ok && res.data.success) { inp.value = ''; tktToast('Zone added.', 'success'); await reloadTree(); }
-  else { tktToast(res.data.error || 'Failed.', 'error'); }
-}
-
-async function addSubZone(zoneId) {
-  const inp = document.getElementById(`sz-input-${zoneId}`);
-  const name = inp.value.trim();
-  if (!name) { tktToast('Sub-zone name required.', 'error'); return; }
-  const res = await tktFetch('/tickets/api/settings/sub-zones', {
-    method: 'POST', body: JSON.stringify({ name, zone_id: zoneId }),
-  });
-  if (res.ok && res.data.success) { inp.value = ''; tktToast('Sub-zone added.', 'success'); await reloadTree(); }
-  else { tktToast(res.data.error || 'Failed.', 'error'); }
-}
-
-async function addUnit(szId) {
-  const inp = document.getElementById(`unit-input-${szId}`);
-  const name = inp.value.trim();
-  if (!name) { tktToast('Unit name required.', 'error'); return; }
-  const res = await tktFetch('/tickets/api/settings/base-units', {
-    method: 'POST', body: JSON.stringify({ name, sub_zone_id: szId }),
-  });
-  if (res.ok && res.data.success) { inp.value = ''; tktToast('Unit added.', 'success'); await reloadTree(); }
-  else { tktToast(res.data.error || 'Failed.', 'error'); }
-}
-
-async function deleteProp(id) { if (!confirm('Delete this property and all its children?')) return; await tktFetch(`/tickets/api/settings/properties/${id}`, { method:'DELETE' }); await reloadTree(); tktToast('Deleted.', 'success'); }
-async function deleteZone(id) { if (!confirm('Delete this zone?')) return; await tktFetch(`/tickets/api/settings/zones/${id}`, { method:'DELETE' }); await reloadTree(); tktToast('Deleted.', 'success'); }
-async function deleteSz(id) { if (!confirm('Delete this sub-zone?')) return; await tktFetch(`/tickets/api/settings/sub-zones/${id}`, { method:'DELETE' }); await reloadTree(); tktToast('Deleted.', 'success'); }
-async function deleteUnit(id) { await tktFetch(`/tickets/api/settings/base-units/${id}`, { method:'DELETE' }); await reloadTree(); tktToast('Removed.', 'success'); }
-
-async function reloadTree() {
-  const res = await tktFetch('/tickets/api/settings/location-tree');
-  _locationTree = res.data.tree || [];
-  renderLocationTree(_locationTree, res.data.standalone_properties || []);
-}
 
 // ── Title Templates ───────────────────────────────────────
 function populateOptionDropdowns() {
@@ -1778,6 +2093,499 @@ async function deleteTmpl(id) {
   const res = await tktFetch('/tickets/api/settings/title-templates');
   renderTemplates(res.data.templates || []);
 }
+
+document.querySelectorAll('.settings-subtab').forEach(btn => {
+  btn.addEventListener('click', () => activateFieldsSubtab(btn.dataset.subtab));
+});
+
+document.getElementById('projModalOpenResources')?.addEventListener('click', () => {
+  const modal = document.getElementById('projDetailModal');
+  const pid = modal && modal.dataset.projectId;
+  closeProjectModal();
+  activateSettingsTab('resources');
+  const sel = document.getElementById('rmProjectSelect');
+  if (sel && pid) {
+    sel.value = pid;
+    sel.dispatchEvent(new Event('change'));
+  }
+});
+
+function fillRmProjectSelect() {
+  const sel = document.getElementById('rmProjectSelect');
+  if (!sel) return;
+  const pending = sel.dataset.pending || sel.value;
+  sel.innerHTML = '<option value="">— Select a project —</option>';
+  _projects.forEach(p => {
+    sel.insertAdjacentHTML('beforeend', `<option value="${p.id}">${tktEsc(p.name)}</option>`);
+  });
+  renderRmProjectGrid();
+  if (pending) {
+    sel.value = pending;
+    delete sel.dataset.pending;
+    if (sel.value) sel.dispatchEvent(new Event('change'));
+  }
+}
+
+function rmProjectCardHtml(p) {
+  const sc = p.supervisor_count || (p.supervisors || []).length;
+  let people;
+  if (sc > 1) people = tktEsc(p.supervisor_name);
+  else if (p.supervisor_name) people = tktEsc(p.supervisor_name);
+  else people = 'Shared queue';
+  const client = p.client_name ? tktEsc(p.client_name) : 'No client';
+  return `
+    <div class="kyn-proj-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
+    </div>
+    <div style="flex:1;min-width:0;">
+      <div class="kyn-proj-name">${tktEsc(p.name)}</div>
+      <div class="kyn-proj-meta">${client} · ${people}</div>
+    </div>
+    <span class="tkt-btn tkt-btn-primary tkt-btn-sm" style="pointer-events:none;">Manage</span>`;
+}
+
+function renderRmProjectGrid() {
+  const el = document.getElementById('rmProjectGrid');
+  const empty = document.getElementById('rmEmptyProjects');
+  if (!el) return;
+  const q = ((document.getElementById('rmProjectFilter')?.value) || '').trim().toLowerCase();
+  const list = (_projects || []).filter((p) => {
+    if (!q) return true;
+    const hay = [p.name, p.client_name, p.supervisor_name].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+  el.innerHTML = '';
+  if (!list.length) {
+    if (empty) {
+      empty.style.display = '';
+      empty.innerHTML = q
+        ? '<p>No projects match that search.</p>'
+        : '<p>No projects yet. Add one on the Projects tab first.</p>';
+    }
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  list.forEach((p) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'kyn-proj-card';
+    btn.innerHTML = rmProjectCardHtml(p);
+    btn.addEventListener('click', () => openRmProject(p.id));
+    el.appendChild(btn);
+  });
+}
+
+function openRmProject(id) {
+  const sel = document.getElementById('rmProjectSelect');
+  if (!sel) return;
+  sel.value = String(id);
+  sel.dispatchEvent(new Event('change'));
+}
+
+function showRmPicker() {
+  const sel = document.getElementById('rmProjectSelect');
+  if (sel) sel.value = '';
+  const picker = document.getElementById('rmPicker');
+  const workspace = document.getElementById('rmWorkspace');
+  if (picker) picker.style.display = '';
+  if (workspace) workspace.style.display = 'none';
+  const url = new URL(window.location.href);
+  url.searchParams.set('tab', 'resources');
+  url.searchParams.delete('project');
+  history.replaceState(null, '', url);
+}
+
+function rmCurrentProjectId() {
+  const v = document.getElementById('rmProjectSelect')?.value;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : null;
+}
+function setRmSection(name) {
+  document.querySelectorAll('.rm-section-tab').forEach(t => {
+    const on = t.dataset.rmSection === name;
+    t.classList.toggle('active', on);
+    t.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  ['supervisors', 'team', 'vendors'].forEach(s => {
+    const el = document.getElementById('rm-' + s);
+    if (el) el.classList.toggle('active', s === name);
+  });
+}
+document.querySelectorAll('.rm-section-tab').forEach(btn => {
+  btn.addEventListener('click', () => setRmSection(btn.dataset.rmSection));
+});
+
+function rmInitials(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function rmEmptyHtml(title, copy) {
+  return `<div class="rm-empty">
+    <div class="rm-empty-icon" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
+    </div>
+    <p class="rm-empty-title">${title}</p>
+    <p class="rm-empty-copy">${copy}</p>
+  </div>`;
+}
+
+function rmPersonRow(name, sub, actionAttr, actionLabel) {
+  const subHtml = sub ? `<span>${tktEsc(sub)}</span>` : '';
+  return `<div class="rm-person-row">
+    <div class="rm-avatar" aria-hidden="true">${tktEsc(rmInitials(name))}</div>
+    <div class="rm-person-copy"><strong>${tktEsc(name)}</strong>${subHtml}</div>
+    <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" ${actionAttr}>${actionLabel}</button>
+  </div>`;
+}
+
+function rmFillSelect(sel, placeholder, rows) {
+  if (!sel) return;
+  sel.innerHTML = `<option value="">${placeholder}</option>`;
+  rows.forEach((row) => {
+    sel.insertAdjacentHTML('beforeend', `<option value="${row.id}">${tktEsc(row.name)}</option>`);
+  });
+  sel.disabled = !rows.length;
+}
+
+function rmSyncAddButtons() {
+  [['rmAddSupervisor', 'rmAddSupervisorBtn'], ['rmAddTeam', 'rmAddTeamBtn'], ['rmAttachVendor', 'rmAttachVendorBtn']].forEach(([selId, btnId]) => {
+    const sel = document.getElementById(selId);
+    const btn = document.getElementById(btnId);
+    if (btn) btn.disabled = !sel || sel.disabled || !sel.value;
+  });
+}
+['rmAddSupervisor', 'rmAddTeam', 'rmAttachVendor'].forEach((id) => {
+  document.getElementById(id)?.addEventListener('change', rmSyncAddButtons);
+});
+
+function rmSetCount(id, n) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = String(n);
+}
+
+function rmRenderRoster(el, items, rowFn, emptyTitle, emptyCopy) {
+  if (!el) return;
+  el.classList.toggle('rm-roster--empty', !items.length);
+  el.innerHTML = items.length ? items.map(rowFn).join('') : rmEmptyHtml(emptyTitle, emptyCopy);
+}
+
+let _rmVendorLinkUsers = [];
+
+async function loadRmResources() {
+  const pid = rmCurrentProjectId();
+  const picker = document.getElementById('rmPicker');
+  const workspace = document.getElementById('rmWorkspace');
+  if (!pid) {
+    if (picker) picker.style.display = '';
+    if (workspace) workspace.style.display = 'none';
+    return;
+  }
+  if (picker) picker.style.display = 'none';
+  if (workspace) workspace.style.display = '';
+  const proj = (_projects || []).find((p) => p.id === pid);
+  const nameEl = document.getElementById('rmSelectedName');
+  const metaEl = document.getElementById('rmSelectedMeta');
+  if (nameEl) nameEl.textContent = proj ? proj.name : 'Project';
+  if (metaEl) {
+    const bits = [];
+    if (proj?.client_name) bits.push(`<span>${tktEsc(proj.client_name)}</span>`);
+    bits.push(proj?.supervisor_name
+      ? `<span class="rm-chip">${tktEsc(proj.supervisor_name)}</span>`
+      : '<span class="rm-chip rm-chip--muted">Shared queue</span>');
+    metaEl.innerHTML = bits.join('');
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.set('tab', 'resources');
+  url.searchParams.set('project', String(pid));
+  history.replaceState(null, '', url);
+  const [res, teamOpt, vendRes, linkOpt] = await Promise.all([
+    tktFetch(`/tickets/api/settings/projects/${pid}/resources`),
+    tktFetch(`/tickets/api/settings/team-options?project_id=${pid}`),
+    tktFetch('/tickets/api/settings/vendors'),
+    tktFetch('/tickets/api/settings/team-options'),
+  ]);
+  const data = (res.ok && res.data.success) ? res.data : { supervisors: [], team: [], vendors: [] };
+  const allVendors = (vendRes.ok && vendRes.data.success) ? (vendRes.data.vendors || []) : [];
+  const attachedIds = new Set((data.vendors || []).map(v => v.id));
+  const takenSup = new Set((data.supervisors || []).map(s => s.user_id));
+  const availableSup = (_supervisors || []).filter(s => !takenSup.has(s.id));
+  const teamUsers = (teamOpt.ok && teamOpt.data.success) ? (teamOpt.data.users || []) : [];
+  _rmVendorLinkUsers = (linkOpt.ok && linkOpt.data.success) ? (linkOpt.data.users || []) : [];
+  const availableVendors = allVendors.filter(v => !attachedIds.has(v.id));
+  rmFillSelect(
+    document.getElementById('rmAddSupervisor'),
+    availableSup.length ? 'Choose supervisor' : 'All supervisors already added',
+    availableSup,
+  );
+  rmFillSelect(
+    document.getElementById('rmAddTeam'),
+    teamUsers.length ? 'Choose team member' : 'No available team members',
+    teamUsers,
+  );
+  rmFillSelect(
+    document.getElementById('rmAttachVendor'),
+    availableVendors.length ? 'Choose vendor' : 'No vendors left to attach',
+    availableVendors,
+  );
+  const sl = document.getElementById('rmSupervisorList');
+  const supervisors = data.supervisors || [];
+  rmRenderRoster(
+    sl,
+    supervisors,
+    (s) => rmPersonRow(s.name, s.username || '', `data-rm-del-sup="${s.user_id}"`, 'Remove'),
+    'No supervisors yet',
+    'Tickets for this project use the shared queue until you add someone.',
+  );
+  sl?.querySelectorAll('[data-rm-del-sup]').forEach(btn => btn.addEventListener('click', () => rmRemoveSupervisor(btn.dataset.rmDelSup)));
+
+  const tl = document.getElementById('rmTeamList');
+  const team = data.team || [];
+  rmRenderRoster(
+    tl,
+    team,
+    (m) => rmPersonRow(m.name, m.speciality || '', `data-rm-del-team="${m.user_id}"`, 'Remove'),
+    'No team members yet',
+    'Add technicians or staff who can be assigned work on this project.',
+  );
+  tl?.querySelectorAll('[data-rm-del-team]').forEach(btn => btn.addEventListener('click', () => rmRemoveTeam(btn.dataset.rmDelTeam)));
+
+  const vl = document.getElementById('rmVendorList');
+  const vendors = data.vendors || [];
+  rmRenderRoster(
+    vl,
+    vendors,
+    (v) => rmPersonRow(v.name, `${(v.technicians || []).length} technician(s)`, `data-rm-del-vend="${v.id}"`, 'Detach'),
+    'No vendors attached',
+    'Attach an existing vendor or create a new company for this project.',
+  );
+  vl?.querySelectorAll('[data-rm-del-vend]').forEach(btn => btn.addEventListener('click', () => rmDetachVendor(btn.dataset.rmDelVend)));
+
+  rmSetCount('rmCountSup', supervisors.length);
+  rmSetCount('rmCountTeam', team.length);
+  rmSetCount('rmCountVend', vendors.length);
+  rmSyncAddButtons();
+}
+document.getElementById('rmProjectSelect')?.addEventListener('change', loadRmResources);
+document.getElementById('rmBackToProjects')?.addEventListener('click', showRmPicker);
+document.getElementById('rmProjectFilter')?.addEventListener('input', renderRmProjectGrid);
+document.getElementById('rmAddSupervisorBtn')?.addEventListener('click', async () => {
+  const pid = rmCurrentProjectId();
+  const uid = document.getElementById('rmAddSupervisor')?.value;
+  if (!pid || !uid) { tktToast('Choose a supervisor.', 'error'); return; }
+  const res = await tktFetch(`/tickets/api/settings/projects/${pid}/supervisors`, { method: 'POST', body: JSON.stringify({ user_id: parseInt(uid, 10) }) });
+  if (res.ok && res.data.success) { tktToast('Supervisor added.', 'success'); loadRmResources(); }
+  else tktToast(res.data.error || 'Failed.', 'error');
+});
+async function rmRemoveSupervisor(uid) {
+  const pid = rmCurrentProjectId();
+  if (!pid) return;
+  const res = await tktFetch(`/tickets/api/settings/projects/${pid}/supervisors/${uid}`, { method: 'DELETE' });
+  if (res.ok) { tktToast('Removed.', 'success'); loadRmResources(); }
+}
+document.getElementById('rmAddTeamBtn')?.addEventListener('click', async () => {
+  const pid = rmCurrentProjectId();
+  const uid = document.getElementById('rmAddTeam')?.value;
+  if (!pid || !uid) { tktToast('Choose a team member.', 'error'); return; }
+  const res = await tktFetch(`/tickets/api/settings/projects/${pid}/team`, { method: 'POST', body: JSON.stringify({ user_id: parseInt(uid, 10) }) });
+  if (res.ok && res.data.success) { tktToast('Team member added.', 'success'); loadRmResources(); }
+  else tktToast(res.data.error || 'Failed.', 'error');
+});
+async function rmRemoveTeam(uid) {
+  const pid = rmCurrentProjectId();
+  if (!pid) return;
+  const res = await tktFetch(`/tickets/api/settings/projects/${pid}/team/${uid}`, { method: 'DELETE' });
+  if (res.ok) { tktToast('Removed.', 'success'); loadRmResources(); }
+}
+document.getElementById('rmAttachVendorBtn')?.addEventListener('click', async () => {
+  const pid = rmCurrentProjectId();
+  const vid = document.getElementById('rmAttachVendor')?.value;
+  if (!pid || !vid) { tktToast('Choose a vendor.', 'error'); return; }
+  const res = await tktFetch(`/tickets/api/settings/projects/${pid}/vendors`, { method: 'POST', body: JSON.stringify({ vendor_id: parseInt(vid, 10) }) });
+  if (res.ok && res.data.success) { tktToast('Vendor attached.', 'success'); loadRmResources(); }
+  else tktToast(res.data.error || 'Failed.', 'error');
+});
+async function rmDetachVendor(vid) {
+  const pid = rmCurrentProjectId();
+  if (!pid) return;
+  const res = await tktFetch(`/tickets/api/settings/projects/${pid}/vendors/${vid}`, { method: 'DELETE' });
+  if (res.ok) { tktToast('Detached.', 'success'); loadRmResources(); }
+}
+document.getElementById('rmNewVendorBtn')?.addEventListener('click', () => {
+  document.getElementById('rmNewVendorForm')?.classList.toggle('open');
+  rmEnsureVendorTechRows();
+});
+document.getElementById('rmCancelVendorBtn')?.addEventListener('click', () => {
+  document.getElementById('rmNewVendorForm')?.classList.remove('open');
+});
+document.getElementById('rmAddVendorTechRow')?.addEventListener('click', () => rmAddVendorTechRow());
+function rmVendorUserOptions(selectedId) {
+  const opts = ['<option value="">No login user</option>']
+    .concat((_rmVendorLinkUsers || []).map((u) => {
+      const sel = String(u.id) === String(selectedId || '') ? ' selected' : '';
+      return `<option value="${u.id}"${sel}>${tktEsc(u.name)}</option>`;
+    }));
+  return opts.join('');
+}
+function rmAddVendorTechRow(prefill) {
+  const wrap = document.getElementById('rmVendorTechRows');
+  if (!wrap) return;
+  const row = document.createElement('div');
+  row.className = 'rm-vendor-tech-row';
+  const p = prefill || {};
+  row.innerHTML = `
+    <input class="tkt-input" data-vt-name placeholder="Name" value="${tktEsc(p.name || '')}">
+    <input class="tkt-input" data-vt-spec placeholder="Speciality" value="${tktEsc(p.speciality || '')}">
+    <input class="tkt-input" data-vt-code placeholder="Code" value="${tktEsc(p.code || '')}">
+    <select class="tkt-select" data-vt-user>${rmVendorUserOptions(p.user_id)}</select>
+    <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" data-vt-remove>Remove</button>`;
+  row.querySelector('[data-vt-remove]')?.addEventListener('click', () => row.remove());
+  wrap.appendChild(row);
+}
+function rmEnsureVendorTechRows() {
+  const wrap = document.getElementById('rmVendorTechRows');
+  if (wrap && !wrap.children.length) rmAddVendorTechRow();
+}
+function rmCollectVendorTechs() {
+  return [...document.querySelectorAll('#rmVendorTechRows .rm-vendor-tech-row')].map((row) => {
+    const name = (row.querySelector('[data-vt-name]')?.value || '').trim();
+    if (!name) return null;
+    const uid = parseInt(row.querySelector('[data-vt-user]')?.value || '', 10);
+    return {
+      name,
+      speciality: (row.querySelector('[data-vt-spec]')?.value || '').trim(),
+      code: (row.querySelector('[data-vt-code]')?.value || '').trim(),
+      user_id: Number.isFinite(uid) && uid > 0 ? uid : null,
+    };
+  }).filter(Boolean);
+}
+document.getElementById('rmSaveVendorBtn')?.addEventListener('click', async () => {
+  const pid = rmCurrentProjectId();
+  const name = (document.getElementById('rmVendorName')?.value || '').trim();
+  if (!name) { tktToast('Company name required.', 'error'); return; }
+  const res = await tktFetch('/tickets/api/settings/vendors', {
+    method: 'POST',
+    body: JSON.stringify({
+      name,
+      contact_email: (document.getElementById('rmVendorEmail')?.value || '').trim(),
+      contact_phone: (document.getElementById('rmVendorPhone')?.value || '').trim(),
+      technicians: rmCollectVendorTechs(),
+      project_id: pid,
+    }),
+  });
+  if (res.ok && res.data.success) {
+    tktToast('Vendor saved.', 'success');
+    document.getElementById('rmNewVendorForm')?.classList.remove('open');
+    ['rmVendorName','rmVendorEmail','rmVendorPhone'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+    const rows = document.getElementById('rmVendorTechRows');
+    if (rows) rows.innerHTML = '';
+    loadRmResources();
+  } else tktToast(res.data.error || 'Failed.', 'error');
+});
+
+async function loadTicketFieldSettings() {
+  const [cls, pri, hold, cancel] = await Promise.all([
+    tktFetch('/tickets/api/settings/classification'),
+    tktFetch('/tickets/api/settings/priorities'),
+    tktFetch('/tickets/api/settings/hold-reasons'),
+    tktFetch('/tickets/api/settings/cancel-reasons'),
+  ]);
+  if (cls.ok && cls.data.success) renderClsTree(cls.data.service_groups || []);
+  if (pri.ok && pri.data.success) renderKeyedList('priList', pri.data.priorities || [], 'priorities', r => `${tktEsc(r.label)} <span>(${tktEsc(r.value)}${r.sla_hint ? ' · ' + tktEsc(r.sla_hint) : ''})</span>`);
+  if (hold.ok && hold.data.success) renderKeyedList('holdList', hold.data.reasons || [], 'hold-reasons', r => `${tktEsc(r.label)} <span>(${tktEsc(r.key)})</span>`);
+  if (cancel.ok && cancel.data.success) renderKeyedList('cancelList', cancel.data.reasons || [], 'cancel-reasons', r => `${tktEsc(r.label)} <span>(${tktEsc(r.key)})</span>`);
+}
+function renderKeyedList(elId, rows, api, labelFn) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = rows.map(r => {
+    const inactive = r.is_active === false ? ' style="opacity:.5;"' : '';
+    return `<div class="rm-person-row"${inactive}><div>${labelFn(r)}</div><button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" data-del-cat="${api}" data-del-id="${r.id}">${r.is_active === false ? 'Hidden' : 'Hide'}</button></div>`;
+  }).join('') || '<p class="tkt-empty" style="display:block;">None yet.</p>';
+  el.querySelectorAll('[data-del-cat]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const res = await tktFetch(`/tickets/api/settings/${btn.dataset.delCat}/${btn.dataset.delId}`, { method: 'DELETE' });
+      if (res.ok) loadTicketFieldSettings();
+    });
+  });
+}
+function renderClsTree(groups) {
+  const el = document.getElementById('clsTree');
+  if (!el) return;
+  el.innerHTML = groups.map(g => {
+    const cats = (g.categories || []).map(c => {
+      const faults = (c.fault_codes || []).slice(0, 8).map(f => `<div style="font-size:.78rem;color:#475569;display:flex;justify-content:space-between;gap:8px;padding:3px 0;"><span>${tktEsc(f.fault_code)} · ${tktEsc(f.fault_code_name)}</span><button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" data-del-fault="${f.id}">Hide</button></div>`).join('');
+      const more = (c.fault_codes || []).length > 8 ? `<div style="font-size:.72rem;color:#94a3b8;">+${c.fault_codes.length - 8} more in the catalog table below</div>` : '';
+      return `<div class="cls-cat"><strong>${tktEsc(c.name)}</strong>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;">
+          <input class="tkt-input" data-new-fault-code="${c.id}" placeholder="Code" style="max-width:90px;">
+          <input class="tkt-input" data-new-fault-name="${c.id}" placeholder="Name" style="flex:1;min-width:120px;">
+          <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" data-add-fault="${c.id}">Add code</button>
+          <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" data-del-catid="${c.id}">Hide category</button>
+        </div>${faults}${more}</div>`;
+    }).join('');
+    return `<div class="cls-sg open">
+      <div class="cls-sg-head"><strong style="flex:1;">${tktEsc(g.name)}</strong>
+        <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" data-del-sg="${g.id}">Hide</button></div>
+      <div class="cls-sg-body">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+          <input class="tkt-input" data-new-cat="${g.id}" placeholder="New category name" style="flex:1;min-width:140px;">
+          <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" data-add-cat="${g.id}">Add category</button>
+        </div>${cats}</div></div>`;
+  }).join('') || '<p class="tkt-empty" style="display:block;">No service groups yet.</p>';
+  el.querySelectorAll('.cls-sg-head').forEach(h => h.addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    h.parentElement.classList.toggle('open');
+  }));
+  el.querySelectorAll('[data-del-sg]').forEach(b => b.addEventListener('click', () => tktFetch('/tickets/api/settings/service-groups/' + b.dataset.delSg, { method: 'DELETE' }).then(() => loadTicketFieldSettings())));
+  el.querySelectorAll('[data-add-cat]').forEach(b => b.addEventListener('click', async () => {
+    const inp = el.querySelector('[data-new-cat="' + b.dataset.addCat + '"]');
+    const name = (inp?.value || '').trim();
+    if (!name) return;
+    const res = await tktFetch('/tickets/api/settings/categories', { method: 'POST', body: JSON.stringify({ service_group_id: parseInt(b.dataset.addCat, 10), name }) });
+    if (res.ok) loadTicketFieldSettings(); else tktToast(res.data.error || 'Failed.', 'error');
+  }));
+  el.querySelectorAll('[data-del-catid]').forEach(b => b.addEventListener('click', () => tktFetch('/tickets/api/settings/categories/' + b.dataset.delCatid, { method: 'DELETE' }).then(() => loadTicketFieldSettings())));
+  el.querySelectorAll('[data-add-fault]').forEach(b => b.addEventListener('click', async () => {
+    const cid = b.dataset.addFault;
+    const code = (el.querySelector('[data-new-fault-code="' + cid + '"]')?.value || '').trim();
+    const name = (el.querySelector('[data-new-fault-name="' + cid + '"]')?.value || '').trim();
+    if (!code || !name) { tktToast('Code and name required.', 'error'); return; }
+    const res = await tktFetch('/tickets/api/settings/fault-codes', { method: 'POST', body: JSON.stringify({ category_id: parseInt(cid, 10), code, name }) });
+    if (res.ok) loadTicketFieldSettings(); else tktToast(res.data.error || 'Failed.', 'error');
+  }));
+  el.querySelectorAll('[data-del-fault]').forEach(b => b.addEventListener('click', () => tktFetch('/tickets/api/settings/fault-codes/' + b.dataset.delFault, { method: 'DELETE' }).then(() => loadTicketFieldSettings())));
+}
+document.getElementById('clsAddSgBtn')?.addEventListener('click', async () => {
+  const name = (document.getElementById('clsNewSg')?.value || '').trim();
+  if (!name) { tktToast('Name required.', 'error'); return; }
+  const res = await tktFetch('/tickets/api/settings/service-groups', { method: 'POST', body: JSON.stringify({ name }) });
+  if (res.ok) { document.getElementById('clsNewSg').value = ''; loadTicketFieldSettings(); }
+  else tktToast(res.data.error || 'Failed.', 'error');
+});
+document.getElementById('priAddBtn')?.addEventListener('click', async () => {
+  const label = (document.getElementById('priLabel')?.value || '').trim();
+  if (!label) { tktToast('Label required.', 'error'); return; }
+  const res = await tktFetch('/tickets/api/settings/priorities', { method: 'POST', body: JSON.stringify({ label, sla_hint: document.getElementById('priSla')?.value || '' }) });
+  if (res.ok) { document.getElementById('priLabel').value = ''; document.getElementById('priSla').value = ''; loadTicketFieldSettings(); }
+  else tktToast(res.data.error || 'Failed.', 'error');
+});
+document.getElementById('holdAddBtn')?.addEventListener('click', async () => {
+  const label = (document.getElementById('holdLabel')?.value || '').trim();
+  if (!label) { tktToast('Label required.', 'error'); return; }
+  const res = await tktFetch('/tickets/api/settings/hold-reasons', { method: 'POST', body: JSON.stringify({ label }) });
+  if (res.ok) { document.getElementById('holdLabel').value = ''; loadTicketFieldSettings(); }
+  else tktToast(res.data.error || 'Failed.', 'error');
+});
+document.getElementById('cancelAddBtn')?.addEventListener('click', async () => {
+  const label = (document.getElementById('cancelLabel')?.value || '').trim();
+  if (!label) { tktToast('Label required.', 'error'); return; }
+  const res = await tktFetch('/tickets/api/settings/cancel-reasons', { method: 'POST', body: JSON.stringify({ label }) });
+  if (res.ok) { document.getElementById('cancelLabel').value = ''; loadTicketFieldSettings(); }
+  else tktToast(res.data.error || 'Failed.', 'error');
+});
 
 loadAll();
 </script>

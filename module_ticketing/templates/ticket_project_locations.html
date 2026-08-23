@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <title>{% if standalone %}Unlinked properties{% else %}{{ project.name }}{% endif %} — Locations — Kynvera</title>
+  {% include 'partials/caveat_font.html' ignore missing %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=4">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <style>
+    .tkt-settings-ios {
+      font-family: var(--font-sans, var(--font-ui, -apple-system, BlinkMacSystemFont, system-ui, sans-serif));
+      -webkit-font-smoothing: antialiased;
+    }
+    body.loc-workspace-page .tkt-dh-main {
+      overflow: hidden;
+    }
+    body.loc-workspace-page .tkt-content {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+      padding-bottom: 1.25rem;
+    }
+    .loc-ws-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:20px; flex-shrink:0; }
+    .loc-ws-title { margin:0; font-size:1.35rem; font-weight:700; color:var(--tkt-text); letter-spacing:-0.01em; }
+    .loc-ws-sub { margin:6px 0 0; font-size:.875rem; color:var(--tkt-text-2); }
+    .loc-crumb { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:12px; font-size:.82rem; }
+    .loc-crumb button {
+      border:none; background:none; padding:6px 2px; cursor:pointer; min-height:32px;
+      color:var(--tkt-text-3); font-weight:600; font-size:.82rem; font-family:inherit;
+    }
+    .loc-crumb button.active { color:var(--tkt-accent-deep); }
+    .loc-crumb button:hover { color:var(--tkt-text); }
+    .loc-crumb .sep { color:var(--tkt-border-strong); }
+
+    .loc-ws {
+      display:grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr);
+      flex: 1 1 0%;
+      min-height: 0;
+      border:1px solid var(--tkt-border);
+      border-radius: var(--tkt-radius-lg);
+      background: var(--tkt-surface);
+      box-shadow: var(--tkt-shadow-xs);
+      overflow:hidden;
+    }
+    .loc-ws-side {
+      background: var(--tkt-surface-2);
+      border-right:1px solid var(--tkt-border);
+      padding:16px 12px;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    .loc-ws-side-label {
+      font-size:.68rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+      color:var(--tkt-text-3); padding:4px 10px 10px;
+    }
+    .loc-ws-side-item {
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      min-height:44px; padding:8px 12px; border:none; border-radius:12px;
+      background:transparent; color:var(--tkt-text); font-weight:600; font-size:.84rem;
+      font-family:inherit; cursor:pointer; text-align:left;
+    }
+    .loc-ws-side-item:hover { background: var(--tkt-surface); }
+    .loc-ws-side-item.active {
+      background: var(--tkt-accent-50);
+      color: var(--tkt-accent-deep);
+      box-shadow: inset 0 0 0 1.5px var(--tkt-accent);
+    }
+    .loc-ws-count {
+      min-width:22px; height:22px; border-radius:999px; padding:0 7px;
+      background: var(--tkt-border); color:var(--tkt-text-2); font-size:.72rem; font-weight:700;
+      display:inline-flex; align-items:center; justify-content:center;
+    }
+    .loc-ws-side-item.active .loc-ws-count { background: var(--tkt-accent-100); color: var(--tkt-accent-deep); }
+
+    .loc-ws-main {
+      padding:18px 20px 16px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      min-width:0;
+      min-height:0;
+      overflow:hidden;
+    }
+    .loc-ws-toolbar-row,
+    .loc-add-form { flex-shrink:0; }
+    .loc-ws-toolbar-row {
+      display:flex;
+      flex-wrap:nowrap;
+      align-items:flex-end;
+      gap:8px;
+      min-width:0;
+    }
+    .loc-ws-toolbar {
+      display:flex;
+      gap:8px;
+      flex-wrap:nowrap;
+      align-items:flex-end;
+      flex:1 1 auto;
+      min-width:0;
+    }
+    .loc-ws-toolbar .tkt-field { margin:0; min-width:108px; flex:1 1 0; }
+    .loc-ws-toolbar .tkt-input,
+    .loc-ws-toolbar .tkt-select,
+    .loc-ws-toolbar .tkt-btn {
+      min-height: 40px;
+      box-sizing: border-box;
+      font-family: inherit;
+      font-size: .875rem;
+      line-height: 1.25;
+    }
+    .loc-ws-toolbar .tkt-input[type="search"] {
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .loc-ws-add-field { flex:0 0 auto; min-width:auto; }
+    .loc-ws-add-field .tkt-btn {
+      width:100%;
+      justify-content:center;
+      padding:0 14px;
+      border-radius:10px;
+    }
+    .loc-ws-add-spacer {
+      visibility:hidden;
+      user-select:none;
+      pointer-events:none;
+    }
+    .loc-ws .tkt-btn,
+    .loc-ws .tkt-btn-primary,
+    .loc-ws-head .tkt-btn {
+      box-shadow: none;
+    }
+    .loc-ws-excel {
+      display:flex;
+      flex-wrap:nowrap;
+      flex:0 0 auto;
+      gap:6px;
+      align-items:flex-end;
+    }
+    .loc-ws-excel .tkt-btn {
+      min-height:40px;
+      padding:0 12px;
+      font-family:inherit;
+      font-size:.82rem;
+    }
+    .loc-list {
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      flex: 1 1 0%;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      padding-right: 4px;
+      padding-bottom: 4px;
+    }
+    .loc-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size:.7rem; font-weight:600; color:var(--tkt-accent-deep);
+      background: var(--tkt-accent-50); border-radius:6px; padding:1px 6px;
+    }
+    .loc-row {
+      display:flex; align-items:flex-start; gap:12px; padding:14px 14px;
+      border:1px solid var(--tkt-border); border-radius: var(--tkt-radius-lg);
+      background: var(--tkt-surface); box-shadow: var(--tkt-shadow-xs);
+    }
+    .loc-row.pinned { border-color: var(--tkt-accent); background: var(--tkt-accent-50); }
+    .loc-row-body { flex:1; min-width:0; }
+    .loc-row-name { font-weight:700; color:var(--tkt-text); font-size:.95rem; letter-spacing:-0.01em; }
+    .loc-row-meta { font-size:.76rem; color:var(--tkt-text-2); margin-top:4px; }
+    .loc-row-actions { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; flex-shrink:0; }
+    .loc-edit-panel {
+      display:none; margin-top:12px; padding:12px; border:1px solid var(--tkt-border);
+      border-radius:12px; background: var(--tkt-surface);
+    }
+    .loc-edit-panel.open { display:block; }
+    .loc-edit-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; }
+    .loc-add-form {
+      display:none; padding:14px; border:1px dashed var(--tkt-border-strong); border-radius: var(--tkt-radius-lg);
+      background: var(--tkt-surface-2);
+    }
+    .loc-add-form.open { display:block; }
+    .loc-add-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; }
+
+    .loc-pin-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 13000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .loc-pin-modal.is-open { display: flex; }
+    .loc-pin-modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+    }
+    .loc-pin-modal-sheet {
+      position: relative;
+      z-index: 1;
+      width: min(560px, 100%);
+      max-height: min(92vh, 720px);
+      overflow: auto;
+      background: var(--tkt-surface);
+      border-radius: 16px;
+      border: 1px solid var(--tkt-border);
+      padding: 16px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .loc-pin-modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .loc-pin-modal-head h2 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--tkt-text);
+    }
+    .loc-pin-modal-sub { margin: 0; font-size: .82rem; color: var(--tkt-text-2); }
+    .loc-pin-map-wrap {
+      height: 240px;
+      min-height: 200px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--tkt-border);
+      background: #e8eef4;
+    }
+    .loc-pin-map { width: 100%; height: 100%; }
+    .loc-pin-map.leaflet-container { background: #e8eef4; }
+    .loc-pin-hint { margin: 0; font-size: .76rem; color: var(--tkt-text-3); }
+    .loc-pin-coords { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .loc-pin-coords .tkt-field { margin: 0; }
+    .loc-pin-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .loc-pin-actions .tkt-btn { box-shadow: none; min-height: 40px; }
+    .loc-pin-modal .tkt-btn { box-shadow: none; }
+
+    @media (max-width: 768px) {
+      .loc-ws {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+      .loc-ws-side {
+        overflow-x:auto;
+        overflow-y:hidden;
+      }
+      .loc-ws-side {
+        flex-direction:row; overflow-x:auto; border-right:none; border-bottom:1px solid var(--tkt-border);
+        gap:8px; padding:10px; -webkit-overflow-scrolling:touch;
+      }
+      .loc-ws-side-label { display:none; }
+      .loc-ws-side-item {
+        flex-shrink:0; border-radius:999px; min-height:44px;
+        background: var(--tkt-surface); box-shadow: inset 0 0 0 1px var(--tkt-border);
+      }
+      .loc-row { flex-direction:column; }
+      .loc-row-actions { width:100%; }
+      .loc-row-actions .tkt-btn,
+      .loc-ws-excel .tkt-btn,
+      .loc-pin-actions .tkt-btn { min-height:44px; }
+      .loc-pin-coords { grid-template-columns: 1fr; }
+      .loc-pin-modal { padding: 8px; align-items: flex-end; }
+      .loc-pin-modal-sheet {
+        width: 100%;
+        max-height: 95vh;
+        border-radius: 16px 16px 0 0;
+      }
+      .loc-pin-map-wrap { height: 200px; }
+      .loc-pin-coords .tkt-input { min-height: 44px; font-size: 16px; }
+      .loc-ws-toolbar-row,
+      .loc-ws-toolbar,
+      .loc-ws-excel { flex-wrap:wrap; }
+    }
+  </style>
+</head>
+<body class="tkt-dh-page tkt-settings-ios loc-workspace-page has-main-nav">
+<div class="tkt-dh-app-root">
+{% set active_page = active_page | default('ticketing') %}
+{% include 'partials/main_navbar.html' with context %}
+{% set ticketing_can_manage_locations = ticketing_can_manage_locations|default(false) %}
+<div class="dh-page-root tkt-dh-page-root">
+{% include 'partials/tkt_sidebar.html' with context %}
+<div class="tkt-dh-main">
+{% set tkt_topbar_title = 'Locations' %}
+{% include 'partials/tkt_topbar.html' with context %}
+<div class="tkt-content">
+
+  <div class="loc-ws-head">
+    <div>
+      <h1 class="loc-ws-title">{% if standalone %}Unlinked properties{% else %}{{ project.name }}{% endif %}</h1>
+      <p class="loc-ws-sub">
+        {% if standalone %}
+          Properties that are not linked to a project. Add locations here, or open a project to manage its hierarchy.
+        {% else %}
+          {{ project.client_name or 'No client' }}
+          · Property → Zone → Sub Zone → Base Unit
+        {% endif %}
+      </p>
+      <nav class="loc-crumb" id="locCrumb" aria-label="Location levels"></nav>
+    </div>
+    <a class="tkt-btn tkt-btn-outline tkt-btn-sm" id="locBackLink"
+       href="{{ url_for('ticketing.settings_page') }}?tab={{ back_tab }}">← Back to Settings</a>
+  </div>
+
+  <div class="loc-ws">
+    <aside class="loc-ws-side" id="locElements" aria-label="Location elements">
+      <div class="loc-ws-side-label">Elements</div>
+    </aside>
+    <div class="loc-ws-main">
+      <div class="loc-ws-toolbar-row">
+        <div class="loc-ws-toolbar" id="locFilters"></div>
+        <div class="loc-ws-excel" id="locExcelBar">
+          <button type="button" class="tkt-btn tkt-btn-outline" id="locTemplateBtn">Excel template</button>
+          <button type="button" class="tkt-btn tkt-btn-outline" id="locExportBtn">Export</button>
+          {% if ticketing_can_manage_locations %}
+          <button type="button" class="tkt-btn tkt-btn-outline" id="locImportBtn">Import</button>
+          <input type="file" id="locImportFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+          {% endif %}
+        </div>
+      </div>
+      <div class="loc-add-form" id="locAddForm"></div>
+      <div class="loc-list" id="locList"></div>
+    </div>
+  </div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="loc-pin-modal" id="locPinModal" hidden>
+  <div class="loc-pin-modal-backdrop" data-pin-close></div>
+  <div class="loc-pin-modal-sheet" role="dialog" aria-modal="true" aria-labelledby="locPinTitle">
+    <div class="loc-pin-modal-head">
+      <div>
+        <h2 id="locPinTitle">Set pin</h2>
+        <p class="loc-pin-modal-sub" id="locPinSub"></p>
+      </div>
+      <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" data-pin-close>Close</button>
+    </div>
+    <div class="loc-pin-map-wrap">
+      <div id="locPinMap" class="loc-pin-map" role="img" aria-label="Sample map"></div>
+    </div>
+    <p class="loc-pin-hint">Tap the map to drop a pin, or enter latitude and longitude separately.</p>
+    <div class="loc-pin-coords">
+      <div class="tkt-field">
+        <label for="locPinLat">Latitude</label>
+        <input class="tkt-input" id="locPinLat" type="text" inputmode="decimal" placeholder="25.4052" autocomplete="off">
+      </div>
+      <div class="tkt-field">
+        <label for="locPinLng">Longitude</label>
+        <input class="tkt-input" id="locPinLng" type="text" inputmode="decimal" placeholder="55.5136" autocomplete="off">
+      </div>
+    </div>
+    <div class="loc-pin-actions">
+      <button type="button" class="tkt-btn tkt-btn-outline" id="locPinLookup">Look up address</button>
+      <span style="flex:1 1 8px;"></span>
+      <button type="button" class="tkt-btn tkt-btn-outline" data-pin-close>Cancel</button>
+      <button type="button" class="tkt-btn tkt-btn-primary" id="locPinSave">Save pin</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="{{ url_for('static', filename='js/ticketing.js') }}"></script>
+<script>
+const LOC_CFG = {
+  standalone: {{ standalone|tojson }},
+  projectId: {{ (project.id if project else none)|tojson }},
+  projectName: {{ ((project.name if project else 'Unlinked properties'))|tojson }},
+  backTab: {{ back_tab|tojson }},
+  canImport: {{ ticketing_can_manage_locations|tojson }},
+  treeUrl: {{ (
+    url_for('ticketing.settings_standalone_location_tree') if standalone
+    else url_for('ticketing.settings_project_location_tree', pid=project.id)
+  )|tojson }},
+  templateUrl: '/tickets/api/settings/locations/excel-template',
+  exportUrl: {% if standalone %}'/tickets/api/settings/standalone/locations/export'{% else %}'/tickets/api/settings/projects/{{ project.id }}/locations/export'{% endif %},
+  importUrl: {% if standalone %}'/tickets/api/settings/standalone/locations/import'{% else %}'/tickets/api/settings/projects/{{ project.id }}/locations/import'{% endif %},
+};
+const LEVELS = ['property', 'zone', 'sub_zone', 'base_unit'];
+const LEVEL_LABELS = { property: 'Property', zone: 'Zone', sub_zone: 'Sub Zone', base_unit: 'Base Unit' };
+const NEXT_LEVEL = { property: 'zone', zone: 'sub_zone', sub_zone: 'base_unit' };
+const CHILD_LABEL = { property: 'zones', zone: 'sub-zones', sub_zone: 'units' };
+const LEVEL_SEARCH = { property: 'properties', zone: 'zones', sub_zone: 'sub-zones', base_unit: 'base units' };
+
+let _properties = [];
+let _counts = { property: 0, zone: 0, sub_zone: 0, base_unit: 0 };
+let _projects = [];
+let state = {
+  level: 'property',
+  propertyId: null,
+  zoneId: null,
+  subZoneId: null,
+  pinnedId: null,
+  search: '',
+  editingId: null,
+  addOpen: false,
+};
+
+function tktEsc(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+function numOrNull(v) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : null;
+}
+function locCodeBadge(code) {
+  return code ? `<span class="loc-code">${tktEsc(code)}</span>` : '';
+}
+function locHasPin(prop) {
+  return Number.isFinite(Number(prop?.latitude)) && Number.isFinite(Number(prop?.longitude));
+}
+
+function parseQuery() {
+  const p = new URLSearchParams(window.location.search);
+  const level = (p.get('level') || '').trim();
+  if (LEVELS.includes(level)) state.level = level;
+  state.propertyId = numOrNull(p.get('property_id'));
+  state.zoneId = numOrNull(p.get('zone_id'));
+  state.subZoneId = numOrNull(p.get('sub_zone_id'));
+}
+
+function syncUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.set('from', LOC_CFG.backTab);
+  url.searchParams.set('level', state.level);
+  [['property_id', state.propertyId], ['zone_id', state.zoneId], ['sub_zone_id', state.subZoneId]].forEach(([k, v]) => {
+    if (v) url.searchParams.set(k, String(v));
+    else url.searchParams.delete(k);
+  });
+  history.replaceState(null, '', url);
+}
+
+function findProperty(id) { return (_properties || []).find(p => p.id === id) || null; }
+function findZone(id) {
+  for (const p of _properties) {
+    const z = (p.zones || []).find(x => x.id === id);
+    if (z) return { property: p, zone: z };
+  }
+  return null;
+}
+function findSubZone(id) {
+  for (const p of _properties) {
+    for (const z of (p.zones || [])) {
+      const sz = (z.sub_zones || []).find(x => x.id === id);
+      if (sz) return { property: p, zone: z, subZone: sz };
+    }
+  }
+  return null;
+}
+
+function inferPins() {
+  if (state.subZoneId) {
+    const hit = findSubZone(state.subZoneId);
+    if (hit) {
+      state.propertyId = hit.property.id;
+      state.zoneId = hit.zone.id;
+    }
+  } else if (state.zoneId) {
+    const hit = findZone(state.zoneId);
+    if (hit) state.propertyId = hit.property.id;
+  }
+}
+
+function matchSearch(item) {
+  const q = (state.search || '').trim().toLowerCase();
+  if (!q) return true;
+  const hay = [item.name, item.label, item.code, item.area, item.city].filter(Boolean).join(' ').toLowerCase();
+  return hay.includes(q);
+}
+
+function flattenEntries() {
+  const entries = [];
+  for (const property of _properties) {
+    if (state.level === 'property') {
+      entries.push({ item: property, property, path: [] });
+      continue;
+    }
+    for (const zone of (property.zones || [])) {
+      if (state.level === 'zone') {
+        entries.push({ item: zone, property, zone, path: [property.name] });
+        continue;
+      }
+      for (const subZone of (zone.sub_zones || [])) {
+        if (state.level === 'sub_zone') {
+          entries.push({ item: subZone, property, zone, subZone, path: [property.name, zone.name] });
+          continue;
+        }
+        for (const unit of (subZone.base_units || [])) {
+          entries.push({
+            item: unit, property, zone, subZone,
+            path: [property.name, zone.name, subZone.name],
+          });
+        }
+      }
+    }
+  }
+  return entries;
+}
+
+function currentEntries() {
+  return flattenEntries().filter(({ item, property, zone, subZone }) => {
+    if (state.propertyId && property.id !== state.propertyId) return false;
+    if ((state.level === 'sub_zone' || state.level === 'base_unit') && state.zoneId && zone && zone.id !== state.zoneId) return false;
+    if (state.level === 'base_unit' && state.subZoneId && subZone && subZone.id !== state.subZoneId) return false;
+    return matchSearch(item);
+  });
+}
+
+function allZoneOptions() {
+  const out = [];
+  for (const p of _properties) {
+    if (state.propertyId && p.id !== state.propertyId) continue;
+    (p.zones || []).forEach((z) => {
+      const name = z.label || z.name;
+      out.push({ id: z.id, name: state.propertyId ? name : `${p.name} · ${name}` });
+    });
+  }
+  return out;
+}
+
+function allSubZoneOptions() {
+  const out = [];
+  for (const p of _properties) {
+    if (state.propertyId && p.id !== state.propertyId) continue;
+    for (const z of (p.zones || [])) {
+      if (state.zoneId && z.id !== state.zoneId) continue;
+      (z.sub_zones || []).forEach((sz) => {
+        const name = sz.label || sz.name;
+        out.push({ id: sz.id, name: state.zoneId ? name : `${z.name} · ${name}` });
+      });
+    }
+  }
+  return out;
+}
+
+function parentReady() {
+  if (state.level === 'property') return true;
+  if (state.level === 'zone') return !!state.propertyId;
+  if (state.level === 'sub_zone') return !!state.propertyId && !!state.zoneId;
+  return !!state.propertyId && !!state.zoneId && !!state.subZoneId;
+}
+
+function setLevel(level, keepParentFilters) {
+  if (!LEVELS.includes(level)) return;
+  state.level = level;
+  state.editingId = null;
+  state.addOpen = false;
+  state.pinnedId = null;
+  if (!keepParentFilters) {
+    state.propertyId = null;
+    state.zoneId = null;
+    state.subZoneId = null;
+  } else if (level === 'zone') {
+    state.subZoneId = null;
+  }
+  syncUrl();
+  renderAll();
+}
+
+function pinAndOpenChildren(level, id) {
+  if (level === 'property') {
+    state.propertyId = id;
+    state.zoneId = null;
+    state.subZoneId = null;
+    setLevel('zone', true);
+  } else if (level === 'zone') {
+    const hit = findZone(id);
+    if (hit) state.propertyId = hit.property.id;
+    state.zoneId = id;
+    state.subZoneId = null;
+    setLevel('sub_zone', true);
+  } else if (level === 'sub_zone') {
+    const hit = findSubZone(id);
+    if (hit) {
+      state.propertyId = hit.property.id;
+      state.zoneId = hit.zone.id;
+    }
+    state.subZoneId = id;
+    setLevel('base_unit', true);
+  }
+}
+
+function pinRow(level, id) {
+  state.pinnedId = state.pinnedId === id ? null : id;
+  renderList();
+}
+
+function renderCrumb() {
+  const el = document.getElementById('locCrumb');
+  if (!el) return;
+  el.innerHTML = LEVELS.map((lv, i) => {
+    const btn = `<button type="button" data-level="${lv}" class="${state.level === lv ? 'active' : ''}">${LEVEL_LABELS[lv]}</button>`;
+    return i ? `<span class="sep">→</span>${btn}` : btn;
+  }).join('');
+  el.querySelectorAll('button').forEach((btn) => {
+    btn.addEventListener('click', () => setLevel(btn.dataset.level));
+  });
+}
+
+function renderSidebar() {
+  const el = document.getElementById('locElements');
+  if (!el) return;
+  const items = LEVELS.map((lv) => `
+    <button type="button" class="loc-ws-side-item${state.level === lv ? ' active' : ''}" data-level="${lv}">
+      <span>${LEVEL_LABELS[lv]}</span>
+      <span class="loc-ws-count">${_counts[lv] || 0}</span>
+    </button>`).join('');
+  el.innerHTML = `<div class="loc-ws-side-label">Elements</div>${items}`;
+  el.querySelectorAll('.loc-ws-side-item').forEach((btn) => {
+    btn.addEventListener('click', () => setLevel(btn.dataset.level));
+  });
+}
+
+function optionHtml(items, selectedId, placeholder) {
+  let html = `<option value="">${tktEsc(placeholder)}</option>`;
+  items.forEach((it) => {
+    const sel = String(it.id) === String(selectedId || '') ? ' selected' : '';
+    html += `<option value="${it.id}"${sel}>${tktEsc(it.label || it.name)}</option>`;
+  });
+  return html;
+}
+
+function renderFilters() {
+  const el = document.getElementById('locFilters');
+  if (!el) return;
+
+  let parents = '';
+  if (state.level !== 'property') {
+    parents += `<div class="tkt-field"><label>Property</label>
+      <select class="tkt-select" id="filterProperty">${optionHtml(_properties, state.propertyId, '— All properties —')}</select></div>`;
+  }
+  if (state.level === 'sub_zone' || state.level === 'base_unit') {
+    parents += `<div class="tkt-field"><label>Zone</label>
+      <select class="tkt-select" id="filterZone">${optionHtml(allZoneOptions(), state.zoneId, '— All zones —')}</select></div>`;
+  }
+  if (state.level === 'base_unit') {
+    parents += `<div class="tkt-field"><label>Sub Zone</label>
+      <select class="tkt-select" id="filterSubZone">${optionHtml(allSubZoneOptions(), state.subZoneId, '— All sub-zones —')}</select></div>`;
+  }
+
+  el.innerHTML = `
+    ${parents}
+    <div class="tkt-field" style="flex:1.2;">
+      <label>Search ${LEVEL_SEARCH[state.level]}</label>
+      <input class="tkt-input" id="locSearch" type="search" placeholder="Name, code, area…" value="${tktEsc(state.search)}" autocomplete="off">
+    </div>
+    <div class="tkt-field loc-ws-add-field">
+      <label class="loc-ws-add-spacer" aria-hidden="true">&nbsp;</label>
+      <button type="button" class="tkt-btn tkt-btn-primary" id="locAddToggle">+ Add ${LEVEL_LABELS[state.level]}</button>
+    </div>
+  `;
+
+  document.getElementById('filterProperty')?.addEventListener('change', (e) => {
+    state.propertyId = numOrNull(e.target.value);
+    state.zoneId = null;
+    state.subZoneId = null;
+    state.editingId = null;
+    syncUrl();
+    renderAll();
+  });
+  document.getElementById('filterZone')?.addEventListener('change', (e) => {
+    state.zoneId = numOrNull(e.target.value);
+    state.subZoneId = null;
+    const hit = findZone(state.zoneId);
+    if (hit) state.propertyId = hit.property.id;
+    state.editingId = null;
+    syncUrl();
+    renderAll();
+  });
+  document.getElementById('filterSubZone')?.addEventListener('change', (e) => {
+    state.subZoneId = numOrNull(e.target.value);
+    const hit = findSubZone(state.subZoneId);
+    if (hit) {
+      state.propertyId = hit.property.id;
+      state.zoneId = hit.zone.id;
+    }
+    state.editingId = null;
+    syncUrl();
+    renderAll();
+  });
+  document.getElementById('locSearch')?.addEventListener('input', (e) => {
+    state.search = e.target.value;
+    renderList();
+  });
+  document.getElementById('locAddToggle')?.addEventListener('click', () => {
+    if (!parentReady()) {
+      tktToast(`Select a parent ${state.level === 'zone' ? 'property' : state.level === 'sub_zone' ? 'zone' : 'sub-zone'} first.`, 'error');
+      return;
+    }
+    state.addOpen = !state.addOpen;
+    renderAddForm();
+  });
+}
+
+function renderAddForm() {
+  const el = document.getElementById('locAddForm');
+  if (!el) return;
+  if (!state.addOpen || !parentReady()) {
+    el.classList.remove('open');
+    el.innerHTML = '';
+    return;
+  }
+  el.classList.add('open');
+  let fields = `<div class="tkt-field"><label>Name <span class="req">*</span></label>
+    <input class="tkt-input" id="addName" type="text" placeholder="${tktEsc(LEVEL_LABELS[state.level])} name"></div>
+    <div class="tkt-field"><label>Code</label><input class="tkt-input" id="addCode" type="text" placeholder="Optional"></div>`;
+  if (state.level === 'property') {
+    fields += `<div class="tkt-field"><label>Area</label><input class="tkt-input" id="addArea" type="text"></div>
+      <div class="tkt-field"><label>City</label><input class="tkt-input" id="addCity" type="text" placeholder="Ajman"></div>`;
+  }
+  el.innerHTML = `<div class="loc-add-grid">${fields}</div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;">
+      <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" id="addCancel">Cancel</button>
+      <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" id="addSave">Save</button>
+    </div>`;
+  document.getElementById('addCancel').addEventListener('click', () => { state.addOpen = false; renderAddForm(); });
+  document.getElementById('addSave').addEventListener('click', saveNew);
+  document.getElementById('addName')?.focus();
+}
+
+function isPinned(item) {
+  return item.id === state.pinnedId;
+}
+
+function renderList() {
+  const el = document.getElementById('locList');
+  if (!el) return;
+  const entries = currentEntries();
+  if (!entries.length) {
+    const emptyHint = state.search
+      ? ' Try a different search.'
+      : (state.propertyId || state.zoneId || state.subZoneId)
+        ? ' Clear a filter to see more.'
+        : '';
+    el.innerHTML = `<div class="tkt-empty"><p>No ${LEVEL_SEARCH[state.level]} at this level.${emptyHint}</p></div>`;
+    return;
+  }
+  el.innerHTML = entries.map(({ item, path }) => {
+    const label = item.label || item.name;
+    const bits = path.filter(Boolean).slice();
+    if (state.level === 'property') {
+      bits.push(...[item.area, item.city].filter(Boolean));
+      bits.push(`${(item.zones || []).length} zones`);
+      bits.push(locHasPin(item) ? 'Mapped' : 'No map pin');
+    } else if (state.level === 'zone') {
+      bits.push(`${(item.sub_zones || []).length} sub-zones`);
+    } else if (state.level === 'sub_zone') {
+      bits.push(`${(item.base_units || []).length} units`);
+    } else if (state.level === 'base_unit') {
+      bits.push(locHasPin(item) ? 'Mapped' : 'No map pin');
+    }
+    const meta = bits.join(' · ');
+    const next = NEXT_LEVEL[state.level];
+    const openBtn = next
+      ? `<button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" data-act="children" data-id="${item.id}">Open ${CHILD_LABEL[state.level]}</button>`
+      : '';
+    const pinBtn = (state.level === 'property' || state.level === 'base_unit')
+      ? `<button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" data-act="pin" data-id="${item.id}">Set pin</button>`
+      : '';
+    const editOpen = state.editingId === item.id;
+    return `<div class="loc-row${isPinned(item) ? ' pinned' : ''}" data-id="${item.id}">
+      <div class="loc-row-body">
+        <div class="loc-row-name">${tktEsc(label)} ${locCodeBadge(item.code)}</div>
+        ${meta ? `<div class="loc-row-meta">${tktEsc(meta)}</div>` : ''}
+        <div class="loc-edit-panel${editOpen ? ' open' : ''}" data-edit="${item.id}">${editOpen ? editFieldsHtml(item) : ''}</div>
+      </div>
+      <div class="loc-row-actions">
+        ${openBtn}
+        <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" data-act="edit" data-id="${item.id}">Edit</button>
+        ${pinBtn}
+        <button type="button" class="tkt-btn tkt-btn-danger tkt-btn-sm" data-act="delete" data-id="${item.id}">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.querySelectorAll('.loc-row').forEach((row) => {
+    row.addEventListener('click', (ev) => {
+      if (ev.target.closest('button, input, select, textarea, .loc-edit-panel')) return;
+      pinRow(state.level, numOrNull(row.dataset.id));
+    });
+  });
+  el.querySelectorAll('[data-act]').forEach((btn) => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const id = numOrNull(btn.dataset.id);
+      const act = btn.dataset.act;
+      if (act === 'children') pinAndOpenChildren(state.level, id);
+      else if (act === 'edit') toggleEdit(id);
+      else if (act === 'pin') openPinModal(id);
+      else if (act === 'delete') deleteItem(id);
+      else if (act === 'save-edit') saveEdit(id);
+      else if (act === 'cancel-edit') { state.editingId = null; renderList(); }
+    });
+  });
+}
+
+function editFieldsHtml(item) {
+  let fields = `<div class="tkt-field"><label>Name</label>
+    <input class="tkt-input" data-field="name" value="${tktEsc(item.name || '')}"></div>
+    <div class="tkt-field"><label>Code</label>
+    <input class="tkt-input" data-field="code" value="${tktEsc(item.code || '')}"></div>`;
+  if (state.level === 'property') {
+    fields += `<div class="tkt-field"><label>Area</label>
+      <input class="tkt-input" data-field="area" value="${tktEsc(item.area || '')}"></div>
+      <div class="tkt-field"><label>City</label>
+      <input class="tkt-input" data-field="city" value="${tktEsc(item.city || '')}"></div>
+      <div class="tkt-field" style="grid-column:1/-1;"><label>Linked project</label>
+      <select class="tkt-select" data-field="project_id">${projectOptionsHtml(item.project_id)}</select></div>`;
+  }
+  if (state.level === 'base_unit') {
+    fields += `<div class="tkt-field"><label>Latitude</label>
+      <input class="tkt-input" data-field="latitude" value="${tktEsc(item.latitude != null ? item.latitude : '')}" placeholder="25.4052" inputmode="decimal"></div>
+      <div class="tkt-field"><label>Longitude</label>
+      <input class="tkt-input" data-field="longitude" value="${tktEsc(item.longitude != null ? item.longitude : '')}" placeholder="55.5136" inputmode="decimal"></div>`;
+  }
+  return `<div class="loc-edit-grid">${fields}</div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+      <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" data-act="cancel-edit" data-id="${item.id}">Cancel</button>
+      <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" data-act="save-edit" data-id="${item.id}">Save</button>
+    </div>`;
+}
+
+function projectOptionsHtml(selectedId) {
+  let html = '<option value="">— No project —</option>';
+  _projects.forEach((p) => {
+    const sel = String(p.id) === String(selectedId || '') ? ' selected' : '';
+    html += `<option value="${p.id}"${sel}>${tktEsc(p.name)}</option>`;
+  });
+  return html;
+}
+
+function toggleEdit(id) {
+  state.editingId = state.editingId === id ? null : id;
+  renderList();
+}
+
+function renderAll() {
+  renderCrumb();
+  renderSidebar();
+  renderFilters();
+  renderAddForm();
+  renderList();
+}
+
+async function loadTree() {
+  const res = await tktFetch(LOC_CFG.treeUrl);
+  if (!res.ok || !res.data.success) {
+    tktToast(res.data.error || 'Could not load locations.', 'error');
+    return;
+  }
+  _properties = res.data.properties || [];
+  _counts = res.data.counts || _counts;
+  inferPins();
+  renderAll();
+}
+
+async function saveNew() {
+  const name = (document.getElementById('addName')?.value || '').trim();
+  if (!name) { tktToast('Name required.', 'error'); return; }
+  const code = (document.getElementById('addCode')?.value || '').trim() || null;
+  let url, body;
+  if (state.level === 'property') {
+    url = '/tickets/api/settings/properties';
+    body = {
+      name, code,
+      area: (document.getElementById('addArea')?.value || '').trim() || null,
+      city: (document.getElementById('addCity')?.value || '').trim() || null,
+      project_id: LOC_CFG.standalone ? null : LOC_CFG.projectId,
+    };
+  } else if (state.level === 'zone') {
+    url = '/tickets/api/settings/zones';
+    body = { name, code, property_id: state.propertyId };
+  } else if (state.level === 'sub_zone') {
+    url = '/tickets/api/settings/sub-zones';
+    body = { name, code, zone_id: state.zoneId };
+  } else {
+    url = '/tickets/api/settings/base-units';
+    body = { name, code, sub_zone_id: state.subZoneId };
+  }
+  const res = await tktFetch(url, { method: 'POST', body: JSON.stringify(body) });
+  if (res.ok && res.data.success) {
+    tktToast(`${LEVEL_LABELS[state.level]} added.`, 'success');
+    state.addOpen = false;
+    await loadTree();
+  } else {
+    tktToast(res.data.error || 'Failed.', 'error');
+  }
+}
+
+function readEditFields(id) {
+  const panel = document.querySelector(`.loc-edit-panel[data-edit="${id}"]`);
+  if (!panel) return {};
+  const data = {};
+  panel.querySelectorAll('[data-field]').forEach((inp) => {
+    data[inp.dataset.field] = inp.value;
+  });
+  return data;
+}
+
+async function saveEdit(id) {
+  const data = readEditFields(id);
+  const name = (data.name || '').trim();
+  if (!name) { tktToast('Name required.', 'error'); return; }
+  let url;
+  const body = { name, code: (data.code || '').trim() };
+  if (state.level === 'property') {
+    url = `/tickets/api/settings/properties/${id}`;
+    body.area = (data.area || '').trim();
+    body.city = (data.city || '').trim();
+    body.project_id = data.project_id || null;
+  } else if (state.level === 'zone') {
+    url = `/tickets/api/settings/zones/${id}`;
+  } else if (state.level === 'sub_zone') {
+    url = `/tickets/api/settings/sub-zones/${id}`;
+  } else {
+    url = `/tickets/api/settings/base-units/${id}`;
+    const lat = (data.latitude || '').trim();
+    const lng = (data.longitude || '').trim();
+    if (lat && lng) {
+      body.latitude = lat;
+      body.longitude = lng;
+    }
+  }
+  const res = await tktFetch(url, { method: 'PATCH', body: JSON.stringify(body) });
+  if (res.ok && res.data.success) {
+    tktToast('Saved.', 'success');
+    state.editingId = null;
+    await loadTree();
+  } else {
+    tktToast(res.data.error || 'Failed.', 'error');
+  }
+}
+
+async function deleteItem(id) {
+  const msg = state.level === 'property'
+    ? 'Delete this property and all its children?'
+    : `Delete this ${LEVEL_LABELS[state.level].toLowerCase()}?`;
+  if (!confirm(msg)) return;
+  const urls = {
+    property: `/tickets/api/settings/properties/${id}`,
+    zone: `/tickets/api/settings/zones/${id}`,
+    sub_zone: `/tickets/api/settings/sub-zones/${id}`,
+    base_unit: `/tickets/api/settings/base-units/${id}`,
+  };
+  await tktFetch(urls[state.level], { method: 'DELETE' });
+  if (state.level === 'property' && state.propertyId === id) { state.propertyId = null; state.zoneId = null; state.subZoneId = null; }
+  if (state.level === 'zone' && state.zoneId === id) { state.zoneId = null; state.subZoneId = null; }
+  if (state.level === 'sub_zone' && state.subZoneId === id) state.subZoneId = null;
+  tktToast('Deleted.', 'success');
+  await loadTree();
+}
+
+function findUnit(id) {
+  for (const p of _properties) {
+    for (const z of (p.zones || [])) {
+      for (const sz of (z.sub_zones || [])) {
+        const u = (sz.base_units || []).find((x) => x.id === id);
+        if (u) return { property: p, zone: z, subZone: sz, unit: u };
+      }
+    }
+  }
+  return null;
+}
+
+const LOC_MAP_DEFAULT = { lat: 25.4052, lng: 55.5136 };
+let _pinCtx = { level: null, id: null, lookupQ: '' };
+let _pinMap = null;
+let _pinMarker = null;
+
+function pinTarget(id) {
+  if (state.level === 'property') {
+    const prop = findProperty(id);
+    if (!prop) return null;
+    return {
+      label: prop.label || prop.name,
+      item: prop,
+      lat: prop.latitude,
+      lng: prop.longitude,
+      lookupQ: [prop.name, prop.area, prop.city || 'Ajman', 'UAE'].filter(Boolean).join(', '),
+    };
+  }
+  const hit = findUnit(id);
+  if (!hit) return null;
+  const unit = hit.unit;
+  const lat = locHasPin(unit) ? unit.latitude : (locHasPin(hit.property) ? hit.property.latitude : null);
+  const lng = locHasPin(unit) ? unit.longitude : (locHasPin(hit.property) ? hit.property.longitude : null);
+  return {
+    label: unit.label || unit.name,
+    item: unit,
+    lat,
+    lng,
+    lookupQ: [
+      unit.name, hit.subZone.name, hit.zone.name, hit.property.name,
+      hit.property.area, hit.property.city || 'Ajman', 'UAE',
+    ].filter(Boolean).join(', '),
+  };
+}
+
+function parseCoord(raw) {
+  const n = parseFloat(String(raw || '').trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+function pinReadCoords() {
+  const lat = parseCoord(document.getElementById('locPinLat')?.value);
+  const lng = parseCoord(document.getElementById('locPinLng')?.value);
+  if (lat == null || lng == null) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng };
+}
+
+function pinWriteCoords(lat, lng, { fromMap } = {}) {
+  const latEl = document.getElementById('locPinLat');
+  const lngEl = document.getElementById('locPinLng');
+  if (latEl && !fromMap) latEl.value = lat == null ? '' : String(lat);
+  if (lngEl && !fromMap) lngEl.value = lng == null ? '' : String(lng);
+  if (fromMap) {
+    if (latEl) latEl.value = Number(lat).toFixed(6);
+    if (lngEl) lngEl.value = Number(lng).toFixed(6);
+  }
+}
+
+function pinEnsureMap() {
+  const el = document.getElementById('locPinMap');
+  if (!el || typeof L === 'undefined') return null;
+  if (_pinMap) {
+    _pinMap.invalidateSize();
+    return _pinMap;
+  }
+  _pinMap = L.map(el, { zoomControl: true, scrollWheelZoom: true })
+    .setView([LOC_MAP_DEFAULT.lat, LOC_MAP_DEFAULT.lng], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap',
+  }).addTo(_pinMap);
+  _pinMap.on('click', (ev) => {
+    pinSetMarker(ev.latlng.lat, ev.latlng.lng, { fromMap: true, pan: false });
+  });
+  return _pinMap;
+}
+
+function pinSetMarker(lat, lng, { fromMap, pan } = {}) {
+  const map = pinEnsureMap();
+  if (!map || lat == null || lng == null) return;
+  pinWriteCoords(lat, lng, { fromMap: !!fromMap });
+  if (_pinMarker) {
+    _pinMarker.setLatLng([lat, lng]);
+  } else {
+    _pinMarker = L.circleMarker([lat, lng], {
+      radius: 9,
+      color: '#fff',
+      weight: 2,
+      fillColor: '#ff8e68',
+      fillOpacity: 0.95,
+    }).addTo(map);
+  }
+  if (pan !== false) map.setView([lat, lng], Math.max(map.getZoom(), 16));
+}
+
+function closePinModal() {
+  const modal = document.getElementById('locPinModal');
+  if (modal) {
+    modal.classList.remove('is-open');
+    modal.hidden = true;
+  }
+  _pinCtx = { level: null, id: null, lookupQ: '' };
+}
+
+function openPinModal(id) {
+  const target = pinTarget(id);
+  if (!target) { tktToast('Location not found.', 'error'); return; }
+  _pinCtx = { level: state.level, id, lookupQ: target.lookupQ };
+  const modal = document.getElementById('locPinModal');
+  const title = document.getElementById('locPinTitle');
+  const sub = document.getElementById('locPinSub');
+  if (title) title.textContent = 'Set pin';
+  if (sub) sub.textContent = target.label;
+  const lat = Number.isFinite(Number(target.lat)) ? Number(target.lat) : LOC_MAP_DEFAULT.lat;
+  const lng = Number.isFinite(Number(target.lng)) ? Number(target.lng) : LOC_MAP_DEFAULT.lng;
+  pinWriteCoords(lat, lng);
+  if (modal) {
+    modal.hidden = false;
+    modal.classList.add('is-open');
+  }
+  setTimeout(() => {
+    const map = pinEnsureMap();
+    if (!map) return;
+    map.invalidateSize();
+    pinSetMarker(lat, lng, { pan: true });
+  }, 80);
+}
+
+async function lookupPinAddress() {
+  const q = _pinCtx.lookupQ;
+  if (!q || q.length < 3) {
+    tktToast('Not enough address detail to look up.', 'error');
+    return;
+  }
+  const res = await tktFetch('/tickets/api/geocode?q=' + encodeURIComponent(q));
+  if (res.ok && res.data.success && res.data.lat != null && res.data.lng != null) {
+    pinSetMarker(res.data.lat, res.data.lng, { pan: true });
+    tktToast('Map moved to the looked-up location. Save to keep it.', 'success');
+    return;
+  }
+  tktToast(res.data.error || 'Could not look up this address. Enter latitude and longitude instead.', 'error');
+}
+
+async function savePinFromModal() {
+  const coords = pinReadCoords();
+  if (!coords) {
+    tktToast('Enter a valid latitude (−90 to 90) and longitude (−180 to 180).', 'error');
+    return;
+  }
+  const url = _pinCtx.level === 'base_unit'
+    ? `/tickets/api/settings/base-units/${_pinCtx.id}`
+    : `/tickets/api/settings/properties/${_pinCtx.id}`;
+  const res = await tktFetch(url, {
+    method: 'PATCH',
+    body: JSON.stringify({ latitude: coords.lat, longitude: coords.lng }),
+  });
+  if (res.ok && res.data.success) {
+    tktToast('Map pin saved.', 'success');
+    closePinModal();
+    await loadTree();
+  } else {
+    tktToast(res.data.error || 'Could not save pin.', 'error');
+  }
+}
+
+function bindPinModal() {
+  const modal = document.getElementById('locPinModal');
+  if (!modal) return;
+  modal.querySelectorAll('[data-pin-close]').forEach((btn) => {
+    btn.addEventListener('click', closePinModal);
+  });
+  document.getElementById('locPinLookup')?.addEventListener('click', lookupPinAddress);
+  document.getElementById('locPinSave')?.addEventListener('click', savePinFromModal);
+  const onCoordInput = () => {
+    const coords = pinReadCoords();
+    if (coords) pinSetMarker(coords.lat, coords.lng, { pan: true });
+  };
+  document.getElementById('locPinLat')?.addEventListener('change', onCoordInput);
+  document.getElementById('locPinLng')?.addEventListener('change', onCoordInput);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('is-open')) closePinModal();
+  });
+}
+
+async function locDownloadExcel(url, fallbackName) {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
+  const headers = {};
+  if (token) headers.Authorization = 'Bearer ' + token;
+  const res = await fetch(url, { credentials: 'include', headers });
+  if (!res.ok) {
+    let msg = 'Download failed.';
+    try {
+      const j = await res.json();
+      msg = j.error || msg;
+    } catch (_) { /* not json */ }
+    tktToast(msg, 'error');
+    return;
+  }
+  const blob = await res.blob();
+  const cd = res.headers.get('Content-Disposition') || '';
+  const m = /filename\*?=(?:UTF-8''|")?([^\";]+)/i.exec(cd);
+  const name = decodeURIComponent((m && m[1]) ? m[1].replace(/"/g, '') : fallbackName);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+}
+
+function bindExcelBar() {
+  document.getElementById('locTemplateBtn')?.addEventListener('click', () => {
+    locDownloadExcel(LOC_CFG.templateUrl, 'location_template.xlsx');
+  });
+  document.getElementById('locExportBtn')?.addEventListener('click', () => {
+    const slug = (LOC_CFG.projectName || 'locations').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'locations';
+    locDownloadExcel(LOC_CFG.exportUrl, slug + '_locations.xlsx');
+  });
+  const importBtn = document.getElementById('locImportBtn');
+  const fileInp = document.getElementById('locImportFile');
+  if (!importBtn || !fileInp) return;
+  importBtn.addEventListener('click', () => fileInp.click());
+  fileInp.addEventListener('change', async () => {
+    const file = fileInp.files && fileInp.files[0];
+    fileInp.value = '';
+    if (!file) return;
+    importBtn.disabled = true;
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await tktFetch(LOC_CFG.importUrl, { method: 'POST', body: fd });
+    importBtn.disabled = false;
+    if (res.ok && res.data.success) {
+      const c = res.data.counts || {};
+      const unresolved = res.data.unresolved_count || 0;
+      tktToast(
+        `Imported: +${c.properties_created || 0} properties, +${c.zones_created || 0} zones, +${c.sub_zones_created || 0} sub-zones, +${c.base_units_created || 0} units.`
+          + (unresolved ? ` ${unresolved} unmatched rows skipped.` : ''),
+        'success',
+        5000,
+      );
+      await loadTree();
+    } else {
+      tktToast(res.data.error || 'Import failed.', 'error');
+    }
+  });
+}
+
+(async function init() {
+  parseQuery();
+  bindExcelBar();
+  bindPinModal();
+  const projRes = await tktFetch('/tickets/api/settings/projects');
+  _projects = (projRes.ok && projRes.data.projects) || [];
+  await loadTree();
+})();
+</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
+<script>window.FILES_SAVE_MODULE = 'ticketing'; window.FILES_SAVE_MODULE_LABEL = 'Service Tickets';</script>
+<script src="{{ url_for('static', filename='js/files-save.js') }}?v=18"></script>
+<script>
+  function tktOpenMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(s)s.classList.add('open');}
+  function tktCloseMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(s)s.classList.remove('open');}
+  function tktToggleMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(!s)return;s.classList.contains('open')?tktCloseMobileSidebar():tktOpenMobileSidebar();}
+  document.addEventListener('click',function(e){const s=document.getElementById('tktDhSidebar'),btn=document.getElementById('tktDhSidebarToggle');if(s&&s.classList.contains('open')&&!s.contains(e.target)&&btn&&!btn.contains(e.target))tktCloseMobileSidebar();});
+</script>
+</body>
+</html>

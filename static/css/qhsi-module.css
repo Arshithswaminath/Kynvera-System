@@ -281,7 +281,7 @@ body.qhsi-form-unified .footer-copy {
 .qhsi-form-unified .grid-2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem 1.25rem;
+  gap: 1.15rem 1.4rem;
 }
 
 .qhsi-form-unified .grid-3 {
@@ -326,7 +326,19 @@ body.qhsi-form-unified .footer-copy {
   min-height: 44px;
   background: #fff;
   color: #1c1c1e;
+  line-height: 1.25;
+  box-sizing: border-box;
   transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.qhsi-form-unified input.fld-inp,
+.qhsi-form-unified select.fld-inp {
+  height: 44px;
+}
+
+.qhsi-form-unified input[type="date"].fld-inp {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .qhsi-form-unified .fld-inp:focus {
@@ -846,26 +858,86 @@ body.qhsi-form-unified .footer-copy {
 
 /* ── Excel import ── */
 .qhse-import-card .qhse-import-body {
-  padding-top: 0.5rem;
+  padding-top: 0.35rem;
 }
 
 .qhse-import-form__row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.qhse-import-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   align-items: center;
 }
 
-.qhse-import-form__row input[type="file"] {
-  flex: 1 1 200px;
+.qhse-file-pick {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex: 1 1 240px;
   min-width: 0;
-  font-size: 0.875rem;
+  min-height: 44px;
+  padding: 0.3rem 0.85rem 0.3rem 0.3rem;
+  border: 1px solid #e5e5ea;
+  border-radius: 12px;
+  background: #fafafa;
+  cursor: pointer;
+}
+
+.qhse-file-pick:hover,
+.qhse-file-pick:focus-within {
+  border-color: #ff8e68;
+  background: #fff;
+}
+
+.qhse-file-pick input[type="file"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 0;
+}
+
+.qhse-file-pick__btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid #e5e5ea;
+  border-radius: 9px;
+  background: #fff;
+  color: #1c1c1e;
+  font-size: 0.82rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.qhse-file-pick__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: #6b7280;
+  pointer-events: none;
 }
 
 .qhse-import-hint {
   font-size: 0.8rem;
   color: #6b7280;
-  margin: 0.65rem 0 0;
+  margin: 0.7rem 0 0;
+  line-height: 1.45;
 }
 
 .qhse-import-status {
@@ -873,11 +945,19 @@ body.qhsi-form-unified .footer-copy {
   color: #ff8e68;
   font-weight: 600;
   margin: 0.5rem 0 0;
-  min-height: 1.25rem;
+}
+
+.qhse-import-status[hidden] {
+  display: none;
 }
 
 .qhse-import-summary-wrap {
-  margin-top: 1.25rem;
+  margin-top: 1rem;
+}
+
+.qhse-import-summary {
+  padding-top: 1rem;
+  border-top: 1px solid #eef2f0;
 }
 
 .qhse-import-empty {
@@ -889,9 +969,16 @@ body.qhsi-form-unified .footer-copy {
 .qhse-import-summary__hd {
   display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 0.35rem;
+  gap: 0.35rem 1rem;
   margin-bottom: 0.85rem;
+}
+
+.qhse-import-summary__hd strong {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #111827;
 }
 
 .qhse-import-summary__meta {
@@ -902,17 +989,17 @@ body.qhsi-form-unified .footer-copy {
 
 .qhse-import-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.65rem;
-  margin-bottom: 1rem;
 }
 
 .qhse-import-stat {
   background: #f0f9f4;
   border: 1px solid #c2dece;
   border-radius: 10px;
-  padding: 0.65rem 0.75rem;
+  padding: 0.7rem 0.55rem 0.65rem;
   text-align: center;
+  min-width: 0;
 }
 
 .qhse-import-stat--warn {
@@ -932,23 +1019,62 @@ body.qhsi-form-unified .footer-copy {
 
 .qhse-import-stat__val {
   display: block;
-  font-size: 1.35rem;
+  font-size: clamp(0.95rem, 1.6vw, 1.25rem);
   font-weight: 800;
   color: #ff8e68;
-  line-height: 1.1;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .qhse-import-stat__lbl {
   display: block;
-  font-size: 0.68rem;
+  font-size: 0.65rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: #6b7280;
-  margin-top: 0.2rem;
+  margin-top: 0.25rem;
+  line-height: 1.3;
+}
+
+.qhse-import-summary__foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.85rem;
 }
 
 .qhse-import-clear {
   font-size: 0.8rem;
+  min-height: 40px;
+  padding: 0.45rem 0.95rem;
+}
+
+.qhse-help-copy {
+  margin: 0 0 0.85rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: #6b7280;
+}
+
+@media (max-width: 900px) {
+  .qhse-import-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .qhse-import-form__actions {
+    width: 100%;
+  }
+  .qhse-import-form__actions .btn-primary,
+  .qhse-import-form__actions .btn-secondary {
+    flex: 1 1 auto;
+  }
+  .qhse-import-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .qhse-dash-import-banner {
@@ -1042,8 +1168,15 @@ body.qhse-module-page .qhsi-form-unified .page-inner {
   align-items: center;
 }
 
-.bento-tile--import-strip .qhse-import-form__row input[type="file"] {
+.bento-tile--import-strip .qhse-file-pick {
   flex: 2 1 280px;
+}
+
+.bento-tile--import-strip .qhse-import-form__actions .btn-primary,
+.bento-tile--import-strip .qhse-import-form__actions .btn-secondary {
+  min-height: 44px;
+  padding: 0.55rem 1.15rem;
+  font-size: 0.875rem;
 }
 
 /* Column spans (12-col grid) */
@@ -1355,4 +1488,45 @@ a.bento-tile:hover .bento-action__arrow svg {
   letter-spacing: 0.05em;
   color: #6b7280;
   margin-top: 0.2rem;
+}
+
+.qhse-soon-kicker {
+  margin: 0.55rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c2410c;
+}
+
+.qhse-soon-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.85rem;
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1.1rem;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  color: #9a3412;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.qhse-soon-banner strong {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.qhse-construction-banner {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.95rem;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  color: #9a3412;
+  font-size: 0.82rem;
+  font-weight: 600;
 }

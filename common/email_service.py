@@ -195,7 +195,7 @@ def _send_email_brevo_http(app, recipient, subject, body, html_body, cc, attachm
         return False
 
     payload = {
-        "sender": {"name": "Injaaz", "email": str(mail_sender).strip()},
+        "sender": {"name": "Kynvera", "email": str(mail_sender).strip()},
         "to": to_out,
         "subject": subject,
         "textContent": (body or "").rstrip() or " ",
@@ -255,7 +255,7 @@ def _send_email_mailjet_http(
         logger.error("Mailjet: no valid recipients")
         return False
     msg = {
-        "From": {"Email": mail_sender.strip(), "Name": "Injaaz"},
+        "From": {"Email": mail_sender.strip(), "Name": "Kynvera"},
         "To": to_out,
         "Subject": subject,
         "TextPart": (body or "").rstrip() or " ",
@@ -468,7 +468,7 @@ def _deliver_email(recipient, subject, body, html_body=None, cc=None, attachment
 
         msg = EmailMessage()
         msg['Subject'] = subject
-        msg['From'] = formataddr(("Injaaz", str(mail_sender).strip()))
+        msg['From'] = formataddr(("Kynvera", str(mail_sender).strip()))
         if isinstance(recipient, (list, tuple)):
             msg['To'] = ', '.join(recipient)
         else:
@@ -536,7 +536,7 @@ def _deliver_email(recipient, subject, body, html_body=None, cc=None, attachment
 
 def send_password_reset_email(user_email, username, temp_password):
     """Send password reset email with temporary password."""
-    subject = "Your Injaaz Account Password Has Been Reset"
+    subject = "Your Kynvera Account Password Has Been Reset"
 
     body = f"""
 Hello {username},
@@ -550,7 +550,7 @@ Please log in and change your password immediately for security.
 If you did not request this password reset, please contact support immediately.
 
 Best regards,
-Injaaz Team
+Kynvera Team
 """
 
     html_body = f"""
@@ -562,7 +562,7 @@ Injaaz Team
 <p><strong>Your temporary password is: <code>{temp_password}</code></strong></p>
 <p>Please log in and change your password immediately for security.</p>
 <p>If you did not request this password reset, please contact support immediately.</p>
-<p>Best regards,<br>Injaaz Team</p>
+<p>Best regards,<br>Kynvera Team</p>
 </body>
 </html>
 """

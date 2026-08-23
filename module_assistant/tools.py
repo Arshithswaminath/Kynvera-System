@@ -1,5 +1,5 @@
 """
-Server-side data tools for the Injaaz assistant.
+Server-side data tools for the Kynvera assistant.
 All queries are scoped to the authenticated user — never accept user_id from the client.
 """
 import json
@@ -11,7 +11,7 @@ from sqlalchemy import or_
 from app.models import DocHubDocument, Submission
 
 INSPECTION_MODULE_TYPES = (
-    'hvac_mep', 'civil', 'cleaning', 'qhsi_inspection', 'qhsi_staff_compliance',
+    'hvac_mep', 'civil', 'cleaning',
 )
 HR_LEAVE_MODULE_TYPES = ('hr_leave_application', 'hr_leave')
 TERMINAL_WORKFLOW = ('completed', 'closed_by_admin', 'rejected')
@@ -436,7 +436,6 @@ MODULE_ACCESS_LABELS = {
     'access_report_generation': 'Report Generation (MMR)',
     'access_submitted_forms': 'Submitted Forms hub',
     'access_ticketing': 'Ticketing / Work Orders',
-    'access_qhsi': 'QHSI (Quality, Hospitality, Safety & Inspections)',
 }
 
 

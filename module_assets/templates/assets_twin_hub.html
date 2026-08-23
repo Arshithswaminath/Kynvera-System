@@ -1,0 +1,116 @@
+{% set fm_page_title = 'Digital Twin' %}
+{% set fm_topbar_title = 'Digital twin' %}
+{% include 'partials/fm_shell_start.html' %}
+
+  <header class="fm-header twin-header">
+    <div>
+      <h1>2D Digital Twin</h1>
+      <p>Open a Service Tickets project to see its floor plans and live pins.</p>
+    </div>
+  </header>
+
+  <div class="twin-hub-stats" role="group" aria-label="Digital twin totals">
+    <div class="twin-hub-stat"><strong>{{ totals.projects }}</strong><span>Projects</span></div>
+    <div class="twin-hub-stat"><strong>{{ totals.floors }}</strong><span>Floor plans</span></div>
+    <div class="twin-hub-stat"><strong>{{ totals.pins }}</strong><span>Rooms</span></div>
+  </div>
+
+  <label class="twin-hub-search">Search
+    <input class="fm-input" id="twinHubSearch" type="search" placeholder="Project or client name" autocomplete="off">
+  </label>
+
+  {% if projects %}
+  <div class="twin-hub-grid" id="twinHubGrid">
+    {% for card in projects %}
+    <a class="twin-hub-card" href="{{ url_for('assets_bp.assets_twin_project_page', project_id=card.id) }}"
+       data-hub-card
+       data-search="{{ (card.name ~ ' ' ~ (card.client_name or ''))|lower }}">
+      <h2>{{ card.name }}</h2>
+      <p class="twin-hub-client">{{ card.client_name or 'No client' }}</p>
+      <p class="twin-hub-meta">{{ card.floor_count }} floor{{ 's' if card.floor_count != 1 else '' }} · {{ card.pin_count }} room{{ 's' if card.pin_count != 1 else '' }}</p>
+      <span class="twin-hub-strip" aria-hidden="true">
+        {% if card.crit or card.warn or card.ok %}
+        <i class="crit" style="flex:{{ card.crit }}"></i>
+        <i class="warn" style="flex:{{ card.warn }}"></i>
+        <i class="ok" style="flex:{{ card.ok }}"></i>
+        {% else %}
+        <i class="empty"></i>
+        {% endif %}
+      </span>
+      {% if card.supervisor_name %}
+      <p class="twin-hub-sup">{{ card.supervisor_name }}</p>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="twin-hub-empty">
+    <p>No projects in Service Tickets yet.</p>
+    <p><a href="{{ ticket_settings_url }}">Open ticket settings</a> to add a project, then come back here.</p>
+  </div>
+  {% endif %}
+
+  {% if unassigned %}
+  <section class="twin-unassigned">
+    <h2>Unassigned floors</h2>
+    <p class="fm-muted">These drawings are not linked to a ticket project yet.</p>
+    <div class="twin-floor-grid twin-floor-grid-quiet">
+      {% for floor in unassigned %}
+      <article class="twin-floor-card">
+        <a class="twin-floor-thumb" href="{{ url_for('assets_bp.assets_twin_plan_page', plan_id=floor.id) }}">
+          <img src="{{ floor.display_url }}" alt="">
+        </a>
+        <div class="twin-floor-copy">
+          <a href="{{ url_for('assets_bp.assets_twin_plan_page', plan_id=floor.id) }}"><strong>{{ floor.name }}</strong></a>
+          <span>{{ floor.building }}{% if floor.floor %} / {{ floor.floor }}{% endif %} · {{ floor.pin_count }} rooms</span>
+          {% if can_write and assign_projects %}
+          <label class="twin-assign">Assign
+            <select class="fm-input" data-assign-plan="{{ floor.id }}">
+              <option value="">Choose project…</option>
+              {% for p in assign_projects %}
+              <option value="{{ p.id }}">{{ p.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+{% set fm_scripts %}
+<script>
+(function () {
+  const search = document.getElementById('twinHubSearch');
+  search?.addEventListener('input', () => {
+    const q = search.value.trim().toLowerCase();
+    document.querySelectorAll('[data-hub-card]').forEach((el) => {
+      el.hidden = !!(q && !(el.dataset.search || '').includes(q));
+    });
+  });
+  document.querySelectorAll('[data-assign-plan]').forEach((sel) => {
+    sel.addEventListener('change', async () => {
+      if (!sel.value) return;
+      sel.disabled = true;
+      const res = await fetch('/assets/api/floor-plans/' + sel.dataset.assignPlan, {
+        method: 'PUT',
+        headers: fmAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ project_id: Number(sel.value) }),
+      });
+      let data = {};
+      try { data = await res.json(); } catch (_) {}
+      if (!res.ok || !data.success) {
+        sel.disabled = false;
+        sel.value = '';
+        fmNotify((data && data.error) || 'Could not assign floor');
+        return;
+      }
+      window.location.reload();
+    });
+  });
+})();
+</script>
+{% endset %}
+{% include 'partials/fm_shell_end.html' %}

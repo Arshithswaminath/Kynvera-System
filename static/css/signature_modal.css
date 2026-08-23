@@ -1,0 +1,417 @@
+/* Shared Draw / Type / Upload signature modal — Fire red accent */
+:root {
+  --sigm-accent: #ff8e68;
+  --sigm-accent-dark: #e05f36;
+  --sigm-accent-soft: #fff4ef;
+  --sigm-ink: #111827;
+  --sigm-muted: #6b7280;
+  --sigm-border: #e5e7eb;
+  --sigm-radius: 10px;
+}
+
+.sigm-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(17, 24, 39, 0.45);
+}
+.sigm-bg.is-open {
+  display: flex;
+}
+
+.sigm-modal {
+  width: min(520px, 100%);
+  max-height: min(92vh, 720px);
+  overflow: auto;
+  background: #fff;
+  border-radius: var(--sigm-radius);
+  box-shadow: 0 24px 48px -20px rgba(17, 24, 39, 0.35);
+  display: flex;
+  flex-direction: column;
+}
+
+.sigm-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--sigm-border);
+}
+.sigm-hd h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--sigm-ink);
+}
+.sigm-x {
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--sigm-muted);
+  cursor: pointer;
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+}
+.sigm-x:hover {
+  color: var(--sigm-ink);
+  background: #f3f4f6;
+}
+
+.sigm-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 1.25rem;
+  border-bottom: 1px solid var(--sigm-border);
+}
+.sigm-tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0.75rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--sigm-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.sigm-tab.is-active {
+  color: var(--sigm-accent);
+  border-bottom-color: var(--sigm-accent);
+}
+.sigm-tab:hover:not(.is-active) {
+  color: var(--sigm-ink);
+}
+
+.sigm-body {
+  padding: 1.15rem 1.25rem 0.75rem;
+}
+.sigm-pane {
+  display: none;
+}
+.sigm-pane.is-active {
+  display: block;
+}
+
+.sigm-draw-wrap {
+  border: 1.5px solid var(--sigm-border);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+  height: 180px;
+}
+.sigm-draw-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.sigm-type-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+
+  letter-spacing: 0.04em;
+  color: var(--sigm-muted);
+  margin-bottom: 0.4rem;
+}
+.sigm-type-input {
+  width: 100%;
+  border: 1.5px solid var(--sigm-border);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  font-size: 16px;
+  min-height: 44px;
+  margin-bottom: 0.75rem;
+}
+.sigm-type-input:focus {
+  outline: none;
+  border-color: var(--sigm-accent);
+  box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.1);
+}
+.sigm-type-preview {
+  border: 1.5px dashed var(--sigm-border);
+  border-radius: 8px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
+  overflow: hidden;
+}
+.sigm-type-preview span {
+  font-family: "Caveat", "Segoe Script", cursive;
+  font-size: 2.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #1a1a1a;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  word-break: break-word;
+}
+.sigm-type-preview.is-empty span {
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.sigm-drop {
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 8px;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.25rem;
+  background: #fafafa;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.sigm-drop:hover,
+.sigm-drop.is-dragover {
+  border-color: var(--sigm-accent);
+  background: var(--sigm-accent-soft);
+}
+.sigm-drop strong {
+  font-size: 0.95rem;
+  color: var(--sigm-ink);
+}
+.sigm-drop .sigm-or {
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+.sigm-drop-btn {
+  appearance: none;
+  border: none;
+  background: var(--sigm-accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 40px;
+}
+.sigm-drop-btn:hover {
+  background: var(--sigm-accent-dark);
+}
+.sigm-drop-preview {
+  max-width: 100%;
+  max-height: 140px;
+  object-fit: contain;
+  display: none;
+}
+.sigm-drop.has-file .sigm-drop-msg {
+  display: none;
+}
+.sigm-drop.has-file .sigm-drop-preview {
+  display: block;
+}
+
+.sigm-confirm {
+  margin: 0.85rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #374151;
+}
+.sigm-confirm[hidden] {
+  display: none !important;
+}
+.sigm-confirm-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.sigm-confirm-label input {
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+}
+
+.sigm-legal {
+  margin: 0.85rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: #9ca3af;
+}
+
+.sigm-ft {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.9rem 1.25rem 1.15rem;
+  border-top: 1px solid var(--sigm-border);
+  margin-top: 0.5rem;
+}
+.sigm-ft-left {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.sigm-btn-text {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--sigm-muted);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+
+  cursor: pointer;
+  padding: 0.5rem 0.65rem;
+  min-height: 40px;
+}
+.sigm-btn-text:hover {
+  color: var(--sigm-ink);
+}
+.sigm-btn-secondary {
+  appearance: none;
+  border: 1.5px solid var(--sigm-border);
+  background: #fff;
+  color: var(--sigm-ink);
+  font-weight: 600;
+  font-size: 0.82rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 40px;
+}
+.sigm-btn-secondary:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+.sigm-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.sigm-btn-primary {
+  appearance: none;
+  border: none;
+  background: var(--sigm-accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+
+  padding: 0.55rem 1.15rem;
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 40px;
+}
+.sigm-btn-primary:hover {
+  background: var(--sigm-accent-dark);
+}
+
+/* Field preview used on forms */
+.sig-field {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 100%;
+  gap: 0.55rem;
+}
+.sig-field-preview {
+  border: 1.5px dashed #d1d5db;
+  border-radius: 8px;
+  min-height: 140px;
+  flex: 1 1 auto;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0.65rem;
+  margin-bottom: 0;
+}
+.sig-field-preview.has-sig {
+  border-style: solid;
+  border-color: #e5e7eb;
+}
+.sig-field-preview .sig-field-ph {
+  color: #9ca3af;
+  font-size: 0.85rem;
+  font-style: italic;
+  text-align: center;
+}
+.sig-field-preview img {
+  max-width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+  display: none;
+}
+.sig-field-preview.has-sig img {
+  display: block;
+}
+.sig-field-preview.has-sig .sig-field-ph {
+  display: none;
+}
+.sig-field .signature-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  width: 100%;
+}
+.sig-field .signature-actions .btn,
+.sig-field .signature-actions .sig-field-clear,
+.sig-field .signature-actions .sig-field-open {
+  width: 100% !important;
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0.45rem 0.75rem !important;
+  border-radius: 8px !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 520px) {
+  .sigm-modal {
+    width: 100%;
+    max-height: 96vh;
+  }
+  .sigm-tabs {
+    padding: 0 0.75rem;
+  }
+  .sigm-tab {
+    flex: 1;
+    text-align: center;
+    padding: 0.7rem 0.4rem;
+    font-size: 0.8rem;
+  }
+  .sigm-body,
+  .sigm-hd,
+  .sigm-ft {
+    padding-left: 0.9rem;
+    padding-right: 0.9rem;
+  }
+  .sigm-ft {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .sigm-btn-primary,
+  .sigm-btn-secondary,
+  .sigm-btn-text {
+    width: 100%;
+  }
+}

@@ -96,7 +96,7 @@ def add_logo_and_title(ws, title, subtitle=None, start_row=1, max_columns=5):
     
     # Add company name
     company_cell = ws[f'B{current_row + 1}']
-    company_cell.value = "Injaaz Application"
+    company_cell.value = "Kynvera"
     company_cell.font = Font(bold=True, size=10, color=SECONDARY_COLOR, name='Calibri')
     company_cell.alignment = Alignment(horizontal='left', vertical='center')
     
@@ -447,7 +447,7 @@ def finalize_workbook(ws):
     ws.page_margins.bottom = 0.75
     
     # Add header and footer
-    ws.oddHeader.center.text = "Injaaz Application"
+    ws.oddHeader.center.text = "Kynvera"
     ws.oddHeader.center.size = 10
     ws.oddFooter.left.text = f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
     ws.oddFooter.right.text = "Page &P of &N"

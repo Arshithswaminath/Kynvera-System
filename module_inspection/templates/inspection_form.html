@@ -1421,6 +1421,22 @@
       background: linear-gradient(180deg, #f8fbfa 0%, #f1f7f4 100%);
       border-bottom: 1px solid #eaf1ed;
     }
+    .hvac-item-card-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .hvac-item-card-actions {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+      margin-left: auto;
+      align-self: center;
+    }
     .hvac-item-num {
       width: 30px; height: 30px; border-radius: 9px;
       background: linear-gradient(135deg, #10b981, #059669);
@@ -1533,11 +1549,18 @@
       font-size: 0.8rem; font-weight: 700; color: #64748b;
     }
 
+    .hvac-btn-edit-item,
+    .hvac-btn-remove-item {
+      box-sizing: border-box;
+      height: 30px;
+      margin: 0;
+      font-size: 0.74rem; font-weight: 600; border-radius: 7px; padding: 0 11px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+      line-height: 1; white-space: nowrap; vertical-align: middle;
+    }
     .hvac-btn-edit-item {
-      font-size: 0.74rem; font-weight: 600; border-radius: 7px; padding: 5px 11px;
       background: #fff; color: #065f46; border: 1px solid #d1fae5;
-      display: inline-flex; align-items: center; gap: 5px; transition: all .15s ease;
-      line-height: 1;
+      transition: all .15s ease;
     }
     .hvac-btn-edit-item:hover {
       background: #ecfdf5; border-color: #6ee7b7;
@@ -1549,18 +1572,26 @@
       box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
     }
     .hvac-btn-remove-item {
-      font-size: 0.74rem; font-weight: 600; border-radius: 7px; padding: 5px 11px;
-      display: inline-flex; align-items: center; gap: 4px; line-height: 1;
+      background: #fff;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+    .hvac-btn-remove-item:hover {
+      background: #fef2f2;
+      border-color: #f87171;
     }
 
     .hvac-item-registered-badge {
       flex-shrink: 0;
+      box-sizing: border-box;
+      height: 30px;
+      margin: 0;
       font-size: 0.7rem; font-weight: 700;
       color: #065f46;
       background: linear-gradient(135deg, #f0fdf4, #dcfce7);
       border: 1px solid #a7f3d0;
       border-radius: 999px;
-      padding: 3px 10px 3px 8px;
+      padding: 0 10px 0 8px;
       white-space: nowrap;
       display: inline-flex; align-items: center; gap: 4px;
       letter-spacing: 0.02em;
@@ -1935,6 +1966,13 @@
       .d-flex {
         flex-direction: column;
       }
+
+      .hvac-item-card-hd,
+      .hvac-item-card-title,
+      .hvac-item-card-actions {
+        flex-direction: row !important;
+        align-items: center;
+      }
       
       .gap-2 > * {
         width: 100%;
@@ -1978,7 +2016,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/materials-picker.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-signoff-activity.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/inspection-form-redesign.css') }}?v=2">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/inspection-form-redesign.css') }}?v=5">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/signature-display.css') }}">
   <script src="{{ url_for('static', filename='js/signature_display.js') }}"></script>
 </head>
@@ -2017,9 +2055,9 @@
         <div class="if-form-hd-left">
           <p class="if-form-eyebrow">Inspection</p>
           <h1 class="if-form-title">Inspection Form</h1>
-          <p class="if-form-subtitle">INJAAZ FACILITY MANAGEMENT</p>
+          <p class="if-form-subtitle">KYNVERA FACILITY MANAGEMENT</p>
         </div>
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="INJAAZ" class="if-form-logo">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Kynvera" class="if-form-logo">
       </div>
       <!-- Tab Navigation -->
       <ul class="nav nav-tabs" id="hvacTabs" role="tablist">
@@ -2051,7 +2089,7 @@
               <span class="if-pi-brand-mark" aria-hidden="true">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
               </span>
-              <p class="if-pi-brand-kicker">Injaaz Facility Management</p>
+              <p class="if-pi-brand-kicker">Kynvera Facility Management</p>
               <h1 class="if-pi-brand-title">Inspection Form</h1>
               <p class="if-pi-brand-copy">Capture the site context first. Work items, materials, and sign-off follow.</p>
               <div class="if-pi-brand-meta">
@@ -2134,7 +2172,7 @@
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
               </span>
               <div class="if-step-brand-copy">
-                <p class="if-pi-brand-kicker">Injaaz Facility Management</p>
+                <p class="if-pi-brand-kicker">Kynvera Facility Management</p>
                 <h2 class="if-pi-brand-title">Work Items</h2>
                 <p class="if-pi-brand-copy">Log each asset, quantity, and photo before selecting materials.</p>
               </div>
@@ -2166,7 +2204,7 @@
 
               <!-- ── Card header ── -->
               <div class="hvac-item-card-hd">
-                <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1">
+                <div class="hvac-item-card-title">
                   <span class="hvac-item-num">{{ loop.index }}</span>
                   <div class="min-w-0 flex-grow-1">
                     <div class="hvac-item-asset-name">{{ item.asset or 'Unnamed Asset' }}</div>
@@ -2177,23 +2215,23 @@
                     <div class="hvac-item-asset-sub">{{ _sub | join(' · ') }}</div>
                     {% endif %}
                   </div>
+                </div>
+                <div class="hvac-item-card-actions">
                   <span class="hvac-item-registered-badge">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     Registered
                   </span>
-                </div>
-                {% if not is_submitter_readonly %}
-                <div class="d-flex gap-1 flex-shrink-0 ms-2">
+                  {% if not is_submitter_readonly %}
                   <button type="button" class="hvac-btn-edit-item edit-asset-toggle" data-idx="{{ loop.index0 }}">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     <span class="edit-text">Edit</span>
                   </button>
-                  <button type="button" class="btn btn-sm btn-outline-danger hvac-btn-remove-item remove-server-item" data-idx="{{ loop.index0 }}" style="border-radius:6px;font-size:0.72rem;padding:4px 8px;line-height:1;">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:-1px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                  <button type="button" class="hvac-btn-remove-item remove-server-item" data-idx="{{ loop.index0 }}">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
                     Remove
                   </button>
+                  {% endif %}
                 </div>
-                {% endif %}
               </div>
 
               <!-- ── Summary view (default, data-edit-mode="false") ── -->
@@ -2471,7 +2509,7 @@
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg>
               </span>
               <div class="if-step-brand-copy">
-                <p class="if-pi-brand-kicker">Injaaz Facility Management</p>
+                <p class="if-pi-brand-kicker">Kynvera Facility Management</p>
                 <h2 class="if-pi-brand-title">Materials Required</h2>
                 <p class="if-pi-brand-copy">Select materials used or needed for this inspection visit.</p>
               </div>
@@ -2566,7 +2604,7 @@
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/></svg>
               </span>
               <div class="if-step-brand-copy">
-                <p class="if-pi-brand-kicker">Injaaz Facility Management</p>
+                <p class="if-pi-brand-kicker">Kynvera Facility Management</p>
                 <h2 class="if-pi-brand-title">Sign-off &amp; Submit</h2>
                 <p class="if-pi-brand-copy">Add your signature and comments, then submit or approve this inspection.</p>
               </div>

@@ -20,6 +20,11 @@ from common.inspection_inapp_notifications import (
     notify_inspection_stage,
 )
 from common.datetime_utils import utc_now_naive, naive_utc_isoformat_z
+from common.document_display import (
+    HIDDEN_QHSI_MODULE_TYPES,
+    is_hidden_qhsi_module,
+    get_module_display_name,
+)
 from datetime import datetime, timedelta
 import copy
 
@@ -513,47 +518,61 @@ def log_audit(user_id, action, resource_type=None, resource_id=None, details=Non
         db.session.rollback()
 
 
+def _exclude_hidden_qhsi():
+    return ~Submission.module_type.in_(tuple(HIDDEN_QHSI_MODULE_TYPES))
+
+
+def _without_hidden_qhsi(rows):
+    return [s for s in (rows or []) if not is_hidden_qhsi_module(getattr(s, 'module_type', None))]
+
+
 def get_user_pending_submissions(user):
     """Get submissions pending for a user's designation"""
     designation = user.designation
     base_filter = Submission.workflow_status != 'closed_by_admin'
-    
+    rows = []
+
     if designation == 'operations_manager':
-        return Submission.query.filter(
+        rows = Submission.query.filter(
             base_filter,
+            _exclude_hidden_qhsi(),
             Submission.workflow_status == 'operations_manager_review'
         ).order_by(Submission.created_at.desc()).all()
-    
+
     elif user.is_bd_inspection_reviewer():
-        return Submission.query.filter(
+        rows = Submission.query.filter(
             base_filter,
+            _exclude_hidden_qhsi(),
             Submission.workflow_status == 'bd_procurement_review',
             or_(
                 Submission.business_dev_approved_at.is_(None),
                 Submission.business_dev_approved_at == None
             )
         ).order_by(Submission.created_at.desc()).all()
-    
+
     elif designation == 'procurement':
-        return Submission.query.filter(
+        rows = Submission.query.filter(
             base_filter,
+            _exclude_hidden_qhsi(),
             Submission.workflow_status == 'bd_procurement_review',
             or_(
                 Submission.procurement_approved_at.is_(None),
                 Submission.procurement_approved_at == None
             )
         ).order_by(Submission.created_at.desc()).all()
-    
+
     elif designation == 'general_manager':
-        return Submission.query.filter(
+        rows = Submission.query.filter(
             base_filter,
+            _exclude_hidden_qhsi(),
             Submission.workflow_status == 'general_manager_review'
         ).order_by(Submission.created_at.desc()).all()
-    
+
     elif designation in ('supervisor', 'manager'):
         # Supervisors / site managers: technician forms awaiting their review, plus own drafts/rejected.
-        return Submission.query.filter(
+        rows = Submission.query.filter(
             base_filter,
+            _exclude_hidden_qhsi(),
             or_(
                 and_(
                     Submission.supervisor_id == user.id,
@@ -567,8 +586,8 @@ def get_user_pending_submissions(user):
                 ),
             ),
         ).order_by(Submission.created_at.desc()).all()
-    
-    return []
+
+    return _without_hidden_qhsi(rows)
 
 
 # Workflow stages strictly after each reviewer has completed sign-off (inspection chain).
@@ -837,10 +856,13 @@ def get_pending_submissions():
             submissions = Submission.query.options(
                 joinedload(Submission.user)
             ).filter(
+                _exclude_hidden_qhsi(),
                 Submission.workflow_status.notin_(['completed', 'closed_by_admin', 'rejected'])
             ).order_by(Submission.created_at.desc()).all()
         else:
             submissions = get_user_pending_submissions(user)
+
+        submissions = _without_hidden_qhsi(submissions)
         
         result = []
         for submission in submissions:
@@ -860,7 +882,7 @@ def get_pending_submissions():
         return error_response('Failed to get pending submissions', status_code=500, error_code='DATABASE_ERROR')
 
 
-INSPECTION_MODULE_TYPES = ('inspection', 'hvac_mep', 'civil', 'cleaning', 'qhsi_inspection', 'qhsi_staff_compliance')
+INSPECTION_MODULE_TYPES = ('inspection', 'hvac_mep', 'civil', 'cleaning')
 INSPECTION_HISTORY_DESIGNATIONS = (
     'supervisor',
     'operations_manager',
@@ -993,6 +1015,16 @@ def _inspection_submissions_list_query_for_user(base_query, user, scope: str = '
     return q.filter(_my_submissions_filter(user.id))
 
 
+def _qhsi_submissions_list_query_for_user(base_query, user, scope: str = 'inspection'):
+    """QHSE rows on Submitted forms so existing records can be opened (hidden from pending/stats)."""
+    if not user:
+        return None
+    q = base_query.filter(Submission.module_type.in_(tuple(HIDDEN_QHSI_MODULE_TYPES)))
+    if _user_sees_org_wide_submissions(user, scope):
+        return q
+    return q.filter(_my_submissions_filter(user.id))
+
+
 def _hr_latest_activity_from_form_data(form_data, workflow_status, submission_status):
     """Most recent HR sign-off / revision event for submitted-forms cards."""
     try:
@@ -1046,11 +1078,14 @@ def _build_live_activity_feed(submissions_list, limit=30):
 
 def _submission_successfully_finished():
     """Terminal success states (inspection: completed; HR: approved; other modules: completed/approved)."""
-    return or_(
-        and_(_filter_hr(), Submission.workflow_status == 'approved'),
-        and_(_filter_inspection(), Submission.workflow_status == 'completed'),
-        and_(not_(_filter_hr()), not_(Submission.module_type.in_(INSPECTION_MODULE_TYPES)),
-             Submission.workflow_status.in_(['completed', 'approved']))
+    return and_(
+        _exclude_hidden_qhsi(),
+        or_(
+            and_(_filter_hr(), Submission.workflow_status == 'approved'),
+            and_(_filter_inspection(), Submission.workflow_status == 'completed'),
+            and_(not_(_filter_hr()), not_(Submission.module_type.in_(INSPECTION_MODULE_TYPES)),
+                 Submission.workflow_status.in_(['completed', 'approved']))
+        ),
     )
 
 
@@ -1058,7 +1093,7 @@ def _forms_needing_completion_count():
     """Submissions not yet successfully finished (excludes rejected/closed)."""
     terminal_done = _submission_successfully_finished()
     closed = Submission.workflow_status.in_(['rejected', 'closed_by_admin'])
-    return Submission.query.filter(not_(or_(terminal_done, closed))).count()
+    return Submission.query.filter(_exclude_hidden_qhsi(), not_(or_(terminal_done, closed))).count()
 
 
 def _count_inspection(global_scope=True, supervisor_id=None):
@@ -1083,7 +1118,7 @@ def _count_completed_success(global_scope=True, supervisor_id=None):
 
 
 def _count_total_for_rate(global_scope=True, supervisor_id=None):
-    q = Submission.query
+    q = Submission.query.filter(_exclude_hidden_qhsi())
     if not global_scope and supervisor_id is not None:
         q = q.filter(Submission.supervisor_id == supervisor_id)
     return q.count()
@@ -1158,7 +1193,7 @@ def _count_completed_success_my(user_id):
 
 
 def _completion_rate_pct_my(user_id):
-    total = Submission.query.filter(_my_submissions_filter(user_id)).count()
+    total = Submission.query.filter(_my_submissions_filter(user_id), _exclude_hidden_qhsi()).count()
     if not total:
         return 0
     done = Submission.query.filter(_submission_successfully_finished(), _my_submissions_filter(user_id)).count()
@@ -1253,9 +1288,9 @@ def _days_with_injaaz_metric(user):
     annual = getattr(user, 'annual_leave_days', None)
     other = getattr(user, 'other_leave_days', None)
     return {
-        'label': 'Days with Injaaz',
+        'label': 'Days with Kynvera',
         'value': value,
-        'href': _dashboard_stat_href('Days with Injaaz'),
+        'href': _dashboard_stat_href('Days with Kynvera'),
         'joined_date': joined_date,
         'annual_leave_days': annual,
         'other_leave_days': other,
@@ -1451,6 +1486,7 @@ def get_dashboard_stats():
         # Pending count (same logic as pending submissions) — legacy / other UIs
         if user.role == 'admin':
             pending_count = Submission.query.filter(
+                _exclude_hidden_qhsi(),
                 Submission.workflow_status.notin_(['completed', 'closed_by_admin', 'rejected'])
             ).count()
         else:
@@ -1459,23 +1495,30 @@ def get_dashboard_stats():
 
         if user.designation == 'supervisor':
             forms_submitted = Submission.query.filter(
-                Submission.supervisor_id == user.id
+                Submission.supervisor_id == user.id,
+                _exclude_hidden_qhsi(),
             ).count()
         elif persona == 'default':
-            forms_submitted = Submission.query.filter(_my_submissions_filter(user.id)).count()
+            forms_submitted = Submission.query.filter(
+                _my_submissions_filter(user.id),
+                _exclude_hidden_qhsi(),
+            ).count()
         else:
-            forms_submitted = Submission.query.count()
+            forms_submitted = Submission.query.filter(_exclude_hidden_qhsi()).count()
 
         active_users = User.query.filter_by(is_active=True).count() if user.role == 'admin' else 0
 
         if persona == 'default':
-            total_submissions = Submission.query.filter(_my_submissions_filter(user.id)).count()
+            total_submissions = Submission.query.filter(
+                _my_submissions_filter(user.id),
+                _exclude_hidden_qhsi(),
+            ).count()
             completed_count = Submission.query.filter(
                 _submission_successfully_finished(),
                 _my_submissions_filter(user.id),
             ).count()
         else:
-            total_submissions = Submission.query.count()
+            total_submissions = Submission.query.filter(_exclude_hidden_qhsi()).count()
             completed_count = Submission.query.filter(_submission_successfully_finished()).count()
         completion_rate = round((completed_count / total_submissions * 100) if total_submissions else 0)
 
@@ -1521,7 +1564,13 @@ def get_inspection_dashboard_stats():
             {'label': 'Approved inspections', 'value': str(metrics['approved'])},
             {'label': 'Completion rate', 'value': f"{metrics['rate']}%"},
         ]
-        return success_response({'hero_metrics': hero_metrics})
+        return success_response({
+            'hero_metrics': hero_metrics,
+            'submitted': metrics['forms_submitted'],
+            'pending': metrics['pending'],
+            'approved': metrics['approved'],
+            'total': metrics['forms_submitted'],
+        })
     except Exception as e:
         current_app.logger.error(f"Error getting inspection dashboard stats: {str(e)}", exc_info=True)
         return error_response(
@@ -1739,11 +1788,13 @@ def get_my_trail():
 
         # ── pending (awaiting this user's action) ────────────────────────────
         # Inspection pending — reuse existing designation logic
-        insp_pending_rows = get_user_pending_submissions(user) if not is_admin else (
-            Submission.query.options(*list_opts)
-            .filter(_filter_inspection(),
-                    Submission.workflow_status.notin_(['completed', 'closed_by_admin', 'rejected']))
-            .order_by(Submission.created_at.desc()).all()
+        insp_pending_rows = _without_hidden_qhsi(
+            get_user_pending_submissions(user) if not is_admin else (
+                Submission.query.options(*list_opts)
+                .filter(_filter_inspection(),
+                        Submission.workflow_status.notin_(['completed', 'closed_by_admin', 'rejected']))
+                .order_by(Submission.created_at.desc()).all()
+            )
         )
 
         # HR pending — by designation/role
@@ -1924,6 +1975,9 @@ def get_my_submissions():
             ins_own_q = _apply_status(_inspection_submissions_list_query_for_user(base_query, user, scope))
             if ins_own_q is not None:
                 submissions.extend(ins_own_q.all())
+            qhsi_q = _apply_status(_qhsi_submissions_list_query_for_user(base_query, user, scope))
+            if qhsi_q is not None:
+                submissions.extend(qhsi_q.all())
 
         dedup = {}
         for s in submissions:
@@ -1944,8 +1998,6 @@ def get_my_submissions():
             'hvac_mep': 'Inspection',
             'civil': 'Inspection',
             'cleaning': 'Inspection',
-            'qhsi_inspection': 'QHSA Site Inspection',
-            'qhsi_staff_compliance': 'Staff Compliance (QHSI)',
         }
 
         submissions_list = []
@@ -1954,7 +2006,7 @@ def get_my_submissions():
             mt = submission.module_type
             sub_dict['module_name'] = (
                 inspections_map.get(mt)
-                or (_hr_module_title(mt) if (mt or '').startswith('hr_') else (mt or 'Form'))
+                or (_hr_module_title(mt) if (mt or '').startswith('hr_') else get_module_display_name(mt))
             )
             u_rel = getattr(submission, 'user', None)
             sub_dict['submitted_by_display'] = (u_rel.full_name or u_rel.username) if u_rel else None
@@ -2197,6 +2249,11 @@ def get_submission_detail(submission_id):
         sub_dict = submission.to_dict()
         sub_dict['can_edit'] = can_edit_submission(user, submission)
         if _is_hr_module_submission(submission):
+            from module_hr.form_data_normalize import normalize_hr_form_data_for_view
+
+            sub_dict['form_data'] = normalize_hr_form_data_for_view(
+                sub_dict.get('form_data'), submission.module_type
+            )
             sub_dict.update(_hr_leave_edit_api_flags(user, submission))
         
         # Add user details (using eager-loaded relationships)

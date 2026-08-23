@@ -9,8 +9,8 @@
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
   <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}?v=3">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=23">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=26">
   <style>
     :root {
       --green: #ff8e68;
@@ -40,7 +40,7 @@
       --accent-2: #f97e54;
       --dh-fs-sidebar: 16px;
       --dh-fs-sidebar-label: 12px;
-      --dm-nav-top: 5.5rem;
+      --dm-nav-top: var(--nav-bar-h, calc(40px + 1.75rem + env(safe-area-inset-top, 0px)));
     }
     @media (max-width: 1280px) {
       :root { --sidebar-w: 252px; }
@@ -48,7 +48,7 @@
     @media (max-width: 1100px) {
       :root { --sidebar-w: 232px; }
     }
-    body.has-main-nav { padding-top: 5.5rem; }
+    body.has-main-nav { padding-top: var(--dm-nav-top) !important; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
       /* Canvas color comes from dashboard.css (same tokens as Inspection / HR dashboards). */
@@ -70,26 +70,21 @@
     }
     .dm-layout { display: flex; flex: 1; min-height: calc(100vh - var(--dm-nav-top)); }
 
-    /* DocHub / BizFlow sidebar shell */
+    /* DocHub / BizFlow sidebar shell — flush under the global nav */
+    .dm-root > .dh-sidebar,
     .dm-layout > .dh-sidebar {
       --radius: 10px;
       position: sticky;
       top: var(--dm-nav-top);
       align-self: flex-start;
       height: calc(100vh - var(--dm-nav-top));
+      height: calc(100dvh - var(--dm-nav-top));
       z-index: 40;
       flex-shrink: 0;
     }
-    .dm-layout > .dh-sidebar .sb-brand-logo {
-      background: transparent;
-      width: 108px;
-      height: 96px;
-    }
-    .dm-layout > .dh-sidebar .sb-brand-logo img {
-      width: 96px;
-      height: 96px;
-      object-fit: contain;
-      filter: none;
+    .dm-root > .dh-sidebar .sb-brand--text-only,
+    .dm-layout > .dh-sidebar .sb-brand--text-only {
+      gap: 0;
     }
     @media (max-width: 900px) {
       .dm-layout > .dh-sidebar,
@@ -240,17 +235,6 @@
     .dm-stat-card.blue::after { background: var(--info); }
     .dm-stat-card.amber::after { background: var(--warning); }
     .dm-stat-card.red::after { background: var(--danger); }
-    .dm-stat-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
-    .dm-stat-icon {
-      width: 40px; height: 40px;
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
-    }
-    .dm-stat-icon.green { background: var(--green-pale); }
-    .dm-stat-icon.blue { background: #e8f0fb; }
-    .dm-stat-icon.amber { background: #fef3e2; }
-    .dm-stat-icon.red { background: #fdecea; }
     .dm-stat-value { font-size: 30px; font-weight: 700; color: var(--gray-900); letter-spacing: -1px; line-height: 1; margin-bottom: 4px; }
     .dm-stat-label { font-size: 12.5px; color: var(--gray-400); font-weight: 500; }
 
@@ -381,21 +365,7 @@
       font-weight: 700;
     }
 
-    .dm-device-name-cell { display: flex; align-items: center; gap: 10px; min-width: 0; width: 100%; }
-    .dm-device-icon-badge {
-      width: 32px; height: 32px;
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 15px;
-      flex-shrink: 0;
-      border: 1px solid transparent;
-    }
-    .dm-device-icon-badge.type-laptop { background: #e8f5ee; border-color: rgba(18,84,53,0.12); }
-    .dm-device-icon-badge.type-desktop { background: #eef2f4; border-color: rgba(74,99,89,0.12); }
-    .dm-device-icon-badge.type-tablet { background: #fef3e2; border-color: rgba(212,133,10,0.15); }
-    .dm-device-icon-badge.type-mobile { background: #e8f0fb; border-color: rgba(21,101,168,0.12); }
-    .dm-device-icon-badge.type-sim { background: #e8f0fb; border-color: rgba(21,101,168,0.12); }
-    .dm-device-icon-badge.type-server { background: #f4f6f5; border-color: rgba(74,99,89,0.1); }
+    .dm-device-name-cell { display: flex; align-items: center; min-width: 0; width: 100%; }
     .dm-device-text { min-width: 0; flex: 1; overflow: hidden; }
     .dm-device-name {
       font-weight: 600;
@@ -496,7 +466,6 @@
       text-align: center;
       color: var(--gray-400);
     }
-    .dm-empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.5; }
     .dm-empty-title { font-size: 14px; font-weight: 600; color: var(--gray-600); margin-bottom: 4px; }
     .dm-empty-desc { font-size: 12px; }
 
@@ -521,7 +490,6 @@
     .dm-alert-item.warn { background: #fef3e2; border-color: #f9d8a6; }
     .dm-alert-item.info { background: #e8f0fb; border-color: #b8cef5; }
     .dm-alert-item:hover { transform: translateX(2px); }
-    .dm-alert-icon { font-size: 16px; margin-top: 1px; }
     .dm-alert-body { flex: 1; }
     .dm-alert-title { font-size: 12.5px; font-weight: 600; color: var(--gray-900); }
     .dm-alert-desc { font-size: 11.5px; color: var(--gray-600); margin-top: 2px; }
@@ -618,8 +586,7 @@
     }
     .dm-snap-action:hover { background: var(--green-pale); border-color: rgba(18,84,53,0.2); transform: translateX(2px); }
     .dm-snap-action.is-active { background: var(--green-pale); border-color: var(--green); box-shadow: inset 2px 0 0 var(--green); }
-    .dm-snap-action-left { display: flex; align-items: center; gap: 7px; min-width: 0; }
-    .dm-snap-action-icon { font-size: 13px; flex-shrink: 0; }
+    .dm-snap-action-left { display: flex; align-items: center; min-width: 0; }
     .dm-snap-action-label { font-size: 11px; font-weight: 600; color: var(--gray-800); }
     .dm-snap-action-count {
       font-size: 11px; font-weight: 800; color: var(--gray-900);
@@ -679,8 +646,7 @@
       text-align: center;
     }
     .dm-quick-action:hover { border-color: var(--green); background: var(--green-pale); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
-    .dm-quick-action .qa-icon { font-size: 22px; }
-    .dm-quick-action .qa-label { font-size: 11.5px; font-weight: 600; color: var(--gray-600); line-height: 1.3; }
+    .dm-quick-action .qa-label { font-size: 12px; font-weight: 600; color: var(--gray-600); line-height: 1.3; }
     .dm-quick-action:hover .qa-label { color: var(--green); }
 
     .dm-compliance-list { padding: 12px 18px 18px; }
@@ -690,7 +656,6 @@
       border-bottom: 1px solid var(--gray-50);
     }
     .dm-compliance-item:last-child { border-bottom: none; }
-    .dm-compliance-icon { font-size: 20px; }
     .dm-compliance-info { flex: 1; }
     .dm-compliance-name { font-size: 12.5px; font-weight: 600; color: var(--gray-900); }
     .dm-compliance-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
@@ -729,13 +694,6 @@
       padding: 22px 24px 16px;
       border-bottom: 1.5px solid var(--gray-100);
       display: flex; align-items: center; gap: 12px;
-    }
-    .dm-modal-header-icon {
-      width: 40px; height: 40px;
-      background: var(--green-pale);
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
     }
     .dm-modal-title { font-size: 16px; font-weight: 700; color: var(--gray-900); }
     .dm-modal-sub { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
@@ -883,10 +841,7 @@
 
   <div class="dm-root">
     <aside class="dh-sidebar" id="dmSidebar" aria-label="Device management menu">
-      <div class="sb-brand">
-        <div class="sb-brand-logo" aria-hidden="true">
-          <img src="{{ url_for('static', filename='icons/Injaaz logo.png') }}" alt="" width="96" height="96" decoding="async">
-        </div>
+      <div class="sb-brand sb-brand--text-only">
         <div class="sb-brand-text">
           <span class="name">DeviceCore</span>
           <span class="tagline">Enterprise</span>
@@ -941,30 +896,18 @@
       <div class="dm-inner">
         <div class="dm-stats-grid">
           <div class="dm-stat-card green">
-            <div class="dm-stat-header">
-              <div class="dm-stat-icon green">🖥️</div>
-            </div>
             <div class="dm-stat-value" id="totalVal">0</div>
             <div class="dm-stat-label">Total Devices</div>
           </div>
           <div class="dm-stat-card blue">
-            <div class="dm-stat-header">
-              <div class="dm-stat-icon blue">🟢</div>
-            </div>
             <div class="dm-stat-value" id="onlineVal">0</div>
             <div class="dm-stat-label">Online Now</div>
           </div>
           <div class="dm-stat-card amber">
-            <div class="dm-stat-header">
-              <div class="dm-stat-icon amber">⚠️</div>
-            </div>
             <div class="dm-stat-value" id="pendingVal">0</div>
             <div class="dm-stat-label">Needs Update</div>
           </div>
           <div class="dm-stat-card red">
-            <div class="dm-stat-header">
-              <div class="dm-stat-icon red">🔴</div>
-            </div>
             <div class="dm-stat-value" id="offlineVal">0</div>
             <div class="dm-stat-label">Offline</div>
           </div>
@@ -1007,13 +950,12 @@
             <div class="dm-card" style="animation-delay:0.28s">
               <div class="dm-card-header">
                 <div>
-                  <div class="dm-card-title">🔔 Active Alerts</div>
+                  <div class="dm-card-title">Active Alerts</div>
                   <div class="dm-card-sub">Requires attention</div>
                 </div>
               </div>
               <div class="dm-alerts-list" id="alertsList">
                 <div class="dm-alert-item info">
-                  <span class="dm-alert-icon">📋</span>
                   <div class="dm-alert-body">
                     <div class="dm-alert-title">Device Management</div>
                     <div class="dm-alert-desc">Track and manage enrolled devices. Enroll new devices to get started.</div>
@@ -1024,7 +966,7 @@
             <div class="dm-card dm-activity-card" style="animation-delay:0.32s">
               <div class="dm-card-header">
                 <div>
-                  <div class="dm-card-title">⚡ Recent Activity</div>
+                  <div class="dm-card-title">Recent Activity</div>
                   <div class="dm-card-sub">Last activity</div>
                 </div>
               </div>
@@ -1035,7 +977,7 @@
             <div class="dm-card dm-snapshot-card" style="animation-delay:0.36s">
               <div class="dm-card-header">
                 <div>
-                  <div class="dm-card-title">📡 Fleet Pulse</div>
+                  <div class="dm-card-title">Fleet Pulse</div>
                   <div class="dm-card-sub" id="snapshotSub">Status &amp; ownership</div>
                 </div>
               </div>
@@ -1072,19 +1014,15 @@
             </div>
             <div class="dm-actions-grid">
               <div class="dm-quick-action" id="exportBtn">
-                <span class="qa-icon">📥</span>
                 <span class="qa-label">Export CSV</span>
               </div>
               <div class="dm-quick-action" id="enrollBtn2">
-                <span class="qa-icon">➕</span>
                 <span class="qa-label">Enroll Device</span>
               </div>
               <div class="dm-quick-action" id="importExcelBtn">
-                <span class="qa-icon">⭳</span>
                 <span class="qa-label">Import Excel</span>
               </div>
               <div class="dm-quick-action" id="downloadSampleBtn">
-                <span class="qa-icon">🧾</span>
                 <span class="qa-label">Sample Excel</span>
               </div>
             </div>
@@ -1099,7 +1037,6 @@
             </div>
             <div class="dm-compliance-list" id="complianceList">
               <div class="dm-compliance-item">
-                <span class="dm-compliance-icon">🖥️</span>
                 <div class="dm-compliance-info">
                   <div class="dm-compliance-name">Healthy Devices</div>
                   <div class="dm-compliance-sub">Health ≥ 80%</div>
@@ -1107,7 +1044,6 @@
                 <span class="dm-compliance-score pass" id="complianceHealthy">0%</span>
               </div>
               <div class="dm-compliance-item">
-                <span class="dm-compliance-icon">⚠️</span>
                 <div class="dm-compliance-info">
                   <div class="dm-compliance-name">Needs Attention</div>
                   <div class="dm-compliance-sub">Health 55–79%</div>
@@ -1115,7 +1051,6 @@
                 <span class="dm-compliance-score warn" id="complianceWarn">0%</span>
               </div>
               <div class="dm-compliance-item">
-                <span class="dm-compliance-icon">🔴</span>
                 <div class="dm-compliance-info">
                   <div class="dm-compliance-name">Critical</div>
                   <div class="dm-compliance-sub">Health &lt; 55%</div>
@@ -1133,7 +1068,6 @@
   <div class="dm-modal-overlay" id="enrollModal">
     <div class="dm-modal" onclick="event.stopPropagation()">
       <div class="dm-modal-header">
-        <div class="dm-modal-header-icon">🖥️</div>
         <div>
           <div class="dm-modal-title">Enroll New Device</div>
           <div class="dm-modal-sub">Register a device into the management system</div>
@@ -1239,10 +1173,6 @@
   function statusLabel(s) {
     const m = { online:'Online', offline:'Offline', update:'Warning', idle:'Idle' };
     return m[s] || (s ? s.charAt(0).toUpperCase()+s.slice(1) : '—');
-  }
-  function deviceIcon(type) {
-    const icons = { Laptop:'💻', Desktop:'🖥️', Mobile:'📱', Server:'🖥️', Tablet:'📟', SIM:'📶' };
-    return icons[type] || '💻';
   }
   function typeClass(type) {
     const t = (type || 'Laptop').toLowerCase();
@@ -1358,12 +1288,12 @@
     return `<strong>${m.laptopPct}% laptops</strong> in the fleet · ${m.online} online · ${m.assignedPct}% assigned to users.`;
   }
 
-  function snapActionRow(kind, icon, label, count, severity) {
+  function snapActionRow(kind, label, count, severity) {
     if (!count) return '';
     const active = snapshotFilter === kind ? ' is-active' : '';
     const countCls = severity === 'bad' ? ' bad' : (severity === 'warn' ? ' warn' : '');
     return `<button type="button" class="dm-snap-action${active}" onclick="window.dmApplySnapshotFilter('${kind}')">
-      <span class="dm-snap-action-left"><span class="dm-snap-action-icon">${icon}</span><span class="dm-snap-action-label">${label}</span></span>
+      <span class="dm-snap-action-left"><span class="dm-snap-action-label">${label}</span></span>
       <span class="dm-snap-action-count${countCls}">${count}</span>
     </button>`;
   }
@@ -1389,7 +1319,6 @@
         : 'Try adjusting your search or filters';
       container.innerHTML = `
         <div class="dm-empty-state">
-          <div class="dm-empty-icon">🖥️</div>
           <div class="dm-empty-title">No devices found</div>
           <div class="dm-empty-desc">${emptyHint}</div>
         </div>`;
@@ -1412,7 +1341,6 @@
         </div>
         <div class="dm-col-device">
           <div class="dm-device-name-cell">
-            <div class="dm-device-icon-badge type-${tc}">${deviceIcon(d.device_type)}</div>
             <div class="dm-device-text">
               <span class="dm-device-name" title="${fullName}${serialTip}">${escapeHtml(deviceName)}</span>
               <span class="dm-device-id">${escapeHtml(d.device_id || '')}</span>
@@ -1545,9 +1473,9 @@
     const offline = devicesData.filter(d => d.status === 'offline').length;
     const list = document.getElementById('alertsList');
     let html = '';
-    if (pending > 0) html += `<div class="dm-alert-item warn"><span class="dm-alert-icon">🔄</span><div class="dm-alert-body"><div class="dm-alert-title">Pending OS Updates</div><div class="dm-alert-desc">${pending} device(s) need attention</div></div></div>`;
-    if (offline > 0) html += `<div class="dm-alert-item critical"><span class="dm-alert-icon">🔴</span><div class="dm-alert-body"><div class="dm-alert-title">Offline Devices</div><div class="dm-alert-desc">${offline} device(s) offline</div></div></div>`;
-    if (!html) html = `<div class="dm-alert-item info"><span class="dm-alert-icon">📋</span><div class="dm-alert-body"><div class="dm-alert-title">Device Management</div><div class="dm-alert-desc">Track and manage enrolled devices. Enroll new devices to get started.</div></div></div>`;
+    if (pending > 0) html += `<div class="dm-alert-item warn"><div class="dm-alert-body"><div class="dm-alert-title">Pending OS Updates</div><div class="dm-alert-desc">${pending} device(s) need attention</div></div></div>`;
+    if (offline > 0) html += `<div class="dm-alert-item critical"><div class="dm-alert-body"><div class="dm-alert-title">Offline Devices</div><div class="dm-alert-desc">${offline} device(s) offline</div></div></div>`;
+    if (!html) html = `<div class="dm-alert-item info"><div class="dm-alert-body"><div class="dm-alert-title">Device Management</div><div class="dm-alert-desc">Track and manage enrolled devices. Enroll new devices to get started.</div></div></div>`;
     list.innerHTML = html;
     syncDmMainRowHeight();
   }
@@ -1582,12 +1510,12 @@
     if (sub) sub.textContent = readiness + '/100 · ' + total + ' devices';
 
     const actions = [
-      snapActionRow('unassigned', '👤', 'No assigned user', unassigned, unassigned > 0 ? 'warn' : ''),
-      snapActionRow('offline', '🔴', 'Offline devices', offline, offline > 0 ? 'bad' : ''),
-      snapActionRow('update', '⚠️', 'Alert flagged', pending, pending > 0 ? 'warn' : ''),
-      snapActionRow('stale', '💤', 'No recent activity', stale, stale > 0 ? 'warn' : ''),
-      snapActionRow('idle', '⏸️', 'Currently idle', idle, idle > 0 ? '' : ''),
-      snapActionRow('laptop', '💻', 'Laptops', laptops, ''),
+      snapActionRow('unassigned', 'No assigned user', unassigned, unassigned > 0 ? 'warn' : ''),
+      snapActionRow('offline', 'Offline devices', offline, offline > 0 ? 'bad' : ''),
+      snapActionRow('update', 'Alert flagged', pending, pending > 0 ? 'warn' : ''),
+      snapActionRow('stale', 'No recent activity', stale, stale > 0 ? 'warn' : ''),
+      snapActionRow('idle', 'Currently idle', idle, idle > 0 ? '' : ''),
+      snapActionRow('laptop', 'Laptops', laptops, ''),
     ].filter(Boolean).join('');
 
     const clearBtn = snapshotFilter

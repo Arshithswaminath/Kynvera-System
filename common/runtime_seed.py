@@ -27,6 +27,7 @@ def bootstrap_demo_data() -> dict:
         'ticketing': 'skipped',
         'fm_assets': 'skipped',
         'teams': 'skipped',
+        'sample_fill': 'skipped',
     }
     if not summary['enabled']:
         logger.info('AUTO_SEED_DEMO_DATA disabled — skipping reference/demo seeds')
@@ -77,5 +78,18 @@ def bootstrap_demo_data() -> dict:
     except Exception as exc:
         summary['teams'] = f'error: {exc}'
         logger.warning('Supervisor/team seed skipped: %s', exc)
+
+    # Local only — fill remaining models so every dashboard has sample rows.
+    flask_env = os.environ.get('FLASK_ENV', 'development').strip().lower()
+    testing = os.environ.get('TESTING', '').strip().lower() in ('1', 'true', 'yes')
+    if flask_env in ('development', 'dev', '') and not testing:
+        try:
+            from scripts.seed_all_sample_data import seed_all_sample_data
+            seed_all_sample_data()
+            summary['sample_fill'] = 'seeded'
+            logger.info('Seeded local sample rows across remaining models')
+        except Exception as exc:
+            summary['sample_fill'] = f'error: {exc}'
+            logger.warning('Local sample-data fill skipped: %s', exc)
 
     return summary

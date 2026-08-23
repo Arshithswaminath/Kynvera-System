@@ -186,7 +186,9 @@ def _normalize_form_data_for_docx(form_data, form_type):
     Apply field aliases so UI form field names map to DOCX template placeholders.
     Ensures all HR form data maps correctly to Word template placeholders.
     """
-    fd = dict(form_data or {})
+    from module_hr.form_data_normalize import normalize_hr_form_data_for_view
+
+    fd = dict(normalize_hr_form_data_for_view(form_data or {}, form_type))
 
     # --- Leave Application ---
     if form_type in ('leave', 'leave_application'):
@@ -311,7 +313,7 @@ def _normalize_form_data_for_docx(form_data, form_type):
     # --- Visa Renewal: employer alias + decision display ---
     if form_type == 'visa_renewal':
         if not fd.get('employer'):
-            fd['employer'] = fd.get('company') or fd.get('organization') or 'INJAAZ'
+            fd['employer'] = fd.get('company') or fd.get('organization') or 'Kynvera'
         dec_map = {'continue': 'Continue employment for next 2 years and willing to have visa renewed',
                    'discontinue': 'Discontinue service and require visa cancellation'}
         if fd.get('decision') in dec_map:
@@ -738,7 +740,7 @@ def _build_commencement_context(form_data):
         'position': fd.get('position') or '-',
         'contacts': fd.get('contacts') or '-',
         'department': fd.get('department') or '-',
-        'organization': fd.get('organization') or 'INJAAZ',
+        'organization': fd.get('organization') or 'Kynvera',
         'date_of_joining': _fmt_date(fd.get('date_of_joining')),
         'bank_name': fd.get('bank_name') or '-',
         'bank_branch': fd.get('bank_branch') or '-',

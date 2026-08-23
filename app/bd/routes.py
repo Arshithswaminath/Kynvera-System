@@ -326,12 +326,12 @@ def send_email_to_gm():
     if submission_ids and not submission_attachments_found and not cloud_attachments:
         return jsonify({'success': False, 'error': 'No PDF/Excel documents found for the selected submissions'}), 400
 
-    signature = f"\n\nSent by: {user.full_name or user.username}\nInjaaz Team"
+    signature = f"\n\nSent by: {user.full_name or user.username}\nKynvera Team"
     body = f"{message}{signature}"
     html_body = (
         "<html><body>"
         f"<p>{message.replace(chr(10), '<br>')}</p>"
-        f"<p><strong>Sent by:</strong> {user.full_name or user.username}<br>Injaaz Team</p>"
+        f"<p><strong>Sent by:</strong> {user.full_name or user.username}<br>Kynvera Team</p>"
         "</body></html>"
     )
 

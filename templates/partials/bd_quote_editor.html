@@ -1,0 +1,58 @@
+{# Inline quotation editor (shown inside Quotations panel, not a modal). #}
+<div id="pdQuoteEditor" class="pd-quote-screen" hidden>
+  <div class="pd-panel-hd pd-quote-screen-hd">
+    <div>
+      <button type="button" class="pd-back pd-quote-back" onclick="pdCloseQuote()">← Back to quotations</button>
+      <div class="pd-panel-title" id="pdQuoteModalTitle">New Quotation</div>
+      <div class="pd-panel-sub" id="pdQuoteModalSub">For this project</div>
+    </div>
+    <div class="pd-quote-screen-actions">
+      <button type="button" class="pd-btn pd-btn-ghost" onclick="pdCloseQuote()">Cancel</button>
+      <button type="button" class="pd-btn pd-btn-primary" id="pdQuoteSaveBtn" onclick="pdSaveQuote()">Save Quotation</button>
+    </div>
+  </div>
+
+  <div class="pd-card pd-quote-screen-card">
+    <div class="pd-card-body pd-quote-body">
+      <input type="hidden" id="pdQuoteEditId" value="">
+      <div class="pd-field-grid">
+        <div class="pd-fld"><label>Project</label><input id="pdQuoteProjectName" readonly></div>
+        <div class="pd-fld"><label>Client Name *</label><input id="pdQuoteCompany" placeholder="Client company" autocomplete="organization"></div>
+      </div>
+      <div class="pd-field-grid">
+        <div class="pd-fld"><label>Kind Attn</label><input id="pdQuoteKindAttn" placeholder="Contact person"></div>
+        <div class="pd-fld"><label>Tel</label><input id="pdQuoteTel" placeholder="Phone" inputmode="tel"></div>
+      </div>
+      <div class="pd-field-grid">
+        <div class="pd-fld"><label>Subject</label><input id="pdQuoteSubject" placeholder="Price for supply and …"></div>
+        <div class="pd-fld"><label>Project (on quote)</label><input id="pdQuoteSiteName" placeholder="Site / building name"></div>
+      </div>
+      <div class="pd-field-grid">
+        <div class="pd-fld"><label>Ref no</label><input id="pdQuoteRefNo" placeholder="Auto if left blank"></div>
+        <div class="pd-fld"><label>Discount (AED)</label><input id="pdQuoteDiscount" type="number" min="0" step="0.01" value="0"></div>
+      </div>
+
+      <div class="pd-quote-items-head">
+        <span>Line items</span>
+        <button type="button" class="pd-btn pd-btn-ghost" style="min-height:34px;padding:4px 10px;font-size:12px" onclick="pdQuoteAddRow()">+ Add row</button>
+      </div>
+      <div class="pd-quote-items-wrap">
+        <table class="pd-quote-items" id="pdQuoteItemsTable">
+          <thead>
+            <tr><th>#</th><th>Description</th><th>Qty</th><th>U.Price</th><th>Total</th><th></th></tr>
+          </thead>
+          <tbody id="pdQuoteItemsBody"></tbody>
+        </table>
+      </div>
+      <div class="pd-quote-totals" id="pdQuoteTotalsPreview">Total: AED 0.00</div>
+
+      <details class="pd-quote-advanced" open>
+        <summary>NOTE / EXCLUSION / TERMS</summary>
+        <div class="pd-fld" style="margin-top:10px"><label>Intro</label><textarea id="pdQuoteIntro" rows="2"></textarea></div>
+        <div class="pd-fld"><label>NOTE</label><textarea id="pdQuoteNotes" rows="3"></textarea></div>
+        <div class="pd-fld"><label>EXCLUSION</label><textarea id="pdQuoteExclusions" rows="3"></textarea></div>
+        <div class="pd-fld"><label>TERMS &amp; CONDITIONS</label><textarea id="pdQuoteTerms" rows="3"></textarea></div>
+      </details>
+    </div>
+  </div>
+</div>

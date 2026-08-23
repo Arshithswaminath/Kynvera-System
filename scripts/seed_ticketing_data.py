@@ -28,12 +28,15 @@ def seed_ticketing_data():
             db.session.flush()
         return p
 
-    def goc_property(name, project_id):
+    def goc_property(name, project_id, lat=None, lng=None):
         p = TicketProperty.query.filter_by(name=name, project_id=project_id).first()
         if not p:
             p = TicketProperty(name=name, project_id=project_id)
             db.session.add(p)
             db.session.flush()
+        if lat is not None and lng is not None and (p.latitude is None or p.longitude is None):
+            p.latitude = lat
+            p.longitude = lng
         return p
 
     def goc_zone(name, property_id):
@@ -76,7 +79,7 @@ def seed_ticketing_data():
     # ── Project 1: Marina Towers ─────────────────────────────────────────
     p1 = goc_project("Marina Towers", "Al Futtaim Group", "Mixed-use residential & retail complex")
 
-    prop_ta = goc_property("Tower A", p1.id)
+    prop_ta = goc_property("Tower A", p1.id, 25.0805, 55.1402)
     for zone_name, sub_zones in {
         "Basement Levels": {
             "B1 – Parking": ["P1-01", "P1-02", "P1-03", "P1-04", "P1-05"],
@@ -103,7 +106,7 @@ def seed_ticketing_data():
             for u in units:
                 goc_unit(u, sz.id)
 
-    prop_tb = goc_property("Tower B", p1.id)
+    prop_tb = goc_property("Tower B", p1.id, 25.0810, 55.1408)
     for zone_name, sub_zones in {
         "Basement": {
             "B1 – Parking": ["P1-10", "P1-11", "P1-12"],
@@ -120,7 +123,7 @@ def seed_ticketing_data():
             for u in units:
                 goc_unit(u, sz.id)
 
-    prop_retail = goc_property("Retail Podium", p1.id)
+    prop_retail = goc_property("Retail Podium", p1.id, 25.0800, 55.1415)
     zone_gf = goc_zone("Ground Level", prop_retail.id)
     for sz_n, units in {
         "Wing A": ["Shop A-01", "Shop A-02", "Shop A-03", "Food Court A"],
@@ -134,7 +137,7 @@ def seed_ticketing_data():
     # ── Project 2: Green Valley Villas ───────────────────────────────────
     p2 = goc_project("Green Valley Villas", "Emaar Properties", "Gated villa community, 120 units")
 
-    prop_phA = goc_property("Phase A", p2.id)
+    prop_phA = goc_property("Phase A", p2.id, 25.0510, 55.2700)
     for zone_n, sub_zones in {
         "Block 1 (Villas 1–20)": {
             "Interior": ["Villa 1", "Villa 2", "Villa 3", "Villa 4", "Villa 5", "Villa 10", "Villa 15", "Villa 20"],
@@ -155,10 +158,10 @@ def seed_ticketing_data():
             for u in units:
                 goc_unit(u, sz.id)
 
-    # ── Project 3: Injaaz HQ ─────────────────────────────────────────────
-    p3 = goc_project("Injaaz HQ Office", "Injaaz FM", "Company headquarters building")
+    # ── Project 3: Kynvera HQ ─────────────────────────────────────────────
+    p3 = goc_project("Kynvera HQ Office", "Kynvera", "Company headquarters building")
 
-    prop_hq = goc_property("HQ Building", p3.id)
+    prop_hq = goc_property("HQ Building", p3.id, 25.4052, 55.5136)
     for zone_n, sub_zones in {
         "Ground Floor": {
             "Public Areas": ["Main Lobby", "Reception", "Waiting Area", "Security Desk"],

@@ -74,7 +74,7 @@ class TestClaudeLlm:
 
         with app.app_context():
             from module_assistant.llm import generate_reply
-            reply = generate_reply('Where is Injaaz?', [{'title': 'Injaaz', 'source': 'Web', 'text': 'Ajman'}])
+            reply = generate_reply('Where is Kynvera?', [{'title': 'Injaaz', 'source': 'Web', 'text': 'Ajman'}])
             assert 'Ajman' in reply
 
 
@@ -425,7 +425,7 @@ class TestRelevantPassageSearch:
 
         with app.app_context():
             kb_knowledge.invalidate_cache()
-            payload = compose_fallback('Where is Injaaz?')
+            payload = compose_fallback('Where is Kynvera?')
             assert payload['intent'] == 'contact_admin'
             assert 'couldn' in payload['message'].lower() or 'ticket' in payload['message'].lower()
 
@@ -434,10 +434,10 @@ class TestRelevantPassageSearch:
 
         text = (
             'Sheik Khalifa Bin Zayed St, Ajman, United Arab Emirates info@injaaz.ae '
-            'INJAAZ Facilities Management provides integrated FM solutions.'
+            'Kynvera provides integrated FM solutions.'
         )
         assert _has_location_content(text)
-        passage = extract_relevant_passage('Where is Injaaz?', text)
+        passage = extract_relevant_passage('Where is Kynvera?', text)
         assert 'Ajman' in passage
 
     def test_where_is_injaaz_answers_from_location_kb(self, app):
@@ -457,7 +457,7 @@ class TestRelevantPassageSearch:
             db.session.commit()
             kb_knowledge.invalidate_cache()
 
-            payload = compose_fallback('Where is Injaaz?')
+            payload = compose_fallback('Where is Kynvera?')
             assert 'Dubai' in payload['message']
 
             db.session.delete(entry)

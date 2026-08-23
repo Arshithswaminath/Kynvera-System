@@ -546,8 +546,27 @@
     if (t.startsWith('hr_')) return 'type-hr';
     return 'type-' + t.replace(/[^a-z0-9_]/gi, '');
   }
+  function _isHiddenQhsi(t) {
+    const m = (t || '').trim();
+    return m === 'qhsi_staff_compliance' || m === 'qhsi_inspection';
+  }
   function _isHr(t) { return (t || '').startsWith('hr_'); }
   function _modUrl(t) { return t === 'hvac_mep' ? 'hvac-mep' : t; }
+  function _qhsiFormUrl(moduleType, submissionId, review) {
+    const m = moduleType || '';
+    const q = 'edit=' + encodeURIComponent(submissionId || '') + (review ? '&review=true' : '');
+    if (m === 'qhsi_staff_compliance') return '/qhsi/staff-compliance?' + q;
+    if (m === 'qhsi_inspection') return '/qhsi/inspection?' + q;
+    return null;
+  }
+  function _reviewUrl(sub, isPending) {
+    const isHr = _isHr(sub.module_type);
+    if (isHr) return _hrReviewUrl(sub);
+    const qhsi = _qhsiFormUrl(sub.module_type, sub.submission_id, true);
+    if (qhsi) return qhsi;
+    const base = `/${_modUrl(sub.module_type)}/form?edit=${encodeURIComponent(sub.submission_id)}&review=true`;
+    return base;
+  }
   function _accentClass(t) {
     if (!t) return 'accent-default';
     if (t.startsWith('hr_')) return 'accent-hr';
@@ -615,13 +634,6 @@
     if (wf === 'gm_review') return `/hr/gm-approval`;
     if (wf === 'hr_review') return `/hr/pending-review`;
     return `/workflow/submitted-forms?scope=hr&submission=${encodeURIComponent(sub.submission_id)}`;
-  }
-
-  function _reviewUrl(sub, isPending) {
-    const isHr = _isHr(sub.module_type);
-    if (isHr) return _hrReviewUrl(sub);
-    const base = `/${_modUrl(sub.module_type)}/form?edit=${encodeURIComponent(sub.submission_id)}&review=true`;
-    return base;
   }
 
   function _sortRows(rows, order) {
@@ -763,8 +775,8 @@
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.message || body.error || `HTTP ${res.status}`);
       const data = (body.pending !== undefined || body.reviewed !== undefined) ? body : (body.data || {});
-      queueCache.pending = data.pending || [];
-      queueCache.reviewed = data.reviewed || [];
+      queueCache.pending = (data.pending || []).filter(function (s) { return !_isHiddenQhsi(s.module_type); });
+      queueCache.reviewed = (data.reviewed || []).filter(function (s) { return !_isHiddenQhsi(s.module_type); });
     } catch (err) {
       console.error(err);
       document.getElementById('queueList').innerHTML = `

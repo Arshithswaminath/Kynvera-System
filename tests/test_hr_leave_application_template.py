@@ -79,7 +79,7 @@ def _leave_application_form_data_with_mgmt_chain():
 
 # Strings taken from a real export (`leave_application_reference.pdf`) — section headers and trail.
 LEAVE_APPLICATION_LAYOUT_MARKERS = [
-    "Injaaz Facility Management",
+    "Kynvera Facility Management",
     "Leave Application Form",
     "DETAILS OF LEAVE",
     "Type of Leave",

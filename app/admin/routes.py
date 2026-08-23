@@ -4,24 +4,117 @@ Admin Routes - User management and access control
 from flask import Blueprint, request, jsonify, render_template, current_app, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.orm import joinedload
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from app.models import (
     db, User, AuditLog, Device, BDProject, BDFollowUp, BDContact, BDActivity,
     DocHubAccess, MmrChargeableConfig, NotificationConfig, EmailLog, AdminPersonalProject, AdminPersonalProgressStep,
     Technician, KnowledgeBaseEntry, DatabaseBackup,
+    Quotation, QuotationItem, TicketProject,
 )
-from app.middleware import admin_required
+from app.middleware import (
+    admin_required,
+    bd_access_required,
+    user_sees_all_bd_deals,
+    user_has_bd_access,
+    user_can_prepare_quotations,
+)
 from common.error_responses import error_response, success_response
 from common.form_data_utils import shallow_copy_form_data
 from common.document_display import build_document_labels, get_module_display_name
 from common.datetime_utils import utc_now_naive, parse_employment_start_date
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from io import BytesIO, StringIO
 import json
 import os
 import threading
+import uuid
 
 admin_bp = Blueprint('admin_bp', __name__, url_prefix='/api/admin')
+
+
+def _ensure_sales_ops_columns():
+    """Add BD sales/ops columns on existing DBs (SQLite/Postgres-safe)."""
+    try:
+        from sqlalchemy import inspect, text
+        insp = inspect(db.engine)
+        tables = set(insp.get_table_names())
+        alters = []
+        if 'users' in tables:
+            cols = {c['name'] for c in insp.get_columns('users')}
+            if 'access_sales_manager' not in cols:
+                alters.append('ALTER TABLE users ADD COLUMN access_sales_manager BOOLEAN DEFAULT 0')
+            if 'access_quotations' not in cols:
+                alters.append('ALTER TABLE users ADD COLUMN access_quotations BOOLEAN DEFAULT 0')
+        if 'bd_projects' in tables:
+            cols = {c['name'] for c in insp.get_columns('bd_projects')}
+            if 'owner_user_id' not in cols:
+                alters.append('ALTER TABLE bd_projects ADD COLUMN owner_user_id INTEGER')
+        with db.engine.begin() as conn:
+            for sql in alters:
+                try:
+                    conn.execute(text(sql))
+                except Exception:
+                    pass
+        db.create_all()
+        try:
+            db.session.execute(text(
+                'UPDATE bd_projects SET owner_user_id = created_by '
+                'WHERE owner_user_id IS NULL AND created_by IS NOT NULL'
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+    except Exception as exc:
+        current_app.logger.warning('sales ops column ensure: %s', exc)
+
+
+@admin_bp.record_once
+def _admin_bp_on_register(state):
+    with state.app.app_context():
+        _ensure_sales_ops_columns()
+
+
+def _bd_current_user():
+    uid = get_jwt_identity()
+    try:
+        uid = int(uid)
+    except (TypeError, ValueError):
+        pass
+    return User.query.get(uid)
+
+
+def _bd_scoped_projects_query(user):
+    q = BDProject.query
+    if not user_sees_all_bd_deals(user):
+        q = q.filter(db.or_(
+            BDProject.owner_user_id == user.id,
+            BDProject.created_by == user.id,
+        ))
+    return q
+
+
+def _resolve_owner_user_id(data, default_user_id=None):
+    raw = data.get('owner_user_id', data.get('ownerUserId'))
+    if raw is None or raw == '':
+        return default_user_id
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return default_user_id
+
+
+def _sync_owner_display(project):
+    if project.owner_user_id:
+        u = db.session.get(User, project.owner_user_id)
+        if u:
+            project.owner = u.full_name or u.username
+    return project
+
+
+def _can_access_bd_project(user, project):
+    if user_sees_all_bd_deals(user):
+        return True
+    return project.owner_user_id in (None, user.id) or project.created_by == user.id
 
 
 def _admin_user_dict(user):
@@ -616,12 +709,20 @@ def create_user_admin():
             user.access_hr = bool(data.get('access_hr', False))
             user.access_procurement_module = bool(data.get('access_procurement_module', False))
             user.access_business_development = bool(data.get('access_business_development', False))
+            user.access_sales_manager = bool(data.get('access_sales_manager', False))
+            user.access_quotations = bool(data.get('access_quotations', False))
             user.access_report_generation = bool(data.get('access_report_generation', False))
             user.access_submitted_forms = bool(data.get('access_submitted_forms', False))
             user.access_ticketing = bool(data.get('access_ticketing', False))
             user.access_qhsi = bool(data.get('access_qhsi', False))
             user.access_files = bool(data.get('access_files', False))
             user.is_ticket_reporter = bool(data.get('is_ticket_reporter', False))
+            if bool(user.access_sales_manager):
+                user.access_business_development = True
+            if (user.designation or '') == 'business_development':
+                user.access_business_development = True
+                if data.get('access_quotations') is None:
+                    user.access_quotations = True
 
         db.session.add(user)
         db.session.flush()
@@ -1062,6 +1163,8 @@ def update_user(user_id):
                 ('access_hr', 'access_hr'),
                 ('access_procurement_module', 'access_procurement_module'),
                 ('access_business_development', 'access_business_development'),
+                ('access_sales_manager', 'access_sales_manager'),
+                ('access_quotations', 'access_quotations'),
                 ('access_report_generation', 'access_report_generation'),
                 ('access_submitted_forms', 'access_submitted_forms'),
                 ('access_ticketing', 'access_ticketing'),
@@ -1071,6 +1174,12 @@ def update_user(user_id):
             ):
                 if key in data:
                     setattr(user, col, bool(data[key]))
+            if bool(getattr(user, 'access_sales_manager', False)):
+                user.access_business_development = True
+            if (user.designation or '') == 'business_development':
+                user.access_business_development = True
+                if 'access_quotations' not in data:
+                    user.access_quotations = True
 
         if 'password' in data:
             from app.auth.routes import validate_password
@@ -2362,7 +2471,7 @@ def _parse_iso_datetime(value):
         return None
 
 
-def _bd_activity(icon, title, description='', badge='', bg='#e8f5ee', event_time=None, user_id=None):
+def _bd_activity(icon, title, description='', badge='', bg='#fff4ef', event_time=None, user_id=None):
     activity = BDActivity(
         icon=icon,
         bg=bg,
@@ -2373,6 +2482,15 @@ def _bd_activity(icon, title, description='', badge='', bg='#e8f5ee', event_time
         created_by=user_id
     )
     db.session.add(activity)
+
+
+def _bd_dt_24(dt=None):
+    """Format a datetime as YYYY-MM-DD HH:MM (24h) for timeline / quote logs."""
+    value = dt or utc_now_naive()
+    try:
+        return value.strftime('%Y-%m-%d %H:%M')
+    except Exception:
+        return ''
 
 
 def _normalize_excel_column_name(value):
@@ -2420,89 +2538,69 @@ def _parse_excel_float(value, default=0.0):
 
 
 def _seed_bd_data_if_empty(user_id):
-    if BDProject.query.count() > 0:
-        return
-
-    samples = [
-        {
-            'name': 'Nexus Corp Platform Deal',
-            'company': 'Nexus Corp',
-            'stage': 'proposal',
-            'status': 'active',
-            'priority': 'high',
-            'value_amount': 480000,
-            'progress': 72,
-            'owner': 'Rachel H.',
-            'next_action': 'Contract review',
-            'expected_close_date': utc_now_naive().date() + timedelta(days=3)
-        },
-        {
-            'name': 'Vertex Partners — SaaS Migration',
-            'company': 'Vertex Partners',
-            'stage': 'qualifying',
-            'status': 'proposal',
-            'priority': 'high',
-            'value_amount': 320000,
-            'progress': 45,
-            'owner': 'James P.',
-            'next_action': 'Proposal sent',
-            'expected_close_date': utc_now_naive().date() + timedelta(days=8)
-        },
-        {
-            'name': 'Archway Technologies',
-            'company': 'Archway Tech',
-            'stage': 'prospecting',
-            'status': 'prospect',
-            'priority': 'med',
-            'value_amount': 210000,
-            'progress': 15,
-            'owner': 'Tom R.',
-            'next_action': 'Intro meeting',
-            'expected_close_date': utc_now_naive().date() + timedelta(days=14)
-        }
-    ]
-
-    for sample in samples:
-        db.session.add(BDProject(created_by=user_id, **sample))
-
-    db.session.add(BDContact(
-        name='Marcus Johnson',
-        title='VP of Technology',
-        company='Nexus Corp',
-        email='marcus@nexus.example',
-        tags=['Decision Maker', 'Champion'],
-        created_by=user_id
-    ))
-    db.session.add(BDFollowUp(
-        title='Call with Marcus – Q4 proposal review',
-        company='Nexus Corp',
-        followup_type='call',
-        due_at=utc_now_naive() + timedelta(hours=6),
-        status='open',
-        created_by=user_id
-    ))
-    _bd_activity('📌', 'BD workspace initialized', 'Created starter records for your team.', 'System', '#e8f0fb', user_id=user_id)
-    db.session.commit()
+    """Top up the BD pipeline with sample deals, quotes, follow-ups, and contacts."""
+    from app.bd.sample_data import ensure_bd_sample_pipeline
+    ensure_bd_sample_pipeline(user_id)
 
 
 @admin_bp.route('/bd/dashboard-data', methods=['GET'])
 @jwt_required()
-@admin_required
+@bd_access_required
 def bd_dashboard_data():
-    """Get all BD dashboard data."""
+    """Get all BD dashboard data (scoped to salesperson unless elevated)."""
     try:
-        user_id = get_jwt_identity()
+        user = _bd_current_user()
+        user_id = user.id if user else get_jwt_identity()
         _seed_bd_data_if_empty(user_id)
 
-        projects = BDProject.query.order_by(BDProject.updated_at.desc()).all()
-        followups = BDFollowUp.query.order_by(BDFollowUp.created_at.desc()).all()
-        contacts = BDContact.query.order_by(BDContact.updated_at.desc()).all()
-        activities = BDActivity.query.order_by(BDActivity.event_time.desc()).limit(50).all()
+        view = (request.args.get('view') or 'all').strip().lower()
+        owner_id = request.args.get('owner_id', type=int)
+        projects_q = _bd_scoped_projects_query(user).order_by(BDProject.updated_at.desc())
+        if user_sees_all_bd_deals(user) and owner_id:
+            projects_q = projects_q.filter(BDProject.owner_user_id == owner_id)
+        projects = projects_q.all()
+
+        today = date.today()
+        renewal_cutoff = today + timedelta(days=45)
+        for p in projects:
+            if (p.status or '') in ('lost',):
+                continue
+            linked = TicketProject.query.filter_by(bd_project_id=p.id).all()
+            for tp in linked:
+                rd = tp.renewal_date or tp.project_end_date
+                if rd and today <= rd <= renewal_cutoff and (p.status or '') != 'under_renewal':
+                    p.status = 'under_renewal'
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        if view == 'active':
+            projects = [p for p in projects if (p.status or '') in ('active', 'proposal', 'prospect')]
+        elif view == 'lost':
+            projects = [p for p in projects if (p.status or '') == 'lost']
+        elif view in ('renewal', 'under_renewal'):
+            projects = [p for p in projects if (p.status or '') == 'under_renewal']
+
+        project_ids = {p.id for p in projects}
+        if user_sees_all_bd_deals(user):
+            followups = BDFollowUp.query.order_by(BDFollowUp.created_at.desc()).all()
+            contacts = BDContact.query.order_by(BDContact.updated_at.desc()).all()
+            activities = BDActivity.query.order_by(BDActivity.event_time.desc()).limit(50).all()
+        else:
+            followups = BDFollowUp.query.filter(
+                db.or_(BDFollowUp.created_by == user.id, BDFollowUp.project_id.in_(project_ids or [-1]))
+            ).order_by(BDFollowUp.created_at.desc()).all()
+            contacts = BDContact.query.filter(BDContact.created_by == user.id).order_by(BDContact.updated_at.desc()).all()
+            activities = BDActivity.query.filter(BDActivity.created_by == user.id).order_by(
+                BDActivity.event_time.desc()
+            ).limit(50).all()
 
         total_value = sum(float(p.value_amount or 0) for p in projects)
-        active_deals = len([p for p in projects if p.status in ['active', 'proposal', 'prospect']])
+        active_deals = len([p for p in projects if p.status in ['active', 'proposal', 'prospect', 'under_renewal']])
         won = len([p for p in projects if p.status == 'won'])
         lost = len([p for p in projects if p.status == 'lost'])
+        under_renewal = len([p for p in projects if p.status == 'under_renewal'])
         win_rate = int(round((won / (won + lost)) * 100)) if (won + lost) > 0 else 0
         avg_deal_size = int(round(total_value / len(projects))) if projects else 0
         overdue_followups = len([
@@ -2521,18 +2619,56 @@ def bd_dashboard_data():
                 'value': stage_value
             })
 
+        from app.bd import analytics as BDA
+        ticket_projects = TicketProject.query.all()
+        forecast = BDA.weighted_forecast(projects)
+        funnel = BDA.conversion_funnel(projects)
+        stalled = BDA.stalled_deals(projects)
+        outcome = BDA.outcome_loop(ticket_projects)
+
+        owners = []
+        if user_sees_all_bd_deals(user):
+            for u in User.query.filter(User.is_active.is_(True)).order_by(User.full_name).all():
+                if user_has_bd_access(u) or u.role == 'admin':
+                    owners.append({
+                        'id': u.id,
+                        'name': u.full_name or u.username,
+                    })
+
+        quotes_q = Quotation.query.order_by(Quotation.updated_at.desc())
+        if not user_sees_all_bd_deals(user):
+            quotes_q = quotes_q.filter(db.or_(
+                Quotation.owner_user_id == user.id,
+                Quotation.created_by_id == user.id,
+            ))
+        if user_sees_all_bd_deals(user) and owner_id:
+            quotes_q = quotes_q.filter(Quotation.owner_user_id == owner_id)
+        quotations = quotes_q.limit(200).all()
+
         return success_response({
             'projects': [p.to_dict() for p in projects],
             'followups': [f.to_dict() for f in followups],
             'contacts': [c.to_dict() for c in contacts],
             'activities': [a.to_dict() for a in activities],
+            'owners': owners,
+            'quotations': [q.to_dict(include_items=False) for q in quotations],
+            'can_prepare_quotations': user_can_prepare_quotations(user),
+            'scope': {
+                'sees_all': user_sees_all_bd_deals(user),
+                'view': view,
+            },
             'stats': {
                 'total_pipeline': total_value,
                 'active_deals': active_deals,
+                'under_renewal': under_renewal,
                 'win_rate': win_rate,
                 'avg_deal_size': avg_deal_size,
                 'overdue_followups': overdue_followups,
-                'stage_stats': stage_stats
+                'stage_stats': stage_stats,
+                'forecast': forecast,
+                'funnel': funnel,
+                'stalled': stalled,
+                'outcome': outcome,
             }
         })
     except Exception as e:
@@ -2542,17 +2678,22 @@ def bd_dashboard_data():
 
 @admin_bp.route('/bd/projects', methods=['POST'])
 @jwt_required()
-@admin_required
+@bd_access_required
 def bd_create_project():
     """Create a BD project/deal."""
     try:
-        user_id = get_jwt_identity()
+        user = _bd_current_user()
+        user_id = user.id
         data = request.get_json() or {}
 
         name = (data.get('name') or '').strip()
         company = (data.get('company') or '').strip()
         if not name or not company:
             return error_response('Project name and company are required', status_code=400, error_code='VALIDATION_ERROR')
+
+        owner_uid = _resolve_owner_user_id(data, default_user_id=user_id)
+        if not user_sees_all_bd_deals(user):
+            owner_uid = user_id
 
         project = BDProject(
             name=name,
@@ -2563,6 +2704,7 @@ def bd_create_project():
             value_amount=float(data.get('value_amount') or 0),
             progress=max(0, min(100, int(data.get('progress') or 0))),
             owner=(data.get('owner') or '').strip() or None,
+            owner_user_id=owner_uid,
             next_action=(data.get('next_action') or '').strip() or None,
             expected_close_date=_parse_iso_date(data.get('expected_close_date')),
             notes=(data.get('notes') or '').strip() or None,
@@ -2570,6 +2712,7 @@ def bd_create_project():
             primary_contact_email=(data.get('primary_contact_email') or '').strip() or None,
             created_by=user_id
         )
+        _sync_owner_display(project)
         db.session.add(project)
 
         if project.primary_contact_name:
@@ -2606,7 +2749,7 @@ def bd_create_project():
             title=f'Project created — {project.name}',
             description=f'Added deal for {project.company}',
             badge=project.company,
-            bg='#e8f5ee',
+            bg='#fff4ef',
             user_id=user_id
         )
 
@@ -2618,15 +2761,106 @@ def bd_create_project():
         return error_response('Failed to create project', status_code=500, error_code='DATABASE_ERROR')
 
 
+@admin_bp.route('/bd/projects/<int:project_id>', methods=['GET'])
+@jwt_required()
+@bd_access_required
+def bd_get_project(project_id):
+    """Project workspace payload: deal + related quotes, follow-ups, activity."""
+    try:
+        user = _bd_current_user()
+        project = db.session.get(BDProject, project_id)
+        if not project:
+            return error_response('Project not found', status_code=404, error_code='NOT_FOUND')
+        if not _can_access_bd_project(user, project):
+            return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+
+        quotations = (
+            Quotation.query.filter_by(bd_project_id=project.id)
+            .order_by(Quotation.created_at.desc())
+            .limit(100)
+            .all()
+        )
+        followups = (
+            BDFollowUp.query.filter(
+                db.or_(
+                    BDFollowUp.project_id == project.id,
+                    db.and_(
+                        BDFollowUp.company.isnot(None),
+                        BDFollowUp.company == project.company,
+                    ),
+                )
+            )
+            .order_by(BDFollowUp.created_at.desc())
+            .limit(50)
+            .all()
+        )
+        company = (project.company or '').strip()
+        activities_q = BDActivity.query
+        if company:
+            activities_q = activities_q.filter(
+                db.or_(
+                    BDActivity.badge == company,
+                    BDActivity.title.ilike(f'%{project.name}%'),
+                    BDActivity.description.ilike(f'%{company}%'),
+                )
+            )
+        else:
+            activities_q = activities_q.filter(BDActivity.title.ilike(f'%{project.name}%'))
+        activities = activities_q.order_by(BDActivity.event_time.desc()).limit(40).all()
+
+        contacts = []
+        if company:
+            contacts = (
+                BDContact.query.filter(BDContact.company == company)
+                .order_by(BDContact.name.asc())
+                .limit(20)
+                .all()
+            )
+
+        quoted_total = round(sum(float(q.grand_total or 0) for q in quotations), 2)
+        latest = quotations[0] if quotations else None
+        owners = []
+        if user_sees_all_bd_deals(user):
+            for u in User.query.filter(User.is_active.is_(True)).order_by(User.full_name).all():
+                if user_has_bd_access(u) or u.role == 'admin':
+                    owners.append({
+                        'id': u.id,
+                        'name': u.full_name or u.username,
+                    })
+
+        return success_response({
+            'project': project.to_dict(),
+            'quotations': [q.to_dict() for q in quotations],
+            'followups': [f.to_dict() for f in followups],
+            'activities': [a.to_dict() for a in activities],
+            'contacts': [c.to_dict() for c in contacts],
+            'owners': owners,
+            'can_prepare_quotations': user_can_prepare_quotations(user),
+            'summary': {
+                'quote_count': len(quotations),
+                'quoted_total': quoted_total,
+                'latest_quote_no': latest.quote_no if latest else None,
+                'latest_quote_status': latest.status if latest else None,
+                'open_followups': sum(1 for f in followups if (f.status or 'open') != 'done'),
+            },
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error fetching BD project {project_id}: {str(e)}", exc_info=True)
+        return error_response('Failed to fetch project', status_code=500, error_code='DATABASE_ERROR')
+
+
 @admin_bp.route('/bd/projects/<int:project_id>', methods=['PUT'])
 @jwt_required()
-@admin_required
+@bd_access_required
 def bd_update_project(project_id):
     """Update a BD project/deal."""
     try:
-        user_id = get_jwt_identity()
+        user = _bd_current_user()
+        user_id = user.id
         data = request.get_json() or {}
         project = BDProject.query.get_or_404(project_id)
+        if not _can_access_bd_project(user, project):
+            return error_response('You can only edit your own deals', status_code=403, error_code='OWNERSHIP_REQUIRED')
 
         name = (data.get('name') or project.name or '').strip()
         company = (data.get('company') or project.company or '').strip()
@@ -2643,8 +2877,14 @@ def bd_update_project(project_id):
         project.priority = (data.get('priority') or project.priority or 'med').strip().lower()
         project.value_amount = float(data.get('value_amount') if data.get('value_amount') is not None else (project.value_amount or 0))
         project.progress = max(0, min(100, int(data.get('progress') if data.get('progress') is not None else (project.progress or 0))))
-        project.owner = (data.get('owner') if data.get('owner') is not None else project.owner or '')
-        project.owner = project.owner.strip() or None
+        if data.get('owner') is not None:
+            project.owner = (data.get('owner') or '').strip() or None
+        if 'owner_user_id' in data or 'ownerUserId' in data:
+            if user_sees_all_bd_deals(user):
+                project.owner_user_id = _resolve_owner_user_id(data, default_user_id=project.owner_user_id)
+            else:
+                project.owner_user_id = user.id
+            _sync_owner_display(project)
         project.next_action = (data.get('next_action') if data.get('next_action') is not None else project.next_action or '')
         project.next_action = project.next_action.strip() or None
         project.expected_close_date = _parse_iso_date(data.get('expected_close_date')) if 'expected_close_date' in data else project.expected_close_date
@@ -2687,9 +2927,57 @@ def bd_update_project(project_id):
         return error_response('Failed to update project', status_code=500, error_code='DATABASE_ERROR')
 
 
+@admin_bp.route('/bd/projects/<int:project_id>', methods=['DELETE'])
+@jwt_required()
+@bd_access_required
+def bd_delete_project(project_id):
+    """Delete a BD deal. Quotes and ticketing projects are unlinked, not removed."""
+    try:
+        user = _bd_current_user()
+        project = db.session.get(BDProject, project_id)
+        if not project:
+            return error_response('Project not found', status_code=404, error_code='NOT_FOUND')
+        if not _can_access_bd_project(user, project):
+            return error_response('You can only delete your own deals', status_code=403, error_code='OWNERSHIP_REQUIRED')
+
+        name = project.name
+        company = project.company
+
+        BDFollowUp.query.filter_by(project_id=project.id).delete(synchronize_session=False)
+        Quotation.query.filter_by(bd_project_id=project.id).update(
+            {Quotation.bd_project_id: None}, synchronize_session=False
+        )
+        TicketProject.query.filter_by(bd_project_id=project.id).update(
+            {TicketProject.bd_project_id: None}, synchronize_session=False
+        )
+        try:
+            from app.models import QhsiTraining
+            QhsiTraining.query.filter_by(bd_project_id=project.id).update(
+                {QhsiTraining.bd_project_id: None}, synchronize_session=False
+            )
+        except Exception:
+            pass
+
+        db.session.delete(project)
+        _bd_activity(
+            icon='🗑️',
+            title=f'Project deleted — {name}',
+            description=f'Removed deal for {company}',
+            badge=company or 'Deleted',
+            bg='#fdf0ee',
+            user_id=user.id,
+        )
+        db.session.commit()
+        return success_response({'deleted_id': project_id}, message='Project deleted')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting BD project {project_id}: {str(e)}", exc_info=True)
+        return error_response('Failed to delete project', status_code=500, error_code='DATABASE_ERROR')
+
+
 @admin_bp.route('/bd/projects/import-excel', methods=['POST'])
 @jwt_required()
-@admin_required
+@bd_access_required
 def bd_import_projects_excel():
     """Bulk import BD projects from client contract Excel."""
     try:
@@ -2873,6 +3161,7 @@ def bd_import_projects_excel():
                     value_amount=contract_amount,
                     progress=progress,
                     owner=(user.full_name if user and user.full_name else (user.username if user else 'Admin')),
+                    owner_user_id=user_id,
                     next_action=next_action,
                     expected_close_date=expected_close,
                     notes=' | '.join(notes_parts) if notes_parts else None,
@@ -2922,7 +3211,7 @@ def bd_import_projects_excel():
 
 @admin_bp.route('/bd/followups', methods=['POST'])
 @jwt_required()
-@admin_required
+@bd_access_required
 def bd_create_followup():
     """Create a BD follow-up."""
     try:
@@ -2960,9 +3249,73 @@ def bd_create_followup():
         return error_response('Failed to create follow-up', status_code=500, error_code='DATABASE_ERROR')
 
 
+def _can_access_followup(user, followup):
+    if user_sees_all_bd_deals(user):
+        return True
+    if followup.created_by == user.id:
+        return True
+    if followup.project_id:
+        project = BDProject.query.get(followup.project_id)
+        if project and _can_access_bd_project(user, project):
+            return True
+    return False
+
+
+@admin_bp.route('/bd/followups/<int:followup_id>', methods=['PUT'])
+@jwt_required()
+@bd_access_required
+def bd_update_followup(followup_id):
+    """Update a follow-up, including marking it done or reopening it."""
+    try:
+        user = _bd_current_user()
+        followup = db.session.get(BDFollowUp, followup_id)
+        if not followup:
+            return error_response('Follow-up not found', status_code=404, error_code='NOT_FOUND')
+        if not _can_access_followup(user, followup):
+            return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+
+        data = request.get_json(silent=True) or {}
+        if 'title' in data:
+            title = (data.get('title') or '').strip()
+            if not title:
+                return error_response('Follow-up title is required', status_code=400, error_code='VALIDATION_ERROR')
+            followup.title = title
+        if 'company' in data:
+            followup.company = (data.get('company') or '').strip() or None
+        if 'followup_type' in data:
+            followup.followup_type = (data.get('followup_type') or followup.followup_type or 'note').strip().lower()
+        if 'due_at' in data:
+            followup.due_at = _parse_iso_datetime(data.get('due_at'))
+        if 'details' in data:
+            followup.details = (data.get('details') or '').strip() or None
+        if 'project_id' in data:
+            followup.project_id = data.get('project_id') or None
+        if 'status' in data:
+            status = (data.get('status') or '').strip().lower()
+            if status not in ('open', 'done'):
+                return error_response('Status must be open or done', status_code=400, error_code='VALIDATION_ERROR')
+            followup.status = status
+
+        done_now = followup.status == 'done'
+        _bd_activity(
+            icon='✅' if done_now else '🔔',
+            title=('Follow-up completed — ' if done_now else 'Follow-up updated — ') + followup.title,
+            description=(followup.details or followup.company or ''),
+            badge=(followup.company or 'Follow-up'),
+            bg='#e8f5ee' if done_now else '#fef6e4',
+            user_id=user.id,
+        )
+        db.session.commit()
+        return success_response({'followup': followup.to_dict()}, message='Follow-up updated')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating BD follow-up {followup_id}: {str(e)}", exc_info=True)
+        return error_response('Failed to update follow-up', status_code=500, error_code='DATABASE_ERROR')
+
+
 @admin_bp.route('/bd/contacts', methods=['POST'])
 @jwt_required()
-@admin_required
+@bd_access_required
 def bd_create_contact():
     """Create a BD contact."""
     try:
@@ -3000,6 +3353,618 @@ def bd_create_contact():
         db.session.rollback()
         current_app.logger.error(f"Error creating BD contact: {str(e)}", exc_info=True)
         return error_response('Failed to create contact', status_code=500, error_code='DATABASE_ERROR')
+
+
+def _can_access_contact(user, contact):
+    if user_sees_all_bd_deals(user):
+        return True
+    return contact.created_by == user.id
+
+
+@admin_bp.route('/bd/contacts/<int:contact_id>', methods=['DELETE'])
+@jwt_required()
+@bd_access_required
+def bd_delete_contact(contact_id):
+    try:
+        user = _bd_current_user()
+        contact = db.session.get(BDContact, contact_id)
+        if not contact:
+            return error_response('Contact not found', status_code=404, error_code='NOT_FOUND')
+        if not _can_access_contact(user, contact):
+            return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+        name = contact.name
+        company = contact.company
+        db.session.delete(contact)
+        _bd_activity(
+            icon='🗑️',
+            title=f'Contact deleted — {name}',
+            description=f'{company or "No company"}',
+            badge=(company or 'Contacts'),
+            bg='#fdf0ee',
+            user_id=user.id,
+        )
+        db.session.commit()
+        return success_response({'deleted_id': contact_id}, message='Contact deleted')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting BD contact {contact_id}: {str(e)}", exc_info=True)
+        return error_response('Failed to delete contact', status_code=500, error_code='DATABASE_ERROR')
+
+
+def _gen_quote_no():
+    return f'QT-{uuid.uuid4().hex[:8].upper()}'
+
+
+def _gen_quote_ref_no(quote_no=None):
+    yy = date.today().strftime('%y')
+    yyyy = date.today().strftime('%Y')
+    token = (quote_no or uuid.uuid4().hex).replace('QT-', '')[:6].upper()
+    return f'KYQ/{yy}RR{token}Rev1/{yyyy}'
+
+
+def _normalize_quote_signature(raw):
+    if raw is None:
+        return None
+    sig = str(raw).strip()
+    if not sig:
+        return None
+    if not sig.startswith('data:image'):
+        return None
+    if len(sig) > 1_500_000:
+        return None
+    return sig
+
+
+def _recompute_quote_totals(quote, tax_pct=None, discount_amount=None):
+    from app.bd.quotation_builder import amount_to_aed_words
+
+    subtotal = sum(float(it.total_price or 0) for it in quote.items)
+    quote.subtotal = round(subtotal, 2)
+    if discount_amount is not None:
+        try:
+            quote.discount_amount = max(0.0, float(discount_amount))
+        except (TypeError, ValueError):
+            pass
+    discount = max(0.0, float(quote.discount_amount or 0))
+    if discount > subtotal:
+        discount = subtotal
+        quote.discount_amount = discount
+    net = round(max(subtotal - discount, 0), 2)
+    if tax_pct is not None:
+        try:
+            quote.tax_pct = float(tax_pct)
+        except (TypeError, ValueError):
+            pass
+    pct = float(quote.tax_pct or 0)
+    quote.tax_amount = round(net * pct / 100.0, 2)
+    quote.grand_total = net
+    quote.amount_in_words = amount_to_aed_words(net)
+
+
+def _apply_quote_letter_fields(quote, data, proj=None):
+    from app.models import (
+        QUOTATION_DEFAULT_EXCLUSIONS,
+        QUOTATION_DEFAULT_INTRO,
+        QUOTATION_DEFAULT_NOTES,
+        QUOTATION_DEFAULT_SIGNATORY_EMAIL,
+        QUOTATION_DEFAULT_SIGNATORY_NAME,
+        QUOTATION_DEFAULT_SIGNATORY_PHONE,
+        QUOTATION_DEFAULT_SIGNOFF_LABEL,
+        QUOTATION_DEFAULT_TERMS,
+    )
+
+    str_fields = (
+        'ref_no', 'kind_attn', 'client_tel', 'subject', 'project_name',
+        'intro_text', 'notes_text', 'exclusions_text', 'terms_text',
+        'signatory_name', 'signatory_email', 'signatory_phone', 'signoff_label',
+        'notes',
+    )
+    for field in str_fields:
+        if field in data:
+            setattr(quote, field, (data.get(field) or '').strip() or None)
+
+    if 'prepared_signature' in data:
+        raw_sig = data.get('prepared_signature')
+        if raw_sig in (None, ''):
+            quote.prepared_signature = None
+        else:
+            norm = _normalize_quote_signature(raw_sig)
+            if norm:
+                quote.prepared_signature = norm
+
+    if not quote.intro_text:
+        quote.intro_text = QUOTATION_DEFAULT_INTRO
+    if not quote.notes_text:
+        quote.notes_text = QUOTATION_DEFAULT_NOTES
+    if not quote.exclusions_text:
+        quote.exclusions_text = QUOTATION_DEFAULT_EXCLUSIONS
+    if not quote.terms_text:
+        quote.terms_text = QUOTATION_DEFAULT_TERMS
+    if not quote.signatory_name:
+        quote.signatory_name = QUOTATION_DEFAULT_SIGNATORY_NAME
+    if not quote.signatory_email:
+        quote.signatory_email = QUOTATION_DEFAULT_SIGNATORY_EMAIL
+    if not quote.signatory_phone:
+        quote.signatory_phone = QUOTATION_DEFAULT_SIGNATORY_PHONE
+    if not quote.signoff_label:
+        quote.signoff_label = QUOTATION_DEFAULT_SIGNOFF_LABEL
+    if not quote.project_name and proj is not None:
+        quote.project_name = proj.name
+    if not quote.kind_attn and quote.contact_name:
+        quote.kind_attn = quote.contact_name
+
+
+def _build_quote_items(quote, items_data):
+    quote.items.clear()
+    if not items_data:
+        return 'At least one line item is required'
+    for raw in items_data:
+        desc = (raw.get('description') or raw.get('material_name') or '').strip()
+        if not desc:
+            continue
+        try:
+            qty = float(raw.get('quantity') or 1)
+            price = float(raw.get('unit_price') or 0)
+        except (TypeError, ValueError):
+            return 'Invalid quantity or unit price'
+        quote.items.append(QuotationItem(
+            description=desc,
+            details=(raw.get('details') or raw.get('description_detail') or '').strip() or None,
+            quantity=qty,
+            unit=(raw.get('unit') or '').strip() or None,
+            unit_price=price,
+            total_price=round(qty * price, 2),
+        ))
+    if not quote.items:
+        return 'At least one line item is required'
+    return None
+
+
+def _can_access_quote(user, quote):
+    if user_sees_all_bd_deals(user):
+        return True
+    return quote.owner_user_id in (None, user.id) or quote.created_by_id == user.id
+
+
+@admin_bp.route('/bd/quotations', methods=['GET'])
+@jwt_required()
+@bd_access_required
+def bd_list_quotations():
+    user = _bd_current_user()
+    q = Quotation.query.order_by(Quotation.created_at.desc())
+    if not user_sees_all_bd_deals(user):
+        q = q.filter(db.or_(
+            Quotation.owner_user_id == user.id,
+            Quotation.created_by_id == user.id,
+        ))
+    project_id = request.args.get('bd_project_id', type=int)
+    if project_id:
+        q = q.filter(Quotation.bd_project_id == project_id)
+    return success_response({
+        'quotations': [x.to_dict(include_items=False) for x in q.limit(200).all()],
+        'can_prepare_quotations': user_can_prepare_quotations(user),
+    })
+
+
+@admin_bp.route('/bd/quotations', methods=['POST'])
+@jwt_required()
+@bd_access_required
+def bd_create_quotation():
+    user = _bd_current_user()
+    if not user_can_prepare_quotations(user):
+        return error_response(
+            'You do not have permission to prepare quotations',
+            status_code=403,
+            error_code='ACCESS_DENIED',
+        )
+    data = request.get_json(silent=True) or {}
+
+    bd_id = data.get('bd_project_id')
+    if not bd_id:
+        return error_response(
+            'Quotations must be created from a project (bd_project_id is required)',
+            status_code=400,
+            error_code='VALIDATION_ERROR',
+        )
+    try:
+        bd_id = int(bd_id)
+    except (TypeError, ValueError):
+        return error_response('Invalid bd_project_id', status_code=400, error_code='VALIDATION_ERROR')
+
+    proj = BDProject.query.get(bd_id)
+    if not proj:
+        return error_response('BD project not found', status_code=404, error_code='NOT_FOUND')
+    if not _can_access_bd_project(user, proj):
+        return error_response('Access denied to that deal', status_code=403, error_code='OWNERSHIP_REQUIRED')
+
+    company = (data.get('company_name') or data.get('company') or proj.company or '').strip()
+    if not company:
+        return error_response('Company name is required', status_code=400, error_code='VALIDATION_ERROR')
+
+    owner_uid = _resolve_owner_user_id(data, default_user_id=user.id)
+    if not user_sees_all_bd_deals(user):
+        owner_uid = user.id
+    if data.get('owner_user_id') is None and data.get('ownerUserId') is None and proj.owner_user_id:
+        owner_uid = proj.owner_user_id if user_sees_all_bd_deals(user) else user.id
+
+    contact_name = (data.get('contact_name') or '').strip() or proj.primary_contact_name
+    contact_email = (data.get('contact_email') or '').strip() or proj.primary_contact_email
+    quote_no = _gen_quote_no()
+    ref_no = (data.get('ref_no') or '').strip() or _gen_quote_ref_no(quote_no)
+
+    quote = Quotation(
+        quote_no=quote_no,
+        ref_no=ref_no,
+        bd_project_id=bd_id,
+        company_name=company,
+        contact_name=contact_name or None,
+        contact_email=contact_email or None,
+        quote_date=_parse_iso_date(data.get('quote_date')) or date.today(),
+        valid_until=_parse_iso_date(data.get('valid_until')),
+        status='draft',
+        notes=(data.get('notes') or '').strip() or None,
+        owner_user_id=owner_uid,
+        created_by_id=user.id,
+        tax_pct=float(data.get('tax_pct') if data.get('tax_pct') is not None else 5),
+        discount_amount=float(data.get('discount_amount') or 0),
+        project_name=(data.get('project_name') or proj.name or '').strip() or None,
+    )
+    _apply_quote_letter_fields(quote, data, proj=proj)
+    err = _build_quote_items(quote, data.get('items') or [])
+    if err:
+        return error_response(err, status_code=400, error_code='VALIDATION_ERROR')
+    _recompute_quote_totals(quote, data.get('tax_pct'), data.get('discount_amount'))
+    db.session.add(quote)
+    created_stamp = _bd_dt_24(quote.created_at or utc_now_naive())
+    _bd_activity(
+        '📄',
+        f'Quotation created — {quote.quote_no} for {proj.name}',
+        f'{company} · Created {created_stamp}',
+        badge=proj.name,
+        user_id=user.id,
+    )
+    db.session.commit()
+    return success_response({'quotation': quote.to_dict()}, message='Quotation created', status_code=201)
+
+
+@admin_bp.route('/bd/quotations/<int:quote_id>', methods=['GET'])
+@jwt_required()
+@bd_access_required
+def bd_get_quotation(quote_id):
+    user = _bd_current_user()
+    quote = Quotation.query.get_or_404(quote_id)
+    if not _can_access_quote(user, quote):
+        return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+    return success_response({'quotation': quote.to_dict()})
+
+
+@admin_bp.route('/bd/quotations/<int:quote_id>', methods=['PUT'])
+@jwt_required()
+@bd_access_required
+def bd_update_quotation(quote_id):
+    user = _bd_current_user()
+    if not user_can_prepare_quotations(user):
+        return error_response(
+            'You do not have permission to prepare quotations',
+            status_code=403,
+            error_code='ACCESS_DENIED',
+        )
+    quote = Quotation.query.get_or_404(quote_id)
+    if not _can_access_quote(user, quote):
+        return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+    if quote.status not in ('draft', 'sent', 'rejected', 'pending_approval'):
+        return error_response('Only draft/sent/rejected quotations can be edited', status_code=400, error_code='VALIDATION_ERROR')
+    data = request.get_json(silent=True) or {}
+    if 'company_name' in data or 'company' in data:
+        quote.company_name = (data.get('company_name') or data.get('company') or quote.company_name).strip()
+    for field in ('contact_name', 'contact_email', 'notes'):
+        if field in data:
+            setattr(quote, field, (data.get(field) or '').strip() or None)
+    if 'valid_until' in data:
+        quote.valid_until = _parse_iso_date(data.get('valid_until'))
+    if 'quote_date' in data:
+        parsed = _parse_iso_date(data.get('quote_date'))
+        if parsed:
+            quote.quote_date = parsed
+    _apply_quote_letter_fields(quote, data, proj=quote.bd_project)
+    if 'items' in data:
+        err = _build_quote_items(quote, data.get('items') or [])
+        if err:
+            return error_response(err, status_code=400, error_code='VALIDATION_ERROR')
+    _recompute_quote_totals(quote, data.get('tax_pct'), data.get('discount_amount'))
+    db.session.commit()
+    return success_response({'quotation': quote.to_dict()}, message='Quotation updated')
+
+
+@admin_bp.route('/bd/quotations/<int:quote_id>/submit', methods=['POST'])
+@jwt_required()
+@bd_access_required
+def bd_submit_quotation(quote_id):
+    user = _bd_current_user()
+    if not user_can_prepare_quotations(user):
+        return error_response(
+            'You do not have permission to prepare quotations',
+            status_code=403,
+            error_code='ACCESS_DENIED',
+        )
+    quote = Quotation.query.get_or_404(quote_id)
+    if not _can_access_quote(user, quote):
+        return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+    if quote.status not in ('draft', 'sent', 'rejected', 'pending_approval'):
+        return error_response('Quotation cannot be submitted from current status', status_code=400, error_code='VALIDATION_ERROR')
+    data = request.get_json(silent=True) or {}
+    if data.get('confirm_thanks_remarks') not in (True, 'true', '1', 1, None):
+        pass
+    from app.models import (
+        QUOTATION_DEFAULT_SIGNATORY_EMAIL,
+        QUOTATION_DEFAULT_SIGNATORY_NAME,
+        QUOTATION_DEFAULT_SIGNATORY_PHONE,
+        QUOTATION_DEFAULT_SIGNOFF_LABEL,
+    )
+    for field, default in (
+        ('signoff_label', QUOTATION_DEFAULT_SIGNOFF_LABEL),
+        ('signatory_name', QUOTATION_DEFAULT_SIGNATORY_NAME),
+        ('signatory_email', QUOTATION_DEFAULT_SIGNATORY_EMAIL),
+        ('signatory_phone', QUOTATION_DEFAULT_SIGNATORY_PHONE),
+    ):
+        if field in data:
+            setattr(quote, field, (data.get(field) or '').strip() or default)
+    sig = _normalize_quote_signature(data.get('signature') or data.get('prepared_signature'))
+    if not sig:
+        return error_response(
+            'E-signature is required to submit (draw, type, or upload via the signature pad)',
+            status_code=400,
+            error_code='VALIDATION_ERROR',
+        )
+    quote.prepared_signature = sig
+    if not quote.signatory_name:
+        quote.signatory_name = getattr(user, 'full_name', None) or user.username
+    if not quote.signoff_label:
+        quote.signoff_label = QUOTATION_DEFAULT_SIGNOFF_LABEL
+    now = utc_now_naive()
+    quote.status = 'pending_approval'
+    quote.submitted_at = now
+    quote.approved_at = None
+    quote.approved_by_id = None
+    quote.rejected_at = None
+    quote.rejection_notes = None
+    proj_name = quote.bd_project.name if quote.bd_project else ''
+    submitted_stamp = _bd_dt_24(quote.submitted_at)
+    created_stamp = _bd_dt_24(quote.created_at) if quote.created_at else ''
+    desc_bits = [quote.company_name or '']
+    if created_stamp:
+        desc_bits.append(f'Created {created_stamp}')
+    desc_bits.append(f'Submitted {submitted_stamp}')
+    _bd_activity(
+        '📤',
+        f'Quotation submitted for approval — {quote.quote_no}' + (f' for {proj_name}' if proj_name else ''),
+        ' · '.join(b for b in desc_bits if b),
+        badge=proj_name or quote.company_name or 'Pending approval',
+        event_time=quote.submitted_at,
+        user_id=user.id,
+    )
+    db.session.commit()
+    return success_response({'quotation': quote.to_dict()}, message='Quotation submitted for approval')
+
+
+@admin_bp.route('/bd/quotations/<int:quote_id>/approve', methods=['POST'])
+@jwt_required()
+@bd_access_required
+def bd_approve_quotation(quote_id):
+    user = _bd_current_user()
+    des = (getattr(user, 'designation', None) or '').strip().lower()
+    if user.role != 'admin' and des not in ('general_manager', 'operations_manager'):
+        return error_response('Only GM / Ops Manager / Admin may approve proposals', status_code=403, error_code='ACCESS_DENIED')
+    quote = Quotation.query.get_or_404(quote_id)
+    if quote.status != 'pending_approval':
+        return error_response('Quotation is not pending approval', status_code=400, error_code='VALIDATION_ERROR')
+    data = request.get_json(silent=True) or {}
+    sig = _normalize_quote_signature(data.get('signature') or data.get('approval_signature'))
+    if not sig:
+        return error_response(
+            'E-signature image is required for approval (use the signature pad)',
+            status_code=400,
+            error_code='VALIDATION_ERROR',
+        )
+    quote.status = 'approved'
+    quote.approved_at = utc_now_naive()
+    quote.approved_by_id = user.id
+    quote.approval_signature = sig
+    quote.approval_notes = (data.get('notes') or '').strip() or None
+    if quote.bd_project:
+        quote.bd_project.status = 'won'
+        quote.bd_project.stage = 'closing'
+        quote.bd_project.progress = 100
+    approved_stamp = _bd_dt_24(quote.approved_at)
+    _bd_activity(
+        '✅',
+        f'Quotation approved — {quote.quote_no}',
+        f'{quote.company_name} · Approved {approved_stamp}',
+        badge='Approved',
+        bg='#fff4ef',
+        event_time=quote.approved_at,
+        user_id=user.id,
+    )
+    db.session.commit()
+    return success_response({'quotation': quote.to_dict()}, message='Proposal approved')
+
+
+@admin_bp.route('/bd/quotations/<int:quote_id>/reject', methods=['POST'])
+@jwt_required()
+@bd_access_required
+def bd_reject_quotation(quote_id):
+    user = _bd_current_user()
+    des = (getattr(user, 'designation', None) or '').strip().lower()
+    if user.role != 'admin' and des not in ('general_manager', 'operations_manager'):
+        return error_response('Only GM / Ops Manager / Admin may reject proposals', status_code=403, error_code='ACCESS_DENIED')
+    quote = Quotation.query.get_or_404(quote_id)
+    if quote.status != 'pending_approval':
+        return error_response('Only pending quotations can be rejected', status_code=400, error_code='VALIDATION_ERROR')
+    data = request.get_json(silent=True) or {}
+    quote.status = 'rejected'
+    quote.rejected_at = utc_now_naive()
+    quote.rejection_notes = (data.get('notes') or '').strip() or None
+    rejected_stamp = _bd_dt_24(quote.rejected_at)
+    _bd_activity(
+        '❌',
+        f'Quotation rejected — {quote.quote_no}',
+        f'{quote.company_name} · Rejected {rejected_stamp}',
+        badge='Rejected',
+        bg='#fdf0ee',
+        event_time=quote.rejected_at,
+        user_id=user.id,
+    )
+    db.session.commit()
+    return success_response({'quotation': quote.to_dict()}, message='Proposal rejected')
+
+
+@admin_bp.route('/bd/quotations/<int:quote_id>/cancel', methods=['POST'])
+@jwt_required()
+@bd_access_required
+def bd_cancel_quotation(quote_id):
+    user = _bd_current_user()
+    if not user_can_prepare_quotations(user):
+        return error_response(
+            'You do not have permission to cancel quotations',
+            status_code=403,
+            error_code='ACCESS_DENIED',
+        )
+    quote = Quotation.query.get_or_404(quote_id)
+    if not _can_access_quote(user, quote):
+        return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+    if quote.status not in ('draft', 'sent', 'pending_approval', 'rejected'):
+        return error_response(
+            'Only draft, pending, or rejected quotations can be cancelled',
+            status_code=400,
+            error_code='VALIDATION_ERROR',
+        )
+    data = request.get_json(silent=True) or {}
+    notes = (data.get('notes') or data.get('cancellation_notes') or '').strip()
+    if not notes:
+        return error_response(
+            'Cancellation notes are required',
+            status_code=400,
+            error_code='VALIDATION_ERROR',
+        )
+    quote.status = 'cancelled'
+    quote.rejected_at = utc_now_naive()
+    quote.rejection_notes = notes
+    cancelled_stamp = _bd_dt_24(quote.rejected_at)
+    _bd_activity(
+        '🚫',
+        f'Quotation cancelled — {quote.quote_no}',
+        f'{quote.company_name} · Cancelled {cancelled_stamp} · {notes[:120]}',
+        badge='Cancelled',
+        bg='#f4f4f5',
+        event_time=quote.rejected_at,
+        user_id=user.id,
+    )
+    db.session.commit()
+    return success_response({'quotation': quote.to_dict()}, message='Quotation cancelled')
+
+
+@admin_bp.route('/bd/quotations/<int:quote_id>/lpo', methods=['POST'])
+@jwt_required()
+@bd_access_required
+def bd_quote_upload_lpo(quote_id):
+    user = _bd_current_user()
+    quote = Quotation.query.get_or_404(quote_id)
+    if not _can_access_quote(user, quote):
+        return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+    if 'file' not in request.files:
+        return error_response('No file provided', status_code=400, error_code='VALIDATION_ERROR')
+    f = request.files['file']
+    if not f or not f.filename:
+        return error_response('No file selected', status_code=400, error_code='VALIDATION_ERROR')
+    if quote.status != 'approved':
+        return error_response(
+            'Attach an LPO after the quotation is approved',
+            status_code=400,
+            error_code='VALIDATION_ERROR',
+        )
+    upload_root = os.path.join(current_app.root_path, '..', 'uploads', 'quotations')
+    upload_root = os.path.abspath(upload_root)
+    os.makedirs(upload_root, exist_ok=True)
+    safe = f"{quote.quote_no}_LPO_{uuid.uuid4().hex[:6]}_{f.filename.replace('/', '_')}"
+    path = os.path.join(upload_root, safe)
+    f.save(path)
+    quote.lpo_filename = f.filename
+    quote.lpo_path = path
+    db.session.commit()
+    return success_response({'quotation': quote.to_dict()}, message='LPO attached')
+
+
+@admin_bp.route('/bd/quotations/<int:quote_id>/lpo', methods=['GET'])
+@jwt_required()
+@bd_access_required
+def bd_quote_download_lpo(quote_id):
+    user = _bd_current_user()
+    quote = Quotation.query.get_or_404(quote_id)
+    if not _can_access_quote(user, quote):
+        return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+    if quote.lpo_cloud_url:
+        from flask import redirect
+        return redirect(quote.lpo_cloud_url)
+    if not quote.lpo_path or not os.path.isfile(quote.lpo_path):
+        return error_response('LPO not found', status_code=404, error_code='NOT_FOUND')
+    return send_file(quote.lpo_path, as_attachment=True, download_name=quote.lpo_filename or 'lpo.pdf')
+
+
+@admin_bp.route('/bd/quotations/<int:quote_id>/pdf', methods=['GET'])
+@jwt_required()
+@bd_access_required
+def bd_quote_pdf(quote_id):
+    user = _bd_current_user()
+    quote = Quotation.query.get_or_404(quote_id)
+    if not _can_access_quote(user, quote):
+        return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+    try:
+        from app.bd.quotation_builder import build_quotation_pdf
+    except Exception as e:
+        current_app.logger.error('quotation_builder: %s', e, exc_info=True)
+        return error_response('PDF generator unavailable', status_code=500, error_code='DEPENDENCY_ERROR')
+    out_dir = os.path.join(current_app.root_path, '..', 'generated', 'quotations')
+    os.makedirs(os.path.abspath(out_dir), exist_ok=True)
+    out_path = os.path.abspath(os.path.join(out_dir, f'{quote.quote_no}.pdf'))
+    build_quotation_pdf(quote, out_path)
+    return send_file(out_path, as_attachment=True, download_name=f'{quote.quote_no}.pdf', mimetype='application/pdf')
+
+
+@admin_bp.route('/bd/projects/<int:project_id>/promote', methods=['POST'])
+@jwt_required()
+@bd_access_required
+def bd_promote_won_deal(project_id):
+    """On win: create/link a ticketing project for delivery."""
+    user = _bd_current_user()
+    project = BDProject.query.get_or_404(project_id)
+    if not _can_access_bd_project(user, project):
+        return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+    data = request.get_json(silent=True) or {}
+    project.status = 'won'
+    project.stage = 'closing'
+    project.progress = 100
+
+    created = {}
+    if data.get('create_ticket_project', True):
+        existing = TicketProject.query.filter_by(bd_project_id=project.id).first()
+        if not existing:
+            tp = TicketProject(
+                name=project.name[:160],
+                client_name=project.company,
+                description=project.notes,
+                bd_project_id=project.id,
+                project_value=project.value_amount,
+                is_active=True,
+            )
+            db.session.add(tp)
+            db.session.flush()
+            created['ticket_project_id'] = tp.id
+        else:
+            created['ticket_project_id'] = existing.id
+
+    _bd_activity('🏆', f'Deal won & promoted — {project.name}', project.company, badge='Won', bg='#fff4ef', user_id=user.id)
+    db.session.commit()
+    return success_response({'project': project.to_dict(), 'created': created}, message='Deal promoted')
 
 
 # ============== Personal progress (admin workspace) ==============
@@ -3352,6 +4317,19 @@ def list_technicians():
         .order_by(User.full_name, User.username)
         .all()
     )
+    for row in roster:
+        matched = next(
+            (u for u in login_users if _technician_login_matches_roster(
+                u,
+                {(row.get('email') or '').strip().lower()} - {''},
+                {(row.get('full_name') or '').strip().lower()} - {''},
+            )),
+            None,
+        )
+        if matched:
+            row['has_login'] = True
+            row['user_id'] = matched.id
+
     for user in login_users:
         if _technician_login_matches_roster(user, roster_by_email, roster_by_name):
             continue
@@ -3362,6 +4340,72 @@ def list_technicians():
 
     roster.sort(key=lambda r: (r.get('full_name') or '').lower())
     return success_response({'technicians': roster})
+
+
+def _create_linked_technician_login(data, *, full_name, email, phone, joining_date, supervisor_user_id, job_title):
+    """Create a User(designation=technician) alongside a roster row. Raises ValueError on validation."""
+    from app.auth.routes import validate_email, validate_password
+
+    username = (data.get('username') or data.get('login_username') or '').strip()
+    if not username:
+        raise ValueError('Username is required to create an app login')
+    email = (email or '').strip().lower()
+    if not email:
+        raise ValueError('Email is required to create an app login')
+    if not validate_email(email):
+        raise ValueError('Invalid email format')
+    if User.query.filter_by(username=username).first():
+        raise ValueError(f'Username "{username}" already exists')
+    if User.query.filter_by(email=email).first():
+        raise ValueError('Email already in use')
+
+    raw_pw = (data.get('password') or data.get('login_password') or '').strip()
+    temp_password = raw_pw or (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip() or DEFAULT_ADMIN_RESET_PASSWORD
+    if raw_pw:
+        ok, msg = validate_password(raw_pw)
+        if not ok:
+            raise ValueError(msg)
+    else:
+        ok, msg = validate_password(temp_password)
+        if not ok:
+            temp_password = DEFAULT_ADMIN_RESET_PASSWORD
+
+    user = User(
+        username=username,
+        email=email,
+        full_name=full_name,
+        role='user',
+        designation='technician',
+    )
+    user.set_password(temp_password)
+    user.password_changed = bool(raw_pw)
+    user.job_designation = _truncate_job_designation(job_title) or 'Technician'
+    user.employment_start_date = joining_date
+    if phone:
+        user.phone = phone
+    if supervisor_user_id:
+        user.reporting_manager_id = supervisor_user_id
+    user.access_ticketing = True
+    user.access_submitted_forms = True
+    db.session.add(user)
+    db.session.flush()
+    return user, (None if raw_pw else temp_password)
+
+
+def _suggest_staff_login_username(employee_id, full_name):
+    emp = ''.join(ch for ch in (employee_id or '').lower() if ch.isalnum())
+    if emp:
+        return emp[:80]
+    name = '.'.join(part for part in (full_name or '').lower().split() if part)
+    name = ''.join(ch if ch.isalnum() or ch == '.' else '' for ch in name).strip('.')
+    return (name or 'staff')[:80]
+
+
+def _user_with_email(email):
+    email = (email or '').strip().lower()
+    if not email:
+        return None
+    return User.query.filter(func.lower(User.email) == email).first()
 
 
 @admin_bp.route('/technicians', methods=['POST'])
@@ -3380,24 +4424,50 @@ def create_technician():
         return error_response('employee_id and full_name are required', status_code=400, error_code='VALIDATION_ERROR')
     if Technician.query.filter_by(employee_id=emp_id).first():
         return error_response(f'Employee ID "{emp_id}" already exists', status_code=409, error_code='DUPLICATE')
+    create_login = bool(data.get('create_login'))
+    supervisor_id = sup_coerced if sup_coerced != '__unset__' else None
+    phone = (data.get('phone') or '').strip() or None
+    email = (data.get('email') or '').strip() or None
+    joining_date = _tech_parse_date(data.get('joining_date'))
+    job_title = (data.get('designation') or '').strip() or None
     try:
+        login_user = None
+        temp_password = None
+        if create_login:
+            login_user, temp_password = _create_linked_technician_login(
+                data,
+                full_name=name,
+                email=email,
+                phone=phone,
+                joining_date=joining_date,
+                supervisor_user_id=supervisor_id,
+                job_title=job_title,
+            )
         t = Technician(
             employee_id=emp_id,
             full_name=name,
-            designation=(data.get('designation') or '').strip() or None,
+            designation=job_title,
             department=(data.get('department') or '').strip() or None,
             specialization=(data.get('specialization') or '').strip() or None,
-            phone=(data.get('phone') or '').strip() or None,
-            email=(data.get('email') or '').strip() or None,
+            phone=phone,
+            email=email,
             salary=float(data['salary']) if data.get('salary') not in (None, '') else None,
-            joining_date=_tech_parse_date(data.get('joining_date')),
+            joining_date=joining_date,
             status=(data.get('status') or 'active').strip().lower(),
             notes=(data.get('notes') or '').strip() or None,
-            supervisor_user_id=(sup_coerced if sup_coerced != '__unset__' else None),
+            supervisor_user_id=supervisor_id,
         )
         db.session.add(t)
         db.session.commit()
-        return success_response({'technician': t.to_dict()}, message='Technician created', status_code=201)
+        payload = {'technician': t.to_dict(), 'login_created': bool(login_user)}
+        if login_user:
+            payload['user'] = _admin_user_dict(login_user)
+        if temp_password:
+            payload['temp_password'] = temp_password
+        return success_response(payload, message='Technician created', status_code=201)
+    except ValueError as e:
+        db.session.rollback()
+        return error_response(str(e), status_code=400, error_code='VALIDATION_ERROR')
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'create_technician: {e}', exc_info=True)
@@ -3448,6 +4518,74 @@ def update_technician(tech_id):
         db.session.rollback()
         current_app.logger.error(f'update_technician: {e}', exc_info=True)
         return error_response('Failed to update technician', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/technicians/<int:tech_id>/create-login', methods=['POST'])
+@jwt_required()
+@admin_required
+def convert_technician_to_system_user(tech_id):
+    """Create a system login from an existing staff (roster) record, keeping their details."""
+    _ensure_technicians_supervisor_column()
+    t = Technician.query.get_or_404(tech_id)
+    data = request.get_json() or {}
+
+    email_override = (data.get('email') or '').strip() or None
+    if email_override:
+        t.email = email_override
+    phone_override = data.get('phone')
+    if phone_override is not None:
+        t.phone = (phone_override or '').strip() or None
+    if 'full_name' in data and (data.get('full_name') or '').strip():
+        t.full_name = (data.get('full_name') or '').strip()
+    if 'designation' in data:
+        t.designation = (data.get('designation') or '').strip() or None
+    if 'joining_date' in data:
+        t.joining_date = _tech_parse_date(data.get('joining_date'))
+    try:
+        sup_coerced = _coerce_optional_supervisor_user_id(data)
+    except ValueError as e:
+        return error_response(str(e), status_code=400, error_code='VALIDATION_ERROR')
+    if sup_coerced != '__unset__':
+        t.supervisor_user_id = sup_coerced
+
+    existing = _user_with_email(t.email)
+    if existing:
+        return error_response(
+            'This staff member already has a system account (same email).',
+            status_code=409,
+            error_code='DUPLICATE_EMAIL',
+        )
+
+    login_data = dict(data)
+    if not (login_data.get('username') or '').strip():
+        login_data['username'] = _suggest_staff_login_username(t.employee_id, t.full_name)
+
+    try:
+        login_user, temp_password = _create_linked_technician_login(
+            login_data,
+            full_name=t.full_name,
+            email=t.email,
+            phone=t.phone,
+            joining_date=t.joining_date,
+            supervisor_user_id=t.supervisor_user_id,
+            job_title=t.designation,
+        )
+        db.session.commit()
+        payload = {
+            'technician': t.to_dict(),
+            'login_created': True,
+            'user': _admin_user_dict(login_user),
+        }
+        if temp_password:
+            payload['temp_password'] = temp_password
+        return success_response(payload, message='Staff converted to a system user')
+    except ValueError as e:
+        db.session.rollback()
+        return error_response(str(e), status_code=400, error_code='VALIDATION_ERROR')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'convert_technician_to_system_user: {e}', exc_info=True)
+        return error_response('Failed to convert staff to a system user', status_code=500, error_code='DATABASE_ERROR')
 
 
 @admin_bp.route('/technicians/<int:tech_id>', methods=['DELETE'])
@@ -3648,12 +4786,12 @@ def export_technicians_template():
 
 
 # ---------------------------------------------------------------------------
-# Knowledge Base (feeds the Injaaz assistant)
+# Knowledge Base (feeds the Kynvera assistant)
 # ---------------------------------------------------------------------------
 
 KB_ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt', 'md'}
 KB_CATEGORIES = ['General', 'HR', 'Inspection', 'Procurement', 'Ticketing',
-                 'QHSI', 'Reports', 'Business Development', 'Policy', 'IT', 'Workflow']
+                 'Reports', 'Business Development', 'Policy', 'IT', 'Workflow']
 
 
 def _kb_invalidate_cache():
@@ -3988,7 +5126,7 @@ def kb_refetch_link(entry_id):
 def kb_refresh_app_data():
     """Auto-generate / update KB entries from live application data."""
     from datetime import datetime, timezone
-    from app.models import Submission, Ticket, QhsiTraining
+    from app.models import Submission, Ticket
 
     def _utcnow_naive():
         return datetime.now(timezone.utc).replace(tzinfo=None)
@@ -4133,50 +5271,37 @@ def kb_refresh_app_data():
             current_app.logger.warning(f"KB refresh: inspection error: {e}")
             results['inspection'] = 'error'
 
-        # ── QHSI snapshot ────────────────────────────────────────────────────
+        # ── QHSI is hidden from production — drop auto snapshots ───────────────
         try:
-            trainings = QhsiTraining.query.order_by(QhsiTraining.created_at.desc()).all()
-            upcoming = [t for t in trainings if getattr(t, 'status', '') not in ('completed', 'cancelled')]
-            compliance_subs = Submission.query.filter(
-                Submission.module_type == 'qhsi_staff_compliance'
-            ).count()
-
-            results['qhsi'] = _upsert(
-                title='[Auto] QHSI — Live Snapshot',
-                content=(
-                    f"QHSI module live data snapshot (refreshed {_utcnow_naive().strftime('%d %b %Y')}).\n\n"
-                    f"Total training/meeting sessions: {len(trainings)}. Upcoming/active: {len(upcoming)}.\n"
-                    f"Staff compliance records submitted: {compliance_subs}.\n\n"
-                    "The QHSI module covers Quality, Health, Safety and Inspections. "
-                    "It includes staff PPE/uniform compliance tracking (import via Excel), "
-                    "QHSI inspection forms, and training/meeting bookings for safety sessions."
+            KnowledgeBaseEntry.query.filter(
+                KnowledgeBaseEntry.source_type == 'auto',
+                or_(
+                    KnowledgeBaseEntry.title.like('%QHSI%'),
+                    KnowledgeBaseEntry.category == 'QHSI',
                 ),
-                keywords='qhsi, qhse, safety, compliance, training, ppe, uniform, quality, health',
-                category='QHSI',
-                answer_link='/qhsi/',
-            )
+            ).delete(synchronize_session=False)
+            results['qhsi'] = 'hidden'
         except Exception as e:
-            current_app.logger.warning(f"KB refresh: qhsi error: {e}")
+            current_app.logger.warning(f"KB refresh: qhsi hide error: {e}")
             results['qhsi'] = 'error'
 
         # ── Modules overview ─────────────────────────────────────────────────
         results['overview'] = _upsert(
-            title='[Auto] Injaaz Modules — Overview',
+            title='[Auto] Kynvera Modules — Overview',
             content=(
-                "Injaaz Application modules overview (auto-generated).\n\n"
+                "Kynvera modules overview (auto-generated).\n\n"
                 "Available modules:\n"
                 "- Inspection Hub: HVAC & MEP, Civil Works, and Cleaning Services inspection forms with photo capture, signatures, and PDF reports.\n"
                 "- Procurement: Material catalog management, registered properties, pricing and Excel import/export.\n"
                 "- Ticketing: Work order and service request management with supervisor/technician workflow.\n"
                 "- HR: Leave applications, commencement, duty resumption, termination, asset tracking, visa/passport processing, grievances, appraisals.\n"
-                "- QHSI: Quality/Health/Safety inspections, staff PPE compliance, and training bookings.\n"
                 "- DocHub: Company document library with policies, manuals and downloadable files.\n"
                 "- MMR: Monthly Maintenance Reports with chargeable configuration and automated scheduling.\n"
                 "- Business Development: BD email module for project pipeline and client communications.\n"
                 "- Workflow Hub: Central dashboard for pending reviews and submitted forms.\n"
                 "- Dashboard: Quick stats, recent activity, and navigation to all modules."
             ),
-            keywords='modules, features, hvac, procurement, ticketing, hr, qhsi, dochub, mmr, bd, workflow, inspection',
+            keywords='modules, features, hvac, procurement, ticketing, hr, dochub, mmr, bd, workflow, inspection',
             category='General',
             answer_link='/dashboard',
         )

@@ -79,7 +79,7 @@ def get_sample_form_data(form_type: str) -> dict:
     elif form_type == "commencement":
         base.update({
             "position": "Test Engineer",
-            "organization": "INJAAZ",
+            "organization": "Kynvera",
             "contacts": "+971 50 123 4567",
             "date_of_joining": "2026-03-01",
             "bank_name": "Test Bank",
@@ -94,7 +94,7 @@ def get_sample_form_data(form_type: str) -> dict:
     elif form_type == "duty_resumption":
         base.update({
             "requester": "Auto Test",
-            "company": "INJAAZ LLC",
+            "company": "Kynvera",
             "leave_started": "2026-02-01",
             "leave_ended": "2026-02-28",
             "planned_resumption_date": "2026-03-01",

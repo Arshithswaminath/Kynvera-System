@@ -330,6 +330,80 @@ a.lt-stat-btn:visited {
   color: #fff;
 }
 
+.lt-th-sortable {
+  white-space: nowrap;
+}
+
+.lt-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin: 0;
+  padding: 0.15rem 0.2rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+  min-height: 28px;
+}
+
+.lt-sort-btn:hover,
+.lt-sort-btn.is-active {
+  background: var(--hh-brand-soft, #fff1eb);
+  color: var(--hh-brand, #c2440c);
+}
+
+.lt-sort-ind {
+  display: inline-flex;
+  flex-direction: column;
+  width: 0.7rem;
+  height: 0.85rem;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.lt-sort-ind::before,
+.lt-sort-ind::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  transform: translateX(-50%);
+  opacity: 0.28;
+}
+
+.lt-sort-ind::before {
+  top: 0;
+  border-bottom: 4px solid currentColor;
+}
+
+.lt-sort-ind::after {
+  bottom: 0;
+  border-top: 4px solid currentColor;
+}
+
+.lt-sort-btn[aria-sort="ascending"] .lt-sort-ind::before {
+  opacity: 1;
+}
+
+.lt-sort-btn[aria-sort="ascending"] .lt-sort-ind::after {
+  opacity: 0.18;
+}
+
+.lt-sort-btn[aria-sort="descending"] .lt-sort-ind::after {
+  opacity: 1;
+}
+
+.lt-sort-btn[aria-sort="descending"] .lt-sort-ind::before {
+  opacity: 0.18;
+}
+
 .lt-col-menu {
   position: fixed;
   z-index: 1200;

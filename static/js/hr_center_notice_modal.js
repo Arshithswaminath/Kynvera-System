@@ -22,7 +22,7 @@
     veil.setAttribute('aria-describedby', 'hrCenterNoticeBody');
     veil.innerHTML =
       '<div class="hr-notice-panel">' +
-      '  <p class="hr-notice-kicker" id="hrCenterNoticeKicker">Injaaz</p>' +
+      '  <p class="hr-notice-kicker" id="hrCenterNoticeKicker">Kynvera</p>' +
       '  <h2 class="hr-notice-title" id="hrCenterNoticeTitle"></h2>' +
       '  <div class="hr-notice-body" id="hrCenterNoticeBody"></div>' +
       '  <div class="hr-notice-actions">' +
@@ -79,7 +79,7 @@
     var bodyEl = document.getElementById('hrCenterNoticeBody');
     var btnOk = document.getElementById('hrCenterNoticeOk');
 
-    kickerEl.textContent = opts.kicker != null ? String(opts.kicker) : 'Injaaz';
+    kickerEl.textContent = opts.kicker != null ? String(opts.kicker) : 'Kynvera';
     if (opts.title) {
       titleEl.style.display = '';
       titleEl.textContent = opts.title;

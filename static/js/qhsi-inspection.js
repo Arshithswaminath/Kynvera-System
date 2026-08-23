@@ -228,12 +228,72 @@
       });
   }
 
+  function setField(id, value) {
+    var node = el(id);
+    if (!node || value == null || value === '') return;
+    var text = String(value);
+    if (node.tagName === 'SELECT') {
+      var found = false;
+      for (var i = 0; i < node.options.length; i++) {
+        if (node.options[i].value === text) { found = true; break; }
+      }
+      if (!found) {
+        var opt = document.createElement('option');
+        opt.value = text;
+        opt.textContent = text;
+        node.appendChild(opt);
+      }
+    }
+    node.value = text;
+  }
+
+  function enterViewMode() {
+    var btn = el('btnSubmit');
+    if (btn) btn.style.display = 'none';
+    var add = el('btnAddItem');
+    if (add) add.style.display = 'none';
+  }
+
+  function loadExisting(sid) {
+    return fetch('/api/workflow/submissions/' + encodeURIComponent(sid), {
+      headers: QhsiUi.authHeaders(),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (payload) {
+        if (!payload || payload.success === false) return;
+        var fd = payload.form_data || {};
+        setField('project_name', fd.project_name || payload.site_name);
+        setField('visit_date', (fd.visit_date || payload.visit_date || '').toString().slice(0, 10));
+        setField('location', fd.location);
+        setField('inspector_name', fd.inspector_name);
+        setField('summary', fd.summary);
+        var deptVal = String(fd.department || '').trim().toLowerCase();
+        if (deptVal === 'hvac' || deptVal === 'civil' || deptVal === 'cleaning') {
+          syncDeptPills(deptVal);
+        }
+        var items = fd.items;
+        if (Array.isArray(items) && items.length) {
+          lineItems.length = 0;
+          items.forEach(function (it) { lineItems.push(it); });
+          renderItems();
+        }
+        enterViewMode();
+      })
+      .catch(function () { /* ignore */ });
+  }
+
   function init() {
     var today = new Date().toISOString().slice(0, 10);
     var vd = el('visit_date');
     if (vd) vd.max = today;
 
-    QhsiUi.loadProjectsInto(el('project_name'), null);
+    var editSid = new URLSearchParams(location.search).get('edit');
+    var boot = Promise.all([
+      loadCatalog(),
+      QhsiUi.loadProjectsInto(el('project_name'), null),
+    ]);
+    if (editSid) boot = boot.then(function () { return loadExisting(editSid); });
+
     QhsiUi.bindPhotoZone(el('findingPhotoZone'), el('item_photos'), el('findingPhotoPreview'));
 
     document.querySelectorAll('.qhsi-dept-pill input').forEach(function (inp) {
@@ -251,7 +311,6 @@
       });
     });
 
-    loadCatalog();
     if (el('sel_trade')) el('sel_trade').addEventListener('change', onTradeChange);
     if (el('sel_system')) el('sel_system').addEventListener('change', onSystemChange);
     if (el('sel_area')) el('sel_area').addEventListener('change', onAreaChange);
@@ -259,10 +318,12 @@
     var form = el('qhsaInspectionForm');
     if (form) form.addEventListener('submit', submitForm);
 
-    try {
-      var u = JSON.parse(localStorage.getItem('user') || '{}');
-      if (el('inspector_name') && u.full_name) el('inspector_name').value = u.full_name;
-    } catch (e) { /* ignore */ }
+    if (!editSid) {
+      try {
+        var u = JSON.parse(localStorage.getItem('user') || '{}');
+        if (el('inspector_name') && u.full_name) el('inspector_name').value = u.full_name;
+      } catch (e) { /* ignore */ }
+    }
 
     updateCount();
   }

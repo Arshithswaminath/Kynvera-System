@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=3">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <style>
     /* Page shell — a bit wider so side-by-side form columns use the viewport */
     .new-tkt-page-wrap {
@@ -661,7 +662,7 @@
     .new-tkt-loc-map-canvas-wrap {
       position: relative;
       flex: 1 1 auto;
-      min-height: 140px;
+      min-height: 180px;
       border-radius: 8px;
       overflow: hidden;
       border: 1px solid #e2e8f0;
@@ -670,12 +671,19 @@
     .new-tkt-loc-map-canvas {
       width: 100%;
       height: 100%;
-      min-height: 140px;
+      min-height: 180px;
+    }
+    .new-tkt-loc-map-canvas.leaflet-container {
+      background: #e8eef4;
+    }
+    .new-tkt-loc-map .leaflet-control-attribution {
+      font-size: 9px;
+      background: rgba(255,255,255,.82);
     }
     .new-tkt-loc-map-empty {
       position: absolute;
       inset: 0;
-      z-index: 2;
+      z-index: 800;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -770,25 +778,15 @@
     }
     .tkt-multi-chip-x:hover { background: #ffe4d6; }
     .tkt-multi-trigger {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
       text-align: left;
-      cursor: pointer;
+      cursor: text;
       width: 100%;
-      font: inherit;
-      color: inherit;
       padding-right: 36px;
-      position: relative;
-    }
-    .tkt-multi-trigger #assetMultiLabel {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      color: #64748b;
     }
-    .tkt-multi-wrap.has-selection .tkt-multi-trigger #assetMultiLabel { color: #1e293b; }
+    .tkt-multi-wrap.has-selection:not(.is-open) .tkt-multi-trigger { color: #1e293b; }
     .tkt-multi-chevron {
       position: absolute;
       right: 12px;
@@ -1838,10 +1836,10 @@
                     <div id="locationMap" class="new-tkt-loc-map-canvas" role="img" aria-label="Selected location map"></div>
                     <div class="new-tkt-loc-map-empty" id="locationMapEmpty">
                       <span class="new-tkt-loc-map-empty-icon" aria-hidden="true"></span>
-                      <p id="locationMapEmptyText">Select a property to preview the site on the map.</p>
+                      <p id="locationMapEmptyText">Loading map…</p>
                     </div>
                   </div>
-                  <p class="new-tkt-loc-map-caption" id="locationMapCaption">Map updates from linked assets or the selected site path.</p>
+                  <p class="new-tkt-loc-map-caption" id="locationMapCaption">Map pins the selected base unit when it has coordinates, otherwise the property.</p>
                 </div>
                 <p class="new-tkt-assist-note">
                   Precise site paths help supervisors assign the right crew and avoid duplicate visits to the wrong unit.
@@ -1957,16 +1955,18 @@
               </div>
 
               <div class="tkt-field tkt-asset-multi-field" style="margin-top:16px;">
-                <label>Linked FM assets (optional)</label>
+                <label for="assetMultiBtn">Linked FM assets (optional)</label>
                 <div class="tkt-multi-wrap tkt-ac-wrap" id="assetMultiWrap">
-                  <button type="button" class="tkt-input tkt-multi-trigger" id="assetMultiBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="assetMultiDropdown">
-                    <span id="assetMultiLabel">Select one or more assets…</span>
-                    <svg class="tkt-multi-chevron" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M6 8l4 4 4-4"/></svg>
-                  </button>
+                  <input class="tkt-input tkt-multi-trigger" id="assetMultiBtn" type="text"
+                         autocomplete="off" spellcheck="false"
+                         placeholder="Select one or more assets…"
+                         role="combobox" aria-haspopup="listbox" aria-expanded="false"
+                         aria-controls="assetMultiDropdown" aria-autocomplete="list">
+                  <svg class="tkt-multi-chevron" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M6 8l4 4 4-4"/></svg>
                   <div class="tkt-ac-dropdown tkt-multi-dropdown" id="assetMultiDropdown" role="listbox" aria-multiselectable="true"></div>
                 </div>
                 <input type="hidden" id="assetCodesJson" value="[]">
-                <span style="font-size:.72rem;color:#94a3b8;margin-top:2px;">Tick several assets at once — the list stays open until you click Done or outside.</span>
+                <span style="font-size:.72rem;color:#94a3b8;margin-top:2px;">Type to search, then tick several assets — the list stays open until you click Done or outside.</span>
               </div>
 
               <input type="hidden" id="slaHours" value="">
@@ -2260,9 +2260,9 @@
 </div></div>{# tkt-content / tkt-dh-main #}
 </div></div>{# tkt-dh-page-root / tkt-dh-app-root #}
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="{{ url_for('static', filename='js/ticketing.js') }}"></script>
 <script>
-window.GOOGLE_MAPS_API_KEY = {{ (google_maps_api_key or '')|tojson }};
 let _options = {};
 let _locationTree = [];
 let _ticketProjectsByName = {};
@@ -2272,6 +2272,8 @@ let _titleSuggestions = [];
 let _acFocusIdx = -1;
 let _assetOptions = [];
 let _selectedAssetCodes = [];
+let _assetSearchQuery = '';
+let _assetFocusIdx = -1;
 
 let _standaloneProps = [];
 let _projSearchHits = [];
@@ -2447,6 +2449,35 @@ function tktHaystackTicketNew(parts) {
   return tktNormQTicketNew(parts.filter(Boolean).join(' '));
 }
 
+function locNodeLabel(node) {
+  if (!node) return '';
+  return String(node.label || node.name || '').trim();
+}
+
+function locSelectSnapshot(id) {
+  const el = document.getElementById(id);
+  if (!el || !(el.value || '').trim()) return { id: null, name: '', label: '' };
+  const opt = el.options[el.selectedIndex];
+  const nid = parseInt(el.value, 10);
+  return {
+    id: Number.isFinite(nid) ? nid : null,
+    name: (opt?.dataset.name || opt?.textContent || '').trim(),
+    label: (opt?.dataset.label || opt?.textContent || '').trim(),
+  };
+}
+
+function locOptionHtml(node) {
+  const label = locNodeLabel(node);
+  const name = String(node.name || label);
+  return `<option value="${node.id}" data-name="${escHtmlTicketNew(name)}" data-label="${escHtmlTicketNew(label)}">${escHtmlTicketNew(label)}</option>`;
+}
+
+function findPropertyById(id) {
+  const nid = Number(id);
+  if (!Number.isFinite(nid)) return null;
+  return (_allProperties || []).find((p) => p.id === nid) || null;
+}
+
 function rebuildProjectSearchIndex() {
   _projSearchHits = [];
   (_locationTree || []).forEach((proj) => {
@@ -2465,11 +2496,11 @@ function rebuildProjectSearchIndex() {
 function rebuildPropertySearchIndex() {
   _propSearchHits = [];
 
-  function pushHit({ projectName, client, standalone, property, zone, subZone, unit }) {
-    const pn = property || '';
-    const zn = zone || '';
-    const szn = subZone || '';
-    const un = unit || '';
+  function pushHit({ projectName, client, standalone, property, zone, subZone, unit, propertyId, zoneId, subZoneId, unitId }) {
+    const pn = locNodeLabel(property) || '';
+    const zn = locNodeLabel(zone) || '';
+    const szn = locNodeLabel(subZone) || '';
+    const un = locNodeLabel(unit) || '';
 
     const pathParts = [pn, zn, szn, un].filter(Boolean);
     const pathSlash = pathParts.join(' / ');
@@ -2488,8 +2519,15 @@ function rebuildPropertySearchIndex() {
         pName,
         client,
         pn,
+        property?.name,
+        property?.code,
+        property?.area,
+        property?.city,
         zn,
+        zone?.name,
+        zone?.code,
         szn,
+        subZone?.name,
         un,
         pathSlash,
         primary,
@@ -2499,10 +2537,10 @@ function rebuildPropertySearchIndex() {
       sub: subLabel,
       standalone: !!standalone,
       projectName: pName,
-      property: pn,
-      zone: zn,
-      subZone: szn,
-      unit: un,
+      propertyId: propertyId || property?.id || null,
+      zoneId: zoneId || zone?.id || null,
+      subZoneId: subZoneId || subZone?.id || null,
+      unitId: unitId || unit?.id || null,
     });
   }
 
@@ -2510,48 +2548,38 @@ function rebuildPropertySearchIndex() {
     const pName = proj.name || '';
     const client = proj.client_name || '';
     (proj.properties || []).forEach((prop) => {
-      const pn = prop.name || '';
       pushHit({
         projectName: pName,
         client,
         standalone: false,
-        property: pn,
-        zone: '',
-        subZone: '',
-        unit: '',
+        property: prop,
       });
       (prop.zones || []).forEach((z) => {
-        const zn = z.name || '';
         pushHit({
           projectName: pName,
           client,
           standalone: false,
-          property: pn,
-          zone: zn,
-          subZone: '',
-          unit: '',
+          property: prop,
+          zone: z,
         });
         (z.sub_zones || []).forEach((sz) => {
-          const szn = sz.name || '';
           pushHit({
             projectName: pName,
             client,
             standalone: false,
-            property: pn,
-            zone: zn,
-            subZone: szn,
-            unit: '',
+            property: prop,
+            zone: z,
+            subZone: sz,
           });
           (sz.base_units || []).forEach((u) => {
-            const un = u.name || '';
             pushHit({
               projectName: pName,
               client,
               standalone: false,
-              property: pn,
-              zone: zn,
-              subZone: szn,
-              unit: un,
+              property: prop,
+              zone: z,
+              subZone: sz,
+              unit: u,
             });
           });
         });
@@ -2560,48 +2588,38 @@ function rebuildPropertySearchIndex() {
   });
 
   (_standaloneProps || []).forEach((prop) => {
-    const pn = prop.name || '';
     pushHit({
       projectName: '',
       client: '',
       standalone: true,
-      property: pn,
-      zone: '',
-      subZone: '',
-      unit: '',
+      property: prop,
     });
     (prop.zones || []).forEach((z) => {
-      const zn = z.name || '';
       pushHit({
         projectName: '',
         client: '',
         standalone: true,
-        property: pn,
-        zone: zn,
-        subZone: '',
-        unit: '',
+        property: prop,
+        zone: z,
       });
       (z.sub_zones || []).forEach((sz) => {
-        const szn = sz.name || '';
         pushHit({
           projectName: '',
           client: '',
           standalone: true,
-          property: pn,
-          zone: zn,
-          subZone: szn,
-          unit: '',
+          property: prop,
+          zone: z,
+          subZone: sz,
         });
         (sz.base_units || []).forEach((u) => {
-          const un = u.name || '';
           pushHit({
             projectName: '',
             client: '',
             standalone: true,
-            property: pn,
-            zone: zn,
-            subZone: szn,
-            unit: un,
+            property: prop,
+            zone: z,
+            subZone: sz,
+            unit: u,
           });
         });
       });
@@ -2729,10 +2747,10 @@ function syncProjectSearchFromSelect() {
 
 function locationBreadcrumbFromSelects() {
   const parts = [
-    document.getElementById('propertySelect')?.value,
-    document.getElementById('zoneSelect')?.value,
-    document.getElementById('subZoneSelect')?.value,
-    document.getElementById('baseUnitSelect')?.value,
+    locSelectSnapshot('propertySelect').label,
+    locSelectSnapshot('zoneSelect').label,
+    locSelectSnapshot('subZoneSelect').label,
+    locSelectSnapshot('baseUnitSelect').label,
   ].filter(Boolean);
   return parts.join(' / ');
 }
@@ -2810,10 +2828,10 @@ function applyPropertyPick(hit) {
 
   updateLocationFromProject();
 
-  ticketNewSelCascade('propertySelect', hit.property);
-  ticketNewSelCascade('zoneSelect', hit.zone);
-  ticketNewSelCascade('subZoneSelect', hit.subZone);
-  ticketNewSelCascade('baseUnitSelect', hit.unit);
+  ticketNewSelCascade('propertySelect', hit.propertyId ? String(hit.propertyId) : '');
+  ticketNewSelCascade('zoneSelect', hit.zoneId ? String(hit.zoneId) : '');
+  ticketNewSelCascade('subZoneSelect', hit.subZoneId ? String(hit.subZoneId) : '');
+  ticketNewSelCascade('baseUnitSelect', hit.unitId ? String(hit.unitId) : '');
   updateSummary();
 }
 
@@ -3253,6 +3271,8 @@ function initLocationComplaintSearchUI() {
   // Category chain
   tktSetupCategoryChain(sgEl, catEl, _options);
 
+  renderPriorityPillsFromOptions(_options);
+
   if (ticketNewUsesFaultCatalog()) {
     sgEl.addEventListener('change', ticketNewRefillFaultSelect);
     catEl.addEventListener('change', ticketNewRefillFaultSelect);
@@ -3271,7 +3291,6 @@ function initLocationComplaintSearchUI() {
   });
   updateLocationFromProject();
 
-  initPriorityPills();
   initTitleAutocomplete();
   initLocationComplaintSearchUI();
   initNewTicketImageUI();
@@ -3516,7 +3535,7 @@ function updateLocationFromProject() {
 
   propSel.innerHTML = '<option value="">Select property…</option>';
   if (props.length) {
-    props.forEach((p) => propSel.insertAdjacentHTML('beforeend', `<option value="${p.name}" data-id="${p.id}">${p.name}</option>`));
+    props.forEach((p) => propSel.insertAdjacentHTML('beforeend', locOptionHtml(p)));
   }
   resetSelect(zoneSel, 'Select zone…', true);
   resetSelect(szSel, 'Select sub-zone…', true);
@@ -3531,18 +3550,11 @@ document.getElementById('propertySelect').addEventListener('change', function() 
   const szSel = document.getElementById('subZoneSelect');
   const unitSel = document.getElementById('baseUnitSelect');
 
-  const propName = this.value;
-  // Find zones for this property across all projects
-  let zones = [];
-  for (const proj of _locationTree) {
-    const prop = (proj.properties || []).find(p => p.name === propName);
-    if (prop) { zones = prop.zones || []; break; }
-  }
-  const standalone = _allProperties.filter(p => !p._projectId && p.name === propName);
-  if (!zones.length && standalone.length) zones = standalone[0].zones || [];
+  const prop = findPropertyById(this.value);
+  const zones = (prop && prop.zones) || [];
 
   resetSelect(zoneSel, 'Select zone…', !zones.length);
-  zones.forEach(z => zoneSel.insertAdjacentHTML('beforeend', `<option value="${z.name}" data-id="${z.id}">${z.name}</option>`));
+  zones.forEach(z => zoneSel.insertAdjacentHTML('beforeend', locOptionHtml(z)));
   if (zones.length) zoneSel.disabled = false;
 
   resetSelect(szSel, 'Select sub-zone…', true);
@@ -3554,27 +3566,13 @@ document.getElementById('propertySelect').addEventListener('change', function() 
 document.getElementById('zoneSelect').addEventListener('change', function() {
   const szSel = document.getElementById('subZoneSelect');
   const unitSel = document.getElementById('baseUnitSelect');
-  const propName = document.getElementById('propertySelect').value;
-  const zoneName = this.value;
-
-  let subZones = [];
-  for (const proj of _locationTree) {
-    const prop = (proj.properties || []).find(p => p.name === propName);
-    if (prop) {
-      const zone = (prop.zones || []).find(z => z.name === zoneName);
-      if (zone) { subZones = zone.sub_zones || []; break; }
-    }
-  }
-  if (!subZones.length) {
-    const standalone = _allProperties.filter((p) => !p._projectId && p.name === propName);
-    if (standalone.length) {
-      const zMatch = (standalone[0].zones || []).find((zo) => zo.name === zoneName);
-      if (zMatch) subZones = zMatch.sub_zones || [];
-    }
-  }
+  const prop = findPropertyById(document.getElementById('propertySelect').value);
+  const zoneId = Number(this.value);
+  const zone = ((prop && prop.zones) || []).find((z) => z.id === zoneId);
+  const subZones = (zone && zone.sub_zones) || [];
 
   resetSelect(szSel, 'Select sub-zone…', !subZones.length);
-  subZones.forEach(sz => szSel.insertAdjacentHTML('beforeend', `<option value="${sz.name}" data-id="${sz.id}">${sz.name}</option>`));
+  subZones.forEach(sz => szSel.insertAdjacentHTML('beforeend', locOptionHtml(sz)));
   if (subZones.length) szSel.disabled = false;
   resetSelect(unitSel, 'Select unit…', true);
   syncPropertySearchFromSelect();
@@ -3583,32 +3581,15 @@ document.getElementById('zoneSelect').addEventListener('change', function() {
 
 document.getElementById('subZoneSelect').addEventListener('change', function() {
   const unitSel = document.getElementById('baseUnitSelect');
-  const propName = document.getElementById('propertySelect').value;
-  const zoneName = document.getElementById('zoneSelect').value;
-  const szName = this.value;
-
-  let units = [];
-  for (const proj of _locationTree) {
-    const prop = (proj.properties || []).find(p => p.name === propName);
-    if (prop) {
-      const zone = (prop.zones || []).find(z => z.name === zoneName);
-      if (zone) {
-        const sz = (zone.sub_zones || []).find(s => s.name === szName);
-        if (sz) { units = sz.base_units || []; break; }
-      }
-    }
-  }
-  if (!units.length) {
-    const standalone = _allProperties.filter((p) => !p._projectId && p.name === propName);
-    if (standalone.length) {
-      const z = (standalone[0].zones || []).find((zo) => zo.name === zoneName);
-      const szMatch = z && (z.sub_zones || []).find((s) => s.name === szName);
-      if (szMatch) units = szMatch.base_units || [];
-    }
-  }
+  const prop = findPropertyById(document.getElementById('propertySelect').value);
+  const zoneId = Number(document.getElementById('zoneSelect').value);
+  const szId = Number(this.value);
+  const zone = ((prop && prop.zones) || []).find((z) => z.id === zoneId);
+  const sz = ((zone && zone.sub_zones) || []).find((s) => s.id === szId);
+  const units = (sz && sz.base_units) || [];
 
   resetSelect(unitSel, 'Select unit…', !units.length);
-  units.forEach(u => unitSel.insertAdjacentHTML('beforeend', `<option value="${u.name}">${u.name}</option>`));
+  units.forEach(u => unitSel.insertAdjacentHTML('beforeend', locOptionHtml(u)));
   if (units.length) unitSel.disabled = false;
   syncPropertySearchFromSelect();
   updateSummary();
@@ -3652,13 +3633,55 @@ const _TICKET_NEW_SLA_TARGETS = {
   critical: 'ASAP',
 };
 
+const _TICKET_NEW_PILL_CLASS = {
+  low: 'priority-pill-low',
+  medium: 'priority-pill-medium',
+  high: 'priority-pill-high',
+  critical: 'priority-pill-critical',
+};
+
+function renderPriorityPillsFromOptions(opts) {
+  const group = document.getElementById('priorityGroup');
+  if (!group) return;
+  const list = (opts && opts.priorities) || [];
+  if (opts && opts.priority_hints) Object.assign(_TICKET_NEW_PRI_HINTS, opts.priority_hints);
+  if (opts && opts.priority_sla_targets) Object.assign(_TICKET_NEW_SLA_TARGETS, opts.priority_sla_targets);
+  if (!list.length) {
+    initPriorityPills();
+    return;
+  }
+  const current = document.querySelector('input[name="priority"]:checked')?.value || 'medium';
+  const defaultVal = list.some(p => p.value === current) ? current : (list.find(p => p.value === 'medium') || list[0]).value;
+  group.innerHTML = list.map((p) => {
+    const cls = _TICKET_NEW_PILL_CLASS[p.value] || 'priority-pill-medium';
+    const sel = p.value === defaultVal ? ' selected' : '';
+    const chk = p.value === defaultVal ? ' checked' : '';
+    return `<label class="priority-pill ${cls}${sel}" data-val="${tktEscAttr(p.value)}">
+      <input type="radio" name="priority" value="${tktEscAttr(p.value)}"${chk}>
+      <span class="tkt-dot ${tktEscAttr(p.value)}"></span> ${tktEscHtml(p.label || p.value)}
+    </label>`;
+  }).join('');
+  initPriorityPills();
+}
+function tktEscAttr(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+function tktEscHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+
 function ticketNewSlaStripHtml(activePri) {
   const pri = activePri || 'medium';
+  const keys = Object.keys(_TICKET_NEW_SLA_TARGETS);
+  const order = (_options.priorities || []).map(p => p.value).filter(v => keys.includes(v));
+  const list = order.length ? order : ['low', 'medium', 'high', 'critical'];
   return (
     `<div class="new-tkt-sla-strip" role="list" aria-label="Priority response targets">` +
-    ['low', 'medium', 'high', 'critical'].map((p) => (
+    list.map((p) => (
       `<div class="new-tkt-sla-chip${p === pri ? ' is-active' : ''}" data-pri="${p}" role="listitem">` +
-      `<strong>${p}</strong>${_TICKET_NEW_SLA_TARGETS[p]}` +
+      `<strong>${p}</strong>${_TICKET_NEW_SLA_TARGETS[p] || ''}` +
       `</div>`
     )).join('') +
     `</div>`
@@ -3713,8 +3736,7 @@ function updateLocationAssist() {
 
 const _LOC_MAP_DEFAULT = { lat: 25.2048, lng: 55.2708 };
 let _locMap = null;
-let _locMapMarker = null;
-let _locMapLoading = null;
+let _locMapMarkers = [];
 let _locMapGeocodeCache = Object.create(null);
 let _locMapReqSeq = 0;
 
@@ -3737,199 +3759,246 @@ function _locMapSetEmpty(show, emptyText, caption) {
   if (captionEl && caption != null) captionEl.textContent = caption;
 }
 
+function _locMapClearMarkers() {
+  _locMapMarkers.forEach((m) => {
+    try { _locMap?.removeLayer(m); } catch (_) {}
+  });
+  _locMapMarkers = [];
+}
+
 function _locMapEnsureInstance() {
   const el = document.getElementById('locationMap');
-  if (!el || !window.google?.maps) return null;
+  if (!el || typeof L === 'undefined') return null;
   if (_locMap) {
-    google.maps.event.trigger(_locMap, 'resize');
+    _locMap.invalidateSize();
     return _locMap;
   }
-  _locMap = new google.maps.Map(el, {
-    center: _LOC_MAP_DEFAULT,
-    zoom: 11,
-    mapTypeControl: false,
-    streetViewControl: false,
-    fullscreenControl: false,
+  _locMap = L.map(el, {
     zoomControl: true,
-  });
-  _locMapMarker = new google.maps.Marker({ map: null });
+    scrollWheelZoom: false,
+  }).setView([_LOC_MAP_DEFAULT.lat, _LOC_MAP_DEFAULT.lng], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap',
+  }).addTo(_locMap);
+  setTimeout(() => { if (_locMap) _locMap.invalidateSize(); }, 80);
   return _locMap;
 }
 
-function _locMapShowPin(lat, lng, caption, zoom) {
+function _locMapShowPins(pins, caption, zoom) {
   const map = _locMapEnsureInstance();
-  if (!map) return;
-  const pos = { lat: Number(lat), lng: Number(lng) };
-  map.setCenter(pos);
-  map.setZoom(zoom == null ? 15 : zoom);
-  if (_locMapMarker) {
-    _locMapMarker.setPosition(pos);
-    _locMapMarker.setMap(map);
+  if (!map || !pins.length) return;
+  _locMapClearMarkers();
+  const bounds = [];
+  pins.forEach((p) => {
+    const marker = L.circleMarker([p.lat, p.lng], {
+      radius: 9,
+      color: '#fff',
+      weight: 2,
+      fillColor: '#ff8e68',
+      fillOpacity: 0.95,
+    }).addTo(map);
+    if (p.label) marker.bindPopup(p.label);
+    _locMapMarkers.push(marker);
+    bounds.push([p.lat, p.lng]);
+  });
+  if (bounds.length === 1) {
+    map.setView(bounds[0], zoom == null ? 16 : zoom);
+  } else {
+    map.fitBounds(bounds, { padding: [28, 28], maxZoom: 17 });
   }
   _locMapSetEmpty(false, null, caption);
-  setTimeout(() => {
-    if (_locMap) google.maps.event.trigger(_locMap, 'resize');
-  }, 50);
+  setTimeout(() => map.invalidateSize(), 50);
 }
 
-function _locMapShowIdle(emptyText, caption) {
-  if (_locMapMarker) _locMapMarker.setMap(null);
-  if (_locMap) {
-    _locMap.setCenter(_LOC_MAP_DEFAULT);
-    _locMap.setZoom(11);
+function _locMapShowIdle(emptyText, caption, cover) {
+  _locMapClearMarkers();
+  const map = _locMapEnsureInstance();
+  if (map) {
+    map.setView([_LOC_MAP_DEFAULT.lat, _LOC_MAP_DEFAULT.lng], 11);
+    _locMapSetEmpty(!!cover, emptyText, caption);
+    setTimeout(() => map.invalidateSize(), 50);
+    return;
   }
-  _locMapSetEmpty(true, emptyText, caption);
+  _locMapSetEmpty(true, emptyText || 'Map is unavailable.', caption);
 }
 
-function _locMapResolveTarget() {
-  const selected = (_assetOptions || []).filter((a) => _selectedAssetCodes.includes(a.asset_id) && _locMapHasCoords(a));
-  if (selected.length) {
-    const a = selected[0];
-    return {
-      lat: Number(a.latitude),
-      lng: Number(a.longitude),
-      caption: `${a.asset_id}${a.building ? ' · ' + a.building : ''}`,
-      zoom: 16,
-      source: 'asset',
-    };
-  }
+function _locMapSelectedProperty() {
+  return findPropertyById(document.getElementById('propertySelect')?.value);
+}
 
-  const prop = _locMapSelectLabel('propertySelect');
-  if (prop) {
-    const match = (_assetOptions || []).find((a) => {
-      if (!_locMapHasCoords(a)) return false;
-      const b = (a.building || '').trim().toLowerCase();
-      return b && b === prop.toLowerCase();
+function _locMapSelectedUnit() {
+  const prop = _locMapSelectedProperty();
+  const zoneId = Number(document.getElementById('zoneSelect')?.value);
+  const szId = Number(document.getElementById('subZoneSelect')?.value);
+  const unitId = Number(document.getElementById('baseUnitSelect')?.value);
+  if (!prop || !Number.isFinite(unitId) || unitId < 1) return null;
+  const zone = ((prop.zones || []).find((z) => z.id === zoneId));
+  const sz = ((zone && zone.sub_zones) || []).find((s) => s.id === szId);
+  return ((sz && sz.base_units) || []).find((u) => u.id === unitId) || null;
+}
+
+function _locMapRememberUnitCoords(unitId, lat, lng) {
+  if (!unitId) return;
+  const nid = Number(unitId);
+  (_allProperties || []).forEach((p) => {
+    (p.zones || []).forEach((z) => {
+      (z.sub_zones || []).forEach((sz) => {
+        (sz.base_units || []).forEach((u) => {
+          if (u.id === nid) {
+            u.latitude = lat;
+            u.longitude = lng;
+          }
+        });
+      });
     });
-    if (match) {
-      return {
-        lat: Number(match.latitude),
-        lng: Number(match.longitude),
-        caption: `${match.asset_id} · ${match.building || prop}`,
-        zoom: 15,
-        source: 'building',
-      };
-    }
-  }
+  });
+}
 
-  const parts = [
-    prop,
+function _locMapPathLabel(propName) {
+  return [
+    propName,
     _locMapSelectLabel('zoneSelect'),
     _locMapSelectLabel('subZoneSelect'),
     _locMapSelectLabel('baseUnitSelect'),
-  ].filter(Boolean);
-  if (parts.length) {
+  ].filter(Boolean).join(' / ');
+}
+
+function _locMapRememberCoords(propertyId, lat, lng) {
+  if (!propertyId) return;
+  (_allProperties || []).forEach((p) => {
+    if (p.id === propertyId) {
+      p.latitude = lat;
+      p.longitude = lng;
+    }
+  });
+  (_locationTree || []).forEach((proj) => {
+    (proj.properties || []).forEach((p) => {
+      if (p.id === propertyId) {
+        p.latitude = lat;
+        p.longitude = lng;
+      }
+    });
+  });
+  (_standaloneProps || []).forEach((p) => {
+    if (p.id === propertyId) {
+      p.latitude = lat;
+      p.longitude = lng;
+    }
+  });
+}
+
+function _locMapResolveTarget() {
+  const prop = _locMapSelectedProperty();
+  const unit = _locMapSelectedUnit();
+  const path = _locMapPathLabel(prop ? locNodeLabel(prop) : '');
+
+  if (unit && _locMapHasCoords(unit)) {
     return {
-      query: [...parts, 'Ajman', 'UAE'].join(', '),
-      pathLabel: parts.join(' / '),
+      source: 'unit',
+      zoom: 17,
+      caption: path,
+      propertyId: prop ? prop.id : null,
+      baseUnitId: unit.id,
+      pins: [{
+        lat: Number(unit.latitude),
+        lng: Number(unit.longitude),
+        label: path,
+      }],
+    };
+  }
+
+  if (prop && _locMapHasCoords(prop)) {
+    const pathLabel = path;
+    return {
+      source: 'property',
+      zoom: unit ? 16 : 15,
+      caption: pathLabel,
+      propertyId: prop.id,
+      pins: [{
+        lat: Number(prop.latitude),
+        lng: Number(prop.longitude),
+        label: pathLabel,
+      }],
+    };
+  }
+
+  if (prop) {
+    return {
       source: 'geocode',
+      query: [locNodeLabel(prop), prop.city || 'Ajman', 'UAE'].join(', '),
+      pathLabel: path,
+      propertyId: prop.id,
+      baseUnitId: unit ? unit.id : null,
     };
   }
   return null;
 }
 
-function loadGoogleMapsApi() {
-  const key = (window.GOOGLE_MAPS_API_KEY || '').trim();
-  if (!key) return Promise.reject(new Error('missing-key'));
-  if (window.google?.maps) return Promise.resolve();
-  if (_locMapLoading) return _locMapLoading;
-  _locMapLoading = new Promise((resolve, reject) => {
-    const cbName = '__tktGoogleMapsReady';
-    window[cbName] = () => {
-      try { delete window[cbName]; } catch (_) {}
-      resolve();
-    };
-    const s = document.createElement('script');
-    s.async = true;
-    s.defer = true;
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=${cbName}`;
-    s.onerror = () => {
-      _locMapLoading = null;
-      reject(new Error('maps-load-failed'));
-    };
-    document.head.appendChild(s);
-  });
-  return _locMapLoading;
-}
-
-function _locMapGeocode(query) {
+async function _locMapGeocode(query, propertyId, baseUnitId) {
   const cacheKey = query.toLowerCase();
-  if (_locMapGeocodeCache[cacheKey]) return Promise.resolve(_locMapGeocodeCache[cacheKey]);
-  return new Promise((resolve) => {
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ address: query, region: 'ae' }, (results, status) => {
-      if (status === 'OK' && results?.[0]?.geometry?.location) {
-        const loc = results[0].geometry.location;
-        const hit = { lat: loc.lat(), lng: loc.lng() };
-        _locMapGeocodeCache[cacheKey] = hit;
-        resolve(hit);
-      } else {
-        resolve(null);
-      }
-    });
-  });
+  if (_locMapGeocodeCache[cacheKey]) return _locMapGeocodeCache[cacheKey];
+  let url = '/tickets/api/geocode?q=' + encodeURIComponent(query);
+  if (propertyId) url += '&property_id=' + encodeURIComponent(propertyId);
+  if (baseUnitId) url += '&base_unit_id=' + encodeURIComponent(baseUnitId);
+  const res = await tktFetch(url);
+  if (!res.ok || !res.data?.success) return null;
+  const hit = { lat: Number(res.data.lat), lng: Number(res.data.lng) };
+  if (!Number.isFinite(hit.lat) || !Number.isFinite(hit.lng)) return null;
+  _locMapGeocodeCache[cacheKey] = hit;
+  _locMapRememberCoords(propertyId, hit.lat, hit.lng);
+  _locMapRememberUnitCoords(baseUnitId, hit.lat, hit.lng);
+  return hit;
 }
 
 async function updateLocationMap() {
   const seq = ++_locMapReqSeq;
-  const key = (window.GOOGLE_MAPS_API_KEY || '').trim();
   const target = _locMapResolveTarget();
-
-  if (!key) {
-    _locMapShowIdle(
-      'Google Maps API key is not configured.',
-      'Add GOOGLE_MAPS_API_KEY to enable the location map.'
-    );
-    return;
-  }
-
-  try {
-    await loadGoogleMapsApi();
-  } catch (_) {
+  const map = _locMapEnsureInstance();
+  if (!map) {
     if (seq !== _locMapReqSeq) return;
-    _locMapShowIdle(
-      'Could not load Google Maps.',
-      'Check the API key and that Maps JavaScript API is enabled.'
-    );
+    _locMapSetEmpty(true, 'Could not load the location map.', 'Check your network connection and reload.');
     return;
   }
   if (seq !== _locMapReqSeq) return;
-
-  _locMapEnsureInstance();
 
   if (!target) {
     _locMapShowIdle(
       'Select a property to preview the site on the map.',
-      'Map updates from linked assets or the selected site path.'
+      'Map pins the selected base unit when it has coordinates, otherwise the property.',
+      false
     );
     return;
   }
 
-  if (target.source === 'asset' || target.source === 'building') {
-    _locMapShowPin(target.lat, target.lng, target.caption, target.zoom);
+  if (target.source === 'property' || target.source === 'unit') {
+    _locMapShowPins(target.pins, target.caption, target.zoom);
     return;
   }
 
   _locMapSetEmpty(true, 'Looking up location…', `Geocoding: ${target.pathLabel}`);
-  const hit = await _locMapGeocode(target.query);
+  const hit = await _locMapGeocode(target.query, target.propertyId, target.baseUnitId);
   if (seq !== _locMapReqSeq) return;
   if (!hit) {
     _locMapShowIdle(
-      'No map match for this site path yet.',
-      `Could not geocode: ${target.pathLabel}`
+      'No map match for this property yet.',
+      `Could not geocode: ${target.pathLabel}. Set a pin in Ticketing → Settings → Locations.`,
+      true
     );
     return;
   }
-  _locMapShowPin(hit.lat, hit.lng, `Geocoded: ${target.pathLabel}`, 14);
+  _locMapShowPins(
+    [{ lat: hit.lat, lng: hit.lng, label: target.pathLabel }],
+    target.pathLabel,
+    15
+  );
 }
 
 function initLocationMapResize() {
   const wrap = document.querySelector('.new-tkt-loc-map-canvas-wrap');
   if (!wrap || typeof ResizeObserver === 'undefined') return;
   const ro = new ResizeObserver(() => {
-    if (_locMap && window.google?.maps) {
-      google.maps.event.trigger(_locMap, 'resize');
-    }
+    if (_locMap) _locMap.invalidateSize();
   });
   ro.observe(wrap);
 }
@@ -4015,12 +4084,7 @@ function updateSummary() {
   }
 
   // Location
-  const loc = [
-    document.getElementById('propertySelect').value,
-    document.getElementById('zoneSelect').value,
-    document.getElementById('subZoneSelect').value,
-    document.getElementById('baseUnitSelect').value,
-  ].filter(Boolean).join(' / ');
+  const loc = locationBreadcrumbFromSelects();
   set('sum-location', loc || null);
 
   // Reporter
@@ -4087,9 +4151,9 @@ function updateReporterAssist() {
   }
 
   const projName = (document.getElementById('project')?.value || '').trim();
-  const propName = (document.getElementById('propertySelect')?.value || '').trim();
+  const propSel = locSelectSnapshot('propertySelect');
   let routeHtml = `<span class="muted">Select a project</span>`;
-  if (!projName && propName) {
+  if (!projName && propSel.id) {
     routeHtml = `Shared supervisor queue`;
   } else if (projName) {
     const p = _ticketProjectsByName[projName];
@@ -4168,10 +4232,14 @@ document.getElementById('tktNewForm').addEventListener('submit', async (e) => {
     fault_type: getVal('faultType'),
     priority: document.querySelector('input[name="priority"]:checked')?.value || 'medium',
     work_description: getVal('workDescription'),
-    property_name: document.getElementById('propertySelect').value.trim(),
-    zone: document.getElementById('zoneSelect').value.trim(),
-    sub_zone: document.getElementById('subZoneSelect').value.trim(),
-    base_unit: document.getElementById('baseUnitSelect').value.trim(),
+    property_name: locSelectSnapshot('propertySelect').label,
+    zone: locSelectSnapshot('zoneSelect').label,
+    sub_zone: locSelectSnapshot('subZoneSelect').label,
+    base_unit: locSelectSnapshot('baseUnitSelect').label,
+    property_id: locSelectSnapshot('propertySelect').id,
+    zone_id: locSelectSnapshot('zoneSelect').id,
+    sub_zone_id: locSelectSnapshot('subZoneSelect').id,
+    base_unit_id: locSelectSnapshot('baseUnitSelect').id,
     reporter_id: document.getElementById('reporterId')?.value || '',
     asset_codes: getSelectedAssetCodes(),
     asset_code: (getSelectedAssetCodes()[0] || ''),
@@ -4244,6 +4312,44 @@ function getSelectedAssetCodes() {
 
 function assetLabel(a) {
   return `${a.asset_id} — ${a.name}${a.building ? ' (' + a.building + ')' : ''}`;
+}
+
+function assetSearchHaystack(a) {
+  return [
+    a.asset_id, a.name, a.building, a.floor, a.room,
+    a.asset_type, a.qr_code, a.serial_number, a.model, a.manufacturer,
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
+function filteredAssetOptions() {
+  const q = (_assetSearchQuery || '').trim().toLowerCase();
+  if (!q) return _assetOptions.slice();
+  return _assetOptions.filter((a) => assetSearchHaystack(a).includes(q));
+}
+
+function assetSelectionSummary() {
+  const selected = _assetOptions.filter((a) => _selectedAssetCodes.includes(a.asset_id));
+  if (!selected.length) return '';
+  if (selected.length === 1) return assetLabel(selected[0]);
+  return `${selected.length} assets selected`;
+}
+
+function isAssetMultiOpen() {
+  return !!document.getElementById('assetMultiWrap')?.classList.contains('is-open');
+}
+
+function syncAssetMultiInput() {
+  const inp = document.getElementById('assetMultiBtn');
+  if (!inp || isAssetMultiOpen()) return;
+  inp.value = assetSelectionSummary();
+}
+
+function setAssetFocus(idx) {
+  const dd = document.getElementById('assetMultiDropdown');
+  const items = [...(dd?.querySelectorAll('.tkt-multi-item[data-code]') || [])];
+  items.forEach((el, i) => el.classList.toggle('focused', i === idx));
+  _assetFocusIdx = idx;
+  if (items[idx]) items[idx].scrollIntoView({ block: 'nearest' });
 }
 
 function syncAssetCodesHidden() {
@@ -4333,7 +4439,6 @@ function openSidebarAssetsBubble() {
 
 function renderAssetChips() {
   const wrap = document.getElementById('assetMultiWrap');
-  const label = document.getElementById('assetMultiLabel');
   const list = document.getElementById('sidebarAssetsList');
   const rail = document.getElementById('sidebarAssetsRailWrap');
   const empty = document.getElementById('sidebarAssetsEmpty');
@@ -4342,14 +4447,8 @@ function renderAssetChips() {
   const bubbleList = document.getElementById('sidebarAssetsBubbleList');
   const selected = _assetOptions.filter((a) => _selectedAssetCodes.includes(a.asset_id));
 
-  if (label) {
-    label.textContent = !selected.length
-      ? 'Select one or more assets…'
-      : selected.length === 1
-        ? assetLabel(selected[0])
-        : `${selected.length} assets selected`;
-  }
   wrap?.classList.toggle('has-selection', selected.length > 0);
+  syncAssetMultiInput();
 
   if (countEl) countEl.textContent = String(selected.length);
   if (expand) expand.hidden = selected.length === 0;
@@ -4429,6 +4528,7 @@ function renderAssetMultiDropdown(keepOpen) {
   if (!dd) return;
   dd.replaceChildren();
 
+  const visible = filteredAssetOptions();
   const list = document.createElement('div');
   list.className = 'tkt-multi-dropdown-list';
 
@@ -4437,8 +4537,13 @@ function renderAssetMultiDropdown(keepOpen) {
     empty.className = 'tkt-multi-empty';
     empty.textContent = 'No FM assets available';
     list.appendChild(empty);
+  } else if (!visible.length) {
+    const empty = document.createElement('div');
+    empty.className = 'tkt-multi-empty';
+    empty.textContent = 'No matching assets';
+    list.appendChild(empty);
   } else {
-    _assetOptions.forEach((a) => {
+    visible.forEach((a) => {
       const row = document.createElement('div');
       const selected = _selectedAssetCodes.includes(a.asset_id);
       row.className = 'tkt-ac-item tkt-multi-item' + (selected ? ' is-selected' : '');
@@ -4481,7 +4586,8 @@ function renderAssetMultiDropdown(keepOpen) {
   selectAll.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    _selectedAssetCodes = _assetOptions.map((a) => a.asset_id);
+    const ids = new Set(_selectedAssetCodes.concat(visible.map((a) => a.asset_id)));
+    _selectedAssetCodes = [...ids];
     renderAssetChips();
     syncAssetMultiRowStates();
   });
@@ -4517,11 +4623,24 @@ function renderAssetMultiDropdown(keepOpen) {
     wrap?.classList.add('is-open');
     document.getElementById('assetMultiBtn')?.setAttribute('aria-expanded', 'true');
   }
+  if (visible.length) {
+    const next = _assetFocusIdx >= 0 && _assetFocusIdx < visible.length ? _assetFocusIdx : 0;
+    setAssetFocus(next);
+  } else {
+    _assetFocusIdx = -1;
+  }
 }
 
-function openAssetMulti() {
+function openAssetMulti(opts) {
   closeAllTktCombos();
+  if (!opts || !opts.keepQuery) _assetSearchQuery = '';
+  _assetFocusIdx = 0;
   renderAssetMultiDropdown(true);
+  const inp = document.getElementById('assetMultiBtn');
+  requestAnimationFrame(() => {
+    inp?.focus();
+    if (!opts || !opts.keepQuery) inp?.select();
+  });
 }
 
 function closeAssetMulti() {
@@ -4530,17 +4649,54 @@ function closeAssetMulti() {
   dd?.classList.remove('open');
   wrap?.classList.remove('is-open');
   document.getElementById('assetMultiBtn')?.setAttribute('aria-expanded', 'false');
+  _assetSearchQuery = '';
+  _assetFocusIdx = -1;
+  syncAssetMultiInput();
 }
 
 function initAssetMultiSelect() {
-  const btn = document.getElementById('assetMultiBtn');
-  if (!btn) return;
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
+  const inp = document.getElementById('assetMultiBtn');
+  if (!inp) return;
+  inp.addEventListener('focus', () => {
+    if (!isAssetMultiOpen()) openAssetMulti();
+  });
+  inp.addEventListener('click', (e) => {
     e.stopPropagation();
-    const wrap = document.getElementById('assetMultiWrap');
-    if (wrap?.classList.contains('is-open')) closeAssetMulti();
-    else openAssetMulti();
+    if (!isAssetMultiOpen()) openAssetMulti();
+  });
+  inp.addEventListener('input', () => {
+    _assetSearchQuery = inp.value;
+    _assetFocusIdx = 0;
+    if (!isAssetMultiOpen()) openAssetMulti({ keepQuery: true });
+    else renderAssetMultiDropdown(true);
+  });
+  inp.addEventListener('keydown', (e) => {
+    const dd = document.getElementById('assetMultiDropdown');
+    const items = [...(dd?.querySelectorAll('.tkt-multi-item[data-code]') || [])];
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeAssetMulti();
+      inp.blur();
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!isAssetMultiOpen()) openAssetMulti();
+      else setAssetFocus(Math.min(items.length - 1, _assetFocusIdx + 1));
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!isAssetMultiOpen()) openAssetMulti();
+      else setAssetFocus(Math.max(0, _assetFocusIdx - 1));
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (isAssetMultiOpen() && items[_assetFocusIdx]) {
+        toggleAssetCode(items[_assetFocusIdx].dataset.code);
+      }
+    }
   });
   document.addEventListener('mousedown', (e) => {
     const wrap = document.getElementById('assetMultiWrap');
@@ -4549,16 +4705,24 @@ function initAssetMultiSelect() {
     closeAssetMulti();
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeAssetMulti();
+    if (e.key === 'Escape' && isAssetMultiOpen()) closeAssetMulti();
   });
 }
 
 (async function loadAssetOptions() {
   try {
     const res = await tktFetch('/assets/api/assets');
-    if (!res.ok || !res.data.success) return;
-    _assetOptions = res.data.assets || [];
-    renderAssetChips();
+    if (res.ok && res.data.success) {
+      _assetOptions = res.data.assets || [];
+      const prefill = new URLSearchParams(location.search).get('asset_code')
+        || new URLSearchParams(location.search).get('asset');
+      if (prefill) {
+        const code = prefill.trim();
+        if (code && !_selectedAssetCodes.includes(code)) _selectedAssetCodes.push(code);
+      }
+      renderAssetChips();
+      updateLocationMap();
+    }
   } catch (_) { /* optional */ }
   initAssetMultiSelect();
   initSidebarAssetsBubble();
@@ -4612,10 +4776,10 @@ document.getElementById('aiTriageBtn')?.addEventListener('click', async () => {
     service_group: (document.getElementById('serviceGroup')?.value || '').trim(),
     category: (document.getElementById('category')?.value || '').trim(),
     fault_type: (document.getElementById('faultType')?.value || '').trim(),
-    property_name: (document.getElementById('propertySelect')?.value || '').trim(),
-    zone: (document.getElementById('zoneSelect')?.value || '').trim(),
-    sub_zone: (document.getElementById('subZoneSelect')?.value || '').trim(),
-    base_unit: (document.getElementById('baseUnitSelect')?.value || '').trim(),
+    property_name: locSelectSnapshot('propertySelect').label,
+    zone: locSelectSnapshot('zoneSelect').label,
+    sub_zone: locSelectSnapshot('subZoneSelect').label,
+    base_unit: locSelectSnapshot('baseUnitSelect').label,
     asset_code: (getSelectedAssetCodes()[0] || ''),
     asset_codes: getSelectedAssetCodes(),
   };

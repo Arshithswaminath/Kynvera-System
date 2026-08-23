@@ -629,14 +629,14 @@ def _html_body(message, user=None):
     if user:
         signature_name = user.full_name or user.username or ''
     escaped = (message or '').replace('\n', '<br>')
-    sent_by = f'<p><strong>Sent by:</strong> {signature_name}<br>Injaaz Team</p>' if signature_name else '<p>Injaaz Team</p>'
+    sent_by = f'<p><strong>Sent by:</strong> {signature_name}<br>Kynvera Team</p>' if signature_name else '<p>Kynvera Team</p>'
     return f'<html><body><p>{escaped}</p>{sent_by}</body></html>'
 
 
 def _text_body(message, user=None):
     if user:
-        return f"{message}\n\nSent by: {user.full_name or user.username}\nInjaaz Team"
-    return f'{message}\n\nInjaaz Team'
+        return f"{message}\n\nSent by: {user.full_name or user.username}\nKynvera Team"
+    return f'{message}\n\nKynvera Team'
 
 
 def run_automation(auto, user=None, trigger='manual'):

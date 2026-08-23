@@ -434,7 +434,10 @@
         }
         
         const data = await response.json();
-        allSubmissions = data.submissions || [];
+        allSubmissions = (data.submissions || []).filter(function (s) {
+          const mt = (s.module_type || '').trim();
+          return mt !== 'qhsi_staff_compliance' && mt !== 'qhsi_inspection';
+        });
         renderTable(allSubmissions);
         updateStats(allSubmissions);
         updateReviewHistoryWidget(allSubmissions);
@@ -530,6 +533,11 @@
         }
         
         const moduleUrl = sub.module_type === 'hvac_mep' ? 'hvac-mep' : sub.module_type;
+        const qhsiHref = sub.module_type === 'qhsi_staff_compliance'
+          ? `/qhsi/staff-compliance?edit=${sub.submission_id}&review=true`
+          : (sub.module_type === 'qhsi_inspection'
+            ? `/qhsi/inspection?edit=${sub.submission_id}&review=true`
+            : `/${moduleUrl}/form?edit=${sub.submission_id}&review=true`);
 
         // Format Operations Manager approval timestamp if present
         let omApprovalTime = '';
@@ -563,7 +571,7 @@
             <td data-label="Status"><span class="badge ${statusClass}">${statusDisplay}</span>${omApprovalTime}</td>
             <td data-label="Actions">
               <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-                <a href="/${moduleUrl}/form?edit=${sub.submission_id}&review=true" class="action-btn">
+                <a href="${qhsiHref}" class="action-btn">
                   ${sub.workflow_status === 'approved' || sub.workflow_status === 'completed' ? '👁️ View' : '✏️ Review'}
                 </a>
                 ${sub.latest_job_id ? `

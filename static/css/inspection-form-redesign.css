@@ -125,18 +125,23 @@ body.inspection-form .container:has(.if-layout) .if-layout-main > .alert:not(.d-
 
 .if-layout-aside {
   position: sticky;
-  top: 5.75rem;
+  top: calc(var(--nav-bar-h, 4.75rem) + 12px);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   min-width: 0;
-  max-height: calc(100vh - 5.75rem - 1rem);
-  max-height: calc(100dvh - 5.75rem - 1rem);
+  height: calc(100vh - var(--nav-bar-h, 4.75rem) - 1.5rem);
+  height: calc(100dvh - var(--nav-bar-h, 4.75rem) - 1.5rem);
+  max-height: calc(100vh - var(--nav-bar-h, 4.75rem) - 1.5rem);
+  max-height: calc(100dvh - var(--nav-bar-h, 4.75rem) - 1.5rem);
+  padding-bottom: 12px;
+  box-sizing: border-box;
   overflow-x: hidden;
   overflow-y: auto;
   background: transparent;
   border: none;
   box-shadow: none;
+  isolation: isolate;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -165,18 +170,26 @@ body.inspection-form .container:has(.if-layout) .if-layout-main > .alert:not(.d-
   .if-layout { grid-template-columns: 1fr; }
   .if-layout-aside {
     position: static;
+    height: auto;
     max-height: none;
     overflow: visible;
+    padding-bottom: 0;
   }
   .if-layout-aside .if-side-card--workflow {
     --if-side-card-h: clamp(16rem, 34vh, 20rem);
   }
   .if-layout-aside .if-side-card--summary {
-    --if-side-card-h: none;
-    max-height: none !important;
+    flex: 0 0 auto;
+    min-height: 10rem;
+    max-height: min(22rem, 50vh);
+    overflow: hidden;
   }
   .if-layout-aside .if-side-card--signatures {
-    --if-side-card-h: clamp(12rem, 26vh, 17rem);
+    flex: 0 0 auto;
+    min-height: 16rem;
+    height: auto;
+    max-height: none;
+    overflow: visible;
   }
   body.inspection-form .container.has-if-layout > .inspection-form-bar,
   body.inspection-form .container:has(.if-layout) > .inspection-form-bar {
@@ -219,11 +232,43 @@ body.inspection-form .container:has(.if-layout) .if-layout-main > .alert:not(.d-
 }
 
 /* ─── Sidebar card overrides (identical to HR leave-sidebar pattern) ── */
+.if-layout-aside > .if-side-card,
+.if-layout-aside > .leave-sidebar-card {
+  position: relative;
+  z-index: 0;
+  flex: 0 0 auto;
+  margin: 0;
+}
 .if-layout-aside .leave-sidebar-card.tkt-card { border-radius: 12px; }
-.if-layout-aside .leave-sidebar-card .tkt-card-header { padding: 14px 18px; }
+.if-layout-aside .leave-sidebar-card .tkt-card-header {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  padding: 14px 18px;
+  background: #fff;
+}
 .if-layout-aside .leave-sidebar-card .tkt-card-header h3 { font-size: 1rem; }
 .if-layout-aside .leave-sidebar-card.leave-sidebar-card--flush .tkt-card-body {
   padding: 0 !important;
+}
+/* Reports must keep full header + download actions; it used to shrink
+   under Workflow's fixed max-height and clip "Reports / Ready". */
+.if-layout-aside .if-side-card--reports {
+  flex: 0 0 auto;
+  height: auto;
+  max-height: none;
+  min-height: min-content;
+  overflow: visible;
+}
+.if-layout-aside .if-side-card--reports.leave-sidebar-card--flush .tkt-card-body,
+.if-layout-aside .if-side-card--reports .if-side-card__body {
+  display: block;
+  height: auto;
+  padding: 14px 18px 16px !important;
+}
+.if-layout-aside .if-side-card--reports .if-side-card__hint {
+  padding: 0;
+  margin: 0 0 0.75rem;
 }
 .if-layout-aside .leave-sidebar-card .tkt-card-body.duty-sig-summary-rows {
   padding: 0 !important;
@@ -249,7 +294,10 @@ body.inspection-form .container:has(.if-layout) .if-layout-main > .alert:not(.d-
   padding: 12px 18px;
   border-bottom: 1px solid #f1f5f9;
 }
-.if-layout-aside .duty-sig-summary-row:last-child { border-bottom: none; padding-bottom: 14px; }
+.if-layout-aside .duty-sig-summary-row:last-child {
+  border-bottom: none;
+  padding-bottom: 20px;
+}
 .if-layout-aside .duty-sig-summary-label {
   font-size: .68rem;
   font-weight: 700;
@@ -296,19 +344,19 @@ body.inspection-form .container:has(.if-layout) .if-layout-main > .alert:not(.d-
 }
 .if-layout-aside .if-side-card--workflow {
   --if-side-card-h: clamp(17.5rem, 36vh, 21.5rem);
-}
-.if-layout-aside .if-side-card--signatures {
-  --if-side-card-h: clamp(13rem, 28vh, 18rem);
-}
-.if-layout-aside .if-side-card--summary {
-  --if-side-card-h: none;
-  max-height: none !important;
-  height: auto;
-  overflow: visible;
-}
-.if-layout-aside .if-side-card--workflow,
-.if-layout-aside .if-side-card--signatures {
   max-height: var(--if-side-card-h);
+}
+.if-layout-aside > .if-side-card.if-side-card--summary {
+  flex: 1 1 12rem;
+  min-height: 10rem;
+  max-height: none;
+  overflow: hidden;
+}
+.if-layout-aside > .if-side-card.if-side-card--signatures {
+  flex: 1 1 14rem;
+  min-height: 14rem;
+  max-height: none;
+  overflow: hidden;
 }
 .if-layout-aside .if-side-card__scroll {
   flex: 1 1 auto;
@@ -320,12 +368,17 @@ body.inspection-form .container:has(.if-layout) .if-layout-main > .alert:not(.d-
 }
 .if-layout-aside .if-side-card--summary .if-side-card__scroll {
   padding: 0 !important;
-  overflow: visible !important;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 .if-layout-aside .if-side-card--signatures .if-side-card__scroll {
-  padding: 0 !important;
+  padding: 0 0 8px !important;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .if-layout-aside .if-side-card--workflow .if-side-card__body {

@@ -4,12 +4,13 @@ URL prefix: /assets
 """
 import json
 import logging
+import os
 from datetime import datetime, date, timezone
 from io import BytesIO
 from base64 import b64encode
 from flask import (
     Blueprint, render_template, request, jsonify, redirect, g,
-    send_file,
+    send_file, current_app, url_for,
 )
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import func, inspect, text
@@ -17,6 +18,7 @@ from sqlalchemy import func, inspect, text
 from app.models import (
     db, User, Asset, Ticket, AssetPrediction, FloorPlan,
     PortfolioForecast, OutboundWebhook, IntegrationApiKey, TicketAsset,
+    TicketProject, TicketProperty,
 )
 from common.fm_integration import (
     fm_log_audit, dispatch_webhooks, jwt_or_api_key_required, create_api_key,
@@ -27,6 +29,18 @@ from module_assets.qr_labels import (
     build_bulk_labels_pdf,
     build_single_label_pdf,
     ensure_asset_qr_code,
+)
+from module_assets.twin import (
+    DEFAULT_PLAN_SVG,
+    catalog_buildings_for_project,
+    drawings_for_asset,
+    enrich_floor_plan,
+    normalize_hotspots,
+    plan_pin_stats,
+    project_location_assets,
+    recommend_fallback,
+    save_plan_image,
+    ticket_location_catalog,
 )
 
 logger = logging.getLogger(__name__)
@@ -106,6 +120,10 @@ def _asset_from_payload(data, asset=None):
     asset.building = (data.get('building') or '').strip() or None
     asset.floor = (data.get('floor') or '').strip() or None
     asset.room = (data.get('room') or '').strip() or None
+    if 'project_id' in data:
+        pid, err = _parse_project_id(data.get('project_id'))
+        if not err:
+            asset.project_id = pid
     asset.manufacturer = (data.get('manufacturer') or '').strip() or None
     asset.model = (data.get('model') or '').strip() or None
     asset.serial_number = (data.get('serial_number') or '').strip() or None
@@ -146,29 +164,37 @@ def _asset_from_payload(data, asset=None):
     return asset
 
 
+def _add_missing_columns(table, extras):
+    inspector = inspect(db.engine)
+    if table not in inspector.get_table_names():
+        return
+    existing = {col['name'] for col in inspector.get_columns(table)}
+    missing = [(name, typ) for name, typ in extras if name not in existing]
+    if not missing:
+        return
+    with db.engine.begin() as conn:
+        for name, typ in missing:
+            try:
+                conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {name} {typ}'))
+                logger.info('Added column %s.%s', table, name)
+            except Exception as exc:
+                err = str(exc).lower()
+                if 'already exists' in err or 'duplicate' in err:
+                    logger.info('Column %s.%s already exists', table, name)
+                else:
+                    logger.warning('Could not add %s.%s: %s', table, name, exc)
+
+
 def _ensure_asset_columns(app):
-    extras = [('latitude', 'REAL'), ('longitude', 'REAL')]
     with app.app_context():
         try:
             db.create_all()
-            inspector = inspect(db.engine)
-            if 'fm_assets' not in inspector.get_table_names():
-                return
-            existing = {col['name'] for col in inspector.get_columns('fm_assets')}
-            missing = [(name, typ) for name, typ in extras if name not in existing]
-            if not missing:
-                return
-            with db.engine.begin() as conn:
-                for name, typ in missing:
-                    try:
-                        conn.execute(text(f'ALTER TABLE fm_assets ADD COLUMN {name} {typ}'))
-                        logger.info('Added column fm_assets.%s', name)
-                    except Exception as exc:
-                        err = str(exc).lower()
-                        if 'already exists' in err or 'duplicate' in err:
-                            logger.info('Column fm_assets.%s already exists', name)
-                        else:
-                            logger.warning('Could not add fm_assets.%s: %s', name, exc)
+            _add_missing_columns('fm_assets', [
+                ('latitude', 'REAL'),
+                ('longitude', 'REAL'),
+                ('project_id', 'INTEGER'),
+            ])
+            _add_missing_columns('fm_floor_plans', [('project_id', 'INTEGER')])
         except Exception as exc:
             logger.warning('Asset column ensure: %s', exc)
 
@@ -309,18 +335,225 @@ def assets_map_page():
     return render_template('assets_map.html', user=user, can_write=_can_write(user))
 
 
+def _parse_project_id(raw):
+    if raw in (None, '', 'null', 'none'):
+        return None, None
+    try:
+        pid = int(raw)
+    except (TypeError, ValueError):
+        return None, 'Invalid project_id'
+    if not TicketProject.query.get(pid):
+        return None, 'Unknown project_id'
+    return pid, None
+
+
+def _default_building_for_project(project):
+    if not project:
+        return ''
+    prop = (
+        TicketProperty.query.filter_by(project_id=project.id, is_active=True)
+        .order_by(TicketProperty.name)
+        .first()
+    )
+    return (prop.name if prop else '') or (project.name or '')
+
+
+def _twin_hub_data():
+    projects = (
+        TicketProject.query.filter_by(is_active=True)
+        .order_by(TicketProject.name)
+        .all()
+    )
+    plans = FloorPlan.query.order_by(FloorPlan.building, FloorPlan.floor, FloorPlan.name).all()
+    stats = {p.id: plan_pin_stats(p) for p in plans}
+    by_proj = {}
+    unassigned = []
+    for plan in plans:
+        info = stats[plan.id]
+        if plan.project_id:
+            by_proj.setdefault(plan.project_id, []).append(info)
+        else:
+            unassigned.append(info)
+    cards = []
+    for proj in projects:
+        floors = by_proj.get(proj.id, [])
+        info = proj.to_dict() if hasattr(proj, 'to_dict') else {}
+        cards.append({
+            'id': proj.id,
+            'name': proj.name,
+            'client_name': info.get('client_name') or getattr(proj, 'client_name', None),
+            'supervisor_name': info.get('supervisor_name'),
+            'floor_count': len(floors),
+            'pin_count': sum(f['pin_count'] for f in floors),
+            'crit': sum(f['crit'] for f in floors),
+            'warn': sum(f['warn'] for f in floors),
+            'ok': sum(f['ok'] for f in floors),
+        })
+    totals = {
+        'projects': len(cards),
+        'floors': len(plans),
+        'pins': sum(s['pin_count'] for s in stats.values()),
+    }
+    return cards, unassigned, totals, projects
+
+
+def _twin_drawing_page_vars(user, project, plans, current_plan=None,
+                            draft_building='', draft_floor=''):
+    loc_building = (current_plan.building if current_plan else draft_building) or ''
+    return dict(
+        user=user,
+        plans=plans,
+        current_plan=current_plan,
+        project=project,
+        can_write=_can_write(user),
+        default_building=loc_building or (
+            _default_building_for_project(project) if project else ''
+        ),
+        catalog_buildings=catalog_buildings_for_project(project.id) if project else [],
+        plans_payload=[
+            {'id': p.id, 'name': p.name, 'building': p.building, 'floor': p.floor or ''}
+            for p in plans
+        ],
+        draft_building=draft_building or '',
+        draft_floor=draft_floor or '',
+    )
+
+
 @assets_bp.route('/twin')
 @jwt_required()
 def assets_twin_page():
     user = _current_user()
     if not _has_access(user):
         return redirect('/dashboard')
-    plans = FloorPlan.query.order_by(FloorPlan.building, FloorPlan.floor).all()
+    raw_plan = request.args.get('plan')
+    if raw_plan:
+        try:
+            plan_id = int(raw_plan)
+        except (TypeError, ValueError):
+            plan_id = None
+        if plan_id and FloorPlan.query.get(plan_id):
+            qs = []
+            pin = request.args.get('pin') or request.args.get('pin')
+            asset = request.args.get('asset') or request.args.get('asset')
+            if pin:
+                qs.append('pin=' + pin)
+            if asset:
+                qs.append('asset=' + asset)
+            dest = url_for('assets_bp.assets_twin_plan_page', plan_id=plan_id)
+            if qs:
+                dest = dest + '?' + '&'.join(qs)
+            return redirect(dest)
+    cards, unassigned, totals, projects = _twin_hub_data()
+    return render_template(
+        'assets_twin_hub.html',
+        user=user,
+        can_write=_can_write(user),
+        projects=cards,
+        unassigned=unassigned,
+        totals=totals,
+        assign_projects=projects,
+        ticket_settings_url='/tickets/settings',
+    )
+
+
+@assets_bp.route('/twin/project/<int:project_id>')
+@jwt_required()
+def assets_twin_project_page(project_id):
+    user = _current_user()
+    if not _has_access(user):
+        return redirect('/dashboard')
+    project = TicketProject.query.get_or_404(project_id)
+    plans = (
+        FloorPlan.query.filter_by(project_id=project.id)
+        .order_by(FloorPlan.building, FloorPlan.floor, FloorPlan.name)
+        .all()
+    )
+    floors = [plan_pin_stats(p) for p in plans]
+    catalog_buildings = catalog_buildings_for_project(project.id)
+    building_names = [b['name'] for b in catalog_buildings] or [
+        f['building'] for f in floors if f.get('building')
+    ]
+    pinned = {}
+    for plan in plans:
+        for hs in normalize_hotspots(plan.hotspots):
+            for code in hs.get('asset_ids') or []:
+                pinned[str(code)] = plan.id
+    location_assets = []
+    for row in project_location_assets(project.id, building_names):
+        item = row.to_dict()
+        item['url'] = '/assets/' + row.asset_id
+        item['pinned_plan_id'] = pinned.get(row.asset_id)
+        location_assets.append(item)
+    return render_template(
+        'assets_twin_project.html',
+        user=user,
+        can_write=_can_write(user),
+        project=project,
+        floors=floors,
+        default_building=_default_building_for_project(project),
+        catalog_buildings=catalog_buildings,
+        location_assets=location_assets,
+    )
+
+
+@assets_bp.route('/twin/plan/<int:plan_id>')
+@jwt_required()
+def assets_twin_plan_page(plan_id):
+    user = _current_user()
+    if not _has_access(user):
+        return redirect('/dashboard')
+    plan = FloorPlan.query.get_or_404(plan_id)
+    project = TicketProject.query.get(plan.project_id) if plan.project_id else None
+    if project:
+        plans = (
+            FloorPlan.query.filter_by(project_id=project.id)
+            .order_by(FloorPlan.building, FloorPlan.floor, FloorPlan.name)
+            .all()
+        )
+    else:
+        plans = (
+            FloorPlan.query.filter(FloorPlan.project_id.is_(None))
+            .order_by(FloorPlan.building, FloorPlan.floor, FloorPlan.name)
+            .all()
+        )
     return render_template(
         'assets_twin.html',
-        user=user,
-        plans=plans,
-        can_write=_can_write(user),
+        **_twin_drawing_page_vars(user, project, plans, current_plan=plan),
+    )
+
+
+@assets_bp.route('/twin/project/<int:project_id>/draw')
+@jwt_required()
+def assets_twin_draw_page(project_id):
+    """Empty drawing workspace for a building/floor that has no plan yet."""
+    user = _current_user()
+    if not _has_access(user):
+        return redirect('/dashboard')
+    project = TicketProject.query.get_or_404(project_id)
+    plans = (
+        FloorPlan.query.filter_by(project_id=project.id)
+        .order_by(FloorPlan.building, FloorPlan.floor, FloorPlan.name)
+        .all()
+    )
+    building = (request.args.get('building') or '').strip()
+    floor = (request.args.get('floor') or '').strip()
+    match = next(
+        (
+            p for p in plans
+            if (p.building or '').strip().lower() == building.lower()
+            and (p.floor or '').strip().lower() == floor.lower()
+        ),
+        None,
+    )
+    if match:
+        return redirect(url_for('assets_bp.assets_twin_plan_page', plan_id=match.id))
+    return render_template(
+        'assets_twin.html',
+        **_twin_drawing_page_vars(
+            user, project, plans,
+            draft_building=building,
+            draft_floor=floor,
+        ),
     )
 
 
@@ -415,6 +648,7 @@ def assets_new_page():
         asset=None,
         mode='create',
         can_write=True,
+        locations=ticket_location_catalog(),
     )
 
 
@@ -453,6 +687,7 @@ def assets_detail_page(asset_code):
         asset=asset,
         tickets=tickets,
         last_prediction=last_pred.to_dict() if last_pred else None,
+        drawings=drawings_for_asset(asset.asset_id),
         can_write=_can_write(user),
         url_qr_src=_png_data_uri(asset_qr_png_bytes(asset)),
     )
@@ -471,10 +706,20 @@ def assets_edit_page(asset_code):
         asset=asset,
         mode='edit',
         can_write=True,
+        locations=ticket_location_catalog(),
     )
 
 
 # ── API ────────────────────────────────────────────────────────────────
+
+@assets_bp.route('/api/locations', methods=['GET'])
+@jwt_required()
+def api_ticket_locations():
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    return jsonify({'success': True, 'projects': ticket_location_catalog()})
+
 
 @assets_bp.route('/api/assets', methods=['GET'])
 @jwt_or_api_key_required
@@ -486,12 +731,20 @@ def api_list_assets():
     q = Asset.query
     status = request.args.get('status')
     building = request.args.get('building')
+    floor = request.args.get('floor')
     search = (request.args.get('q') or '').strip()
     critical = request.args.get('critical')
     if status:
         q = q.filter(Asset.status == status)
     if building:
         q = q.filter(Asset.building == building)
+    if floor:
+        q = q.filter(Asset.floor == floor)
+    pid, pid_err = _parse_project_id(request.args.get('project_id'))
+    if pid_err:
+        return jsonify({'success': False, 'error': pid_err}), 400
+    if pid:
+        q = q.filter(Asset.project_id == pid)
     if critical in ('1', 'true', 'yes'):
         q = q.filter(
             db.or_(
@@ -960,6 +1213,32 @@ def api_forecast_latest():
     return jsonify({'success': True, 'forecast': row.to_dict() if row else None})
 
 
+def _plan_from_request():
+    """Parse create/update fields from JSON or multipart form.
+
+    Only includes keys the client actually sent so a pin-only PUT cannot
+    wipe name/floor/image.
+    """
+    data = {}
+    if request.files or (request.content_type or '').startswith('multipart/'):
+        form = request.form
+        for key in ('name', 'building', 'floor', 'image_url', 'project_id'):
+            if key in form:
+                data[key] = (form.get(key) or '').strip()
+        if 'hotspots' in form:
+            data['hotspots'] = form.get('hotspots')
+        return data, request.files.get('image') or request.files.get('file')
+    raw = request.get_json(silent=True) or {}
+    for key in ('name', 'building', 'floor', 'image_url', 'project_id'):
+        if key not in raw:
+            continue
+        val = raw.get(key)
+        data[key] = '' if val is None else str(val).strip()
+    if 'hotspots' in raw:
+        data['hotspots'] = raw.get('hotspots')
+    return data, None
+
+
 @assets_bp.route('/api/floor-plans', methods=['GET', 'POST'])
 @jwt_required()
 def api_floor_plans():
@@ -967,23 +1246,118 @@ def api_floor_plans():
     if not _has_access(user):
         return jsonify({'success': False, 'error': 'Access denied'}), 403
     if request.method == 'GET':
-        rows = FloorPlan.query.order_by(FloorPlan.building).all()
-        return jsonify({'success': True, 'plans': [r.to_dict() for r in rows]})
+        q = FloorPlan.query
+        raw_pid = request.args.get('project_id')
+        if raw_pid in ('none', 'null'):
+            q = q.filter(FloorPlan.project_id.is_(None))
+        elif raw_pid not in (None, ''):
+            pid, err = _parse_project_id(raw_pid)
+            if err:
+                return jsonify({'success': False, 'error': err}), 400
+            q = q.filter_by(project_id=pid)
+        rows = q.order_by(FloorPlan.building, FloorPlan.floor).all()
+        return jsonify({'success': True, 'plans': [enrich_floor_plan(r) for r in rows]})
     if not _can_write(user):
         return jsonify({'success': False, 'error': 'Access denied'}), 403
-    data = request.get_json(silent=True) or {}
-    if not (data.get('name') and data.get('building') and data.get('image_url')):
-        return jsonify({'success': False, 'error': 'name, building, image_url required'}), 400
+    data, image = _plan_from_request()
+    if not (data.get('name') and data.get('building')):
+        return jsonify({'success': False, 'error': 'name and building required'}), 400
+    project_id = None
+    if 'project_id' in data:
+        project_id, err = _parse_project_id(data.get('project_id'))
+        if err:
+            return jsonify({'success': False, 'error': err}), 400
+    hotspots = normalize_hotspots(data.get('hotspots') or [])
     plan = FloorPlan(
-        name=data['name'].strip(),
-        building=data['building'].strip(),
-        floor=(data.get('floor') or '').strip() or None,
-        image_url=data['image_url'].strip(),
-        hotspots=data.get('hotspots') or [],
+        name=data['name'],
+        building=data['building'],
+        floor=data.get('floor') or None,
+        image_url=data.get('image_url') or DEFAULT_PLAN_SVG,
+        hotspots=hotspots,
+        project_id=project_id,
     )
     db.session.add(plan)
+    db.session.flush()
+    if image and image.filename:
+        url, err = save_plan_image(plan, image)
+        if err:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': err}), 400
+        plan.image_url = url
     db.session.commit()
-    return jsonify({'success': True, 'plan': plan.to_dict()}), 201
+    return jsonify({'success': True, 'plan': enrich_floor_plan(plan)}), 201
+
+
+@assets_bp.route('/api/floor-plans/<int:plan_id>', methods=['GET', 'PUT', 'DELETE'])
+@jwt_required()
+def api_floor_plan_detail(plan_id):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    plan = FloorPlan.query.get_or_404(plan_id)
+    if request.method == 'GET':
+        return jsonify({'success': True, 'plan': enrich_floor_plan(plan)})
+    if not _can_write(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    if request.method == 'DELETE':
+        db.session.delete(plan)
+        db.session.commit()
+        return jsonify({'success': True})
+    data, image = _plan_from_request()
+    if data.get('name'):
+        plan.name = data['name']
+    if data.get('building'):
+        plan.building = data['building']
+    if 'floor' in data:
+        plan.floor = data.get('floor') or None
+    if data.get('image_url'):
+        plan.image_url = data['image_url']
+    if 'project_id' in data:
+        pid, err = _parse_project_id(data.get('project_id'))
+        if err:
+            return jsonify({'success': False, 'error': err}), 400
+        plan.project_id = pid
+    if 'hotspots' in data:
+        plan.hotspots = normalize_hotspots(data.get('hotspots'))
+    if image and image.filename:
+        url, err = save_plan_image(plan, image)
+        if err:
+            return jsonify({'success': False, 'error': err}), 400
+        plan.image_url = url
+    db.session.commit()
+    return jsonify({'success': True, 'plan': enrich_floor_plan(plan)})
+
+
+@assets_bp.route('/api/floor-plans/<int:plan_id>/image', methods=['POST'])
+@jwt_required()
+def api_floor_plan_image(plan_id):
+    user = _current_user()
+    if not _can_write(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    plan = FloorPlan.query.get_or_404(plan_id)
+    image = request.files.get('image') or request.files.get('file')
+    if not image or not image.filename:
+        return jsonify({'success': False, 'error': 'image file required'}), 400
+    url, err = save_plan_image(plan, image)
+    if err:
+        return jsonify({'success': False, 'error': err}), 400
+    db.session.commit()
+    return jsonify({'success': True, 'plan': enrich_floor_plan(plan), 'image_url': url})
+
+
+@assets_bp.route('/api/floor-plans/<int:plan_id>/file', methods=['GET'])
+@jwt_required()
+def api_floor_plan_file(plan_id):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    plan = FloorPlan.query.get_or_404(plan_id)
+    url = plan.image_url or ''
+    if url.startswith('/static/uploads/floor-plans/'):
+        path = os.path.join(current_app.root_path, url.lstrip('/'))
+        if os.path.isfile(path):
+            return send_file(path)
+    return jsonify({'success': False, 'error': 'No uploaded file'}), 404
 
 
 @assets_bp.route('/api/floor-plans/<int:plan_id>/recommend', methods=['POST'])
@@ -993,29 +1367,24 @@ def api_twin_recommend(plan_id):
     if not _has_access(user):
         return jsonify({'success': False, 'error': 'Access denied'}), 403
     plan = FloorPlan.query.get_or_404(plan_id)
+    enriched = enrich_floor_plan(plan)
+    fallback = recommend_fallback(enriched)
+
     try:
         from module_assistant.llm import generate_structured, StructuredLLMError, is_llm_enabled
     except ImportError:
-        return jsonify({'success': False, 'error': 'LLM unavailable'}), 503
+        return jsonify({'success': True, **fallback})
     if not is_llm_enabled():
-        return jsonify({'success': False, 'error': 'LLM is not enabled'}), 503
-
-    assets = Asset.query.filter_by(building=plan.building).all()
-    if plan.floor:
-        assets = [a for a in assets if (a.floor or '') == plan.floor]
-    tickets = []
-    for a in assets[:40]:
-        for t in Ticket.query.filter_by(asset_id=a.id).order_by(Ticket.created_at.desc()).limit(3):
-            tickets.append({'asset': a.asset_id, 'ticket': t.ticket_id, 'status': t.status, 'priority': t.priority})
+        return jsonify({'success': True, **fallback})
 
     system_prompt = (
-        'You are an FM digital-twin advisor. Given a floor plan building/floor, assets, and recent '
-        'tickets, recommend actions. Return JSON only.'
+        'You are an FM digital-twin advisor. Given live room status from a 2D floor plan '
+        '(severity crit/warn/ok, linked assets, open work orders), recommend next actions. '
+        'Prioritise critical rooms. Return JSON only.'
     )
     user_content = (
-        f"Plan: {json.dumps(plan.to_dict())}\n"
-        f"Assets: {json.dumps([a.to_dict() for a in assets[:40]], default=str)}\n"
-        f"Recent tickets: {json.dumps(tickets)}\n"
+        f"Plan: {json.dumps({k: enriched[k] for k in ('id', 'name', 'building', 'floor')})}\n"
+        f"Live hotspots: {json.dumps(enriched.get('hotspots') or [], default=str)}\n"
         'Return JSON: recommendations (list of {room, severity, action, reason}), summary (string).'
     )
     schema = {
@@ -1024,13 +1393,16 @@ def api_twin_recommend(plan_id):
     }
     try:
         result = generate_structured(system_prompt, user_content, schema)
-    except StructuredLLMError as exc:
-        return jsonify({'success': False, 'error': str(exc)}), 502
+    except StructuredLLMError:
+        return jsonify({'success': True, **fallback})
+    recs = result.get('recommendations') or []
+    if not isinstance(recs, list):
+        recs = []
     return jsonify({
         'success': True,
         'method': 'llm_estimate',
-        'summary': result.get('summary'),
-        'recommendations': result.get('recommendations') or [],
+        'summary': result.get('summary') or fallback['summary'],
+        'recommendations': recs or fallback['recommendations'],
     })
 
 

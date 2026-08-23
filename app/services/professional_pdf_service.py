@@ -65,10 +65,9 @@ class NumberedCanvas(canvas.Canvas):
             self._pageNumber,
             page_count,
             report_title=self.report_title,
-            left_margin=1.4 * cm,
-            right_margin=1.4 * cm,
+            left_margin=1.6 * cm,
+            right_margin=1.6 * cm,
             footer_left=f"Generated: {brand.generated_timestamp()}",
-            header_title=brand.COMPANY_NAME,
         )
 
 
@@ -186,10 +185,10 @@ def create_info_table(data_list, col_widths=None):
     styles = get_professional_styles()
 
     label_style = ParagraphStyle(
-        'InfoTableLabel', parent=styles['Normal'], alignment=TA_RIGHT, fontName='Helvetica-Bold'
+        'InfoTableLabel', parent=styles['Normal'], alignment=TA_LEFT, fontName='Helvetica-Bold'
     )
     value_style = ParagraphStyle(
-        'InfoTableValue', parent=styles['Normal'], alignment=TA_RIGHT
+        'InfoTableValue', parent=styles['Normal'], alignment=TA_LEFT
     )
 
     # Wrap long text values in Paragraphs so they word-wrap nicely
@@ -207,103 +206,107 @@ def create_info_table(data_list, col_widths=None):
                 new_row.append(cell)
         table_data.append(new_row)
 
-    # Default: label col wide enough for "Specification", "Description", etc.
+    # Label column sized for "Total Items Inspected:" / "Specification"; values sit beside it
     if not col_widths:
-        col_widths = [2.35*inch, 4.65*inch]
+        col_widths = [1.85*inch, 5.15*inch]
 
     table = Table(table_data, colWidths=col_widths)
     n = len(table_data)
     row_style = [('BACKGROUND', (0, i), (-1, i), colors.white) for i in range(n)]
 
     table.setStyle(TableStyle([
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#111827')),
-        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+        ('TEXTCOLOR', (0, 0), (-1, -1), brand.TEXT_DARK),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('BACKGROUND', (0, 0), (0, -1), ACCENT_COLOR),
         ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
         ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 8.5),
-        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('GRID', (0, 0), (-1, -1), 0.4, BORDER_COLOR),
         ('LINEAFTER', (0, 0), (0, -1), 1, PRIMARY_COLOR),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('LEFTPADDING', (0, 0), (0, -1), 6),
-        ('LEFTPADDING', (1, 0), (1, -1), 6),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
     ] + row_style))
     
     return table
 
 
-def create_data_table(headers, rows, col_widths=None):
+def create_data_table(headers, rows, col_widths=None, numeric_cols=None):
     """Create a professional data table with headers
     
     Args:
         headers: List of header strings
         rows: List of row data lists
         col_widths: Optional column widths
+        numeric_cols: Optional 0-based column indexes to right-align
     """
     styles = get_professional_styles()
+    numeric_cols = set(numeric_cols or [])
 
-    # Build table data with Paragraphs so long text wraps instead of overflowing
+    left_cell = ParagraphStyle(
+        'DataTableCell', parent=styles['Normal'], alignment=TA_LEFT
+    )
+    right_cell = ParagraphStyle(
+        'DataTableCellRight', parent=styles['Normal'], alignment=TA_RIGHT
+    )
+    header_left = ParagraphStyle(
+        'DataTableHeader', parent=styles['Normal'], alignment=TA_LEFT, fontName='Helvetica-Bold'
+    )
+    header_right = ParagraphStyle(
+        'DataTableHeaderRight', parent=styles['Normal'], alignment=TA_RIGHT, fontName='Helvetica-Bold'
+    )
+
     table_data = []
 
-    # Header row – bold text
     header_cells = []
-    for header in headers:
+    for col_idx, header in enumerate(headers):
         if isinstance(header, str):
-            header_cells.append(Paragraph(f"<b>{header}</b>", styles['Normal']))
+            style = header_right if col_idx in numeric_cols else header_left
+            header_cells.append(Paragraph(f"<b>{header}</b>", style))
         else:
             header_cells.append(header)
     table_data.append(header_cells)
 
-    data_cell_style = ParagraphStyle(
-        'DataTableCell', parent=styles['Normal'], alignment=TA_RIGHT
-    )
-
-    # Data rows
     for row in rows:
         new_row = []
-        for cell in row:
+        for col_idx, cell in enumerate(row):
             if isinstance(cell, str):
-                new_row.append(Paragraph(cell, data_cell_style))
+                style = right_cell if col_idx in numeric_cols else left_cell
+                new_row.append(Paragraph(cell, style))
             else:
                 new_row.append(cell)
         table_data.append(new_row)
     
     table = Table(table_data, colWidths=col_widths)
-    table.setStyle(TableStyle([
-        # Header row — soft wash + coral rule (not solid green)
+    style_cmds = [
         ('BACKGROUND', (0, 0), (-1, 0), TABLE_HEADER_BG),
         ('TEXTCOLOR', (0, 0), (-1, 0), brand.TEXT_DARK),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 9),
-        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        
-        # Data rows
+        ('FONTSIZE', (0, 0), (-1, 0), 8.5),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 9),
-        ('ALIGN', (0, 1), (-1, -1), 'RIGHT'),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        
+        ('FONTSIZE', (0, 1), (-1, -1), 8.5),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, TABLE_ALT_ROW]),
-        
-        # Grid
-        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('GRID', (0, 0), (-1, -1), 0.4, BORDER_COLOR),
         ('LINEBELOW', (0, 0), (-1, 0), 1.2, PRIMARY_COLOR),
-        
-        # Padding
-        ('LEFTPADDING', (0, 0), (-1, -1), 3),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-    ]))
+        ('LEFTPADDING', (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]
+    for col in numeric_cols:
+        style_cmds.append(('ALIGN', (col, 0), (col, -1), 'RIGHT'))
+    table.setStyle(TableStyle(style_cmds))
     
     return table
 
 
 def _photo_grid_layout(photo_count, photos_per_row=None, photo_width=None, photo_height=None):
     """Pick column count and max cell size from printable width (A4 minus margins)."""
-    content_w = 6.5 * inch
+    content_w = 7.0 * inch
     gap = 0.12 * inch
 
     if photos_per_row is not None and photo_width is not None and photo_height is not None:
@@ -506,7 +509,7 @@ def create_professional_pdf(pdf_path, story, report_title=None):
             pagesize=A4,
             rightMargin=1.6*cm,
             leftMargin=1.6*cm,
-            topMargin=1.9*cm,
+            topMargin=2.05*cm,
             bottomMargin=1.8*cm,
             title=report_title,
             author=brand.PDF_AUTHOR

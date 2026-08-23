@@ -123,7 +123,9 @@ def render_generic_print(fd, skip_keys=None):
 
 def render_form_for_print(module_type, form_data, submission_id):
     """Build form HTML in HR document format for printing"""
-    fd = form_data or {}
+    from module_hr.form_data_normalize import normalize_hr_form_data_for_view
+
+    fd = normalize_hr_form_data_for_view(form_data or {}, module_type)
     form_type = (module_type or '').replace('hr_', '')
     
     if form_type in ('leave_application', 'leave'):

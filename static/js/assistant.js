@@ -391,7 +391,7 @@
     greeted = true;
     appendMessage(
       'bot',
-      'Hi! Ask me anything about Injaaz — I\u2019m here to help.'
+      'Hi! Ask me anything about Kynvera — I\u2019m here to help.'
     );
     setSuggestions(DEFAULT_CHIPS);
   }

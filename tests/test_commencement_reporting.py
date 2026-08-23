@@ -51,7 +51,7 @@ def _base_commencement_payload(rt_user_id: int) -> dict:
         "position": "Clerk",
         "contacts": "0500000000",
         "department": "Admin",
-        "organization": "INJAAZ",
+        "organization": "Kynvera",
         "date_of_joining": "2026-05-01",
         "bank_name": "Test Bank",
         "account_number": "123456",

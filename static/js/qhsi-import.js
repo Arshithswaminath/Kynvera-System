@@ -16,7 +16,27 @@
   }
 
   function fmtRate(n) {
-    return (n == null || isNaN(n)) ? '—' : (n + '%');
+    if (n == null || n === '' || isNaN(n)) return '—';
+    return Number(n) + '%';
+  }
+
+  function asNumber(value, fallback) {
+    if (value == null || value === '') return fallback;
+    var n = Number(value);
+    return isNaN(n) ? fallback : n;
+  }
+
+  function pickStat(sources, keys, fallback) {
+    for (var i = 0; i < sources.length; i++) {
+      var src = sources[i];
+      if (!src) continue;
+      for (var k = 0; k < keys.length; k++) {
+        if (src[keys[k]] != null && src[keys[k]] !== '') {
+          return asNumber(src[keys[k]], fallback);
+        }
+      }
+    }
+    return fallback;
   }
 
   function renderImportSummary(container, data) {
@@ -27,7 +47,14 @@
       return;
     }
     var batch = imp.batch || {};
-    var s = imp;
+    var nested = batch.stats || {};
+    var sources = [imp, nested, batch];
+    var employees = pickStat(sources, ['employees', 'employee_count'], 0);
+    var kitLines = pickStat(sources, ['kit_lines', 'row_count'], 0);
+    var compliant = pickStat(sources, ['compliant', 'ok'], 0);
+    var issues = pickStat(sources, ['issues', 'issue'], 0);
+    var missing = pickStat(sources, ['missing'], 0);
+    var rate = pickStat(sources, ['compliance_rate'], null);
     container.innerHTML =
       '<div class="qhse-import-summary">' +
       '<div class="qhse-import-summary__hd">' +
@@ -36,14 +63,16 @@
       (batch.created_at ? ' · ' + new Date(batch.created_at).toLocaleString() : '') + '</span>' +
       '</div>' +
       '<div class="qhse-import-stats">' +
-      statTile('Employees', s.employees) +
-      statTile('Kit lines', s.kit_lines) +
-      statTile('Compliant', s.compliant, 'ok') +
-      statTile('Issues', s.issues, 'warn') +
-      statTile('Missing', s.missing, 'bad') +
-      statTile('Compliance rate', fmtRate(s.compliance_rate), 'rate') +
+      statTile('Employees', employees) +
+      statTile('Kit lines', kitLines) +
+      statTile('Compliant', compliant, 'ok') +
+      statTile('Issues', issues, 'warn') +
+      statTile('Missing', missing, 'bad') +
+      statTile('Compliance rate', fmtRate(rate), 'rate') +
       '</div>' +
+      '<div class="qhse-import-summary__foot">' +
       '<button type="button" class="btn-secondary qhse-import-clear" id="qhseClearImport">Clear import data</button>' +
+      '</div>' +
       '</div>';
     var clearBtn = document.getElementById('qhseClearImport');
     if (clearBtn) {
@@ -76,22 +105,42 @@
       });
   }
 
+  function setImportStatus(el, text) {
+    if (!el) return;
+    var msg = text || '';
+    el.textContent = msg;
+    if (msg) el.removeAttribute('hidden');
+    else el.setAttribute('hidden', '');
+  }
+
+  function bindFilePicker(formEl) {
+    if (!formEl) return;
+    var input = formEl.querySelector('input[type=file]');
+    var nameEl = formEl.querySelector('[data-file-name]');
+    if (!input || !nameEl) return;
+    input.addEventListener('change', function () {
+      nameEl.textContent = (input.files && input.files[0] && input.files[0].name) || 'No file chosen';
+    });
+  }
+
   function bindImportForm(formEl, summaryEl, onSuccess) {
     if (!formEl) return;
     var input = formEl.querySelector('input[type=file]');
     var btn = formEl.querySelector('[data-import-btn]');
     var status = formEl.querySelector('[data-import-status]');
+    var nameEl = formEl.querySelector('[data-file-name]');
+    bindFilePicker(formEl);
 
     formEl.addEventListener('submit', function (e) {
       e.preventDefault();
       if (!input || !input.files || !input.files[0]) {
-        if (status) status.textContent = 'Choose an Excel file first.';
+        setImportStatus(status, 'Choose an Excel file first.');
         return;
       }
       var fd = new FormData();
       fd.append('file', input.files[0]);
       if (btn) btn.disabled = true;
-      if (status) status.textContent = 'Importing…';
+      setImportStatus(status, 'Importing…');
 
       fetch('/qhsi/api/staff-compliance/import', {
         method: 'POST',
@@ -102,18 +151,19 @@
         .then(function (res) {
           if (btn) btn.disabled = false;
           if (!res.ok || !res.body.success) {
-            if (status) status.textContent = res.body.message || res.body.error || 'Import failed';
+            setImportStatus(status, res.body.message || res.body.error || 'Import failed');
             return;
           }
-          if (status) status.textContent = res.body.message || 'Import complete';
+          setImportStatus(status, res.body.message || 'Import complete');
           input.value = '';
+          if (nameEl) nameEl.textContent = 'No file chosen';
           loadImportSummary(summaryEl);
           if (onSuccess) onSuccess(res.body);
           if (typeof window.qhseRefreshDashboardStats === 'function') window.qhseRefreshDashboardStats();
         })
         .catch(function () {
           if (btn) btn.disabled = false;
-          if (status) status.textContent = 'Import failed — check connection';
+          setImportStatus(status, 'Import failed — check connection');
         });
     });
   }

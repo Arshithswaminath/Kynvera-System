@@ -74,6 +74,14 @@ def format_visit_date_label(visit_date: date | datetime | str | None) -> str | N
 
 INSPECTION_MODULE_TYPES = ("inspection", "hvac_mep", "civil", "cleaning")
 
+# QHSI / QHSE stays off pending queues and dashboard stats. Submitted Forms still lists them.
+HIDDEN_QHSI_MODULE_TYPES = frozenset({"qhsi_inspection", "qhsi_staff_compliance"})
+
+
+def is_hidden_qhsi_module(module_type: str | None) -> bool:
+    return (module_type or "").strip() in HIDDEN_QHSI_MODULE_TYPES
+
+
 # Document number series — each category gets its own running sequence.
 SERIES_PREFIXES = ("HR", "INSP", "QHSI", "PRC", "TKT", "DOC")
 

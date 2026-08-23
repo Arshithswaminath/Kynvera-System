@@ -1,5 +1,5 @@
 """
-Intent router for the Injaaz assistant (pattern + keyword scoring, no LLM).
+Intent router for the Kynvera assistant (pattern + keyword scoring, no LLM).
 """
 import re
 from dataclasses import dataclass, field

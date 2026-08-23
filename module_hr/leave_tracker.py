@@ -28,6 +28,8 @@ from app.models import (
     LeavePlan,
     User,
     db,
+    leave_company_db_values,
+    normalize_leave_company,
     leave_sick_alert_level,
     migrate_monthly_usage_to_logs,
     months_touched_by_range,
@@ -607,7 +609,7 @@ def register_leave_tracker_routes(hr_bp):
             joinedload(LeaveEmployee.usage),
         )
         if company and company != 'all':
-            query = query.filter(LeaveEmployee.company == company)
+            query = query.filter(LeaveEmployee.company.in_(leave_company_db_values(company)))
         if q:
             like = f'%{q}%'
             query = query.filter(or_(
@@ -624,7 +626,7 @@ def register_leave_tracker_routes(hr_bp):
             joinedload(LeaveEmployee.usage),
         )
         if company and company != 'all':
-            summary_q = summary_q.filter(LeaveEmployee.company == company)
+            summary_q = summary_q.filter(LeaveEmployee.company.in_(leave_company_db_values(company)))
         summary_emps = summary_q.all()
 
         if alert_level == 'exhausted':
@@ -745,8 +747,8 @@ def register_leave_tracker_routes(hr_bp):
         if 'designation' in data:
             emp.designation = str(data.get('designation') or '').strip()
         if 'company' in data:
-            co = str(data.get('company') or '').strip()
-            if co and co not in LEAVE_COMPANIES:
+            co = normalize_leave_company(data.get('company'), default=None)
+            if data.get('company') and not co:
                 return error_response('Invalid company', status_code=400)
             if co:
                 emp.company = co
@@ -856,7 +858,7 @@ def register_leave_tracker_routes(hr_bp):
             query = query.join(LeaveEmployee)
 
         if company and company != 'all':
-            query = query.filter(LeaveEmployee.company == company)
+            query = query.filter(LeaveEmployee.company.in_(leave_company_db_values(company)))
         if q:
             like = f'%{q}%'
             query = query.filter(or_(
@@ -1081,8 +1083,8 @@ def register_leave_tracker_routes(hr_bp):
             db.func.lower(LeaveEmployee.emp_id) == emp_id.lower()
         ).first():
             return error_response('Emp ID already exists', status_code=409, error_code='CONFLICT')
-        company = str(data.get('company') or 'INJAAZ').strip()
-        if company not in LEAVE_COMPANIES:
+        company = normalize_leave_company(data.get('company'))
+        if not company:
             return error_response('Invalid company', status_code=400)
         ent = data.get('annual_entitlement')
         entitlement = None
@@ -1116,7 +1118,7 @@ def register_leave_tracker_routes(hr_bp):
         if needs_join:
             query = query.join(LeaveEmployee)
         if company and company != 'all':
-            query = query.filter(LeaveEmployee.company == company)
+            query = query.filter(LeaveEmployee.company.in_(leave_company_db_values(company)))
         if q:
             like = f'%{q}%'
             query = query.filter(or_(
@@ -1372,7 +1374,7 @@ def register_leave_tracker_routes(hr_bp):
             joinedload(LeaveEmployee.usage),
         )
         if company and company != 'all':
-            query = query.filter(LeaveEmployee.company == company)
+            query = query.filter(LeaveEmployee.company.in_(leave_company_db_values(company)))
         return query.order_by(
             LeaveEmployee.company.asc(),
             LeaveEmployee.full_name.asc(),

@@ -112,6 +112,15 @@ except Exception as e:
     logger.exception("Could not import module_files.routes.files_bp: %s", e)
     files_module_bp = None
 
+# Automations hub (daily HR Excel backup + future jobs)
+automations_bp = None
+try:
+    from app.automations.routes import automations_bp  # noqa: F401
+    logger.info("Imported app.automations.routes.automations_bp")
+except Exception as e:
+    logger.exception("Could not import app.automations.routes.automations_bp: %s", e)
+    automations_bp = None
+
 # Inspection Form Module (HVAC, Civil, Cleaning)
 inspection_bp = None
 try:
@@ -404,6 +413,8 @@ def create_app():
                     ('access_hr', 'BOOLEAN DEFAULT FALSE'),
                     ('access_procurement_module', 'BOOLEAN DEFAULT FALSE'),
                     ('access_business_development', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_sales_manager', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_quotations', 'BOOLEAN DEFAULT FALSE'),
                     ('access_report_generation', 'BOOLEAN DEFAULT FALSE'),
                     ('access_submitted_forms', 'BOOLEAN DEFAULT FALSE'),
                     ('access_ticketing', 'BOOLEAN DEFAULT FALSE'),
@@ -457,7 +468,25 @@ def create_app():
                             )
                     except Exception as backfill_err:
                         logger.warning(f"Admin password backfill skipped: {backfill_err}")
-            
+
+            if 'bd_projects' in inspector.get_table_names():
+                bd_cols = {col['name'] for col in inspector.get_columns('bd_projects')}
+                if 'owner_user_id' not in bd_cols:
+                    try:
+                        with db.engine.begin() as conn:
+                            conn.execute(text('ALTER TABLE bd_projects ADD COLUMN owner_user_id INTEGER'))
+                        logger.info('✅ Added owner_user_id column to bd_projects')
+                    except Exception as bd_col_err:
+                        logger.warning('Could not add bd_projects.owner_user_id: %s', bd_col_err)
+                try:
+                    with db.engine.begin() as conn:
+                        conn.execute(text(
+                            'UPDATE bd_projects SET owner_user_id = created_by '
+                            'WHERE owner_user_id IS NULL AND created_by IS NOT NULL'
+                        ))
+                except Exception:
+                    pass
+
             if 'submissions' in inspector.get_table_names():
                 columns = [col['name'] for col in inspector.get_columns('submissions')]
                 missing_columns = []
@@ -669,13 +698,13 @@ def create_app():
                         ('Employee Onboarding Guide', 'onboarding', 'published',
                          '<h1>Employee Onboarding Guide</h1>'
                          '<div class="callout callout-blue"><span class="callout-icon">👋</span><div><strong>Welcome to the team!</strong> This guide will help you get up and running quickly.</div></div>'
-                         '<h2>1. Company Overview</h2><p>Injaaz Facilities Management delivers excellence in facility services across the UAE.</p>'
+                         '<h2>1. Company Overview</h2><p>Kynvera delivers excellence in facility services across the UAE.</p>'
                          '<h2>2. Your First Week</h2><ul><li><strong>Day 1:</strong> Meet your team lead, set up workstation</li>'
                          '<li><strong>Day 2:</strong> System access, security training</li><li><strong>Day 3-5:</strong> Department walkthroughs</li></ul>'
                          '<h2>3. Key Contacts</h2><ul><li><strong>HR:</strong> arshith@injaaz.ae</li><li><strong>IT:</strong> +971 50 156 0277</li></ul>'),
                         ('Project Services Agreement Template', 'contracts', 'review',
                          '<h1>Project Services Agreement</h1><p><em>Agreement between Service Provider and Client.</em></p>'
-                         '<h2>1. Parties</h2><p><strong>Service Provider:</strong> Injaaz FM.<br/><strong>Client:</strong> [Client Name].</p>'
+                         '<h2>1. Parties</h2><p><strong>Service Provider:</strong> Kynvera.<br/><strong>Client:</strong> [Client Name].</p>'
                          '<h2>2. Scope</h2><ul><li>Facility management services</li><li>Maintenance and repairs</li><li>Cleaning and HVAC</li></ul>'
                          '<h2>3. Payment Terms</h2><p>As per agreed milestones.</p>'),
                         ('Remote Work Policy', 'policies', 'published',
@@ -1058,6 +1087,23 @@ def create_app():
         logger.info("✅ Registered Files blueprint at /files")
     else:
         logger.warning("⚠️  Files blueprint not available - check imports")
+
+    # Register Automations hub
+    if automations_bp:
+        if hasattr(app, 'csrf') and app.csrf:
+            app.csrf.exempt(automations_bp)
+        app.register_blueprint(automations_bp, url_prefix='/automations')
+        @app.route('/automations')
+        def redirect_automations_to_slash():
+            return redirect('/automations/', code=302)
+        logger.info("✅ Registered Automations blueprint at /automations")
+        try:
+            from app.automations.scheduler import init_scheduler as init_automations_scheduler
+            init_automations_scheduler(app)
+        except Exception as sched_err:
+            logger.warning("⚠️  Automations scheduler not started: %s", sched_err)
+    else:
+        logger.warning("⚠️  Automations blueprint not available - check imports")
     
     # Register Inspection Form blueprint
     if inspection_bp:
@@ -1104,6 +1150,15 @@ def create_app():
         def redirect_qhsi_to_slash():
             return redirect('/qhsi/', code=302)
         logger.info("✅ Registered QHSI blueprint at /qhsi")
+        @app.route('/qhsi_staff_compliance/form')
+        def redirect_legacy_qhsi_staff_form():
+            qs = request.query_string.decode() if request.query_string else ''
+            return redirect('/qhsi/staff-compliance' + ('?' + qs if qs else ''), code=302)
+
+        @app.route('/qhsi_inspection/form')
+        def redirect_legacy_qhsi_inspection_form():
+            qs = request.query_string.decode() if request.query_string else ''
+            return redirect('/qhsi/inspection' + ('?' + qs if qs else ''), code=302)
     else:
         logger.warning("⚠️  QHSI blueprint not available - check imports")
 
@@ -1342,7 +1397,7 @@ def create_app():
 
     @app.route('/admin/bd')
     def admin_bd():
-        """Business Development module - admin only"""
+        """Business Development module — BD team, managers, and admin"""
         return render_template('admin_bd_module.html', active_page='bd-module')
 
     @app.route('/admin/personal-progress')
@@ -1409,10 +1464,19 @@ def create_app():
     def health_check():
         """Health check endpoint for monitoring and load balancers"""
         try:
-            # Check database connection
+            # Check database connection and that core schema is present.
+            # SELECT 1 alone was green after a local SQLite schema loss
+            # while login failed with "no such table: users".
+            from sqlalchemy import inspect as sa_inspect
+
             with db.engine.connect() as conn:
                 conn.execute(text('SELECT 1'))
-            db_status = 'healthy'
+            tables = set(sa_inspect(db.engine).get_table_names())
+            if 'users' not in tables:
+                logger.warning("Database health check: users table missing")
+                db_status = 'unhealthy'
+            else:
+                db_status = 'healthy'
         except Exception as e:
             logger.warning(f"Database health check failed: {e}")
             db_status = 'unhealthy'

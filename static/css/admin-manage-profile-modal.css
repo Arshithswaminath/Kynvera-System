@@ -208,6 +208,38 @@
       color: #334155;
       line-height: 1.3;
     }
+    .admin-profile-module-grid .checkbox-item.bd-access-card {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.4rem;
+    }
+    .admin-profile-module-grid .bd-access-top {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+    .admin-profile-module-grid .bd-access-subs {
+      display: flex;
+      flex-direction: column;
+      gap: 0.28rem;
+      padding: 0.15rem 0 0.1rem 0.15rem;
+      margin-left: 1.45rem;
+      border-left: 2px solid rgba(255, 142, 104, 0.28);
+      padding-left: 0.7rem;
+    }
+    .admin-profile-module-grid .bd-access-sub {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.74rem;
+      font-weight: 500;
+      color: #64748b;
+      cursor: pointer;
+    }
+    .admin-profile-module-grid .checkbox-item.bd-access-card:has(input:checked) {
+      border-color: rgba(255, 142, 104, 0.45);
+      background: linear-gradient(145deg, #fff8f5 0%, #fff4ef 100%);
+    }
     .admin-profile-defaults-split {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -398,77 +430,68 @@
     }
 
     .admin-profile-form .admin-profile-password-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto;
-      align-items: stretch;
-      border: 1px solid #cbd5e1;
-      border-radius: 10px;
-      background: #fff;
-      overflow: hidden;
-      transition: border-color 0.15s, box-shadow 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      background: transparent;
+      overflow: visible;
     }
-    .admin-profile-form .admin-profile-password-row:hover {
-      border-color: #94a3b8;
-    }
+    .admin-profile-form .admin-profile-password-row:hover,
     .admin-profile-form .admin-profile-password-row:focus-within {
-      border-color: var(--injz-pm-green, #ff8e68);
-      box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.1);
+      border: none;
+      box-shadow: none;
     }
     .admin-profile-form .admin-profile-password-row .admin-profile-password-input {
-      grid-column: 1;
-      width: 100%;
+      flex: 1 1 auto;
+      width: auto;
       min-width: 0;
-      height: 40px;
-      min-height: 40px;
-      padding: 0 0.85rem;
+      height: 44px;
+      min-height: 44px;
+      max-height: 44px;
       margin: 0;
-      border: none !important;
-      border-radius: 0 !important;
-      background: transparent !important;
+      padding-top: 0;
+      padding-bottom: 0;
+      box-sizing: border-box;
       box-shadow: none !important;
-      font-size: 0.875rem;
-      line-height: 1.25;
     }
     .admin-profile-form .admin-profile-password-row .admin-profile-password-input:hover,
     .admin-profile-form .admin-profile-password-row .admin-profile-password-input:focus {
-      border: none !important;
       box-shadow: none !important;
       outline: none;
-      background: transparent !important;
     }
     .admin-profile-form .admin-profile-password-row .admin-profile-password-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      flex: 0 0 auto;
       width: auto !important;
-      min-width: 0 !important;
-      height: 40px !important;
-      min-height: 40px !important;
-      max-height: 40px !important;
-      padding: 0 0.8rem !important;
+      min-width: 4.5rem !important;
+      height: 44px !important;
+      min-height: 44px !important;
+      max-height: 44px !important;
+      padding: 0 0.9rem !important;
       margin: 0;
-      border: none !important;
-      border-left: 1px solid #e2e8f0 !important;
-      border-radius: 0 !important;
-      background: #f8fafc !important;
+      border: 1.5px solid var(--injz-pm-line, #e9eaee) !important;
+      border-radius: 10px !important;
+      background: #fff !important;
       box-shadow: none !important;
-      font-size: 0.75rem !important;
+      font-size: 0.82rem !important;
       font-weight: 600;
       line-height: 1;
       letter-spacing: 0.01em;
-      color: #64748b !important;
+      color: #5c616e !important;
       white-space: nowrap;
     }
     .admin-profile-form .admin-profile-password-row .admin-profile-password-btn:hover {
-      background: #f1f5f9 !important;
+      background: #fafafb !important;
+      border-color: #c5d0cc !important;
       color: var(--injz-pm-green, #ff8e68) !important;
     }
     .admin-profile-form .admin-profile-password-row .admin-profile-password-btn:focus,
     .admin-profile-form .admin-profile-password-row .admin-profile-password-btn:focus-visible {
       outline: none;
-      box-shadow: inset 0 0 0 2px rgba(255, 142, 104, 0.22) !important;
-      z-index: 1;
-      color: var(--injz-pm-green, #ff8e68) !important;
+      box-shadow: none !important;
     }
     .admin-profile-module-note {
       font-size: 0.78rem;

@@ -5,6 +5,45 @@
 (function (global) {
   var stateMap = {};
 
+  function unwrapNestedFormData(fd) {
+    if (!fd || typeof fd !== 'object') return fd || {};
+    var nested = fd.data;
+    if (!nested || typeof nested !== 'object' || Array.isArray(nested)) return fd;
+    var out = {};
+    Object.keys(nested).forEach(function (k) {
+      out[k] = nested[k];
+    });
+    Object.keys(fd).forEach(function (k) {
+      if (k === 'data') return;
+      var v = fd[k];
+      var empty = v == null || v === '' || (Array.isArray(v) && !v.length);
+      if (!empty || !(k in out)) out[k] = v;
+    });
+    if (out.from_date && !out.first_day_of_leave) out.first_day_of_leave = out.from_date;
+    if (out.to_date && !out.last_day_of_leave) out.last_day_of_leave = out.to_date;
+    if (out.number_of_days != null && out.number_of_days !== '' && (out.total_days_requested == null || out.total_days_requested === '')) {
+      out.total_days_requested = out.number_of_days;
+    }
+    if (typeof out.leave_type === 'string' && out.leave_type.trim()) {
+      var lt = out.leave_type.trim().toLowerCase().replace(/[_-]+/g, ' ');
+      var leaveMap = {
+        annual: 'annual',
+        'annual leave': 'annual',
+        sick: 'sick',
+        'sick leave': 'sick',
+        unpaid: 'unpaid',
+        'unpaid leave': 'unpaid',
+        compassionate: 'compassionate',
+        study: 'study',
+        examination: 'examination',
+        hajj: 'hajj',
+        other: 'other',
+      };
+      if (leaveMap[lt]) out.leave_type = leaveMap[lt];
+    }
+    return out;
+  }
+
   function toDateInputOnly(v) {
     if (v == null || v === '') return '';
     var s = String(v).trim();
@@ -691,6 +730,20 @@
     }
 
     try {
+      if (els.length && els[0] && els[0].type === 'checkbox') {
+        var wantCb = String(val == null ? '' : val);
+        for (var i = 0; i < els.length; i++) {
+          els[i].checked = String(els[i].value) === wantCb;
+        }
+        return;
+      }
+      if (els.length && els[0] && els[0].type === 'radio') {
+        var wantRadio = String(val == null ? '' : val);
+        for (var r = 0; r < els.length; r++) {
+          els[r].checked = String(els[r].value) === wantRadio;
+        }
+        return;
+      }
       if (typeof val === 'boolean' || val === true || val === false) return;
       if (typeof val !== 'number' && val != null) setOne(els[0], val);
     } catch (_) {
@@ -1203,7 +1256,8 @@
       if (!payload || payload.success === false) return;
       var mod = payload.module_type || payload.module;
       if (opt.moduleTypes.indexOf(mod) < 0) return;
-      var fd = payload.form_data || {};
+      var fd = unwrapNestedFormData(payload.form_data || {});
+      payload.form_data = fd;
       if (typeof opt.populateFromSubmission === 'function') opt.populateFromSubmission(payload, fd, form, opt);
       else defaultPopulate(form, fd, opt);
       syncReportingManagerSignatureFromMgmtChain(form, fd);

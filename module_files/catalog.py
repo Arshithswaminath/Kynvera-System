@@ -160,8 +160,6 @@ DEFAULT_FOLDER_TREE = [
     {'path_key': 'hr/manpower', 'name': 'Manpower', 'parent_key': 'hr'},
     {'path_key': 'hr/hiring', 'name': 'Hiring Docs', 'parent_key': 'hr'},
     {'path_key': 'procurement', 'name': 'Procurement', 'parent_key': None},
-    {'path_key': 'qhse', 'name': 'QHSE', 'parent_key': None},
-    {'path_key': 'qhse/staff', 'name': 'Staff Compliance', 'parent_key': 'qhse'},
     {'path_key': 'reports', 'name': 'Reports', 'parent_key': None},
     {'path_key': 'reports/mmr', 'name': 'MMR', 'parent_key': 'reports'},
     {'path_key': 'reports/email', 'name': 'Email Automation', 'parent_key': 'reports'},
@@ -181,7 +179,10 @@ def get_module_catalog(module: str) -> dict | None:
         'service_tickets': 'ticketing',
         'service_ticket': 'ticketing',
     }
-    return MODULE_OPTIONS.get(aliases.get(key, key))
+    resolved = aliases.get(key, key)
+    if resolved == 'qhsi':
+        return None
+    return MODULE_OPTIONS.get(resolved)
 
 
 def list_dochub_document_options() -> list:
@@ -273,4 +274,4 @@ def expand_module_catalog(module: str, catalog: dict, user=None) -> dict:
 
 
 def list_catalog() -> dict:
-    return MODULE_OPTIONS
+    return {k: v for k, v in MODULE_OPTIONS.items() if k != 'qhsi'}

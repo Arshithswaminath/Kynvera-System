@@ -168,8 +168,8 @@ def _sample_form_data(form_type: str) -> dict:
         "position": "Senior Project Engineer",
         "designation": "Senior Project Engineer",
         "department": "Engineering",
-        "organization": "INJAAZ",
-        "company": "INJAAZ",
+        "organization": "Kynvera",
+        "company": "Kynvera",
         "mobile_no": "+971 50 123 4567",
         "contact_number": "+971 50 123 4567",
     }
@@ -180,7 +180,7 @@ def _sample_form_data(form_type: str) -> dict:
             "position": "Senior Project Engineer",
             "contacts": "+971 50 123 4567",
             "department": "Engineering",
-            "organization": "INJAAZ",
+            "organization": "Kynvera",
             "date_of_joining": today,
             "bank_name": "Emirates NBD",
             "bank_branch": "Dubai Mall Branch",
@@ -389,7 +389,7 @@ def _sample_form_data(form_type: str) -> dict:
         "visa_renewal": {
             **common,
             "form_date": today,
-            "employer": "INJAAZ",
+            "employer": "Kynvera",
             "years_completed": "2",
             "decision": "continue",
             "hr_comments": "Visa renewal initiated.",

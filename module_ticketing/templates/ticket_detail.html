@@ -12,7 +12,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=5">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <style>
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
     /* Narrower centered column so the page is not edge-to-edge on wide screens */
@@ -320,6 +321,24 @@
     .stage-step:last-child::after { display: none; }
     .stage-step.done::after { background: #16a34a; }
     .stage-step.active::after { background: linear-gradient(90deg, #ff8e68 0%, #e2e8f0 100%); }
+    /* Directional chevron on every connector — points to the next stage */
+    .stage-step::before {
+      content: '';
+      position: absolute;
+      top: 11px;
+      left: calc(50% + (100% - 28px) / 2 + 11px);
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 4px 0 4px 6px;
+      border-color: transparent transparent transparent #cbd5e1;
+      z-index: 1;
+      pointer-events: none;
+    }
+    .stage-step:last-child::before { display: none; }
+    .stage-step.done::before { border-left-color: #16a34a; }
+    .stage-step.active::before { border-left-color: #ff8e68; }
+    .stage-step.on-hold::before { border-left-color: #ea580c; }
     .stage-dot { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2.5px solid #e2e8f0; background: #fff; z-index: 1; position: relative; flex-shrink: 0; transition: all .2s; }
     .stage-step.done .stage-dot  { background: #16a34a; border-color: #16a34a; color: #fff; }
     .stage-step.active .stage-dot { background: #ff8e68; border-color: #ff8e68; color: #fff; box-shadow: 0 0 0 4px rgba(255,142,104,.2); }
@@ -371,6 +390,34 @@
     .tkt-detail-sidebar-grid > .tkt-card > .tkt-card-body,
     .tkt-detail-sidebar-grid > .tkt-sidebar-stack > .tkt-card > .tkt-card-body {
       flex: 0 1 auto;
+    }
+    .tkt-detail-loc-map-wrap {
+      position: relative;
+      height: 200px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+      background: #e8eef4;
+    }
+    .tkt-detail-loc-map {
+      width: 100%;
+      height: 100%;
+    }
+    .tkt-detail-loc-map.leaflet-container { background: #e8eef4; }
+    .tkt-detail-loc-map-wrap .leaflet-control-zoom { display: none; }
+    .tkt-detail-loc-map-wrap .leaflet-control-attribution {
+      font-size: 9px;
+      background: rgba(255,255,255,.82);
+    }
+    body:has(.tkt-modal-backdrop.open) .leaflet-control-container {
+      visibility: hidden;
+    }
+    .tkt-detail-loc-map-caption {
+      margin: 8px 0 0;
+      font-size: .72rem;
+      color: #94a3b8;
+      line-height: 1.4;
+      cursor: pointer;
     }
     /* Vendor team sidebar — one continuous surface (no nested roster “inner card”) */
     .tkt-my-team-sidebar-card {
@@ -579,6 +626,13 @@
       margin: 8px 0 0;
       line-height: 1.35;
     }
+    #statusCard .tkt-status-complete-cta {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+      margin-top: 4px;
+    }
     #statusCard .tkt-status-secondary-wrap {
       background: linear-gradient(180deg, #fffefb 0%, #fffbeb 55%);
       border: 1px solid #fde68a;
@@ -617,7 +671,8 @@
     @media (max-width: 420px) {
       #statusCard .tkt-status-pick-grid { grid-template-columns: 1fr; }
       #statusCard .tkt-status-pick-grid > .tkt-status-span2,
-      #statusCard .tkt-status-span2-caption { grid-column: 1 / -1; }
+      #statusCard .tkt-status-span2-caption,
+      #statusCard .tkt-status-complete-cta { grid-column: 1 / -1; }
     }
 
     /* ── Ticket detail: supervisor send (secondary — white surface, orange label) ── */
@@ -1008,7 +1063,81 @@
     }
 
     /* ── Markup selector ── */
-    .markup-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+    .markup-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0 0; }
+
+    #supCloseModal .tkt-modal--verify {
+      max-width: 920px;
+      max-height: min(92vh, 820px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #supCloseModal .tkt-verify-body {
+      padding: 18px 20px;
+      overflow: auto;
+      flex: 1;
+    }
+    .tkt-verify-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+    .tkt-verify-col {
+      border: 1px solid #e8edf3;
+      border-radius: 14px;
+      padding: 16px;
+      background: #fff;
+      min-width: 0;
+    }
+    .tkt-verify-col--form {
+      background: linear-gradient(180deg, #fffaf7 0%, #fff 48px);
+    }
+    .tkt-verify-col--summary {
+      background: #f8fafc;
+    }
+    .tkt-verify-col h4 {
+      margin: 0 0 12px;
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: #c2440c;
+    }
+    .tkt-verify-col--summary h4 { color: #475569; }
+    .tkt-verify-hint {
+      font-size: .74rem;
+      color: #94a3b8;
+      margin: 8px 0 0;
+      line-height: 1.45;
+    }
+    .tkt-verify-notes {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+    }
+    .tkt-verify-notes-lbl {
+      font-size: .72rem;
+      font-weight: 700;
+      color: #15803d;
+      margin-bottom: 4px;
+    }
+    #supCloseModal .tkt-verify-col .tkt-field { margin-bottom: 12px; }
+    #supCloseModal .tkt-verify-col .tkt-field:last-child { margin-bottom: 0; }
+    #supCloseModal #supSigWrap {
+      min-height: 168px;
+      isolation: isolate;
+      z-index: 1;
+      background: #f8fafc;
+      overflow: hidden;
+    }
+    #supCloseModal #supSigCanvas { height: 160px; width: 100%; display: block; }
+    @media (max-width: 768px) {
+      .tkt-verify-grid { grid-template-columns: 1fr; }
+      #supCloseModal .tkt-modal--verify { max-height: 95vh; }
+    }
     .markup-option {
       border: 2px solid #e2e8f0; border-radius: 10px; padding: 10px 6px;
       text-align: center; cursor: pointer; transition: all .18s;
@@ -1075,6 +1204,7 @@
     .stage-step--sm .stage-label { font-size: .6rem; }
     .stage-step--sm .stage-dot { width: 26px; height: 26px; }
     .stage-step--sm::after { top: 13px; }
+    .stage-step--sm::before { top: 9px; }
     .stage-step.on-hold .stage-dot { background: #ea580c; border-color: #ea580c; color: #fff; box-shadow: 0 0 0 4px rgba(234,88,12,.15); }
     .stage-step.on-hold .stage-label { color: #ea580c; }
     .stage-step.cancelled .stage-dot { background: #dc2626; border-color: #dc2626; color: #fff; }
@@ -1213,7 +1343,7 @@
 
           {# Supervisor verify-close (header shortcut for verification/work_completed) #}
           {% if ticket.status in ('verification', 'pending_verification', 'work_completed') and (user_is_supervisor or ticketing_sees_all) %}
-          <button id="supCloseBtn" class="tkt-hdr-btn tkt-hdr-btn--green">
+          <button type="button" id="supCloseBtn" class="tkt-hdr-btn tkt-hdr-btn--green js-open-sup-close">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
             Verify &amp; Close
           </button>
@@ -1267,9 +1397,8 @@
       ('assigned',       'Assigned'),
       ('site_attended',  'Site Attended'),
       ('work_started',   'Work Started'),
-      ('work_completed', 'Work Done'),
+      ('work_completed', 'Work Completed'),
       ('verification',   'Verification'),
-      ('provider_closed','Provider Verified'),
       ('closed',         'Closed'),
     ] %}
     {# Ordinal map — legacy statuses mapped to equivalent stage #}
@@ -1281,9 +1410,12 @@
       'work_completed':4,'pending_parts':4,
       'verification':5,'pending_verification':5,'resolved':5,
       'provider_closed':6,
-      'closed':7,'cancelled':7
+      'closed':6,'cancelled':6
     } %}
     {% set cur_ord = stage_ord.get(_eff_status, 0) %}
+    {# Work Completed is finished work — show it green and point the current
+       marker at Verification so it is clear the ticket was sent for review. #}
+    {% set _awaiting_verification = _eff_status == 'work_completed' %}
 
     <div class="stage-track stage-track--v2">
       {% for s, label in stages_v2 %}
@@ -1292,9 +1424,9 @@
           {% set step_class = 'cancelled' %}
         {% elif _is_on_hold and s_ord == cur_ord %}
           {% set step_class = 'on-hold active' %}
-        {% elif s_ord < cur_ord %}
+        {% elif s_ord < cur_ord or (_awaiting_verification and s == 'work_completed') %}
           {% set step_class = 'done' %}
-        {% elif s_ord == cur_ord %}
+        {% elif s_ord == cur_ord or (_awaiting_verification and s == 'verification') %}
           {% set step_class = 'active' %}
         {% else %}
           {% set step_class = 'pending' %}
@@ -1446,7 +1578,7 @@
                 {% endfor %}
               </div>
               {% else %}
-              <p class="tkt-assign-empty">No team members yet. Add technicians to this supervisor’s team in settings, then assign from here.</p>
+              <p class="tkt-assign-empty">No team members yet. Add technicians under Settings → Resource Management, then assign from here.</p>
               {% endif %}
             </div>
             <div id="assignPathVendor" hidden>
@@ -1500,11 +1632,11 @@
           </div>
           {% endif %}
 
-          {# ─ STAGE 4: Work Started — advance to Work Completed ─ #}
-          {% if ticket.status in ('work_started', 'in_progress', 'pending_parts') and (user.id == ticket.technician_id or user.id == ticket.assigned_to_id or ticketing_sees_all or (user_is_supervisor and ticket.supervisor_id == user.id and not ticket.technician_id)) %}
-          <div class="workflow-panel panel-technician">
+          {# ─ STAGE 4: Work Started — technician/supervisor mark Work Completed ─ #}
+          {% if ticket.status in ('work_started', 'in_progress', 'pending_parts') and (user.id == ticket.technician_id or user.id == ticket.assigned_to_id or ticketing_sees_all or user_is_supervisor) %}
+          <div class="workflow-panel panel-technician" id="markWorkCompletedPanel">
             <div class="workflow-panel-title">Mark Work Completed</div>
-            <p style="font-size:.86rem;color:#15803d;margin:0 0 12px;">Once all work is done, mark it completed. The supervisor will verify and close the ticket. Make sure all costs are logged in the <strong>Costs</strong> tab.</p>
+            <p style="font-size:.86rem;color:#15803d;margin:0 0 12px;">Work has started. When the job is finished, mark <strong>Work Completed</strong>. The ticket then goes to the supervisor for verification. Log manpower and materials in the <strong>Costs</strong> tab first.</p>
             <div class="tkt-field" style="margin-bottom:12px;">
               <label style="font-size:.82rem;font-weight:600;color:#15803d;display:block;margin-bottom:4px;">Completion Notes <span style="font-weight:400;color:#64748b;">(optional)</span></label>
               <textarea class="tkt-textarea" id="resolutionNotes" rows="2" placeholder="Describe what was done, parts used, findings…" style="font-size:.9rem;"></textarea>
@@ -1516,35 +1648,22 @@
           </div>
           {% endif %}
 
-          {# ─ STAGE 5: Work Completed — supervisor starts verification ─ #}
-          {% if ticket.status == 'work_completed' and (user_is_supervisor or ticketing_sees_all) %}
-          <div class="workflow-panel panel-verification">
-            <div class="workflow-panel-title">Work Completed — Begin Verification</div>
+          {# ─ STAGE 5: Work completed — technician waits while supervisor verifies ─ #}
+          {% if ticket.status in ('work_completed', 'verification', 'pending_verification') and not (user_is_supervisor or ticketing_sees_all) %}
+          <div class="workflow-panel panel-technician" id="workCompletedWaitingPanel">
+            <div class="workflow-panel-title">Work Completed — sent for verification</div>
             {% if ticket.technician_resolution_notes %}
-            <div style="background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:12px;border:1px solid #fde047;">
-              <div style="font-size:.78rem;font-weight:700;color:#854d0e;margin-bottom:4px;">Technician Completion Notes:</div>
+            <div style="background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:12px;border:1px solid #bbf7d0;">
+              <div style="font-size:.78rem;font-weight:700;color:#15803d;margin-bottom:4px;">Your completion notes:</div>
               <div style="font-size:.88rem;color:#374151;">{{ ticket.technician_resolution_notes }}</div>
             </div>
             {% endif %}
-            <p style="font-size:.86rem;color:#854d0e;margin:0 0 12px;">Review the costs below, then start the verification stage. You can close the ticket directly from there.</p>
-            <div style="background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.85rem;">
-              <strong>Cost summary:</strong> Manpower + Materials = <strong>AED {{ '%.2f'|format(base_cost) }}</strong>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="tkt-btn tkt-btn-sm" id="beginVerificationBtn" style="background:#d97706;color:#fff;border:none;font-weight:600;">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                Start Verification
-              </button>
-              <button id="supCloseBtn2" class="tkt-btn tkt-btn-sm" style="background:#16a34a;color:#fff;border:none;font-weight:600;">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-                Verify &amp; Close Directly
-              </button>
-            </div>
+            <p style="font-size:.86rem;color:#15803d;margin:0;">Work is marked completed. This ticket is now with <strong>{{ ticket.supervisor.full_name if ticket.supervisor else 'the supervisor' }}</strong> for verification.</p>
           </div>
           {% endif %}
 
           {# ─ STAGE 6: Verification — supervisor reviews cost then closes ─ #}
-          {% if ticket.status in ('verification', 'pending_verification') and (user_is_supervisor or ticketing_sees_all) %}
+          {% if ticket.status in ('verification', 'pending_verification', 'work_completed') and (user_is_supervisor or ticketing_sees_all) %}
           <div class="workflow-panel panel-verification">
             <div class="workflow-panel-title">Under Verification</div>
             {% if ticket.technician_resolution_notes %}
@@ -1561,10 +1680,10 @@
                 <span>Actual Price: <strong>AED {{ '%.2f'|format(actual_price) }}</strong></span>
               </div>
             </div>
-            <p style="font-size:.86rem;color:#854d0e;margin:0 0 10px;">Review the costs, then click <strong>Verify &amp; Submit</strong> to set the markup and send for operations' final approval.</p>
-            <button id="supCloseBtn" class="tkt-btn tkt-btn-sm" style="background:#16a34a;color:#fff;border:none;font-weight:600;">
+            <p style="font-size:.86rem;color:#854d0e;margin:0 0 10px;">Review the costs, then click <strong>Verify &amp; Close</strong> to sign off and close this ticket.</p>
+            <button type="button" id="supCloseBtnActivity" class="tkt-btn tkt-btn-sm js-open-sup-close" style="background:#16a34a;color:#fff;border:none;font-weight:600;">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-              Verify &amp; Submit for Approval
+              Verify &amp; Close
             </button>
           </div>
           {% endif %}
@@ -1849,9 +1968,12 @@
               {% if images %}
               <div class="tkt-image-grid" id="imageGallery">
                 {% for img in images %}
-                <div class="tkt-image-thumb" onclick="tktOpenLightbox('/tickets/images/{{ img.id }}')">
+                <div class="tkt-image-thumb" data-image-id="{{ img.id }}" onclick="tktOpenLightbox('/tickets/images/{{ img.id }}')">
                   <img src="/tickets/images/{{ img.id }}" alt="{{ img.caption or img.filename }}" loading="lazy">
                   <span class="tkt-img-cap">{{ img.caption or img.filename }}</span>
+                  {% if ticket.status not in ('closed', 'cancelled') %}
+                  <button type="button" class="tkt-img-remove" data-image-id="{{ img.id }}" aria-label="Remove photo">Remove</button>
+                  {% endif %}
                 </div>
                 {% endfor %}
               </div>
@@ -2076,6 +2198,22 @@
       </div><!-- /left -->
 
       <!-- RIGHT sidebar: 2-column grid — left stack (Vendor Team → Routing → Quick Info); right stack (Update status → Cost) -->
+      {% macro tkt_location_map_card(sidebar_span_full=false) %}
+        {% if location_map %}
+        <div class="tkt-card{% if sidebar_span_full %} tkt-sidebar-span-full{% endif %}" id="ticketLocationMapCard">
+          <div class="tkt-card-header"><h3>Location map</h3></div>
+          <div class="tkt-card-body" style="padding:12px 14px 14px;">
+            <div class="tkt-detail-loc-map-wrap" id="ticketLocationMapWrap">
+              <div id="ticketLocationMap" class="tkt-detail-loc-map" aria-hidden="true"></div>
+              <span class="tkt-detail-loc-map-hint">View location</span>
+              <button type="button" class="tkt-detail-loc-map-hit" id="ticketLocationMapHit" aria-label="Open location details"></button>
+            </div>
+            <p class="tkt-detail-loc-map-caption" id="ticketLocationMapCaption">{{ location_map.label }}</p>
+          </div>
+        </div>
+        {% endif %}
+      {% endmacro %}
+
       {% macro tkt_quick_info_card(sidebar_span_full=false) %}
         <div class="tkt-card{% if sidebar_span_full %} tkt-sidebar-span-full{% endif %}">
           <div class="tkt-card-header"><h3>Quick Info</h3></div>
@@ -2154,7 +2292,8 @@
         </div>
         {% endif %}
 
-        {# Quick Info — tucked under routing in left column when this stack exists #}
+        {# Location map — stacked above Quick Info #}
+        {{ tkt_location_map_card() }}
         {{ tkt_quick_info_card() }}
 
         </div>
@@ -2214,8 +2353,11 @@
               {% endif %}
             </button>
             {% endfor %}
+            {% if cur_wf in ('work_started', 'in_progress', 'pending_parts') %}
+            <button type="button" class="tkt-btn tkt-btn-primary tkt-status-complete-cta" id="statusMarkCompletedBtn">Mark work completed</button>
+            {% endif %}
             {% if ticketing_sees_all or user_is_supervisor %}
-            <p class="tkt-status-span2-caption">Closing is a two-stage approval and can't be set manually here — use <strong>Verify &amp; Submit for Approval</strong> (supervisor) above, then Operations final approval.</p>
+            <p class="tkt-status-span2-caption">After work is marked completed, the ticket moves to <strong>Verification</strong>. Close it with <strong>Verify &amp; Close</strong>.</p>
             {% endif %}
             </div>
             </div>{# /.tkt-status-lifecycle-wrap #}
@@ -2303,6 +2445,7 @@
         </div><!-- /.tkt-sidebar-stack right -->
 
         {% if not tkt_sidebar_left_col %}
+        {{ tkt_location_map_card(sidebar_span_full=true) }}
         {{ tkt_quick_info_card(sidebar_span_full=true) }}
         {% endif %}
 
@@ -2313,86 +2456,89 @@
 
 <!-- ── Supervisor Verify & Close Modal ── -->
 <div class="tkt-modal-backdrop" id="supCloseModal">
-  <div class="tkt-modal" style="max-width:540px;">
+  <div class="tkt-modal tkt-modal--verify">
     <div class="tkt-modal-header">
       <h3 style="color:#c2440c;">Verify &amp; Close — {{ ticket.ticket_id }}</h3>
-      <button class="tkt-modal-close" id="supCloseModalX"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg></button>
+      <button type="button" class="tkt-modal-close" id="supCloseModalX"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg></button>
     </div>
-    <div class="tkt-modal-body">
+    <div class="tkt-modal-body tkt-verify-body">
+      <div class="tkt-verify-grid">
 
-      <!-- Technician report preview -->
-      {% if ticket.technician_resolution_notes %}
-      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:14px;">
-        <div style="font-size:.74rem;font-weight:700;color:#15803d;margin-bottom:4px;">Technician's Completion Notes</div>
-        <div style="font-size:.88rem;color:#374151;">{{ ticket.technician_resolution_notes }}</div>
-      </div>
-      {% endif %}
+        <section class="tkt-verify-col tkt-verify-col--form" aria-label="Markup and sign-off">
+          <h4>Markup &amp; sign-off</h4>
+          <div style="margin-bottom:14px;">
+            <div style="font-size:.82rem;font-weight:700;color:#1e293b;margin-bottom:6px;">Select markup</div>
+            <div class="markup-grid" id="markupGrid">
+              <div class="markup-option" data-markup="0" onclick="selectMarkup(0)">
+                <div class="mo-pct">0%</div><div class="mo-label">No markup</div>
+              </div>
+              <div class="markup-option" data-markup="5" onclick="selectMarkup(5)">
+                <div class="mo-pct">5%</div><div class="mo-label">Minimal</div>
+              </div>
+              <div class="markup-option" data-markup="10" onclick="selectMarkup(10)">
+                <div class="mo-pct">10%</div><div class="mo-label">Standard</div>
+              </div>
+              <div class="markup-option" data-markup="15" onclick="selectMarkup(15)">
+                <div class="mo-pct">15%</div><div class="mo-label">Plus</div>
+              </div>
+              <div class="markup-option" data-markup="20" onclick="selectMarkup(20)">
+                <div class="mo-pct">20%</div><div class="mo-label">Elevated</div>
+              </div>
+              <div class="markup-option" data-markup="25" onclick="selectMarkup(25)">
+                <div class="mo-pct">25%</div><div class="mo-label">Premium</div>
+              </div>
+            </div>
+            <p class="tkt-verify-hint">Markup sits on actual price (manpower + materials). It is shown on the service report, not the customer invoice.</p>
+          </div>
+          <div class="tkt-field">
+            <label>Supervisor name <span class="req">*</span></label>
+            <input class="tkt-input" id="supSignedBy" type="text" placeholder="Your full name…" value="{{ user.full_name }}">
+          </div>
+          <div class="tkt-field">
+            <label>Role / designation</label>
+            <input class="tkt-input" id="supSignedRole" type="text" placeholder="e.g. Supervisor, Facility Manager…" value="{{ user.designation|capitalize if user.designation else '' }}">
+          </div>
+          <div class="tkt-field">
+            <label>Verification notes</label>
+            <textarea class="tkt-textarea" id="supVerifNotes" rows="3" placeholder="Any remarks on the completed work…"></textarea>
+          </div>
+        </section>
 
-      <!-- Pricing -->
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px;">
-        <div style="font-size:.8rem;font-weight:700;color:#64748b;margin-bottom:10px;">Pricing — Internal Only</div>
-        <div class="pricing-row"><span class="pr-label">Manpower</span><span class="pr-value">AED {{ '%.2f'|format(mp_total) }}</span></div>
-        <div class="pricing-row"><span class="pr-label">Materials</span><span class="pr-value">AED {{ '%.2f'|format(mat_total) }}</span></div>
-        <div class="pricing-row highlight" style="border-top:2px solid #e2e8f0;padding-top:10px;margin-top:4px;"><span class="pr-label">Actual Price</span><span class="pr-value" id="modalActual">AED {{ '%.2f'|format(actual_price) }}</span></div>
-        <div class="pricing-row" id="markupRow" style="display:none;"><span class="pr-label" id="markupRowLabel">+ 0% Markup</span><span class="pr-value" id="markupRowVal" style="color:#7c3aed;">AED 0.00</span></div>
-        <div class="pricing-row selling highlight" style="border-top:2px solid #ffe4d6;padding-top:10px;margin-top:4px;display:none;" id="sellingRow">
-          <span class="pr-label">Selling Price (Invoice Total)</span>
-          <span class="pr-value" id="sellingRowVal">AED 0.00</span>
-        </div>
-      </div>
+        <section class="tkt-verify-col tkt-verify-col--summary" aria-label="Costs and signature">
+          <h4>Review &amp; sign</h4>
+          {% if ticket.technician_resolution_notes %}
+          <div class="tkt-verify-notes">
+            <div class="tkt-verify-notes-lbl">Technician’s completion notes</div>
+            <div style="font-size:.88rem;color:#374151;">{{ ticket.technician_resolution_notes }}</div>
+          </div>
+          {% endif %}
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+            <div style="font-size:.8rem;font-weight:700;color:#64748b;margin-bottom:8px;">Pricing — internal only</div>
+            <div class="pricing-row"><span class="pr-label">Manpower</span><span class="pr-value">AED {{ '%.2f'|format(mp_total) }}</span></div>
+            <div class="pricing-row"><span class="pr-label">Materials</span><span class="pr-value">AED {{ '%.2f'|format(mat_total) }}</span></div>
+            <div class="pricing-row highlight" style="border-top:2px solid #e2e8f0;padding-top:10px;margin-top:4px;"><span class="pr-label">Actual price</span><span class="pr-value" id="modalActual">AED {{ '%.2f'|format(actual_price) }}</span></div>
+            <div class="pricing-row" id="markupRow" style="display:none;"><span class="pr-label" id="markupRowLabel">+ 0% Markup</span><span class="pr-value" id="markupRowVal" style="color:#7c3aed;">AED 0.00</span></div>
+            <div class="pricing-row selling highlight" style="border-top:2px solid #ffe4d6;padding-top:10px;margin-top:4px;display:none;" id="sellingRow">
+              <span class="pr-label">Selling price (invoice total)</span>
+              <span class="pr-value" id="sellingRowVal">AED 0.00</span>
+            </div>
+          </div>
+          <div class="tkt-field">
+            <label>Supervisor signature <span class="req">*</span></label>
+            <div class="tkt-sig-wrap" id="supSigWrap"><canvas id="supSigCanvas"></canvas><div class="tkt-sig-hint">Sign here</div></div>
+            <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+              <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" id="clearSupSigBtn">Clear</button>
+            </div>
+          </div>
+        </section>
 
-      <!-- Markup selector -->
-      <div style="margin-bottom:16px;">
-        <div style="font-size:.82rem;font-weight:700;color:#1e293b;margin-bottom:8px;">Select Markup Percentage</div>
-        <div class="markup-grid" id="markupGrid">
-          <div class="markup-option" data-markup="0" onclick="selectMarkup(0)">
-            <div class="mo-pct">0%</div><div class="mo-label">No markup</div>
-          </div>
-          <div class="markup-option" data-markup="5" onclick="selectMarkup(5)">
-            <div class="mo-pct">5%</div><div class="mo-label">Minimal</div>
-          </div>
-          <div class="markup-option" data-markup="10" onclick="selectMarkup(10)">
-            <div class="mo-pct">10%</div><div class="mo-label">Standard</div>
-          </div>
-          <div class="markup-option" data-markup="15" onclick="selectMarkup(15)">
-            <div class="mo-pct">15%</div><div class="mo-label">Plus</div>
-          </div>
-          <div class="markup-option" data-markup="20" onclick="selectMarkup(20)">
-            <div class="mo-pct">20%</div><div class="mo-label">Elevated</div>
-          </div>
-          <div class="markup-option" data-markup="25" onclick="selectMarkup(25)">
-            <div class="mo-pct">25%</div><div class="mo-label">Premium</div>
-          </div>
-        </div>
-        <div style="font-size:.76rem;color:#94a3b8;margin-top:6px;">Markup is applied on top of the actual price (manpower + materials). This information appears only in the service report, <strong>not in the customer invoice.</strong></div>
-      </div>
-
-      <!-- Supervisor sign-off -->
-      <div class="tkt-field" style="margin-bottom:12px;">
-        <label>Supervisor Name <span class="req">*</span></label>
-        <input class="tkt-input" id="supSignedBy" type="text" placeholder="Your full name…" value="{{ user.full_name }}">
-      </div>
-      <div class="tkt-field" style="margin-bottom:12px;">
-        <label>Role / Designation</label>
-        <input class="tkt-input" id="supSignedRole" type="text" placeholder="e.g. Supervisor, Facility Manager…" value="{{ user.designation|capitalize if user.designation else '' }}">
-      </div>
-      <div class="tkt-field" style="margin-bottom:12px;">
-        <label>Verification Notes</label>
-        <textarea class="tkt-textarea" id="supVerifNotes" rows="2" placeholder="Any remarks on the completed work…"></textarea>
-      </div>
-      <div class="tkt-field">
-        <label>Supervisor Signature <span class="req">*</span></label>
-        <div class="tkt-sig-wrap" id="supSigWrap"><canvas id="supSigCanvas" style="height:130px;"></canvas><div class="tkt-sig-hint">Sign here</div></div>
-        <div style="display:flex;justify-content:flex-end;margin-top:4px;">
-          <button class="tkt-btn tkt-btn-outline tkt-btn-sm" id="clearSupSigBtn">Clear</button>
-        </div>
       </div>
     </div>
     <div class="tkt-modal-footer">
-      <button class="tkt-btn tkt-btn-outline" id="cancelSupCloseBtn">Cancel</button>
-      <button class="tkt-btn tkt-btn-primary" id="confirmSupCloseBtn">
+      <button type="button" class="tkt-btn tkt-btn-outline" id="cancelSupCloseBtn">Cancel</button>
+      <button type="button" class="tkt-btn tkt-btn-primary" id="confirmSupCloseBtn">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-        Verify &amp; Submit for Approval
+        Verify &amp; Close
       </button>
     </div>
   </div>
@@ -2609,12 +2755,296 @@
   </div>
 </div>
 
+{% if location_map %}
+<!-- ── Location map details ── -->
+<div class="tkt-modal-backdrop" id="ticketLocationModal">
+  <div class="tkt-modal tkt-modal--location" role="dialog" aria-modal="true" aria-labelledby="ticketLocationModalTitle">
+    <div class="tkt-modal-header">
+      <h3 id="ticketLocationModalTitle">Location — {{ ticket.ticket_id }}</h3>
+      <button type="button" class="tkt-modal-close" id="ticketLocationModalX" aria-label="Close location">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="tkt-modal-body">
+      <div class="tkt-loc-modal-grid">
+        <div class="tkt-loc-modal-map-wrap">
+          <div id="ticketLocationModalMap"></div>
+        </div>
+        <div>
+          <dl class="tkt-loc-modal-dl">
+            <div class="tkt-loc-kv" id="locRowProject"{% if not location_map.project %} hidden{% endif %}>
+              <dt>Project</dt>
+              <dd id="locModalProject">{{ location_map.project }}</dd>
+            </div>
+            <div class="tkt-loc-kv" id="locRowProperty"{% if not location_map.property_name %} hidden{% endif %}>
+              <dt>Property</dt>
+              <dd id="locModalProperty">{{ location_map.property_name }}</dd>
+            </div>
+            <div class="tkt-loc-kv" id="locRowZone"{% if not location_map.zone %} hidden{% endif %}>
+              <dt>Zone</dt>
+              <dd id="locModalZone">{{ location_map.zone }}</dd>
+            </div>
+            <div class="tkt-loc-kv" id="locRowSubZone"{% if not location_map.sub_zone %} hidden{% endif %}>
+              <dt>Sub-zone</dt>
+              <dd id="locModalSubZone">{{ location_map.sub_zone }}</dd>
+            </div>
+            <div class="tkt-loc-kv" id="locRowUnit"{% if not location_map.base_unit %} hidden{% endif %}>
+              <dt>Unit</dt>
+              <dd id="locModalUnit">{{ location_map.base_unit }}</dd>
+            </div>
+            <div class="tkt-loc-kv">
+              <dt>Coordinates</dt>
+              <dd>
+                <span class="tkt-loc-coords" id="locModalCoords">Looking up pin…</span>
+                <button type="button" class="tkt-loc-coords-copy" id="locModalCopyCoords">Copy</button>
+                <div class="tkt-loc-source" id="locModalSource"></div>
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </div>
+    <div class="tkt-modal-footer tkt-loc-modal-footer" id="locModalFooter">
+      <a class="tkt-btn tkt-btn-primary" id="locModalGoogle" href="#" target="_blank" rel="noopener noreferrer">Google Maps</a>
+      <a class="tkt-btn tkt-btn-outline" id="locModalApple" href="#" target="_blank" rel="noopener noreferrer">Apple Maps</a>
+      <button type="button" class="tkt-btn tkt-btn-outline" id="locModalShare">Share</button>
+      <button type="button" class="tkt-btn tkt-btn-outline" id="locModalCopy">Copy address</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 </div></div>{# tkt-content / tkt-dh-main #}
 </div></div>{# tkt-dh-page-root / tkt-dh-app-root #}
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="{{ url_for('static', filename='js/ticketing.js') }}"></script>
 <script>
 const TICKET_ID = '{{ ticket.ticket_id }}';
+window.TICKET_LOCATION_MAP = {{ (location_map or none)|tojson }};
+
+(function initTicketLocationMap() {
+  const pin = window.TICKET_LOCATION_MAP;
+  if (!pin) return;
+
+  const miniEl = document.getElementById('ticketLocationMap');
+  const hit = document.getElementById('ticketLocationMapHit');
+  const caption = document.getElementById('ticketLocationMapCaption');
+  const modal = document.getElementById('ticketLocationModal');
+  const googleBtn = document.getElementById('locModalGoogle');
+  const appleBtn = document.getElementById('locModalApple');
+  const shareBtn = document.getElementById('locModalShare');
+  const copyAddrBtn = document.getElementById('locModalCopy');
+  const copyCoordsBtn = document.getElementById('locModalCopyCoords');
+  const footer = document.getElementById('locModalFooter');
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  if (isIOS && footer) footer.classList.add('tkt-loc-modal-footer--ios');
+
+  function locHasCoords() {
+    if (pin.lat == null || pin.lng == null || pin.lat === '' || pin.lng === '') return false;
+    const lat = Number(pin.lat);
+    const lng = Number(pin.lng);
+    return Number.isFinite(lat) && Number.isFinite(lng);
+  }
+
+  function locLabel() {
+    return (pin.label || [pin.property_name, pin.zone, pin.sub_zone, pin.base_unit].filter(Boolean).join(' / ') || pin.project || '').trim();
+  }
+
+  function googleMapsUrl() {
+    if (locHasCoords()) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${Number(pin.lat)},${Number(pin.lng)}`;
+    }
+    const q = locLabel();
+    return q ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}` : '#';
+  }
+
+  function appleMapsUrl() {
+    const q = encodeURIComponent(locLabel() || 'Location');
+    if (locHasCoords()) {
+      return `https://maps.apple.com/?daddr=${Number(pin.lat)},${Number(pin.lng)}&q=${q}`;
+    }
+    return locLabel() ? `https://maps.apple.com/?q=${q}` : '#';
+  }
+
+  function syncLocActions() {
+    const canNavigate = locHasCoords() || Boolean(locLabel());
+    [googleBtn, appleBtn, shareBtn].forEach((el) => {
+      if (!el) return;
+      if (el.tagName === 'A') {
+        el.setAttribute('aria-disabled', canNavigate ? 'false' : 'true');
+        el.style.pointerEvents = canNavigate ? '' : 'none';
+        el.style.opacity = canNavigate ? '' : '0.45';
+      } else {
+        el.disabled = !canNavigate;
+      }
+    });
+    if (googleBtn) googleBtn.href = googleMapsUrl();
+    if (appleBtn) appleBtn.href = appleMapsUrl();
+    const coordsEl = document.getElementById('locModalCoords');
+    const sourceEl = document.getElementById('locModalSource');
+    if (coordsEl) {
+      coordsEl.textContent = locHasCoords()
+        ? `${Number(pin.lat).toFixed(6)}, ${Number(pin.lng).toFixed(6)}`
+        : 'Pin not set yet';
+    }
+    if (sourceEl) {
+      const src = pin.source === 'unit' ? 'Pinned on the unit'
+        : pin.source === 'property' ? 'Pinned on the property'
+        : pin.source === 'geocode' ? 'Looked up from the address'
+        : '';
+      sourceEl.textContent = src;
+      sourceEl.hidden = !src;
+    }
+    if (copyCoordsBtn) copyCoordsBtn.hidden = !locHasCoords();
+  }
+
+  let locModalMap = null;
+  let locModalMarker = null;
+
+  function ensureLocModalMap() {
+    const el = document.getElementById('ticketLocationModalMap');
+    if (!el || typeof L === 'undefined') return;
+    if (!locModalMap) {
+      locModalMap = L.map(el, { scrollWheelZoom: true, attributionControl: true })
+        .setView([25.2048, 55.2708], 11);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap',
+      }).addTo(locModalMap);
+    }
+    if (locHasCoords()) {
+      const latlng = [Number(pin.lat), Number(pin.lng)];
+      if (!locModalMarker) {
+        locModalMarker = L.circleMarker(latlng, {
+          radius: 10, color: '#fff', weight: 2, fillColor: '#ff8e68', fillOpacity: 0.95,
+        }).addTo(locModalMap);
+      } else {
+        locModalMarker.setLatLng(latlng);
+      }
+      locModalMap.setView(latlng, 16);
+    }
+    setTimeout(() => locModalMap.invalidateSize(), 80);
+  }
+
+  function openLocModal() {
+    if (!modal) return;
+    modal.classList.add('open');
+    syncLocActions();
+    ensureLocModalMap();
+  }
+
+  function closeLocModal() {
+    modal?.classList.remove('open');
+  }
+
+  async function copyText(text, okMsg) {
+    try {
+      await navigator.clipboard.writeText(text);
+      tktToast(okMsg || 'Copied.', 'success');
+    } catch (err) {
+      tktToast('Could not copy.', 'error');
+    }
+  }
+
+  hit?.addEventListener('click', openLocModal);
+  caption?.addEventListener('click', openLocModal);
+  document.getElementById('ticketLocationModalX')?.addEventListener('click', closeLocModal);
+  modal?.addEventListener('click', (e) => {
+    if (e.target === modal) closeLocModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal?.classList.contains('open')) closeLocModal();
+  });
+
+  copyAddrBtn?.addEventListener('click', () => copyText(locLabel() || '', 'Address copied.'));
+  copyCoordsBtn?.addEventListener('click', () => {
+    if (!locHasCoords()) return;
+    copyText(`${Number(pin.lat)}, ${Number(pin.lng)}`, 'Coordinates copied.');
+  });
+  shareBtn?.addEventListener('click', async () => {
+    const url = googleMapsUrl();
+    const title = pin.ticket_id ? `${pin.ticket_id} location` : 'Ticket location';
+    const text = locLabel();
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url });
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+      }
+    }
+    copyText(url, 'Maps link copied.');
+  });
+
+  if (miniEl && typeof L !== 'undefined') {
+    const map = L.map(miniEl, {
+      zoomControl: false,
+      scrollWheelZoom: false,
+      dragging: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      attributionControl: true,
+    }).setView([25.2048, 55.2708], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap',
+    }).addTo(map);
+
+    function dropPin(lat, lng, captionText) {
+      pin.lat = lat;
+      pin.lng = lng;
+      L.circleMarker([lat, lng], {
+        radius: 9, color: '#fff', weight: 2, fillColor: '#ff8e68', fillOpacity: 0.95,
+      }).addTo(map);
+      map.setView([lat, lng], 15);
+      if (caption && captionText) caption.textContent = captionText;
+      setTimeout(() => map.invalidateSize(), 80);
+      syncLocActions();
+      if (modal?.classList.contains('open')) ensureLocModalMap();
+    }
+
+    if (locHasCoords()) {
+      dropPin(Number(pin.lat), Number(pin.lng), pin.label);
+    } else {
+      const q = [pin.property_name, 'Ajman', 'UAE'].filter(Boolean).join(', ');
+      if (q && q.length >= 8) {
+        let url = '/tickets/api/geocode?q=' + encodeURIComponent(q);
+        if (pin.property_id) url += '&property_id=' + encodeURIComponent(pin.property_id);
+        tktFetch(url).then((res) => {
+          if (!res.ok || !res.data?.success) return;
+          pin.source = pin.source || 'geocode';
+          dropPin(Number(res.data.lat), Number(res.data.lng), pin.label);
+        });
+      }
+    }
+  }
+
+  syncLocActions();
+})();
+
+(async function fillReasonSelectsFromSettings() {
+  try {
+    const res = await tktFetch('/tickets/api/options');
+    const opts = (res.ok && res.data && res.data.options) ? res.data.options : {};
+    function fill(selId, rows, keyName) {
+      const sel = document.getElementById(selId);
+      if (!sel || !rows || !rows.length) return;
+      const cur = sel.value;
+      sel.innerHTML = rows.map(r => {
+        const k = r[keyName] || r.value;
+        const lab = r.label || k;
+        return `<option value="${String(k).replace(/"/g,'&quot;')}">${String(lab).replace(/</g,'&lt;')}</option>`;
+      }).join('');
+      if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+    }
+    fill('holdReasonSelect', opts.hold_reasons, 'key');
+    fill('cancelReasonSelect', opts.cancel_reasons, 'key');
+  } catch (e) { /* keep server-rendered defaults */ }
+})();
 
 (function updateSlaBadge() {
   const el = document.getElementById('slaCountdown');
@@ -2959,21 +3389,6 @@ document.querySelectorAll('.resume-ticket-trigger').forEach(btn => {
   });
 });
 
-// ── Begin Verification ────────────────────────────────────
-document.getElementById('beginVerificationBtn')?.addEventListener('click', async (e) => {
-  const btn = e.currentTarget;
-  const prev = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="tkt-spinner" style="width:14px;height:14px;border-width:2px;"></span> Starting…';
-  const res = await tktFetch(`/tickets/api/tickets/${TICKET_ID}/begin-verification`, { method: 'POST' });
-  if (!res.ok || !res.data?.success) {
-    tktToast(res.data?.error || 'Could not start verification.', 'error');
-    btn.disabled = false; btn.innerHTML = prev; return;
-  }
-  tktToast('Verification started.', 'success');
-  setTimeout(() => location.reload(), 500);
-});
-
 // ── Advance ticket status (technician self-service) ───────
 document.querySelectorAll('.tkt-btn-advance').forEach(btn => {
   btn.addEventListener('click', async () => {
@@ -2996,11 +3411,6 @@ document.querySelectorAll('.tkt-btn-advance').forEach(btn => {
     tktToast(`Status updated to "${res.data.label || res.data.status}".`, 'success');
     setTimeout(() => location.reload(), 500);
   });
-});
-
-// ── supCloseBtn2 (from work_completed panel) → opens same sup-close modal ──
-document.getElementById('supCloseBtn2')?.addEventListener('click', () => {
-  document.getElementById('supCloseModal')?.classList.add('open');
 });
 
 // ── Assign ────────────────────────────────────────────────
@@ -3039,6 +3449,13 @@ document.getElementById('addNoteBtn')?.addEventListener('click', async () => {
 
 // ── Images ────────────────────────────────────────────────
 tktSetupImageUpload(document.getElementById('uploadZone'), document.getElementById('imageFileInput'), TICKET_ID, document.getElementById('imageGallery'));
+document.getElementById('imageGallery')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.tkt-img-remove');
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  tktDeleteTicketImage(TICKET_ID, btn.dataset.imageId, btn.closest('.tkt-image-thumb'));
+});
 
 // ── Manpower ──────────────────────────────────────────────
 document.getElementById('toggleMpForm')?.addEventListener('click', () => document.getElementById('mpForm').classList.toggle('open'));
@@ -3404,21 +3821,51 @@ document.getElementById('assignTeamList')?.addEventListener('click', async (e) =
   await assignTicketTechnician(body, btn, `${btn.dataset.name || 'Team member'} assigned`);
 });
 
-// ── Mark completed (technician) — uses /advance endpoint ──
-document.getElementById('markCompletedBtn')?.addEventListener('click', async () => {
+// ── Mark completed (technician or supervisor) — uses /advance endpoint ──
+async function markTicketWorkCompleted(btn, idleHtml) {
+  if (!btn) return;
   const notes = document.getElementById('resolutionNotes')?.value.trim();
-  const btn = document.getElementById('markCompletedBtn');
-  btn.disabled = true; btn.innerHTML = '<span class="tkt-spinner" style="width:14px;height:14px;border-width:2px;"></span> Submitting…';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="tkt-spinner" style="width:14px;height:14px;border-width:2px;"></span> Submitting…';
   const res = await tktFetch(`/tickets/api/tickets/${TICKET_ID}/advance`, {
-    method: 'POST', body: JSON.stringify({ resolution_notes: notes }),
+    method: 'POST', body: JSON.stringify({ resolution_notes: notes || null }),
   });
-  if (res.ok && res.data.success) { tktToast('Work marked completed! Notifying supervisor…', 'success'); setTimeout(() => location.reload(), 800); }
-  else { tktToast(res.data?.error || 'Failed.', 'error'); btn.disabled = false; btn.innerHTML = '✓ Mark Work Completed'; }
+  if (res.ok && res.data.success) {
+    tktToast('Work marked completed. Sent to supervisor for verification.', 'success');
+    setTimeout(() => location.reload(), 800);
+    return;
+  }
+  tktToast(res.data?.error || 'Failed.', 'error');
+  btn.disabled = false;
+  btn.innerHTML = idleHtml;
+}
+document.getElementById('markCompletedBtn')?.addEventListener('click', (e) => {
+  markTicketWorkCompleted(e.currentTarget, '✓ Mark Work Completed');
+});
+document.getElementById('statusMarkCompletedBtn')?.addEventListener('click', (e) => {
+  markTicketWorkCompleted(e.currentTarget, 'Mark work completed');
 });
 
 // ── Supervisor verify & close ─────────────────────────────
 let supSigPad = null;
 const supCloseModal = document.getElementById('supCloseModal');
+
+function openSupCloseModal() {
+  if (!supCloseModal) return;
+  supCloseModal.classList.add('open');
+  requestAnimationFrame(() => {
+    const canvas = document.getElementById('supSigCanvas');
+    const wrap = document.getElementById('supSigWrap');
+    if (!canvas || !wrap) return;
+    canvas.style.width = Math.max(wrap.clientWidth, 200) + 'px';
+    canvas.style.height = '160px';
+    if (!supSigPad) {
+      supSigPad = new TktSignaturePad(canvas);
+    } else if (typeof supSigPad._scale === 'function') {
+      supSigPad._scale();
+    }
+  });
+}
 
 function selectMarkup(pct) {
   _selectedMarkup = pct;
@@ -3440,15 +3887,8 @@ function selectMarkup(pct) {
   }
 }
 
-document.getElementById('supCloseBtn')?.addEventListener('click', () => {
-  supCloseModal?.classList.add('open');
-  if (!supSigPad) {
-    const canvas = document.getElementById('supSigCanvas');
-    const wrap = document.getElementById('supSigWrap');
-    canvas.style.width = wrap.offsetWidth + 'px';
-    canvas.style.height = '130px';
-    supSigPad = new TktSignaturePad(canvas);
-  }
+document.querySelectorAll('.js-open-sup-close').forEach((btn) => {
+  btn.addEventListener('click', openSupCloseModal);
 });
 document.getElementById('cancelSupCloseBtn')?.addEventListener('click', () => supCloseModal?.classList.remove('open'));
 document.getElementById('supCloseModalX')?.addEventListener('click', () => supCloseModal?.classList.remove('open'));
@@ -3474,11 +3914,11 @@ document.getElementById('confirmSupCloseBtn')?.addEventListener('click', async (
     }),
   });
   if (res.ok && res.data.success) {
-    tktToast(`Submitted for operations approval. Selling price: AED ${(res.data.selling_price||0).toFixed(2)}`, 'success', 2500);
+    tktToast(`Ticket closed. Selling price: AED ${(res.data.selling_price||0).toFixed(2)}`, 'success', 2500);
     setTimeout(() => location.reload(), 2000);
   } else {
     tktToast(res.data.error || 'Failed.', 'error');
-    btn.disabled = false; btn.innerHTML = '✓ Verify & Submit for Approval';
+    btn.disabled = false; btn.innerHTML = '✓ Verify & Close';
   }
 });
 

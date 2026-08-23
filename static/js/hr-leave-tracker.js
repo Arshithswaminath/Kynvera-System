@@ -39,6 +39,7 @@
     },
     colFilterKey: null,
     colFilterSelected: null, // Set of exact values when using checklist
+    logSort: { key: null, dir: 'desc' },
   };
 
   function $(id) {
@@ -364,6 +365,8 @@
     var leaveTo = ($('ltLogLeaveTo') && $('ltLogLeaveTo').value) || '';
     var createdFrom = ($('ltLogCreatedFrom') && $('ltLogCreatedFrom').value) || '';
     var createdTo = ($('ltLogCreatedTo') && $('ltLogCreatedTo').value) || '';
+    var editedFrom = ($('ltLogEditedFrom') && $('ltLogEditedFrom').value) || '';
+    var editedTo = ($('ltLogEditedTo') && $('ltLogEditedTo').value) || '';
     return rows.filter(function (p) {
       var colsOk = Object.keys(filters).every(function (key) {
         var q = String(filters[key] || '').trim().toLowerCase();
@@ -375,6 +378,7 @@
       if (leaveFrom && toYmdKey(end) < leaveFrom) return false;
       if (leaveTo && toYmdKey(p.leave_date) > leaveTo) return false;
       if (!inYmdRange(p.created_at, createdFrom, createdTo)) return false;
+      if (!inYmdRange(p.updated_at || p.created_at, editedFrom, editedTo)) return false;
       return true;
     });
   }
@@ -391,6 +395,8 @@
     var leaveTo = ($('ltLogLeaveTo') && $('ltLogLeaveTo').value) || '';
     var createdFrom = ($('ltLogCreatedFrom') && $('ltLogCreatedFrom').value) || '';
     var createdTo = ($('ltLogCreatedTo') && $('ltLogCreatedTo').value) || '';
+    var editedFrom = ($('ltLogEditedFrom') && $('ltLogEditedFrom').value) || '';
+    var editedTo = ($('ltLogEditedTo') && $('ltLogEditedTo').value) || '';
     return (
       hasCol ||
       !!q.trim() ||
@@ -399,7 +405,9 @@
       !!leaveFrom ||
       !!leaveTo ||
       !!createdFrom ||
-      !!createdTo
+      !!createdTo ||
+      !!editedFrom ||
+      !!editedTo
     );
   }
 
@@ -421,6 +429,49 @@
       btn.classList.toggle('is-active', active);
     });
     syncLogsClearBtn();
+  }
+
+  function logSortValue(p, key) {
+    if (key === 'log_created') return String(p.created_at || '');
+    if (key === 'log_edited') return String(p.updated_at || p.created_at || '');
+    return '';
+  }
+
+  function sortedLogs(rows) {
+    var key = state.logSort && state.logSort.key;
+    if (!key) return rows;
+    var dir = state.logSort.dir === 'asc' ? 1 : -1;
+    return rows.slice().sort(function (a, b) {
+      var av = logSortValue(a, key);
+      var bv = logSortValue(b, key);
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return ((a.id || 0) - (b.id || 0)) * dir;
+    });
+  }
+
+  function toggleLogSort(key) {
+    if (!key) return;
+    if (state.logSort.key === key) {
+      state.logSort.dir = state.logSort.dir === 'desc' ? 'asc' : 'desc';
+    } else {
+      state.logSort.key = key;
+      state.logSort.dir = 'desc';
+    }
+    renderLogs();
+  }
+
+  function syncLogSortButtons() {
+    var key = state.logSort && state.logSort.key;
+    var dir = (state.logSort && state.logSort.dir) || 'desc';
+    document.querySelectorAll('.lt-sort-btn').forEach(function (btn) {
+      var col = btn.getAttribute('data-sort-col');
+      var active = col === key;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-sort', active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none');
+      var th = btn.closest('th');
+      if (th) th.setAttribute('aria-sort', active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none');
+    });
   }
 
   function uniqueValuesForCol(key) {
@@ -729,8 +780,9 @@
     var tbody = $('ltLogsBody');
     if (!tbody) return;
     var all = state.logs || [];
-    var logs = filteredLogs();
+    var logs = sortedLogs(filteredLogs());
     syncColFilterButtons();
+    syncLogSortButtons();
     if (!all.length) {
       tbody.innerHTML =
         '<tr><td colspan="10" class="lt-empty">No leave logs yet. Click <strong>Log leave</strong> to add an entry — it rolls into the staff master.</td></tr>';
@@ -1710,11 +1762,12 @@
         if ($('ltLogsSearch')) $('ltLogsSearch').value = '';
         if ($('ltLogTypeFilter')) $('ltLogTypeFilter').value = 'all';
         if ($('ltLogCompanyFilter')) $('ltLogCompanyFilter').value = 'all';
-        ['ltLogLeaveFrom', 'ltLogLeaveTo', 'ltLogCreatedFrom', 'ltLogCreatedTo'].forEach(
+        ['ltLogLeaveFrom', 'ltLogLeaveTo', 'ltLogCreatedFrom', 'ltLogCreatedTo', 'ltLogEditedFrom', 'ltLogEditedTo'].forEach(
           function (id) {
             if ($(id)) $(id).value = '';
           }
         );
+        state.logSort = { key: null, dir: 'desc' };
         syncSearchClear('ltLogsSearch', 'ltLogsSearchClear');
         syncColFilterButtons();
         loadLogs();
@@ -1780,6 +1833,13 @@
     });
 
     document.addEventListener('click', function (e) {
+      var sortBtn = e.target.closest('[data-sort-col]');
+      if (sortBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleLogSort(sortBtn.getAttribute('data-sort-col'));
+        return;
+      }
       var filterBtn = e.target.closest('[data-col-filter]');
       if (filterBtn) {
         e.preventDefault();
@@ -1881,7 +1941,7 @@
         loadLogs();
         syncLogsClearBtn();
       });
-    ['ltLogLeaveFrom', 'ltLogLeaveTo', 'ltLogCreatedFrom', 'ltLogCreatedTo'].forEach(
+    ['ltLogLeaveFrom', 'ltLogLeaveTo', 'ltLogCreatedFrom', 'ltLogCreatedTo', 'ltLogEditedFrom', 'ltLogEditedTo'].forEach(
       function (id) {
         $(id) &&
           $(id).addEventListener('change', function () {

@@ -45,7 +45,6 @@ class _QhsiCanvas(Canvas):
                 left_margin=MARGIN,
                 right_margin=MARGIN,
                 footer_left=brand.FOOTER_CONFIDENTIAL,
-                header_title=brand.COMPANY_NAME,
             )
             Canvas.showPage(self)
         Canvas.save(self)
