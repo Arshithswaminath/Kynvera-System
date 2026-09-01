@@ -594,6 +594,21 @@ def _user_in_supervisor_pool(user: User) -> bool:
     return TicketSupervisorTeam.query.filter_by(supervisor_id=user.id, is_active=True).first() is not None
 
 
+def _can_manage_own_supervisor_team(user: User) -> bool:
+    """Who may create/update/remove rows in TicketSupervisorTeam for themselves.
+
+    Must NOT treat an existing team row as sufficient authority — otherwise any
+    user with access_ticketing can POST a teammate and self-promote into the
+    supervisor pool (_user_in_supervisor_pool / _is_supervisor_of_ticket).
+    """
+    if user is None:
+        return False
+    if _ticketing_sees_all_tickets(user):
+        return True
+    des = (getattr(user, 'designation', None) or '').strip().lower()
+    return des == 'supervisor'
+
+
 def _ticket_visibility_or_clause(user: User):
     """SQL filter: tickets a non-overwatch user may list or count."""
     clauses = [
@@ -3549,6 +3564,11 @@ def add_team_member():
     user = _current_user()
     if not _has_access(user):
         return jsonify({'success': False, 'error': 'Access denied'}), 403
+    if not _can_manage_own_supervisor_team(user):
+        return jsonify({
+            'success': False,
+            'error': 'Only designated supervisors (or OPS / GM / Admin) may manage vendor teams.',
+        }), 403
 
     data = request.get_json(silent=True) or {}
     tech_id = data.get('technician_id')
@@ -3584,6 +3604,11 @@ def remove_team_member(entry_id):
     user = _current_user()
     if not _has_access(user):
         return jsonify({'success': False, 'error': 'Access denied'}), 403
+    if not _can_manage_own_supervisor_team(user):
+        return jsonify({
+            'success': False,
+            'error': 'Only designated supervisors (or OPS / GM / Admin) may manage vendor teams.',
+        }), 403
 
     entry = db.session.get(TicketSupervisorTeam, entry_id)
     if not entry or entry.supervisor_id != user.id:
