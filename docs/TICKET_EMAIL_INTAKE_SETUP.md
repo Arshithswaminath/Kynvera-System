@@ -129,5 +129,7 @@ curl -s -X POST "http://localhost:5002/tickets/api/inbound-email/<your-secret>" 
   draft is attributed to the system **"Email Intake"** account — the real sender's
   name/email is still shown on the draft.
 - **De-duplication:** Mailjet retries webhook calls that don't return `200` promptly; we
-  de-duplicate on the email's `Message-Id` header, so retries won't create duplicate
-  drafts.
+  de-duplicate on the email's `Message-Id` header when a draft was already created (or
+  the intake was previously marked `processed`/`duplicate`). Failed attempts are logged
+  as `error` and do **not** block retries — the webhook returns `500` on processing
+  failure so Mailjet can try again.
