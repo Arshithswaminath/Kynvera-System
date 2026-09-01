@@ -193,7 +193,11 @@ def delete_material(material_id):
     if user.role != 'admin' and not getattr(user, 'access_procurement_module', False):
         return jsonify({'error': 'Access denied'}), 403
     
-    submission = Submission.query.filter_by(submission_id=material_id).first()
+    # Scope to procurement materials only — never delete arbitrary Submission rows by id.
+    submission = Submission.query.filter_by(
+        submission_id=material_id,
+        module_type='procurement_material',
+    ).first()
     if not submission:
         return jsonify({'error': 'Material not found'}), 404
     
@@ -624,7 +628,11 @@ def assign_material_to_property():
     if not material_id or not property_name:
         return jsonify({'error': 'Material ID and property name are required'}), 400
     
-    submission = Submission.query.filter_by(submission_id=material_id).first()
+    # Scope to procurement materials only — never mutate unrelated Submission.form_data.
+    submission = Submission.query.filter_by(
+        submission_id=material_id,
+        module_type='procurement_material',
+    ).first()
     if not submission:
         return jsonify({'error': 'Material not found'}), 404
     
