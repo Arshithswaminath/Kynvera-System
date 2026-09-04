@@ -381,3 +381,99 @@ class TestProjectPackPdf:
         greens = [p for p in stamped.getdata() if p[1] > p[0] + 20 and p[1] > p[2] + 20]
         assert greens, 'expected a green pin on the stamped drawing'
 
+
+def _ticketing_headers(client, app, username='tkttech'):
+    """JWT for a non-admin user who still has ticketing module access."""
+    with app.app_context():
+        from app.models import User
+        existing = User.query.filter_by(username=username).first()
+        if existing is None:
+            u = User(
+                username=username,
+                email=f'{username}@example.com',
+                full_name='Ticketing Technician',
+                role='user',
+                designation='technician',
+                is_active=True,
+                password_changed=True,
+                access_ticketing=True,
+            )
+            u.set_password('TechPass123')
+            db.session.add(u)
+            db.session.commit()
+    res = client.post('/api/auth/login', json={'username': username, 'password': 'TechPass123'})
+    token = (res.get_json() or {}).get('access_token')
+    return {'Authorization': f'Bearer {token}'}
+
+
+class TestSettingsMutationsRequireAdmin:
+    def test_ticketing_user_cannot_create_or_delete_project(self, client, admin_auth_headers, app):
+        proj = _create_project(client, admin_auth_headers, name='Lockdown Project')
+        headers = _ticketing_headers(client, app)
+
+        created = client.post(
+            '/tickets/api/settings/projects',
+            json={'name': 'Hijacked Project', 'finance_emails': 'attacker@example.com'},
+            headers=headers,
+        )
+        assert created.status_code == 403
+        assert created.get_json()['error'] == 'Admin only'
+
+        updated = client.put(
+            f"/tickets/api/settings/projects/{proj['id']}",
+            json={'finance_emails': 'attacker@example.com', 'is_active': False},
+            headers=headers,
+        )
+        assert updated.status_code == 403
+
+        deleted = client.delete(f"/tickets/api/settings/projects/{proj['id']}", headers=headers)
+        assert deleted.status_code == 403
+
+        listed = client.get('/tickets/api/settings/projects', headers=headers)
+        assert listed.status_code == 200
+        names = [p['name'] for p in listed.get_json()['projects']]
+        assert 'Lockdown Project' in names
+        assert 'Hijacked Project' not in names
+
+    def test_ticketing_user_cannot_mutate_location_tree(self, client, admin_auth_headers, app):
+        proj = _create_project(client, admin_auth_headers, name='Location Lock')
+        prop_res = client.post(
+            '/tickets/api/settings/properties',
+            json={'name': 'Tower A', 'project_id': proj['id']},
+            headers=admin_auth_headers,
+        )
+        assert prop_res.status_code == 201, prop_res.get_json()
+        prop_id = prop_res.get_json()['property']['id']
+        headers = _ticketing_headers(client, app, username='tktloc')
+
+        steal = client.patch(
+            f'/tickets/api/settings/properties/{prop_id}',
+            json={'name': 'Stolen', 'project_id': None},
+            headers=headers,
+        )
+        assert steal.status_code == 403
+
+        zone = client.post(
+            '/tickets/api/settings/zones',
+            json={'name': 'Fake Zone', 'property_id': prop_id},
+            headers=headers,
+        )
+        assert zone.status_code == 403
+
+        delete_prop = client.delete(f'/tickets/api/settings/properties/{prop_id}', headers=headers)
+        assert delete_prop.status_code == 403
+
+        tree = client.get(
+            f"/tickets/api/settings/projects/{proj['id']}/location-tree",
+            headers=headers,
+        )
+        assert tree.status_code == 200
+        names = [p['name'] for p in tree.get_json()['properties']]
+        assert names == ['Tower A']
+
+    def test_ticketing_user_cannot_download_project_pack(self, client, admin_auth_headers, app):
+        proj = _create_project(client, admin_auth_headers, name='Confidential Pack')
+        headers = _ticketing_headers(client, app, username='tktpdf')
+        res = client.get(f"/tickets/api/settings/projects/{proj['id']}/pdf", headers=headers)
+        assert res.status_code == 403
+
