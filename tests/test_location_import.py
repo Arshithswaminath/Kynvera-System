@@ -220,6 +220,52 @@ class TestLocationImport:
                 zones = list(prop.zones)
                 assert zones == [] or all(z.name != 'Unrelated Tower' for z in zones)
 
+    def test_import_does_not_reparent_zone_by_global_code(self, app):
+        """A second project's ZN-001 must not steal the first project's zone."""
+        with app.app_context():
+            first = import_location_rows(
+                property_rows=[{
+                    'Property Code': 'PY-RP-A',
+                    'Property Name': 'Site Alpha',
+                    'Area': 'Marina',
+                    'Client Name': 'Alpha Client',
+                    'Status': 'Active',
+                }],
+                zone_rows=[{
+                    'Zone Code': 'ZN-RP-001',
+                    'Zone Name': 'Lobby',
+                    'Property': 'Site Alpha',
+                }],
+            )
+            assert first['unresolved_count'] == 0
+            original = TicketZone.query.filter_by(code='ZN-RP-001').one()
+            original_id = original.id
+            original_property_id = original.property_id
+
+            second = import_location_rows(
+                property_rows=[{
+                    'Property Code': 'PY-RP-B',
+                    'Property Name': 'Site Beta',
+                    'Area': 'Corniche',
+                    'Client Name': 'Beta Client',
+                    'Status': 'Active',
+                }],
+                zone_rows=[{
+                    'Zone Code': 'ZN-RP-001',
+                    'Zone Name': 'Lobby',
+                    'Property': 'Site Beta',
+                }],
+            )
+            assert second['unresolved_count'] == 1
+            assert second['unresolved'][0]['code'] == 'ZN-RP-001'
+            assert 'already belongs' in second['unresolved'][0]['reason']
+
+            stayed = db.session.get(TicketZone, original_id)
+            assert stayed.property_id == original_property_id
+            assert stayed.code == 'ZN-RP-001'
+            beta = TicketProperty.query.filter_by(code='PY-RP-B').one()
+            assert TicketZone.query.filter_by(property_id=beta.id, code='ZN-RP-001').first() is None
+
     def test_empty_base_unit_file_is_noop(self, app, tmp_path):
         with app.app_context():
             empty = tmp_path / 'BaseUnit.xls'

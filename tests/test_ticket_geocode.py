@@ -59,6 +59,44 @@ class TestTicketGeocode:
         assert response.status_code == 404
         assert response.get_json()['success'] is False
 
+    def test_non_admin_cannot_persist_property_pin(self, client, app):
+        from app.models import db, TicketProperty, User
+        with app.app_context():
+            prop = TicketProperty(name='Locked Pin Site', is_active=True, latitude=25.0, longitude=55.0)
+            db.session.add(prop)
+            user = User(
+                username='geotech',
+                email='geotech@example.com',
+                full_name='Geo Tech',
+                role='user',
+                designation='technician',
+                is_active=True,
+                password_changed=True,
+                access_ticketing=True,
+            )
+            user.set_password('TechPass123')
+            db.session.add(user)
+            db.session.commit()
+            pid = prop.id
+        login = client.post('/api/auth/login', json={'username': 'geotech', 'password': 'TechPass123'})
+        headers = {'Authorization': f"Bearer {(login.get_json() or {}).get('access_token')}"}
+        mock_resp = Mock()
+        mock_resp.raise_for_status.return_value = None
+        mock_resp.json.return_value = [{'lat': '25.9999', 'lon': '55.9999'}]
+        with patch.object(tkt_routes.requests, 'get', return_value=mock_resp):
+            response = client.get(
+                f'/tickets/api/geocode?q=Locked%20Pin%20Site,%20Ajman&property_id={pid}',
+                headers=headers,
+            )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+        assert data['saved'] is False
+        with app.app_context():
+            saved = db.session.get(TicketProperty, pid)
+            assert saved.latitude == 25.0
+            assert saved.longitude == 55.0
+
     def test_saves_pin_on_property(self, client, admin_auth_headers, app):
         from app.models import db, TicketProperty
         with app.app_context():

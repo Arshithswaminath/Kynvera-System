@@ -1553,8 +1553,13 @@ def api_geocode_site():
     hit = _geocode_site_query(query)
     if not hit:
         return jsonify({'success': False, 'error': 'No match'}), 404
-    saved = _persist_geocode_to_property(request.args.get('property_id'), hit)
-    saved_unit = _persist_geocode_to_base_unit(request.args.get('base_unit_id'), hit)
+    # Preview is available to any ticketing user; persisting pins is admin-only
+    # so a technician cannot overwrite another site's coordinates via property_id.
+    saved = False
+    saved_unit = False
+    if _is_admin(user):
+        saved = _persist_geocode_to_property(request.args.get('property_id'), hit)
+        saved_unit = _persist_geocode_to_base_unit(request.args.get('base_unit_id'), hit)
     return jsonify({
         'success': True,
         'lat': hit['lat'],
@@ -4042,6 +4047,15 @@ def _is_admin(user):
     return user and user.role == 'admin'
 
 
+def _require_admin_settings():
+    user = _current_user()
+    if not _has_access(user):
+        return None, (jsonify({'success': False, 'error': 'Forbidden'}), 403)
+    if not _is_admin(user):
+        return None, (jsonify({'success': False, 'error': 'Admin only'}), 403)
+    return user, None
+
+
 @ticketing_bp.route('/settings', methods=['GET'])
 @jwt_required()
 def settings_page():
@@ -4372,9 +4386,9 @@ def settings_list_projects():
 @ticketing_bp.route('/api/settings/projects', methods=['POST'])
 @jwt_required()
 def settings_create_project():
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     data = request.get_json(silent=True) or {}
     name = (data.get('name') or '').strip()
     if not name:
@@ -4430,9 +4444,9 @@ def settings_create_project():
 @ticketing_bp.route('/api/settings/projects/<int:pid>', methods=['PUT'])
 @jwt_required()
 def settings_update_project(pid):
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     p = db.session.get(TicketProject, pid)
     if not p:
         abort(404)
@@ -4481,9 +4495,9 @@ def settings_update_project(pid):
 @ticketing_bp.route('/api/settings/projects/<int:pid>', methods=['DELETE'])
 @jwt_required()
 def settings_delete_project(pid):
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     p = db.session.get(TicketProject, pid)
     if not p:
         abort(404)
@@ -4495,9 +4509,9 @@ def settings_delete_project(pid):
 @ticketing_bp.route('/api/settings/projects/<int:pid>/pdf', methods=['GET'])
 @jwt_required()
 def settings_project_pack_pdf(pid):
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     project = db.session.get(TicketProject, pid)
     if not project or not project.is_active:
         abort(404)
@@ -4515,15 +4529,6 @@ def settings_project_pack_pdf(pid):
         as_attachment=True,
         download_name=project_pack_filename(project),
     )
-
-
-def _require_admin_settings():
-    user = _current_user()
-    if not _has_access(user):
-        return None, (jsonify({'success': False, 'error': 'Forbidden'}), 403)
-    if not _is_admin(user):
-        return None, (jsonify({'success': False, 'error': 'Admin only'}), 403)
-    return user, None
 
 
 def _project_or_404(pid):
@@ -5388,9 +5393,9 @@ def _send_location_xlsx(buf, filename):
 @jwt_required()
 def settings_location_excel_template():
     """Blank 4-sheet workbook matching the location import layout."""
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     from module_ticketing.location_excel import build_location_workbook
     return _send_location_xlsx(build_location_workbook(), 'location_template.xlsx')
 
@@ -5398,9 +5403,9 @@ def settings_location_excel_template():
 @ticketing_bp.route('/api/settings/projects/<int:pid>/locations/export', methods=['GET'])
 @jwt_required()
 def settings_project_location_export(pid):
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     properties, proj = _workspace_location_tree(pid)
     if proj is None:
         abort(404)
@@ -5414,9 +5419,9 @@ def settings_project_location_export(pid):
 @ticketing_bp.route('/api/settings/standalone/locations/export', methods=['GET'])
 @jwt_required()
 def settings_standalone_location_export():
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     properties, _ = _workspace_location_tree(standalone=True)
     from module_ticketing.location_excel import build_location_workbook
     return _send_location_xlsx(build_location_workbook(properties), 'unlinked_properties.xlsx')
@@ -5551,9 +5556,9 @@ def _fill_property_metadata(p, data, *, creating=False):
 @ticketing_bp.route('/api/settings/properties', methods=['POST'])
 @jwt_required()
 def settings_create_property():
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     data = request.get_json(silent=True) or {}
     p = TicketProperty()
     err = _fill_property_metadata(p, data, creating=True)
@@ -5572,9 +5577,9 @@ def settings_create_property():
 @ticketing_bp.route('/api/settings/properties/<int:pid>', methods=['PUT', 'PATCH'])
 @jwt_required()
 def settings_update_property(pid):
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     p = db.session.get(TicketProperty, pid)
     if not p:
         abort(404)
@@ -5589,9 +5594,9 @@ def settings_update_property(pid):
 @ticketing_bp.route('/api/settings/properties/<int:pid>', methods=['DELETE'])
 @jwt_required()
 def settings_delete_property(pid):
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     p = db.session.get(TicketProperty, pid)
     if not p:
         abort(404)
@@ -5603,9 +5608,9 @@ def settings_delete_property(pid):
 @ticketing_bp.route('/api/settings/zones', methods=['POST'])
 @jwt_required()
 def settings_create_zone():
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     data = request.get_json(silent=True) or {}
     name = (data.get('name') or '').strip()
     property_id = data.get('property_id')
@@ -5622,9 +5627,9 @@ def settings_create_zone():
 @ticketing_bp.route('/api/settings/zones/<int:zid>', methods=['PATCH', 'PUT'])
 @jwt_required()
 def settings_update_zone(zid):
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     z = db.session.get(TicketZone, zid)
     if not z:
         abort(404)
@@ -5646,9 +5651,9 @@ def settings_update_zone(zid):
 @ticketing_bp.route('/api/settings/zones/<int:zid>', methods=['DELETE'])
 @jwt_required()
 def settings_delete_zone(zid):
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     z = db.session.get(TicketZone, zid)
     if not z:
         abort(404)
@@ -5660,9 +5665,9 @@ def settings_delete_zone(zid):
 @ticketing_bp.route('/api/settings/sub-zones', methods=['POST'])
 @jwt_required()
 def settings_create_sub_zone():
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     data = request.get_json(silent=True) or {}
     name = (data.get('name') or '').strip()
     zone_id = data.get('zone_id')
@@ -5679,9 +5684,9 @@ def settings_create_sub_zone():
 @ticketing_bp.route('/api/settings/sub-zones/<int:szid>', methods=['PATCH', 'PUT'])
 @jwt_required()
 def settings_update_sub_zone(szid):
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     sz = db.session.get(TicketSubZone, szid)
     if not sz:
         abort(404)
@@ -5703,9 +5708,9 @@ def settings_update_sub_zone(szid):
 @ticketing_bp.route('/api/settings/sub-zones/<int:szid>', methods=['DELETE'])
 @jwt_required()
 def settings_delete_sub_zone(szid):
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     sz = db.session.get(TicketSubZone, szid)
     if not sz:
         abort(404)
@@ -5717,9 +5722,9 @@ def settings_delete_sub_zone(szid):
 @ticketing_bp.route('/api/settings/base-units', methods=['POST'])
 @jwt_required()
 def settings_create_base_unit():
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     data = request.get_json(silent=True) or {}
     name = (data.get('name') or '').strip()
     sub_zone_id = data.get('sub_zone_id')
@@ -5739,9 +5744,9 @@ def settings_create_base_unit():
 @ticketing_bp.route('/api/settings/base-units/<int:uid>', methods=['PATCH', 'PUT'])
 @jwt_required()
 def settings_update_base_unit(uid):
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     u = db.session.get(TicketBaseUnit, uid)
     if not u:
         abort(404)
@@ -5766,9 +5771,9 @@ def settings_update_base_unit(uid):
 @ticketing_bp.route('/api/settings/base-units/<int:uid>', methods=['DELETE'])
 @jwt_required()
 def settings_delete_base_unit(uid):
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     u = db.session.get(TicketBaseUnit, uid)
     if not u:
         abort(404)
@@ -5793,9 +5798,9 @@ def settings_list_title_templates():
 @ticketing_bp.route('/api/settings/title-templates', methods=['POST'])
 @jwt_required()
 def settings_create_title_template():
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     data = request.get_json(silent=True) or {}
     title = (data.get('title') or '').strip()
     if not title:
@@ -5815,9 +5820,9 @@ def settings_create_title_template():
 @ticketing_bp.route('/api/settings/title-templates/<int:tid>', methods=['DELETE'])
 @jwt_required()
 def settings_delete_title_template(tid):
-    user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False}), 403
+    user, err = _require_admin_settings()
+    if err:
+        return err
     t = db.session.get(TicketTitleTemplate, tid)
     if not t:
         abort(404)

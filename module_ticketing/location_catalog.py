@@ -306,11 +306,25 @@ def _ensure_project_for_client(client_name: str) -> TicketProject:
     return proj
 
 
+def _code_owned_elsewhere(model, code: str | None, parent_field: str, parent_id: int):
+    """Return an existing row if `code` is already used under a different parent."""
+    if not code:
+        return None
+    existing = _get_by_code(model, code)
+    if existing is not None and getattr(existing, parent_field) != parent_id:
+        return existing
+    return None
+
+
 def _goc_zone(property_id: int, name: str, code: str | None = None) -> tuple[TicketZone, bool]:
     created = False
     z = None
     if code:
         z = _get_by_code(TicketZone, code)
+        # Never reparent a zone that already belongs to another property.
+        if z is not None and z.property_id != property_id:
+            z = None
+            code = None
     if z is None:
         z = TicketZone.query.filter_by(property_id=property_id, name=name).first()
     if z is None:
@@ -320,7 +334,6 @@ def _goc_zone(property_id: int, name: str, code: str | None = None) -> tuple[Tic
         created = True
     else:
         z.name = name or z.name
-        z.property_id = property_id
         if code:
             z.code = code
         z.is_active = True
@@ -332,6 +345,9 @@ def _goc_sub_zone(zone_id: int, name: str, code: str | None = None) -> tuple[Tic
     sz = None
     if code:
         sz = _get_by_code(TicketSubZone, code)
+        if sz is not None and sz.zone_id != zone_id:
+            sz = None
+            code = None
     if sz is None:
         sz = TicketSubZone.query.filter_by(zone_id=zone_id, name=name).first()
     if sz is None:
@@ -341,7 +357,6 @@ def _goc_sub_zone(zone_id: int, name: str, code: str | None = None) -> tuple[Tic
         created = True
     else:
         sz.name = name or sz.name
-        sz.zone_id = zone_id
         if code:
             sz.code = code
         sz.is_active = True
@@ -353,6 +368,9 @@ def _goc_unit(sub_zone_id: int, name: str, code: str | None = None) -> tuple[Tic
     u = None
     if code:
         u = _get_by_code(TicketBaseUnit, code)
+        if u is not None and u.sub_zone_id != sub_zone_id:
+            u = None
+            code = None
     if u is None:
         u = TicketBaseUnit.query.filter_by(sub_zone_id=sub_zone_id, name=name).first()
     if u is None:
@@ -362,7 +380,6 @@ def _goc_unit(sub_zone_id: int, name: str, code: str | None = None) -> tuple[Tic
         created = True
     else:
         u.name = name or u.name
-        u.sub_zone_id = sub_zone_id
         if code:
             u.code = code
         u.is_active = True
@@ -448,6 +465,16 @@ def import_location_rows(
         if parent is None:
             unresolved.append({"level": "zone", "name": name, "property": pname, "code": code or "", "reason": err or ""})
             continue
+        stolen = _code_owned_elsewhere(TicketZone, code, "property_id", parent.id)
+        if stolen is not None:
+            unresolved.append({
+                "level": "zone",
+                "name": name,
+                "property": pname,
+                "code": code or "",
+                "reason": f"zone code {code!r} already belongs to another property",
+            })
+            continue
         z, created = _goc_zone(parent.id, name, code)
         if created:
             counts["zones_created"] += 1
@@ -483,6 +510,17 @@ def import_location_rows(
         zone, z_created = _goc_zone(parent.id, zname, zcode)
         if z_created:
             counts["zones_created"] += 1
+        stolen = _code_owned_elsewhere(TicketSubZone, code, "zone_id", zone.id)
+        if stolen is not None:
+            unresolved.append({
+                "level": "sub_zone",
+                "name": name,
+                "zone": zname,
+                "property": pname,
+                "code": code or "",
+                "reason": f"sub-zone code {code!r} already belongs to another zone",
+            })
+            continue
         sz, created = _goc_sub_zone(zone.id, name, code)
         if created:
             counts["sub_zones_created"] += 1
@@ -520,6 +558,18 @@ def import_location_rows(
         sz, sz_created = _goc_sub_zone(zone.id, szname)
         if sz_created:
             counts["sub_zones_created"] += 1
+        stolen = _code_owned_elsewhere(TicketBaseUnit, code, "sub_zone_id", sz.id)
+        if stolen is not None:
+            unresolved.append({
+                "level": "base_unit",
+                "name": name,
+                "sub_zone": szname,
+                "zone": zname,
+                "property": pname,
+                "code": code or "",
+                "reason": f"base unit code {code!r} already belongs to another sub-zone",
+            })
+            continue
         unit, created = _goc_unit(sz.id, name, code)
         _apply_row_coords(unit, rec)
         if created:
