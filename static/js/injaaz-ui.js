@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // MODAL SYSTEM
   // ============================================
 
-  window.InjaazModal = {
+  window.KynveraModal = {
     open(modalId) {
       const backdrop = document.querySelector(`.modal-backdrop[data-modal="${modalId}"]`);
       const modal = document.getElementById(modalId);
@@ -178,6 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
       document.body.style.overflow = '';
     }
   };
+  window.InjaazModal = window.KynveraModal;
 
   // Modal triggers
   document.querySelectorAll('[data-modal-open]').forEach(trigger => {
@@ -388,11 +389,12 @@ document.addEventListener('DOMContentLoaded', function() {
   // INITIALIZE
   // ============================================
 
-  console.log('✅ Injaaz UI initialized');
+  console.log('✅ Kynvera UI initialized');
 });
 
 // Export for external use
-window.InjaazUI = {
+window.KynveraUI = {
   version: '1.0.0',
   // Methods are attached in DOMContentLoaded
 };
+window.InjaazUI = window.KynveraUI;

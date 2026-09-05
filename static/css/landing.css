@@ -2321,22 +2321,12 @@
    -------------------------------------------------------------------------- */
 
 .lp-footer {
-  margin-top: auto;
-  padding-bottom: 1.5rem;
-}
-
-.lp-footer-panel {
   position: relative;
+  isolation: isolate;
+  margin-top: auto;
+  padding: clamp(2.5rem, 4vw, 3.5rem) 0 1.15rem;
+  background: #fff;
   overflow: hidden;
-  padding: clamp(2.5rem, 4vw, 3.5rem) clamp(1.5rem, 3.5vw, 3rem);
-  border-radius: var(--lp-r-panel);
-  background: var(--lp-panel);
-  border: 1px solid var(--lp-border);
-}
-
-/* Decorative footer chips removed from the float layout. */
-.lp-footer-chips {
-  display: none;
 }
 
 .lp-footer-grid {
@@ -2358,6 +2348,30 @@
   color: var(--lp-muted);
   font-size: 0.95rem;
   line-height: 1.6;
+}
+
+.lp-footer-meta {
+  list-style: none;
+  margin: 1.15rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.landing .lp-footer-meta li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--lp-muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.landing .lp-footer-meta svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--lp-accent-deep);
 }
 
 .lp-footer-cols {
@@ -2399,13 +2413,38 @@
   color: var(--lp-accent-deep);
 }
 
+.lp-footer-scene {
+  position: relative;
+  z-index: 0;
+  width: 100%;
+  margin-top: -3.6rem;
+  pointer-events: none;
+}
+
+.lp-footer-scene picture {
+  display: block;
+  width: 100%;
+}
+
+.landing .lp-footer-scene-img {
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  mix-blend-mode: multiply;
+  user-select: none;
+}
+
 .lp-footer-bottom {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  padding: 1.5rem 0 0.25rem;
+  margin-top: -2.15rem;
+  padding: 0 0 0.15rem;
 }
 
 .landing .lp-footer-copy {
@@ -2756,12 +2795,16 @@
     display: none;
   }
 
-  .lp-footer-chips {
-    display: none;
-  }
-
   .lp-footer-cols {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .lp-footer-scene {
+    margin-top: -2.1rem;
+  }
+
+  .lp-footer-bottom {
+    margin-top: -1.25rem;
   }
 
   .landing .lp-pb-cta {
@@ -2876,10 +2919,6 @@
     height: 28px;
   }
 
-  .lp-nav-actions .lp-btn-outline {
-    display: none;
-  }
-
   .lp-footer-bottom {
     flex-direction: column;
     align-items: flex-start;
@@ -2894,6 +2933,38 @@
   .lp-footer-cols {
     grid-template-columns: 1fr;
   }
+}
+
+/* --------------------------------------------------------------------------
+   15b · Privacy / Terms
+   -------------------------------------------------------------------------- */
+
+.lp-legal-wrap {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 7rem 1.25rem 4rem;
+}
+
+.lp-legal-wrap .lp-h2 {
+  margin-bottom: 0.75rem;
+}
+
+.lp-legal-wrap h2 {
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 650;
+  margin: 1.75rem 0 0.5rem;
+}
+
+.lp-legal-wrap p,
+.lp-legal-wrap li {
+  color: var(--lp-muted, #5c5a57);
+  line-height: 1.65;
+  font-size: 0.98rem;
+}
+
+.lp-legal-wrap p + p {
+  margin-top: 0.85rem;
 }
 
 /* --------------------------------------------------------------------------

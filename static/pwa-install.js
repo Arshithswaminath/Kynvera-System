@@ -23,7 +23,7 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-window.InjaazPWA = {
+window.KynveraPWA = {
   update: () => navigator.serviceWorker.ready.then((registration) => registration.update()),
   unregister: () => navigator.serviceWorker.ready.then((registration) => registration.unregister()),
   getInstallStatus: () => window.matchMedia('(display-mode: standalone)').matches,

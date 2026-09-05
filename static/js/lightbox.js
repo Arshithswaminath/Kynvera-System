@@ -1,5 +1,5 @@
 /**
- * Injaaz Photo Lightbox
+ * Kynvera Photo Lightbox
  * Full-screen image viewer with navigation and gestures
  * Version: 1.0.0
  */

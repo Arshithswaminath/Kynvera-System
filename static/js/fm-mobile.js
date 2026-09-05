@@ -4,7 +4,7 @@
  */
 (function (global) {
   'use strict';
-  if (global.InjaazFMMobile) return;
+  if (global.KynveraFMMobile || global.InjaazFMMobile) return;
 
   const QUEUE_KEY = 'injaaz_fm_offline_queue_v1';
 
@@ -129,7 +129,7 @@
   global.addEventListener('online', () => { flushQueue(); });
   if (navigator.onLine) setTimeout(() => flushQueue(), 1500);
 
-  global.InjaazFMMobile = {
+  global.KynveraFMMobile = {
     enqueue,
     flushQueue,
     offlineAwareFetch,
@@ -139,4 +139,5 @@
     isCapacitor,
     loadQueue,
   };
+  global.InjaazFMMobile = global.KynveraFMMobile;
 })(typeof window !== 'undefined' ? window : globalThis);

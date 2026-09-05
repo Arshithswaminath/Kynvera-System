@@ -7,6 +7,8 @@ from flask_jwt_extended import (
     jwt_required, get_jwt_identity, get_jwt, get_jti
 )
 from datetime import datetime, timedelta, timezone
+from functools import wraps
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from app.models import db, User, Session, AuditLog
 from sqlalchemy.exc import IntegrityError
 from common.error_responses import error_response, success_response
@@ -24,12 +26,25 @@ def get_limiter():
 
 
 def rate_limit_if_available(limit_str):
-    """Decorator to apply rate limiting if limiter is available"""
+    """Apply Flask-Limiter lazily so blueprint import can happen before limiter init.
+
+    Decorating at import time used to call current_app before create_app() had
+    attached the limiter, so login/register permanently skipped the 5/minute cap.
+    """
     def decorator(f):
-        limiter = get_limiter()
-        if limiter:
-            return limiter.limit(limit_str)(f)
-        return f
+        limited_view = None
+
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            nonlocal limited_view
+            limiter = get_limiter()
+            if limiter is None:
+                return f(*args, **kwargs)
+            if limited_view is None:
+                limited_view = limiter.limit(limit_str)(f)
+            return limited_view(*args, **kwargs)
+
+        return wrapped
     return decorator
 
 
@@ -94,6 +109,24 @@ def log_audit(user_id, action, resource_type=None, resource_id=None, details=Non
         current_app.logger.error(f"Failed to create audit log: {str(e)}")
 
 
+PASSWORD_RESET_SALT = 'kynvera-password-reset'
+PASSWORD_RESET_MAX_AGE = 60 * 60  # 1 hour
+
+
+def _password_reset_serializer():
+    secret = current_app.config.get('JWT_SECRET_KEY') or current_app.config.get('SECRET_KEY')
+    return URLSafeTimedSerializer(secret, salt=PASSWORD_RESET_SALT)
+
+
+def make_password_reset_token(user_id):
+    return _password_reset_serializer().dumps({'uid': int(user_id)})
+
+
+def load_password_reset_token(token, max_age=PASSWORD_RESET_MAX_AGE):
+    data = _password_reset_serializer().loads(token, max_age=max_age)
+    return int(data['uid'])
+
+
 def _jwt_payloads_from_request():
     """Best-effort JWT claims from Authorization header and access/refresh cookies.
 
@@ -138,6 +171,12 @@ def _jwt_payloads_from_request():
 @rate_limit_if_available('5 per minute')
 def register():
     """Register a new user (self-service wizard — default password assigned server-side)."""
+    if not current_app.config.get('ALLOW_PUBLIC_REGISTRATION'):
+        return error_response(
+            'Public registration is closed. Ask your administrator to create an account.',
+            403,
+            'REGISTRATION_DISABLED',
+        )
     try:
         from common.datetime_utils import parse_employment_start_date
         from common.password_admin import get_default_registration_password
@@ -612,6 +651,74 @@ def change_password():
         return error_response('Password change failed', 500, 'INTERNAL_ERROR')
 
 
+@auth_bp.route('/forgot-password', methods=['POST'])
+@rate_limit_if_available('5 per minute')
+def forgot_password():
+    """Email a time-limited reset link. Always 200 for valid emails so we do not leak accounts."""
+    data = request.get_json(force=True, silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    sent_message = 'If that email is on an account, we have sent a reset link.'
+
+    if not email or not validate_email(email):
+        return error_response('A valid email is required', 400, 'VALIDATION_ERROR')
+
+    user = User.query.filter(db.func.lower(User.email) == email).first()
+    if user and user.is_active:
+        try:
+            token = make_password_reset_token(user.id)
+            from common.email_service import send_forgot_password_email
+            send_forgot_password_email(
+                user.email, user.username, token, full_name=user.full_name
+            )
+            log_audit(user.id, 'forgot_password', 'user', str(user.id))
+        except Exception as exc:
+            current_app.logger.warning('Forgot-password email failed: %s', exc)
+    return jsonify({'message': sent_message, 'success': True}), 200
+
+
+@auth_bp.route('/reset-password', methods=['POST'])
+@rate_limit_if_available('5 per minute')
+def reset_password():
+    """Set a new password from a forgot-password email token."""
+    data = request.get_json(force=True, silent=True) or {}
+    token = (data.get('token') or '').strip()
+    new_password = data.get('password') or data.get('new_password') or ''
+
+    if not token:
+        return error_response('Reset link is missing or invalid', 400, 'INVALID_TOKEN')
+    is_valid, message = validate_password(new_password)
+    if not is_valid:
+        return error_response(message, 400, 'WEAK_PASSWORD')
+
+    try:
+        user_id = load_password_reset_token(token)
+    except SignatureExpired:
+        return error_response('This reset link has expired. Request a new one.', 400, 'TOKEN_EXPIRED')
+    except (BadSignature, KeyError, TypeError, ValueError):
+        return error_response('Reset link is missing or invalid', 400, 'INVALID_TOKEN')
+
+    user = db.session.get(User, user_id)
+    if not user or not user.is_active:
+        return error_response('Account not found', 404, 'USER_NOT_FOUND')
+
+    user.set_password(new_password)
+    user.password_changed = True
+    Session.query.filter_by(user_id=user.id, is_revoked=False).update({'is_revoked': True})
+    db.session.commit()
+    log_audit(user.id, 'reset_password', 'user', str(user.id))
+
+    if user.email:
+        try:
+            from common.email_service import send_password_updated_email
+            send_password_updated_email(
+                user.email, user.username, by_admin=False, full_name=user.full_name
+            )
+        except Exception as email_error:
+            current_app.logger.warning('Password updated email failed: %s', email_error)
+
+    return jsonify({'message': 'Password updated. You can sign in now.', 'success': True}), 200
+
+
 @auth_bp.route('/mfa/setup', methods=['POST'])
 @jwt_required()
 def mfa_setup():
@@ -628,7 +735,7 @@ def mfa_setup():
     user.mfa_enabled = False
     db.session.commit()
     totp = pyotp.TOTP(secret)
-    uri = totp.provisioning_uri(name=user.email or user.username, issuer_name='Injaaz')
+    uri = totp.provisioning_uri(name=user.email or user.username, issuer_name='Kynvera')
     log_audit(user.id, 'mfa_setup_started', 'user', str(user.id))
     return success_response({
         'secret': secret,

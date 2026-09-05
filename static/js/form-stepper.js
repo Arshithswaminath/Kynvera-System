@@ -1,5 +1,5 @@
 /**
- * Injaaz Form Stepper Component
+ * Kynvera Form Stepper Component
  * Interactive progress indicator for multi-step forms
  * Version: 1.0.0
  */

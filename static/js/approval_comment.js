@@ -141,6 +141,7 @@
     normalizeCommentFields,
   };
 
+  global.KynveraApprovalComment = api;
   global.InjaazApprovalComment = api;
   global.resolveDefaultApprovalComment = resolveDefaultApprovalComment;
   global.ensureSignedVerifiedComment = ensureSignedVerifiedComment;

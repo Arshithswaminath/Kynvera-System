@@ -30,7 +30,7 @@
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
-  global.InjaazDateTimeUAE = {
+  global.KynveraDateTimeUAE = {
     TZ: TZ,
     parseInstant: parseInstant,
     formatDateMed: function (iso) {
@@ -76,4 +76,5 @@
       });
     },
   };
+  global.InjaazDateTimeUAE = global.KynveraDateTimeUAE;
 })(typeof window !== 'undefined' ? window : this);

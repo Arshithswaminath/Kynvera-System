@@ -1,5 +1,5 @@
 /**
- * InjaazSignatureModal — Draw / Type / Upload signature capture.
+ * KynveraSignatureModal — Draw / Type / Upload signature capture.
  * Requires SignaturePad (global) and the signature_modal.html markup.
  *
  * Usage:
@@ -457,7 +457,7 @@
     if (state.ready) updateSavedButton();
   }
 
-  global.InjaazSignatureModal = {
+  global.KynveraSignatureModal = {
     open: open,
     close: close,
     setSavedSignature: setSavedSignature,
@@ -465,4 +465,5 @@
     clearField: clearField,
     resolveDataUrl: resolveDataUrl
   };
+  global.InjaazSignatureModal = global.KynveraSignatureModal;
 })(window);

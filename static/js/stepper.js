@@ -1,5 +1,5 @@
 /**
- * Injaaz Form Stepper Component
+ * Kynvera Form Stepper Component
  * Interactive step-by-step form navigation
  * Version: 1.0.0
  */

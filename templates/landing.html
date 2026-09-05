@@ -86,6 +86,9 @@
   {'label': 'Works offline on site', 'icon': '<path d="m2 2 20 20"/><path d="M5.8 5.8A6 6 0 0 0 4.6 12 3.5 3.5 0 0 0 5.5 19h11"/><path d="M9.7 4.3A6 6 0 0 1 16.1 10.2 4.5 4.5 0 0 1 19.6 16"/>'}
 ] %}
 
+{# Public marketing vs staff access: landing sells the product; /login is the link you send users. #}
+{% set lp_talk_href = 'mailto:support@kynvera.store?subject=Kynvera%20workspace' %}
+
 <a class="lp-skip" href="#lp-main">Skip to content</a>
 
 <div class="lp-atmosphere" aria-hidden="true"></div>
@@ -107,8 +110,8 @@
         </nav>
 
         <div class="lp-nav-actions">
-            <a href="{{ url_for('login_page') }}" class="lp-link-action">Sign in</a>
-            <a href="{{ url_for('register_page') }}" class="lp-btn lp-btn-outline">Get started</a>
+            <a href="{{ staff_login_url|default('/login') }}" class="lp-link-action">Sign in</a>
+            <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-outline">Talk to us</a>
             {# Label lives on the button, not in a child span, so the two bars
                remain the only <span> children and :first/:last-of-type match them. #}
             <button type="button" class="lp-nav-toggle" id="lp-nav-toggle" aria-label="Menu" aria-expanded="false" aria-controls="lp-nav-links">
@@ -143,8 +146,8 @@
                     Tickets, inspections, assets, HR and more, keeping every team in sync.
                 </p>
                 <div class="lp-hero-cta">
-                    <a href="{{ url_for('register_page') }}" class="lp-btn lp-btn-primary lp-btn-lg">Get started</a>
-                    <a href="{{ url_for('login_page') }}" class="lp-btn lp-btn-ghost lp-btn-lg">Sign in</a>
+                    <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-primary lp-btn-lg">Talk to us</a>
+                    <a href="{{ staff_login_url|default('/login') }}" class="lp-btn lp-btn-ghost lp-btn-lg">Sign in</a>
                 </div>
             </div>
 
@@ -384,7 +387,7 @@
                         <span class="lp-access-row">Procurement <i class="lp-toggle"></i></span>
                     </div>
                 </div>
-                <h3>One login, nine modules</h3>
+                <h3>One login, {{ lp_modules|length }} modules</h3>
                 <p>Access is granted per person, per module. Change someone's role once and every workspace follows.</p>
             </article>
 
@@ -447,7 +450,7 @@
 <section class="lp-section" id="modules" aria-labelledby="lp-modules-title">
     <div class="lp-inner">
         <p class="lp-eyebrow">Modules</p>
-        <h2 class="lp-h2" id="lp-modules-title">Nine modules. One workspace.</h2>
+        <h2 class="lp-h2" id="lp-modules-title">{{ lp_modules|length }} modules. One workspace.</h2>
         <p class="lp-lead">Each one replaces a paper trail. Together they share the same identity, the same review chain and the same audit log.</p>
 
         <div class="lp-modules-bento">
@@ -504,7 +507,7 @@
         <div class="lp-proof-bento">
 
             <article class="lp-bento-card lp-pb-hero">
-                <span class="lp-stat">10</span>
+                <span class="lp-stat">{{ lp_modules|length }}</span>
                 <h3>Operational modules, one login</h3>
                 <p>From the site to the boardroom, every team works in the same system with the same identity.</p>
                 <div class="lp-chip-cloud" aria-hidden="true">
@@ -547,8 +550,8 @@
 
             <article class="lp-bento-card lp-pb-cta">
                 <h3>See it running</h3>
-                <p>Create an account and walk through the modules yourself.</p>
-                <a href="{{ url_for('register_page') }}" class="lp-btn lp-btn-on-coral">Get started</a>
+                <p>Ask for a workspace for your organisation. Staff get a sign-in link from their administrator — they do not create accounts here.</p>
+                <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-on-coral">Talk to us</a>
             </article>
 
             <span class="lp-chip lp-chip-proof" aria-hidden="true">
@@ -580,7 +583,7 @@
                     <li>Scan asset QR codes on the spot</li>
                     <li>Keep working when the signal drops</li>
                 </ul>
-                <a href="{{ url_for('register_page') }}" class="lp-btn lp-btn-outline lp-btn-block">Get started</a>
+                <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-outline lp-btn-block">Talk to us</a>
             </article>
 
             <article class="lp-bento-card lp-tier is-featured">
@@ -598,7 +601,7 @@
                     <li>See what's stalled and with whom</li>
                     <li>Close out with a signed PDF report</li>
                 </ul>
-                <a href="{{ url_for('register_page') }}" class="lp-btn lp-btn-primary lp-btn-block">Get started</a>
+                <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-primary lp-btn-block">Talk to us</a>
             </article>
 
             <article class="lp-bento-card lp-tier">
@@ -612,7 +615,7 @@
                     <li>Track the deal pipeline and follow-ups</li>
                     <li>Manage the device inventory</li>
                 </ul>
-                <a href="{{ url_for('register_page') }}" class="lp-btn lp-btn-outline lp-btn-block">Get started</a>
+                <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-outline lp-btn-block">Talk to us</a>
             </article>
         </div>
     </div>
@@ -628,11 +631,11 @@
         <div class="lp-cta-band">
             <div class="lp-cta-copy">
                 <h2 id="lp-cta-title">Ready to run everything from one place?</h2>
-                <p>Create an account to walk through the platform, or sign in if your organisation is already set up.</p>
+                <p>New organisations start with a conversation. If your team already has access, sign in with the link your administrator sent.</p>
             </div>
             <div class="lp-cta-actions">
-                <a href="{{ url_for('register_page') }}" class="lp-btn lp-btn-on-coral lp-btn-lg">Get started</a>
-                <a href="{{ url_for('login_page') }}" class="lp-btn lp-btn-ghost-on-coral lp-btn-lg">Sign in</a>
+                <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-on-coral lp-btn-lg">Talk to us</a>
+                <a href="{{ staff_login_url|default('/login') }}" class="lp-btn lp-btn-ghost-on-coral lp-btn-lg">Sign in</a>
             </div>
         </div>
     </div>
@@ -641,65 +644,75 @@
 </main>
 
 {# ========================================================================= #}
-{# 8 · Footer panel + legal bar                                              #}
+{# 8 · Footer — link columns, scenic skyline, legal bar                      #}
 {# ========================================================================= #}
 <footer class="lp-footer">
     <div class="lp-inner">
-        <div class="lp-footer-panel">
-            <div class="lp-dotgrid" aria-hidden="true"></div>
-
-            {# Decorative scattered chips (spec parity). No focusable content. #}
-            <div class="lp-footer-chips" aria-hidden="true">
-                <span class="lp-chip">01</span>
-                <span class="lp-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V4s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></svg></span>
-                <span class="lp-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>
-                <span class="lp-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V18h8v-3.3A7 7 0 0 0 12 2z"/></svg></span>
-                <span class="lp-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-                <span class="lp-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
+        <div class="lp-footer-grid">
+            <div class="lp-footer-brand">
+                <img class="lp-brand-wordmark" src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera">
+                <p>One platform for how your operation actually runs — the field, the office and everything that has to travel between them.</p>
+                <ul class="lp-footer-meta">
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11z"/><circle cx="12" cy="10" r="2.2"/></svg>
+                        United Arab Emirates
+                    </li>
+                </ul>
             </div>
 
-            <div class="lp-footer-grid">
-                <div class="lp-footer-brand">
-                    <img class="lp-brand-wordmark" src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera">
-                    <p>One platform for how your operation actually runs — the field, the office and everything that has to travel between them.</p>
+            <div class="lp-footer-cols">
+                <div>
+                    <h3>Platform</h3>
+                    <ul>
+                        <li><a href="#platform">Overview</a></li>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#interop">Interoperability</a></li>
+                        <li><a href="#audience">Who it's for</a></li>
+                    </ul>
                 </div>
-
-                <div class="lp-footer-cols">
-                    <div>
-                        <h3>Platform</h3>
-                        <ul>
-                            <li><a href="#platform">Overview</a></li>
-                            <li><a href="#features">Features</a></li>
-                            <li><a href="#interop">Interoperability</a></li>
-                            <li><a href="#audience">Who it's for</a></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h3>Modules</h3>
-                        <ul>
-                            <li><a href="#modules">Service Tickets</a></li>
-                            <li><a href="#modules">Inspections</a></li>
-                            <li><a href="#modules">HR</a></li>
-                            <li><a href="#modules">Reports &amp; automation</a></li>
-                            <li><a href="#modules">FM Assets</a></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h3>Get started</h3>
-                        <ul>
-                            <li><a href="{{ url_for('login_page') }}">Sign in</a></li>
-                            <li><a href="{{ url_for('register_page') }}">Create an account</a></li>
-                        </ul>
-                    </div>
+                <div>
+                    <h3>Modules</h3>
+                    <ul>
+                        <li><a href="#modules">Service Tickets</a></li>
+                        <li><a href="#modules">Inspections</a></li>
+                        <li><a href="#modules">HR</a></li>
+                        <li><a href="#modules">Reports &amp; automation</a></li>
+                        <li><a href="#modules">FM Assets</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Get started</h3>
+                    <ul>
+                        <li><a href="{{ lp_talk_href }}">Talk to us</a></li>
+                        <li><a href="{{ staff_login_url|default('/login') }}">Sign in</a></li>
+                        <li><a href="{{ staff_forgot_url|default('/forgot-password') }}">Forgot password</a></li>
+                    </ul>
                 </div>
             </div>
         </div>
+    </div>
 
+    <div class="lp-footer-scene" aria-hidden="true">
+        <picture>
+            <source type="image/webp" srcset="{{ url_for('static', filename='images/kynvera/footer-skyline.webp') }}?v=3">
+            <img
+                class="lp-footer-scene-img"
+                src="{{ url_for('static', filename='images/kynvera/footer-skyline.png') }}?v=3"
+                alt=""
+                width="1024"
+                height="285"
+                loading="lazy"
+                decoding="async">
+        </picture>
+    </div>
+
+    <div class="lp-inner">
         <div class="lp-footer-bottom">
             <span class="lp-footer-copy">&copy; {{ now().year if now is defined else '2026' }} Kynvera. All operations, one platform.</span>
             <span class="lp-footer-links">
-                <a href="{{ url_for('login_page') }}">Sign in</a>
-                <a href="{{ url_for('register_page') }}">Create an account</a>
+                <a href="/privacy">Privacy</a>
+                <a href="/terms">Terms</a>
+                <a href="{{ staff_login_url|default('/login') }}">Sign in</a>
             </span>
         </div>
     </div>
@@ -707,5 +720,8 @@
 
 <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/landing.js') }}?v=2" defer></script>
+{% if not marketing_host|default(false) %}
+<script src="{{ url_for('static', filename='pwa-install.js') }}" defer></script>
+{% endif %}
 </body>
 </html>

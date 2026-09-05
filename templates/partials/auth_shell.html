@@ -13,7 +13,7 @@
 {% set sheetable = form_variant == 'default' or form_variant == 'register' %}
 <div class="auth-shell{% if form_variant != 'status' %} auth-shell--split{% endif %}{% if sheet_closed %} auth-shell--sheet-closed{% endif %}{% if sheetable %} auth-shell--ready{% endif %}">
   <div class="auth-shell-overlay" aria-hidden="true"></div>
-  <a href="{{ url_for('index') }}" class="auth-back" aria-label="Back to home">
+  <a href="{{ auth_home_url|default('/') }}" class="auth-back" aria-label="Back to home">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M15 18l-6-6 6-6"/>
     </svg>

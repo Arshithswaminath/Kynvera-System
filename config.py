@@ -41,11 +41,17 @@ GOOGLE_DRIVE_CLIENT_ID = os.getenv("GOOGLE_DRIVE_CLIENT_ID", "")
 GOOGLE_DRIVE_CLIENT_SECRET = os.getenv("GOOGLE_DRIVE_CLIENT_SECRET", "")
 GOOGLE_DRIVE_REDIRECT_URI = os.getenv("GOOGLE_DRIVE_REDIRECT_URI", "")  # e.g. https://host/files/api/drive/callback
 
+# Public marketing deploy (kynvera.net). This branch defaults on.
+KYNVERA_MARKETING_ONLY = os.getenv("KYNVERA_MARKETING_ONLY", "true").lower() in ("1", "true", "yes")
+
 # DATABASE - PostgreSQL for production (REQUIRED in production)
 # Fix for Render: Replace postgres:// with postgresql:// for SQLAlchemy compatibility
 # Strip copy/paste whitespace — a trailing space on DATABASE_URL makes Postgres hang or refuse.
 DATABASE_URL = (os.getenv("DATABASE_URL") or "").strip() or None
-if not DATABASE_URL:
+if KYNVERA_MARKETING_ONLY:
+    # Never attach the public site to a product or hub Postgres.
+    DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'kynvera_marketing.db')}"
+elif not DATABASE_URL:
     # Only allow SQLite in development
     if os.getenv("FLASK_ENV", "development") == "development":
         DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'injaaz.db')}"
@@ -118,15 +124,19 @@ TICKET_INBOUND_WEBHOOK_SECRET = os.getenv("TICKET_INBOUND_WEBHOOK_SECRET")
 TICKET_INTAKE_EMAIL = os.getenv("TICKET_INTAKE_EMAIL") or "support@kynvera.store"
 
 # Application
-APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5002")
+APP_BASE_URL = os.getenv("APP_BASE_URL", "https://operations.kynvera.net")
 
 # Kynvera Hub integration (product app — not the portal)
 KYNVERA_HUB_MODE = os.getenv("KYNVERA_HUB_MODE", "false").lower() in ("1", "true", "yes")
-KYNVERA_HOME_URL = (os.getenv("KYNVERA_HOME_URL") or "").rstrip("/")
+# Public marketing site (apex). Product app lives on APP_BASE_URL (operations.kynvera.net).
+KYNVERA_HOME_URL = (os.getenv("KYNVERA_HOME_URL") or "https://kynvera.net").rstrip("/")
+KYNVERA_MARKETING_HOSTS = os.getenv("KYNVERA_MARKETING_HOSTS", "kynvera.net,www.kynvera.net")
 KYNVERA_FIRE_APP_URL = (os.getenv("KYNVERA_FIRE_APP_URL") or "").rstrip("/")
 KYNVERA_MUNICIPALITY_APP_URL = (os.getenv("KYNVERA_MUNICIPALITY_APP_URL") or "").rstrip("/")
-# Display name shown as a tag under the mobile menu bar (e.g. Municipality, Fire)
-KYNVERA_APP_NAME = (os.getenv("KYNVERA_APP_NAME") or "Municipality").strip()
+# Display name shown as a tag under the mobile menu bar (e.g. Kynvera, Fire)
+KYNVERA_APP_NAME = (os.getenv("KYNVERA_APP_NAME") or "Kynvera").strip()
+# Public self-serve signup. Off for client tenants — admins create accounts.
+ALLOW_PUBLIC_REGISTRATION = os.getenv("ALLOW_PUBLIC_REGISTRATION", "false").lower() in ("1", "true", "yes")
 
 # Kynvera Assistant — optional LLM for natural chat (RAG over knowledge base)
 # Provider: "claude" (default, Anthropic) or "openai"

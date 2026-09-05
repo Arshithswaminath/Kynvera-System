@@ -21,7 +21,8 @@ def validate_config(app):
     warnings = []
     
     flask_env = app.config.get('FLASK_ENV', 'development')
-    
+    marketing_only = bool(app.config.get('KYNVERA_MARKETING_ONLY'))
+
     # Critical validations (fail fast in production)
     if flask_env == 'production':
         # Secret keys
@@ -34,21 +35,22 @@ def validate_config(app):
         jwt_secret_key = app.config.get('JWT_SECRET_KEY')
         if not jwt_secret_key or jwt_secret_key in ['change-me', 'change-me-jwt-secret']:
             errors.append("JWT_SECRET_KEY not set or using default value in production")
-        
-        # Database URL - REQUIRED in production
-        db_url = app.config.get('SQLALCHEMY_DATABASE_URI') or app.config.get('DATABASE_URL')
-        if not db_url:
-            errors.append("DATABASE_URL not configured - required in production")
-        elif 'sqlite' in db_url.lower():
-            errors.append("SQLite is not allowed in production - use PostgreSQL (set DATABASE_URL)")
-        
-        # Cloudinary - REQUIRED in production for file storage
-        if not app.config.get('CLOUDINARY_CLOUD_NAME'):
-            errors.append("CLOUDINARY_CLOUD_NAME not configured - required in production for cloud file storage")
-        if not app.config.get('CLOUDINARY_API_KEY'):
-            errors.append("CLOUDINARY_API_KEY not configured - required in production")
-        if not app.config.get('CLOUDINARY_API_SECRET'):
-            errors.append("CLOUDINARY_API_SECRET not configured - required in production")
+
+        if not marketing_only:
+            # Database URL - REQUIRED in production
+            db_url = app.config.get('SQLALCHEMY_DATABASE_URI') or app.config.get('DATABASE_URL')
+            if not db_url:
+                errors.append("DATABASE_URL not configured - required in production")
+            elif 'sqlite' in db_url.lower():
+                errors.append("SQLite is not allowed in production - use PostgreSQL (set DATABASE_URL)")
+            
+            # Cloudinary - REQUIRED in production for file storage
+            if not app.config.get('CLOUDINARY_CLOUD_NAME'):
+                errors.append("CLOUDINARY_CLOUD_NAME not configured - required in production for cloud file storage")
+            if not app.config.get('CLOUDINARY_API_KEY'):
+                errors.append("CLOUDINARY_API_KEY not configured - required in production")
+            if not app.config.get('CLOUDINARY_API_SECRET'):
+                errors.append("CLOUDINARY_API_SECRET not configured - required in production")
         
         # CORS settings (if applicable)
         if app.config.get('CORS_ORIGINS') == '*':

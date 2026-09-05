@@ -36,6 +36,7 @@ os.environ['OPENAI_API_KEY'] = ''
 # access_token, headers become "Bearer None", and every later test cascades into
 # unrelated 401s. Config key is read by config.py -> Flask-Limiter directly.
 os.environ['RATELIMIT_ENABLED'] = 'false'
+os.environ['KYNVERA_MARKETING_ONLY'] = 'false'
 
 
 @pytest.fixture(scope='session')

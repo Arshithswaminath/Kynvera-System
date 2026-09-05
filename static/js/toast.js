@@ -1,5 +1,5 @@
 /**
- * Injaaz Toast Notification System
+ * Kynvera Toast Notification System
  * Modern, accessible toast notifications
  * Version: 1.0.0
  */
