@@ -7,6 +7,7 @@ import re
 import traceback
 import logging
 from datetime import datetime
+from functools import wraps
 from flask import Blueprint, current_app, render_template, request, jsonify, url_for, send_from_directory, send_file, Response
 import requests
 from io import BytesIO
@@ -65,12 +66,21 @@ def get_limiter():
         return None
 
 def rate_limit_if_available(limit_str):
-    """Decorator to apply rate limiting if limiter is available"""
+    """Apply Flask-Limiter lazily so blueprint import can happen before limiter init."""
     def decorator(f):
-        limiter = get_limiter()
-        if limiter:
-            return limiter.limit(limit_str)(f)
-        return f
+        limited_view = None
+
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            nonlocal limited_view
+            limiter = get_limiter()
+            if limiter is None:
+                return f(*args, **kwargs)
+            if limited_view is None:
+                limited_view = limiter.limit(limit_str)(f)
+            return limited_view(*args, **kwargs)
+
+        return wrapped
     return decorator
 
 # Import BOTH report generators

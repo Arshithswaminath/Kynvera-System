@@ -266,7 +266,7 @@
     stripSignaturePaperBackground(sigUrl, appendImg);
   }
 
-  global.InjaazSignatureDisplay = {
+  global.KynveraSignatureDisplay = {
     stripSignaturePaperBackground: stripSignaturePaperBackground,
     applySignatureImageStyles: applySignatureImageStyles,
     mountSignatureImage: mountSignatureImage,
@@ -276,6 +276,7 @@
     prepareSignatureForCanvas: prepareSignatureForCanvas,
     applySignatureToPad: applySignatureToPad,
   };
+  global.InjaazSignatureDisplay = global.KynveraSignatureDisplay;
 
   function processExistingSignatureImages(root) {
     var scope = root || document;
@@ -297,6 +298,7 @@
     document.addEventListener('DOMContentLoaded', function () {
       processExistingSignatureImages();
     });
+    global.KynveraSignatureDisplay.processExistingSignatureImages = processExistingSignatureImages;
     global.InjaazSignatureDisplay.processExistingSignatureImages = processExistingSignatureImages;
   }
 })(typeof window !== 'undefined' ? window : globalThis);

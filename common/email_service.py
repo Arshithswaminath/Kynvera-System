@@ -993,6 +993,37 @@ Kynvera
     return _send_auth_email(user_email, subject, body, html_body)
 
 
+def send_forgot_password_email(user_email, username, token, full_name=None):
+    """Self-service password reset link (expires in one hour)."""
+    display = (full_name or '').strip() or username
+    base = _app_base_url()
+    reset_path = f'/reset-password?token={token}'
+    reset_url = f'{base}{reset_path}' if base else reset_path
+    subject = 'Reset your Kynvera password'
+    body = f"""Hello {display},
+
+We received a request to reset the password on your Kynvera account.
+
+Open this link to choose a new password (it expires in one hour):
+{reset_url}
+
+If you did not request this, you can ignore this email. Your password will not change.
+
+Kynvera
+"""
+    html_body = _branded_auth_html(
+        title='Reset your password',
+        greeting=f'Hello {_esc(display)}',
+        paragraphs=[
+            'We received a request to reset the password on your Kynvera account.',
+            'This link expires in one hour. If you did not request a reset, ignore this email — your password will not change.',
+        ],
+        cta_url=reset_url,
+        cta_label='Choose a new password',
+    )
+    return _send_auth_email(user_email, subject, body, html_body)
+
+
 def send_login_details_email(user_email, username, password, full_name=None):
     """Admin-triggered email with username and the stored password. Redacted in email logs."""
     display = (full_name or '').strip() or username

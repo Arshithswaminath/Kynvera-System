@@ -1,6 +1,10 @@
 /**
  * Navbar Files sync chip — polls /files/api/sync-status so progress
  * survives leaving the Files page.
+ *
+ * The chip is only shown for a sync that is running now (or that
+ * finished while this page was watching it). A leftover "done" job
+ * from an earlier visit must not appear on login / page load.
  */
 (function () {
   'use strict';
@@ -130,17 +134,26 @@
 
   function tick() {
     fetchStatus().then(function (job) {
-      render(job);
-      if (job && job.status === 'running') {
+      var status = job && job.status;
+
+      if (status === 'running') {
+        watching = true;
+        render(job);
         timer = setTimeout(tick, POLL_MS);
         return;
       }
-      if (watching && job && (job.status === 'done' || job.status === 'error')) {
+
+      if (watching && job && (status === 'done' || status === 'error')) {
         watching = false;
+        render(job);
         try {
           window.dispatchEvent(new CustomEvent('files-sync-complete', { detail: job }));
         } catch (e) { /* ignore */ }
+        stopPoll();
+        return;
       }
+
+      hideChip();
       stopPoll();
     });
   }

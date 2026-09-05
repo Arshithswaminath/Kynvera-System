@@ -1,5 +1,5 @@
 /**
- * Injaaz Dashboard JavaScript
+ * Kynvera Dashboard JavaScript
  * Extracted from inline scripts for better maintainability and caching
  */
 

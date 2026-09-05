@@ -1,7 +1,7 @@
-// Service Worker for Injaaz PWA
-// Version 1.0.0
+// Service Worker for Kynvera PWA
+// Version 1.1.0
 
-const CACHE_NAME = 'injaaz-v1.0.3';
+const CACHE_NAME = 'kynvera-v1.1.0';
 const OFFLINE_URL = '/offline';
 
 // Assets to cache immediately on install

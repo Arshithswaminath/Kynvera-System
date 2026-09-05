@@ -84,7 +84,13 @@ class TestLogin:
 
 
 class TestRegister:
-    """Test registration endpoint"""
+    """Test registration endpoint."""
+
+    @pytest.fixture(autouse=True)
+    def _open_registration(self, app):
+        app.config['ALLOW_PUBLIC_REGISTRATION'] = True
+        yield
+        app.config['ALLOW_PUBLIC_REGISTRATION'] = True
 
     @staticmethod
     def _wizard_payload(**overrides):
@@ -175,6 +181,79 @@ class TestRegister:
             data = response.get_json()
             assert data['success'] is False
             assert data['error_code'] == 'VALIDATION_ERROR'
+
+
+class TestPublicRegistrationClosed:
+    def test_register_api_disabled_when_flag_off(self, client, app):
+        app.config['ALLOW_PUBLIC_REGISTRATION'] = False
+        try:
+            with app.app_context():
+                response = client.post('/api/auth/register', json={
+                    'first_name': 'New',
+                    'last_name': 'User',
+                    'email': 'closed@example.com',
+                    'mobile_number': '+971501234567',
+                    'project_name': 'Marina Tower',
+                    'job_designation': 'Technician',
+                    'employment_start_date': '2024-06-01',
+                })
+                assert response.status_code == 403
+                assert response.get_json().get('error_code') == 'REGISTRATION_DISABLED'
+        finally:
+            app.config['ALLOW_PUBLIC_REGISTRATION'] = True
+
+    def test_register_page_redirects_to_login_when_closed(self, client, app):
+        app.config['ALLOW_PUBLIC_REGISTRATION'] = False
+        try:
+            response = client.get('/register', follow_redirects=False)
+            assert response.status_code == 302
+            assert '/login' in (response.headers.get('Location') or '')
+        finally:
+            app.config['ALLOW_PUBLIC_REGISTRATION'] = True
+
+    def test_register_page_ok_when_open(self, client, app):
+        app.config['ALLOW_PUBLIC_REGISTRATION'] = True
+        response = client.get('/register', follow_redirects=False)
+        assert response.status_code == 200
+        assert b'Create your account' in response.data
+
+
+class TestForgotPassword:
+    def test_forgot_password_page_ok(self, client):
+        response = client.get('/forgot-password')
+        assert response.status_code == 200
+        assert b'Forgot password' in response.data
+
+    def test_forgot_password_rejects_bad_email(self, client):
+        response = client.post('/api/auth/forgot-password', json={'email': 'not-an-email'})
+        assert response.status_code == 400
+
+    def test_forgot_password_does_not_leak_unknown_email(self, client):
+        response = client.post('/api/auth/forgot-password', json={'email': 'nobody@example.com'})
+        assert response.status_code == 200
+        assert 'reset link' in response.get_json().get('message', '').lower()
+
+    def test_reset_password_with_valid_token(self, client, standard_user, app):
+        with app.app_context():
+            from app.auth.routes import make_password_reset_token
+            token = make_password_reset_token(standard_user.id)
+            response = client.post('/api/auth/reset-password', json={
+                'token': token,
+                'password': 'NewPass456',
+            })
+            assert response.status_code == 200
+            login = client.post('/api/auth/login', json={
+                'username': 'testuser',
+                'password': 'NewPass456',
+            })
+            assert login.status_code == 200
+
+    def test_reset_password_rejects_bad_token(self, client):
+        response = client.post('/api/auth/reset-password', json={
+            'token': 'not-a-token',
+            'password': 'NewPass456',
+        })
+        assert response.status_code == 400
 
 
 class TestTokenRefresh:

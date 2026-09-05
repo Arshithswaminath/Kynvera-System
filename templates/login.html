@@ -47,7 +47,10 @@
                     <path d="M5 12h14M13 6l6 6-6 6"/>
                 </svg>
             </button>
-            <p class="auth-form-alt">No account? <a href="{{ url_for('register_page') }}" class="auth-link">Create one</a></p>
+            <p class="auth-form-alt"><a href="{{ url_for('forgot_password_page') }}" class="auth-link">Forgot password?</a></p>
+            {% if allow_public_registration|default(true) %}
+            <p class="auth-form-alt">New here? <a href="{{ url_for('register_page') }}" class="auth-link">Create an account</a></p>
+            {% endif %}
             <div id="error-message" class="auth-error auth-error--login" hidden role="alert"></div>
         </form>
     {% endcall %}

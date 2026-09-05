@@ -4,7 +4,7 @@ import logging
 import mimetypes
 import subprocess
 from datetime import datetime, timezone
-from flask import Flask, send_from_directory, abort, render_template, jsonify, request, redirect, make_response
+from flask import Flask, send_from_directory, abort, render_template, jsonify, request, redirect, make_response, current_app, Response, url_for
 from concurrent.futures import ThreadPoolExecutor
 from werkzeug.exceptions import HTTPException
 from flask_jwt_extended import JWTManager, jwt_required
@@ -351,542 +351,545 @@ def create_app():
     logger.info("✅ Database and JWT initialized")
     
     # Automatic database initialization and migration (fully self-contained for Render)
-    with app.app_context():
-        try:
-            import time
-            from sqlalchemy import inspect, text
+    if app.config.get('KYNVERA_MARKETING_ONLY'):
+        logger.info("KYNVERA_MARKETING_ONLY: public landing site; skipping database bootstrap")
+    else:
+        with app.app_context():
+            try:
+                import time
+                from sqlalchemy import inspect, text
             
-            # Retry logic for database connection (Render databases may need a moment).
-            # Each attempt is capped by SQLALCHEMY connect_timeout (10s) so a bad
-            # DATABASE_URL cannot stall past Render's port-scan window.
-            max_retries = 5
-            retry_delay = 2
-            inspector = None
+                # Retry logic for database connection (Render databases may need a moment).
+                # Each attempt is capped by SQLALCHEMY connect_timeout (10s) so a bad
+                # DATABASE_URL cannot stall past Render's port-scan window.
+                max_retries = 5
+                retry_delay = 2
+                inspector = None
 
-            logger.info("Connecting to database (attempt 1/%s)...", max_retries)
-            sys.stdout.flush()
-            for attempt in range(max_retries):
-                try:
-                    inspector = inspect(db.engine)
-                    # Test connection by getting table names
-                    inspector.get_table_names()
-                    logger.info("✅ Database connection verified")
-                    sys.stdout.flush()
-                    break
-                except Exception as conn_error:
-                    if attempt < max_retries - 1:
-                        logger.info(
-                            "Database connection attempt %s/%s failed (%s), retrying in %ss...",
-                            attempt + 1,
-                            max_retries,
-                            conn_error,
-                            retry_delay,
-                        )
+                logger.info("Connecting to database (attempt 1/%s)...", max_retries)
+                sys.stdout.flush()
+                for attempt in range(max_retries):
+                    try:
+                        inspector = inspect(db.engine)
+                        # Test connection by getting table names
+                        inspector.get_table_names()
+                        logger.info("✅ Database connection verified")
                         sys.stdout.flush()
-                        time.sleep(retry_delay)
-                        retry_delay *= 2
-                    else:
-                        logger.error(f"❌ Failed to connect to database after {max_retries} attempts: {conn_error}")
-                        raise
-
-            try:
-                from app.database_admin import enable_sqlite_wal
-                enable_sqlite_wal()
-            except Exception as wal_err:
-                logger.warning("SQLite WAL setup skipped: %s", wal_err)
-            
-            # Step 1: Create all tables if they don't exist (fully automatic)
-            logger.info("Ensuring all database tables exist...")
-            try:
-                db.create_all()
-                logger.info("✅ All database tables verified/created")
-            except Exception as create_error:
-                logger.warning(f"Table creation check: {create_error}")
-                # Continue anyway - tables might already exist
-            
-            # Schema grows via create_all plus additive ALTER TABLE below.
-            # Flask-Migrate is registered but there is no Alembic versions tree yet.
-            logger.info("Database tables verified (create_all). Additive ALTER TABLE runs next for older databases.")
-            
-            # Step 2.5: Add missing columns if tables exist (one-time migration for existing databases)
-            inspector = inspect(db.engine)
-            if 'users' in inspector.get_table_names():
-                columns = [col['name'] for col in inspector.get_columns('users')]
-                missing_columns = []
-                # Keep in sync with app.models.User — db.create_all() does not alter existing tables.
-                user_optional_columns = [
-                    ('designation', 'VARCHAR(30) DEFAULT NULL'),
-                    ('password_changed', 'BOOLEAN DEFAULT FALSE'),
-                    ('default_signature', 'TEXT'),
-                    ('default_comment', 'TEXT'),
-                    ('access_hvac', 'BOOLEAN DEFAULT FALSE'),
-                    ('access_civil', 'BOOLEAN DEFAULT FALSE'),
-                    ('access_cleaning', 'BOOLEAN DEFAULT FALSE'),
-                    ('access_hr', 'BOOLEAN DEFAULT FALSE'),
-                    ('access_hiring', 'BOOLEAN DEFAULT FALSE'),
-                    ('access_procurement_module', 'BOOLEAN DEFAULT FALSE'),
-                    ('access_business_development', 'BOOLEAN DEFAULT FALSE'),
-                    ('access_sales_manager', 'BOOLEAN DEFAULT FALSE'),
-                    ('access_quotations', 'BOOLEAN DEFAULT FALSE'),
-                    ('access_report_generation', 'BOOLEAN DEFAULT FALSE'),
-                    ('access_submitted_forms', 'BOOLEAN DEFAULT FALSE'),
-                    ('access_ticketing', 'BOOLEAN DEFAULT FALSE'),
-                    ('access_qhsi', 'BOOLEAN DEFAULT FALSE'),
-                    ('access_files', 'BOOLEAN DEFAULT FALSE'),
-                    ('is_ticket_reporter', 'BOOLEAN DEFAULT FALSE'),
-                    ('last_login', 'TIMESTAMP'),
-                    ('employment_start_date', 'DATE'),
-                    ('job_designation', 'VARCHAR(160)'),
-                    ('annual_leave_days', 'INTEGER'),
-                    ('other_leave_days', 'INTEGER'),
-                    ('reporting_manager_id', 'INTEGER'),
-                    ('operations_manager_id', 'INTEGER'),
-                    ('admin_visible_password', 'VARCHAR(255)'),
-                    ('phone', 'VARCHAR(40)'),
-                    ('assigned_project', 'VARCHAR(200)'),
-                    ('mfa_enabled', 'BOOLEAN DEFAULT FALSE'),
-                    ('mfa_secret', 'VARCHAR(64)'),
-                ]
-                for col_name, col_def in user_optional_columns:
-                    if col_name not in columns:
-                        missing_columns.append((col_name, col_def))
-
-                if missing_columns:
-                    logger.info(f"Adding missing columns to users table: {[col[0] for col in missing_columns]}")
-                    try:
-                        with db.engine.begin() as conn:
-                            for col_name, col_def in missing_columns:
-                                try:
-                                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_def}"))
-                                    logger.info(f"✅ Added {col_name} column to users table")
-                                except Exception as col_error:
-                                    error_str = str(col_error).lower()
-                                    if 'already exists' in error_str or 'duplicate' in error_str:
-                                        logger.info(f"Column {col_name} already exists, skipping")
-                                    else:
-                                        logger.warning(f"Could not add {col_name}: {col_error}")
-                            if any(name == 'access_hiring' for name, _col_def in missing_columns):
-                                conn.execute(text("UPDATE users SET access_hiring = access_hr"))
-                                logger.info("Backfilled access_hiring from existing HR module access")
-                    except Exception as e:
-                        logger.warning(f"Could not add missing columns (non-critical): {e}")
-
-                # Populate admin_visible_password for existing accounts when we can match a known default.
-                if 'admin_visible_password' in [col['name'] for col in inspector.get_columns('users')]:
-                    try:
-                        from common.password_admin import backfill_admin_visible_passwords
-                        stats = backfill_admin_visible_passwords()
-                        if stats.get('updated'):
+                        break
+                    except Exception as conn_error:
+                        if attempt < max_retries - 1:
                             logger.info(
-                                "Admin password backfill: %s updated, %s still unknown (login or reset will fill)",
-                                stats['updated'],
-                                stats['skipped'],
+                                "Database connection attempt %s/%s failed (%s), retrying in %ss...",
+                                attempt + 1,
+                                max_retries,
+                                conn_error,
+                                retry_delay,
                             )
-                    except Exception as backfill_err:
-                        logger.warning(f"Admin password backfill skipped: {backfill_err}")
+                            sys.stdout.flush()
+                            time.sleep(retry_delay)
+                            retry_delay *= 2
+                        else:
+                            logger.error(f"❌ Failed to connect to database after {max_retries} attempts: {conn_error}")
+                            raise
 
-            if 'bd_projects' in inspector.get_table_names():
-                bd_cols = {col['name'] for col in inspector.get_columns('bd_projects')}
-                if 'owner_user_id' not in bd_cols:
-                    try:
-                        with db.engine.begin() as conn:
-                            conn.execute(text('ALTER TABLE bd_projects ADD COLUMN owner_user_id INTEGER'))
-                        logger.info('✅ Added owner_user_id column to bd_projects')
-                    except Exception as bd_col_err:
-                        logger.warning('Could not add bd_projects.owner_user_id: %s', bd_col_err)
                 try:
-                    with db.engine.begin() as conn:
-                        conn.execute(text(
-                            'UPDATE bd_projects SET owner_user_id = created_by '
-                            'WHERE owner_user_id IS NULL AND created_by IS NOT NULL'
-                        ))
-                except Exception:
-                    pass
+                    from app.database_admin import enable_sqlite_wal
+                    enable_sqlite_wal()
+                except Exception as wal_err:
+                    logger.warning("SQLite WAL setup skipped: %s", wal_err)
+            
+                # Step 1: Create all tables if they don't exist (fully automatic)
+                logger.info("Ensuring all database tables exist...")
+                try:
+                    db.create_all()
+                    logger.info("✅ All database tables verified/created")
+                except Exception as create_error:
+                    logger.warning(f"Table creation check: {create_error}")
+                    # Continue anyway - tables might already exist
+            
+                # Schema grows via create_all plus additive ALTER TABLE below.
+                # Flask-Migrate is registered but there is no Alembic versions tree yet.
+                logger.info("Database tables verified (create_all). Additive ALTER TABLE runs next for older databases.")
+            
+                # Step 2.5: Add missing columns if tables exist (one-time migration for existing databases)
+                inspector = inspect(db.engine)
+                if 'users' in inspector.get_table_names():
+                    columns = [col['name'] for col in inspector.get_columns('users')]
+                    missing_columns = []
+                    # Keep in sync with app.models.User — db.create_all() does not alter existing tables.
+                    user_optional_columns = [
+                        ('designation', 'VARCHAR(30) DEFAULT NULL'),
+                        ('password_changed', 'BOOLEAN DEFAULT FALSE'),
+                        ('default_signature', 'TEXT'),
+                        ('default_comment', 'TEXT'),
+                        ('access_hvac', 'BOOLEAN DEFAULT FALSE'),
+                        ('access_civil', 'BOOLEAN DEFAULT FALSE'),
+                        ('access_cleaning', 'BOOLEAN DEFAULT FALSE'),
+                        ('access_hr', 'BOOLEAN DEFAULT FALSE'),
+                        ('access_hiring', 'BOOLEAN DEFAULT FALSE'),
+                        ('access_procurement_module', 'BOOLEAN DEFAULT FALSE'),
+                        ('access_business_development', 'BOOLEAN DEFAULT FALSE'),
+                        ('access_sales_manager', 'BOOLEAN DEFAULT FALSE'),
+                        ('access_quotations', 'BOOLEAN DEFAULT FALSE'),
+                        ('access_report_generation', 'BOOLEAN DEFAULT FALSE'),
+                        ('access_submitted_forms', 'BOOLEAN DEFAULT FALSE'),
+                        ('access_ticketing', 'BOOLEAN DEFAULT FALSE'),
+                        ('access_qhsi', 'BOOLEAN DEFAULT FALSE'),
+                        ('access_files', 'BOOLEAN DEFAULT FALSE'),
+                        ('is_ticket_reporter', 'BOOLEAN DEFAULT FALSE'),
+                        ('last_login', 'TIMESTAMP'),
+                        ('employment_start_date', 'DATE'),
+                        ('job_designation', 'VARCHAR(160)'),
+                        ('annual_leave_days', 'INTEGER'),
+                        ('other_leave_days', 'INTEGER'),
+                        ('reporting_manager_id', 'INTEGER'),
+                        ('operations_manager_id', 'INTEGER'),
+                        ('admin_visible_password', 'VARCHAR(255)'),
+                        ('phone', 'VARCHAR(40)'),
+                        ('assigned_project', 'VARCHAR(200)'),
+                        ('mfa_enabled', 'BOOLEAN DEFAULT FALSE'),
+                        ('mfa_secret', 'VARCHAR(64)'),
+                    ]
+                    for col_name, col_def in user_optional_columns:
+                        if col_name not in columns:
+                            missing_columns.append((col_name, col_def))
 
-            if 'ticket_materials' in inspector.get_table_names():
-                tm_cols = {col['name'] for col in inspector.get_columns('ticket_materials')}
-                for col_name, col_sql in (
-                    ('catalog_item_id', 'INTEGER'),
-                    ('qty_short', 'FLOAT DEFAULT 0'),
-                    ('created_at', 'DATETIME'),
-                ):
-                    if col_name in tm_cols:
-                        continue
-                    try:
-                        with db.engine.begin() as conn:
-                            conn.execute(text(
-                                f'ALTER TABLE ticket_materials ADD COLUMN {col_name} {col_sql}'
-                            ))
-                        logger.info('Added %s to ticket_materials', col_name)
-                    except Exception as tm_err:
-                        logger.warning('Could not add ticket_materials.%s: %s', col_name, tm_err)
-
-            if 'proc_stock' in inspector.get_table_names():
-                ps_cols = {col['name'] for col in inspector.get_columns('proc_stock')}
-                if 'imported_from_excel' not in ps_cols:
-                    try:
-                        with db.engine.begin() as conn:
-                            conn.execute(text('ALTER TABLE proc_stock ADD COLUMN imported_from_excel BOOLEAN DEFAULT 0'))
-                        logger.info('Added imported_from_excel to proc_stock')
-                    except Exception as ps_err:
-                        logger.warning('Could not add proc_stock.imported_from_excel: %s', ps_err)
-
-            if 'proc_properties' in inspector.get_table_names():
-                pp_cols = {col['name'] for col in inspector.get_columns('proc_properties')}
-                if 'ticket_property_id' not in pp_cols:
-                    try:
-                        with db.engine.begin() as conn:
-                            conn.execute(text('ALTER TABLE proc_properties ADD COLUMN ticket_property_id INTEGER'))
-                        logger.info('Added ticket_property_id to proc_properties')
-                    except Exception as pp_err:
-                        logger.warning('Could not add proc_properties.ticket_property_id: %s', pp_err)
-                if 'is_shared' not in pp_cols:
-                    try:
-                        with db.engine.begin() as conn:
-                            conn.execute(text('ALTER TABLE proc_properties ADD COLUMN is_shared BOOLEAN DEFAULT 0'))
-                        logger.info('Added is_shared to proc_properties')
-                    except Exception as pp_err:
-                        logger.warning('Could not add proc_properties.is_shared: %s', pp_err)
-                if 'icon' not in pp_cols:
-                    try:
-                        with db.engine.begin() as conn:
-                            conn.execute(text('ALTER TABLE proc_properties ADD COLUMN icon VARCHAR(32)'))
-                        logger.info('Added icon to proc_properties')
-                    except Exception as pp_err:
-                        logger.warning('Could not add proc_properties.icon: %s', pp_err)
-
-            if 'proc_email_templates' in inspector.get_table_names():
-                pe_cols = {col['name'] for col in inspector.get_columns('proc_email_templates')}
-                if 'attach_pdf' not in pe_cols:
-                    try:
-                        with db.engine.begin() as conn:
-                            conn.execute(text(
-                                'ALTER TABLE proc_email_templates ADD COLUMN attach_pdf BOOLEAN DEFAULT 1'
-                            ))
-                        logger.info('Added attach_pdf to proc_email_templates')
-                    except Exception as pe_err:
-                        logger.warning('Could not add proc_email_templates.attach_pdf: %s', pe_err)
-
-            if 'submissions' in inspector.get_table_names():
-                columns = [col['name'] for col in inspector.get_columns('submissions')]
-                missing_columns = []
-                
-                # Check for workflow columns (legacy 2-stage + 5-stage approval)
-                workflow_fields = [
-                    ('workflow_status', "VARCHAR(30) DEFAULT 'submitted'"),
-                    ('supervisor_id', 'INTEGER'),
-                    ('manager_id', 'INTEGER'),
-                    ('supervisor_notified_at', 'TIMESTAMP DEFAULT NULL'),
-                    ('supervisor_reviewed_at', 'TIMESTAMP DEFAULT NULL'),
-                    ('manager_notified_at', 'TIMESTAMP DEFAULT NULL'),
-                    ('manager_reviewed_at', 'TIMESTAMP DEFAULT NULL'),
-                    ('doc_number', 'VARCHAR(20) DEFAULT NULL'),
-                    ('operations_manager_id', 'INTEGER'),
-                    ('business_dev_id', 'INTEGER'),
-                    ('procurement_id', 'INTEGER'),
-                    ('general_manager_id', 'INTEGER'),
-                    ('operations_manager_notified_at', 'TIMESTAMP'),
-                    ('operations_manager_approved_at', 'TIMESTAMP'),
-                    ('business_dev_notified_at', 'TIMESTAMP'),
-                    ('business_dev_approved_at', 'TIMESTAMP'),
-                    ('procurement_notified_at', 'TIMESTAMP'),
-                    ('procurement_approved_at', 'TIMESTAMP'),
-                    ('general_manager_notified_at', 'TIMESTAMP'),
-                    ('general_manager_approved_at', 'TIMESTAMP'),
-                    ('operations_manager_comments', 'TEXT'),
-                    ('business_dev_comments', 'TEXT'),
-                    ('procurement_comments', 'TEXT'),
-                    ('general_manager_comments', 'TEXT'),
-                    ('rejection_stage', 'VARCHAR(40)'),
-                    ('rejection_reason', 'TEXT'),
-                    ('rejected_at', 'TIMESTAMP'),
-                    ('rejected_by_id', 'INTEGER'),
-                ]
-                
-                for col_name, col_def in workflow_fields:
-                    if col_name not in columns:
-                        missing_columns.append((col_name, col_def))
-                
-                if missing_columns:
-                    logger.info(f"Adding missing workflow columns to submissions table: {[col[0] for col in missing_columns]}")
-                    try:
-                        with db.engine.begin() as conn:
-                            for col_name, col_def in missing_columns:
-                                try:
-                                    conn.execute(text(f"ALTER TABLE submissions ADD COLUMN {col_name} {col_def}"))
-                                    logger.info(f"✅ Added {col_name} column to submissions table")
-                                except Exception as col_error:
-                                    error_str = str(col_error).lower()
-                                    if 'already exists' in error_str or 'duplicate' in error_str:
-                                        logger.info(f"Column {col_name} already exists, skipping")
-                                    else:
-                                        logger.warning(f"Could not add {col_name}: {col_error}")
-                    except Exception as e:
-                        logger.warning(f"Could not add missing workflow columns (non-critical): {e}")
-
-            if 'knowledge_base_entries' in inspector.get_table_names():
-                columns = [col['name'] for col in inspector.get_columns('knowledge_base_entries')]
-                # Keep in sync with app.models.KnowledgeBaseEntry — create_all does not alter existing tables.
-                kb_optional_columns = [
-                    ('source_url', 'VARCHAR(1000)'),
-                    ('fetched_at', 'TIMESTAMP'),
-                ]
-                missing_columns = [(c, d) for c, d in kb_optional_columns if c not in columns]
-                if missing_columns:
-                    logger.info(f"Adding missing columns to knowledge_base_entries: {[c[0] for c in missing_columns]}")
-                    try:
-                        with db.engine.begin() as conn:
-                            for col_name, col_def in missing_columns:
-                                try:
-                                    conn.execute(text(f"ALTER TABLE knowledge_base_entries ADD COLUMN {col_name} {col_def}"))
-                                    logger.info(f"✅ Added {col_name} column to knowledge_base_entries table")
-                                except Exception as col_error:
-                                    error_str = str(col_error).lower()
-                                    if 'already exists' in error_str or 'duplicate' in error_str:
-                                        logger.info(f"Column {col_name} already exists, skipping")
-                                    else:
-                                        logger.warning(f"Could not add {col_name}: {col_error}")
-                    except Exception as e:
-                        logger.warning(f"Could not add missing knowledge_base columns (non-critical): {e}")
-
-            if 'dochub_documents' in inspector.get_table_names():
-                columns = [col['name'] for col in inspector.get_columns('dochub_documents')]
-                missing_columns = []
-                if 'doc_type' not in columns:
-                    missing_columns.append(('doc_type', "VARCHAR(20) DEFAULT 'upload'"))
-                if 'content' not in columns:
-                    missing_columns.append(('content', 'TEXT'))
-                if 'inline_asset' not in columns:
-                    # PostgreSQL rejects BOOLEAN DEFAULT 0; use FALSE (SQLite accepts FALSE too)
-                    missing_columns.append(('inline_asset', 'BOOLEAN DEFAULT FALSE'))
-                if 'reference_attachments' not in columns:
-                    missing_columns.append(('reference_attachments', 'TEXT'))
-                if missing_columns:
-                    logger.info(f"Adding DocHub columns: {[c[0] for c in missing_columns]}")
-                    for col_name, col_def in missing_columns:
+                    if missing_columns:
+                        logger.info(f"Adding missing columns to users table: {[col[0] for col in missing_columns]}")
                         try:
                             with db.engine.begin() as conn:
-                                conn.execute(text(f"ALTER TABLE dochub_documents ADD COLUMN {col_name} {col_def}"))
-                            logger.info(f"✅ Added {col_name} to dochub_documents")
-                        except Exception as col_error:
-                            err = str(col_error).lower()
-                            if 'already exists' in err or 'duplicate' in err:
-                                logger.info(f"Column {col_name} already exists")
-                            else:
-                                logger.warning(f"Could not add {col_name}: {col_error}")
+                                for col_name, col_def in missing_columns:
+                                    try:
+                                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_def}"))
+                                        logger.info(f"✅ Added {col_name} column to users table")
+                                    except Exception as col_error:
+                                        error_str = str(col_error).lower()
+                                        if 'already exists' in error_str or 'duplicate' in error_str:
+                                            logger.info(f"Column {col_name} already exists, skipping")
+                                        else:
+                                            logger.warning(f"Could not add {col_name}: {col_error}")
+                                if any(name == 'access_hiring' for name, _col_def in missing_columns):
+                                    conn.execute(text("UPDATE users SET access_hiring = access_hr"))
+                                    logger.info("Backfilled access_hiring from existing HR module access")
+                        except Exception as e:
+                            logger.warning(f"Could not add missing columns (non-critical): {e}")
 
-            if 'hiring_documents' in inspector.get_table_names():
-                hd_cols = [col['name'] for col in inspector.get_columns('hiring_documents')]
-                if 'notes' not in hd_cols:
-                    try:
-                        with db.engine.begin() as conn:
-                            conn.execute(text('ALTER TABLE hiring_documents ADD COLUMN notes TEXT'))
-                        logger.info('✅ Added notes to hiring_documents')
-                    except Exception as col_error:
-                        err = str(col_error).lower()
-                        if 'already exists' in err or 'duplicate' in err:
-                            logger.info('Column hiring_documents.notes already exists')
-                        else:
-                            logger.warning(f'Could not add hiring_documents.notes: {col_error}')
+                    # Populate admin_visible_password for existing accounts when we can match a known default.
+                    if 'admin_visible_password' in [col['name'] for col in inspector.get_columns('users')]:
+                        try:
+                            from common.password_admin import backfill_admin_visible_passwords
+                            stats = backfill_admin_visible_passwords()
+                            if stats.get('updated'):
+                                logger.info(
+                                    "Admin password backfill: %s updated, %s still unknown (login or reset will fill)",
+                                    stats['updated'],
+                                    stats['skipped'],
+                                )
+                        except Exception as backfill_err:
+                            logger.warning(f"Admin password backfill skipped: {backfill_err}")
 
-            if 'hiring_candidates' in inspector.get_table_names():
-                hc_cols = [col['name'] for col in inspector.get_columns('hiring_candidates')]
-                if 'pipeline_status' not in hc_cols:
+                if 'bd_projects' in inspector.get_table_names():
+                    bd_cols = {col['name'] for col in inspector.get_columns('bd_projects')}
+                    if 'owner_user_id' not in bd_cols:
+                        try:
+                            with db.engine.begin() as conn:
+                                conn.execute(text('ALTER TABLE bd_projects ADD COLUMN owner_user_id INTEGER'))
+                            logger.info('✅ Added owner_user_id column to bd_projects')
+                        except Exception as bd_col_err:
+                            logger.warning('Could not add bd_projects.owner_user_id: %s', bd_col_err)
                     try:
                         with db.engine.begin() as conn:
                             conn.execute(text(
-                                "ALTER TABLE hiring_candidates "
-                                "ADD COLUMN pipeline_status VARCHAR(40) "
-                                "DEFAULT 'interview_completed'"
+                                'UPDATE bd_projects SET owner_user_id = created_by '
+                                'WHERE owner_user_id IS NULL AND created_by IS NOT NULL'
                             ))
-                        logger.info("✅ Added pipeline_status to hiring_candidates")
-                    except Exception as col_error:
-                        err = str(col_error).lower()
-                        if 'already exists' in err or 'duplicate' in err:
-                            logger.info("Column pipeline_status already exists")
-                        else:
-                            logger.warning(f"Could not add pipeline_status: {col_error}")
-                for col_name, col_sql in (
-                    ('replacement_name', 'VARCHAR(200)'),
-                    ('replacement_employee_id', 'VARCHAR(80)'),
-                    ('comments', 'TEXT'),
-                    ('hr_ref', 'VARCHAR(80)'),
-                ):
-                    if col_name not in hc_cols:
+                    except Exception:
+                        pass
+
+                if 'ticket_materials' in inspector.get_table_names():
+                    tm_cols = {col['name'] for col in inspector.get_columns('ticket_materials')}
+                    for col_name, col_sql in (
+                        ('catalog_item_id', 'INTEGER'),
+                        ('qty_short', 'FLOAT DEFAULT 0'),
+                        ('created_at', 'DATETIME'),
+                    ):
+                        if col_name in tm_cols:
+                            continue
                         try:
                             with db.engine.begin() as conn:
                                 conn.execute(text(
-                                    f"ALTER TABLE hiring_candidates ADD COLUMN {col_name} {col_sql}"
+                                    f'ALTER TABLE ticket_materials ADD COLUMN {col_name} {col_sql}'
                                 ))
-                            logger.info(f"✅ Added {col_name} to hiring_candidates")
+                            logger.info('Added %s to ticket_materials', col_name)
+                        except Exception as tm_err:
+                            logger.warning('Could not add ticket_materials.%s: %s', col_name, tm_err)
+
+                if 'proc_stock' in inspector.get_table_names():
+                    ps_cols = {col['name'] for col in inspector.get_columns('proc_stock')}
+                    if 'imported_from_excel' not in ps_cols:
+                        try:
+                            with db.engine.begin() as conn:
+                                conn.execute(text('ALTER TABLE proc_stock ADD COLUMN imported_from_excel BOOLEAN DEFAULT 0'))
+                            logger.info('Added imported_from_excel to proc_stock')
+                        except Exception as ps_err:
+                            logger.warning('Could not add proc_stock.imported_from_excel: %s', ps_err)
+
+                if 'proc_properties' in inspector.get_table_names():
+                    pp_cols = {col['name'] for col in inspector.get_columns('proc_properties')}
+                    if 'ticket_property_id' not in pp_cols:
+                        try:
+                            with db.engine.begin() as conn:
+                                conn.execute(text('ALTER TABLE proc_properties ADD COLUMN ticket_property_id INTEGER'))
+                            logger.info('Added ticket_property_id to proc_properties')
+                        except Exception as pp_err:
+                            logger.warning('Could not add proc_properties.ticket_property_id: %s', pp_err)
+                    if 'is_shared' not in pp_cols:
+                        try:
+                            with db.engine.begin() as conn:
+                                conn.execute(text('ALTER TABLE proc_properties ADD COLUMN is_shared BOOLEAN DEFAULT 0'))
+                            logger.info('Added is_shared to proc_properties')
+                        except Exception as pp_err:
+                            logger.warning('Could not add proc_properties.is_shared: %s', pp_err)
+                    if 'icon' not in pp_cols:
+                        try:
+                            with db.engine.begin() as conn:
+                                conn.execute(text('ALTER TABLE proc_properties ADD COLUMN icon VARCHAR(32)'))
+                            logger.info('Added icon to proc_properties')
+                        except Exception as pp_err:
+                            logger.warning('Could not add proc_properties.icon: %s', pp_err)
+
+                if 'proc_email_templates' in inspector.get_table_names():
+                    pe_cols = {col['name'] for col in inspector.get_columns('proc_email_templates')}
+                    if 'attach_pdf' not in pe_cols:
+                        try:
+                            with db.engine.begin() as conn:
+                                conn.execute(text(
+                                    'ALTER TABLE proc_email_templates ADD COLUMN attach_pdf BOOLEAN DEFAULT 1'
+                                ))
+                            logger.info('Added attach_pdf to proc_email_templates')
+                        except Exception as pe_err:
+                            logger.warning('Could not add proc_email_templates.attach_pdf: %s', pe_err)
+
+                if 'submissions' in inspector.get_table_names():
+                    columns = [col['name'] for col in inspector.get_columns('submissions')]
+                    missing_columns = []
+                
+                    # Check for workflow columns (legacy 2-stage + 5-stage approval)
+                    workflow_fields = [
+                        ('workflow_status', "VARCHAR(30) DEFAULT 'submitted'"),
+                        ('supervisor_id', 'INTEGER'),
+                        ('manager_id', 'INTEGER'),
+                        ('supervisor_notified_at', 'TIMESTAMP DEFAULT NULL'),
+                        ('supervisor_reviewed_at', 'TIMESTAMP DEFAULT NULL'),
+                        ('manager_notified_at', 'TIMESTAMP DEFAULT NULL'),
+                        ('manager_reviewed_at', 'TIMESTAMP DEFAULT NULL'),
+                        ('doc_number', 'VARCHAR(20) DEFAULT NULL'),
+                        ('operations_manager_id', 'INTEGER'),
+                        ('business_dev_id', 'INTEGER'),
+                        ('procurement_id', 'INTEGER'),
+                        ('general_manager_id', 'INTEGER'),
+                        ('operations_manager_notified_at', 'TIMESTAMP'),
+                        ('operations_manager_approved_at', 'TIMESTAMP'),
+                        ('business_dev_notified_at', 'TIMESTAMP'),
+                        ('business_dev_approved_at', 'TIMESTAMP'),
+                        ('procurement_notified_at', 'TIMESTAMP'),
+                        ('procurement_approved_at', 'TIMESTAMP'),
+                        ('general_manager_notified_at', 'TIMESTAMP'),
+                        ('general_manager_approved_at', 'TIMESTAMP'),
+                        ('operations_manager_comments', 'TEXT'),
+                        ('business_dev_comments', 'TEXT'),
+                        ('procurement_comments', 'TEXT'),
+                        ('general_manager_comments', 'TEXT'),
+                        ('rejection_stage', 'VARCHAR(40)'),
+                        ('rejection_reason', 'TEXT'),
+                        ('rejected_at', 'TIMESTAMP'),
+                        ('rejected_by_id', 'INTEGER'),
+                    ]
+                
+                    for col_name, col_def in workflow_fields:
+                        if col_name not in columns:
+                            missing_columns.append((col_name, col_def))
+                
+                    if missing_columns:
+                        logger.info(f"Adding missing workflow columns to submissions table: {[col[0] for col in missing_columns]}")
+                        try:
+                            with db.engine.begin() as conn:
+                                for col_name, col_def in missing_columns:
+                                    try:
+                                        conn.execute(text(f"ALTER TABLE submissions ADD COLUMN {col_name} {col_def}"))
+                                        logger.info(f"✅ Added {col_name} column to submissions table")
+                                    except Exception as col_error:
+                                        error_str = str(col_error).lower()
+                                        if 'already exists' in error_str or 'duplicate' in error_str:
+                                            logger.info(f"Column {col_name} already exists, skipping")
+                                        else:
+                                            logger.warning(f"Could not add {col_name}: {col_error}")
+                        except Exception as e:
+                            logger.warning(f"Could not add missing workflow columns (non-critical): {e}")
+
+                if 'knowledge_base_entries' in inspector.get_table_names():
+                    columns = [col['name'] for col in inspector.get_columns('knowledge_base_entries')]
+                    # Keep in sync with app.models.KnowledgeBaseEntry — create_all does not alter existing tables.
+                    kb_optional_columns = [
+                        ('source_url', 'VARCHAR(1000)'),
+                        ('fetched_at', 'TIMESTAMP'),
+                    ]
+                    missing_columns = [(c, d) for c, d in kb_optional_columns if c not in columns]
+                    if missing_columns:
+                        logger.info(f"Adding missing columns to knowledge_base_entries: {[c[0] for c in missing_columns]}")
+                        try:
+                            with db.engine.begin() as conn:
+                                for col_name, col_def in missing_columns:
+                                    try:
+                                        conn.execute(text(f"ALTER TABLE knowledge_base_entries ADD COLUMN {col_name} {col_def}"))
+                                        logger.info(f"✅ Added {col_name} column to knowledge_base_entries table")
+                                    except Exception as col_error:
+                                        error_str = str(col_error).lower()
+                                        if 'already exists' in error_str or 'duplicate' in error_str:
+                                            logger.info(f"Column {col_name} already exists, skipping")
+                                        else:
+                                            logger.warning(f"Could not add {col_name}: {col_error}")
+                        except Exception as e:
+                            logger.warning(f"Could not add missing knowledge_base columns (non-critical): {e}")
+
+                if 'dochub_documents' in inspector.get_table_names():
+                    columns = [col['name'] for col in inspector.get_columns('dochub_documents')]
+                    missing_columns = []
+                    if 'doc_type' not in columns:
+                        missing_columns.append(('doc_type', "VARCHAR(20) DEFAULT 'upload'"))
+                    if 'content' not in columns:
+                        missing_columns.append(('content', 'TEXT'))
+                    if 'inline_asset' not in columns:
+                        # PostgreSQL rejects BOOLEAN DEFAULT 0; use FALSE (SQLite accepts FALSE too)
+                        missing_columns.append(('inline_asset', 'BOOLEAN DEFAULT FALSE'))
+                    if 'reference_attachments' not in columns:
+                        missing_columns.append(('reference_attachments', 'TEXT'))
+                    if missing_columns:
+                        logger.info(f"Adding DocHub columns: {[c[0] for c in missing_columns]}")
+                        for col_name, col_def in missing_columns:
+                            try:
+                                with db.engine.begin() as conn:
+                                    conn.execute(text(f"ALTER TABLE dochub_documents ADD COLUMN {col_name} {col_def}"))
+                                logger.info(f"✅ Added {col_name} to dochub_documents")
+                            except Exception as col_error:
+                                err = str(col_error).lower()
+                                if 'already exists' in err or 'duplicate' in err:
+                                    logger.info(f"Column {col_name} already exists")
+                                else:
+                                    logger.warning(f"Could not add {col_name}: {col_error}")
+
+                if 'hiring_documents' in inspector.get_table_names():
+                    hd_cols = [col['name'] for col in inspector.get_columns('hiring_documents')]
+                    if 'notes' not in hd_cols:
+                        try:
+                            with db.engine.begin() as conn:
+                                conn.execute(text('ALTER TABLE hiring_documents ADD COLUMN notes TEXT'))
+                            logger.info('✅ Added notes to hiring_documents')
                         except Exception as col_error:
                             err = str(col_error).lower()
                             if 'already exists' in err or 'duplicate' in err:
-                                logger.info(f"Column {col_name} already exists")
+                                logger.info('Column hiring_documents.notes already exists')
                             else:
-                                logger.warning(f"Could not add {col_name}: {col_error}")
-                # Unique index for hr_ref (best-effort; ignore if exists / nulls)
-                try:
-                    with db.engine.begin() as conn:
-                        conn.execute(text(
-                            "CREATE UNIQUE INDEX IF NOT EXISTS ix_hiring_candidates_hr_ref "
-                            "ON hiring_candidates (hr_ref)"
-                        ))
-                except Exception as idx_err:
-                    logger.debug('hr_ref index note: %s', idx_err)
-            if 'hiring_offer_letters' not in inspector.get_table_names():
-                try:
-                    db.create_all()
-                    logger.info('✅ Ensured hiring_offer_letters table')
-                except Exception as tbl_err:
-                    logger.warning('Could not ensure hiring_offer_letters: %s', tbl_err)
-            if 'hiring_offer_letters' in inspector.get_table_names():
-                try:
-                    hol_cols = {col['name'] for col in inspector.get_columns('hiring_offer_letters')}
-                    if 'not_accepted' not in hol_cols:
+                                logger.warning(f'Could not add hiring_documents.notes: {col_error}')
+
+                if 'hiring_candidates' in inspector.get_table_names():
+                    hc_cols = [col['name'] for col in inspector.get_columns('hiring_candidates')]
+                    if 'pipeline_status' not in hc_cols:
+                        try:
+                            with db.engine.begin() as conn:
+                                conn.execute(text(
+                                    "ALTER TABLE hiring_candidates "
+                                    "ADD COLUMN pipeline_status VARCHAR(40) "
+                                    "DEFAULT 'interview_completed'"
+                                ))
+                            logger.info("✅ Added pipeline_status to hiring_candidates")
+                        except Exception as col_error:
+                            err = str(col_error).lower()
+                            if 'already exists' in err or 'duplicate' in err:
+                                logger.info("Column pipeline_status already exists")
+                            else:
+                                logger.warning(f"Could not add pipeline_status: {col_error}")
+                    for col_name, col_sql in (
+                        ('replacement_name', 'VARCHAR(200)'),
+                        ('replacement_employee_id', 'VARCHAR(80)'),
+                        ('comments', 'TEXT'),
+                        ('hr_ref', 'VARCHAR(80)'),
+                    ):
+                        if col_name not in hc_cols:
+                            try:
+                                with db.engine.begin() as conn:
+                                    conn.execute(text(
+                                        f"ALTER TABLE hiring_candidates ADD COLUMN {col_name} {col_sql}"
+                                    ))
+                                logger.info(f"✅ Added {col_name} to hiring_candidates")
+                            except Exception as col_error:
+                                err = str(col_error).lower()
+                                if 'already exists' in err or 'duplicate' in err:
+                                    logger.info(f"Column {col_name} already exists")
+                                else:
+                                    logger.warning(f"Could not add {col_name}: {col_error}")
+                    # Unique index for hr_ref (best-effort; ignore if exists / nulls)
+                    try:
                         with db.engine.begin() as conn:
                             conn.execute(text(
-                                'ALTER TABLE hiring_offer_letters '
-                                'ADD COLUMN not_accepted BOOLEAN DEFAULT FALSE NOT NULL'
+                                "CREATE UNIQUE INDEX IF NOT EXISTS ix_hiring_candidates_hr_ref "
+                                "ON hiring_candidates (hr_ref)"
                             ))
-                        logger.info('✅ Added hiring_offer_letters.not_accepted')
-                except Exception as hol_err:
-                    logger.warning('Could not ensure hiring_offer_letters.not_accepted: %s', hol_err)
-            if 'automation_jobs' in inspector.get_table_names():
+                    except Exception as idx_err:
+                        logger.debug('hr_ref index note: %s', idx_err)
+                if 'hiring_offer_letters' not in inspector.get_table_names():
+                    try:
+                        db.create_all()
+                        logger.info('✅ Ensured hiring_offer_letters table')
+                    except Exception as tbl_err:
+                        logger.warning('Could not ensure hiring_offer_letters: %s', tbl_err)
+                if 'hiring_offer_letters' in inspector.get_table_names():
+                    try:
+                        hol_cols = {col['name'] for col in inspector.get_columns('hiring_offer_letters')}
+                        if 'not_accepted' not in hol_cols:
+                            with db.engine.begin() as conn:
+                                conn.execute(text(
+                                    'ALTER TABLE hiring_offer_letters '
+                                    'ADD COLUMN not_accepted BOOLEAN DEFAULT FALSE NOT NULL'
+                                ))
+                            logger.info('✅ Added hiring_offer_letters.not_accepted')
+                    except Exception as hol_err:
+                        logger.warning('Could not ensure hiring_offer_letters.not_accepted: %s', hol_err)
+                if 'automation_jobs' in inspector.get_table_names():
+                    try:
+                        auto_cols = {col['name'] for col in inspector.get_columns('automation_jobs')}
+                        if 'export_modules' not in auto_cols:
+                            with db.engine.begin() as conn:
+                                conn.execute(text(
+                                    'ALTER TABLE automation_jobs ADD COLUMN export_modules TEXT'
+                                ))
+                            logger.info('✅ Added automation_jobs.export_modules')
+                    except Exception as auto_err:
+                        logger.warning('Could not ensure automation_jobs.export_modules: %s', auto_err)
+                # Step 3: Ensure default admin user exists (fully automatic for Render)
                 try:
-                    auto_cols = {col['name'] for col in inspector.get_columns('automation_jobs')}
-                    if 'export_modules' not in auto_cols:
-                        with db.engine.begin() as conn:
-                            conn.execute(text(
-                                'ALTER TABLE automation_jobs ADD COLUMN export_modules TEXT'
-                            ))
-                        logger.info('✅ Added automation_jobs.export_modules')
-                except Exception as auto_err:
-                    logger.warning('Could not ensure automation_jobs.export_modules: %s', auto_err)
-            # Step 3: Ensure default admin user exists (fully automatic for Render)
-            try:
-                from app.models import User
-                default_admin_username = os.environ.get('DEFAULT_ADMIN_USERNAME', 'Kynvera')
-                admin = (
-                    User.query.filter_by(username=default_admin_username).first()
-                    or User.query.filter_by(username='admin').first()
-                )
-                if not admin:
-                    logger.info("Creating default admin user...")
-                    admin = User(
-                        username=default_admin_username,
-                        email=os.environ.get('DEFAULT_ADMIN_EMAIL', 'admin@injaaz.com'),
-                        full_name=os.environ.get('DEFAULT_ADMIN_FULL_NAME', 'System Administrator'),
-                        role='admin',
-                        is_active=True,
-                        access_hvac=True,
-                        access_civil=True,
-                        access_cleaning=True
+                    from app.models import User
+                    default_admin_username = os.environ.get('DEFAULT_ADMIN_USERNAME', 'Kynvera')
+                    admin = (
+                        User.query.filter_by(username=default_admin_username).first()
+                        or User.query.filter_by(username='admin').first()
                     )
-                    # Use environment variable for default password, or the local default
-                    default_password = os.environ.get('DEFAULT_ADMIN_PASSWORD') or 'Arshith&Taha@2026'
-                    admin.set_password(default_password)
-                    admin.password_changed = True
-                    db.session.add(admin)
-                    db.session.commit()
-                    logger.info("✅ Default admin user created (username=%s)", default_admin_username)
-                else:
-                    logger.info("✅ Admin user already exists")
-            except Exception as admin_create_error:
-                logger.warning(f"Could not create admin user (non-critical): {admin_create_error}")
-            else:
-                logger.info("Users table will be created when first user is registered")
-
-            # Step 4: Seed sample DocHub documents if empty
-            try:
-                from app.models import DocHubDocument, User
-                if DocHubDocument.query.count() == 0:
-                    admin_user = User.query.filter_by(role='admin').first()
-                    author_id = admin_user.id if admin_user else None
-                    samples = [
-                        ('Employee Onboarding Guide', 'onboarding', 'published',
-                         '<h1>Employee Onboarding Guide</h1>'
-                         '<div class="callout callout-blue"><span class="callout-icon">👋</span><div><strong>Welcome to the team!</strong> This guide will help you get up and running quickly.</div></div>'
-                         '<h2>1. Company Overview</h2><p>Kynvera delivers excellence in facility services across the UAE.</p>'
-                         '<h2>2. Your First Week</h2><ul><li><strong>Day 1:</strong> Meet your team lead, set up workstation</li>'
-                         '<li><strong>Day 2:</strong> System access, security training</li><li><strong>Day 3-5:</strong> Department walkthroughs</li></ul>'
-                         '<h2>3. Key Contacts</h2><ul><li><strong>HR:</strong> arshith@injaaz.ae</li><li><strong>IT:</strong> +971 50 156 0277</li></ul>'),
-                        ('Project Services Agreement Template', 'contracts', 'review',
-                         '<h1>Project Services Agreement</h1><p><em>Agreement between Service Provider and Client.</em></p>'
-                         '<h2>1. Parties</h2><p><strong>Service Provider:</strong> Kynvera.<br/><strong>Client:</strong> [Client Name].</p>'
-                         '<h2>2. Scope</h2><ul><li>Facility management services</li><li>Maintenance and repairs</li><li>Cleaning and HVAC</li></ul>'
-                         '<h2>3. Payment Terms</h2><p>As per agreed milestones.</p>'),
-                        ('Remote Work Policy', 'policies', 'published',
-                         '<h1>Remote Work Policy</h1><div class="callout"><span class="callout-icon">⚠️</span><div>Effective January 2025.</div></div>'
-                         '<h2>1. Purpose</h2><p>Guidelines for remote work to ensure productivity and security.</p>'
-                         '<h2>2. Eligibility</h2><p>Available after 90-day probation.</p>'
-                         '<h2>3. Core Hours</h2><p>10:00 AM – 3:00 PM local time.</p>'),
-                        ('DocHub User Manual', 'manuals', 'published',
-                         '<h1>DocHub User Manual</h1><p><em>Version 1.0 — March 2025</em></p>'
-                         '<h2>1. Getting Started</h2><p>DocHub is your document management platform.</p>'
-                         '<h2>2. Creating Documents</h2><ol><li>Click + New Document</li><li>Select a template</li><li>Edit and Save</li></ol>'
-                         '<h2>3. Shortcuts</h2><p><strong>Ctrl+S</strong> — Save. <strong>Ctrl+B</strong> — Bold.</p>'),
-                        ('Q1 2025 Performance Report', 'reports', 'draft',
-                         '<h1>Q1 2025 Performance Report</h1><p><em>Analytics Team — April 2025</em></p>'
-                         '<div class="callout callout-green"><span class="callout-icon">📈</span><div>Strong quarter across key metrics.</div></div>'
-                         '<h2>1. Executive Summary</h2><p>Q1 marked a solid start to the fiscal year.</p>'
-                         '<h2>2. Key Metrics</h2><table><tr><th>Metric</th><th>Target</th><th>Actual</th></tr>'
-                         '<tr><td>Revenue</td><td>—</td><td>—</td></tr><tr><td>Projects</td><td>—</td><td>—</td></tr></table>'),
-                    ]
-                    for title, cat, status, content in samples:
-                        doc = DocHubDocument(
-                            title=title,
-                            filename='',
-                            stored_path='',
-                            file_type='',
-                            doc_type='content',
-                            content=content,
-                            category=cat,
-                            status=status,
-                            author_id=author_id
+                    if not admin:
+                        logger.info("Creating default admin user...")
+                        admin = User(
+                            username=default_admin_username,
+                            email=os.environ.get('DEFAULT_ADMIN_EMAIL', 'admin@injaaz.com'),
+                            full_name=os.environ.get('DEFAULT_ADMIN_FULL_NAME', 'System Administrator'),
+                            role='admin',
+                            is_active=True,
+                            access_hvac=True,
+                            access_civil=True,
+                            access_cleaning=True
                         )
-                        db.session.add(doc)
-                    db.session.commit()
-                    logger.info("Seeded 5 sample DocHub documents")
-            except Exception as seed_err:
-                logger.warning(f"Could not seed DocHub samples (non-critical): {seed_err}")
+                        # Use environment variable for default password, or the local default
+                        default_password = os.environ.get('DEFAULT_ADMIN_PASSWORD') or 'Arshith&Taha@2026'
+                        admin.set_password(default_password)
+                        admin.password_changed = True
+                        db.session.add(admin)
+                        db.session.commit()
+                        logger.info("✅ Default admin user created (username=%s)", default_admin_username)
+                    else:
+                        logger.info("✅ Admin user already exists")
+                except Exception as admin_create_error:
+                    logger.warning(f"Could not create admin user (non-critical): {admin_create_error}")
+                else:
+                    logger.info("Users table will be created when first user is registered")
 
-            # Step 5: Ensure ticket/asset additive columns before any ORM seed writes.
-            # Blueprint record_once migrators also run later; this covers Postgres before seeds.
-            try:
-                from module_ticketing.routes import (
-                    _migrate_ticket_columns,
-                    _migrate_ticket_project_columns,
-                )
-                _migrate_ticket_columns(app)
-                _migrate_ticket_project_columns(app)
-            except Exception as tkt_mig_err:
-                logger.warning('Early ticket column migrate: %s', tkt_mig_err)
-            try:
-                from module_assets.routes import _ensure_asset_columns
-                _ensure_asset_columns(app)
-            except Exception as asset_mig_err:
-                logger.warning('Early asset column ensure: %s', asset_mig_err)
+                # Step 4: Seed sample DocHub documents if empty
+                try:
+                    from app.models import DocHubDocument, User
+                    if DocHubDocument.query.count() == 0:
+                        admin_user = User.query.filter_by(role='admin').first()
+                        author_id = admin_user.id if admin_user else None
+                        samples = [
+                            ('Employee Onboarding Guide', 'onboarding', 'published',
+                             '<h1>Employee Onboarding Guide</h1>'
+                             '<div class="callout callout-blue"><span class="callout-icon">👋</span><div><strong>Welcome to the team!</strong> This guide will help you get up and running quickly.</div></div>'
+                             '<h2>1. Company Overview</h2><p>Kynvera delivers excellence in facility services across the UAE.</p>'
+                             '<h2>2. Your First Week</h2><ul><li><strong>Day 1:</strong> Meet your team lead, set up workstation</li>'
+                             '<li><strong>Day 2:</strong> System access, security training</li><li><strong>Day 3-5:</strong> Department walkthroughs</li></ul>'
+                             '<h2>3. Key Contacts</h2><ul><li><strong>HR:</strong> arshith@injaaz.ae</li><li><strong>IT:</strong> +971 50 156 0277</li></ul>'),
+                            ('Project Services Agreement Template', 'contracts', 'review',
+                             '<h1>Project Services Agreement</h1><p><em>Agreement between Service Provider and Client.</em></p>'
+                             '<h2>1. Parties</h2><p><strong>Service Provider:</strong> Kynvera.<br/><strong>Client:</strong> [Client Name].</p>'
+                             '<h2>2. Scope</h2><ul><li>Facility management services</li><li>Maintenance and repairs</li><li>Cleaning and HVAC</li></ul>'
+                             '<h2>3. Payment Terms</h2><p>As per agreed milestones.</p>'),
+                            ('Remote Work Policy', 'policies', 'published',
+                             '<h1>Remote Work Policy</h1><div class="callout"><span class="callout-icon">⚠️</span><div>Effective January 2025.</div></div>'
+                             '<h2>1. Purpose</h2><p>Guidelines for remote work to ensure productivity and security.</p>'
+                             '<h2>2. Eligibility</h2><p>Available after 90-day probation.</p>'
+                             '<h2>3. Core Hours</h2><p>10:00 AM – 3:00 PM local time.</p>'),
+                            ('DocHub User Manual', 'manuals', 'published',
+                             '<h1>DocHub User Manual</h1><p><em>Version 1.0 — March 2025</em></p>'
+                             '<h2>1. Getting Started</h2><p>DocHub is your document management platform.</p>'
+                             '<h2>2. Creating Documents</h2><ol><li>Click + New Document</li><li>Select a template</li><li>Edit and Save</li></ol>'
+                             '<h2>3. Shortcuts</h2><p><strong>Ctrl+S</strong> — Save. <strong>Ctrl+B</strong> — Bold.</p>'),
+                            ('Q1 2025 Performance Report', 'reports', 'draft',
+                             '<h1>Q1 2025 Performance Report</h1><p><em>Analytics Team — April 2025</em></p>'
+                             '<div class="callout callout-green"><span class="callout-icon">📈</span><div>Strong quarter across key metrics.</div></div>'
+                             '<h2>1. Executive Summary</h2><p>Q1 marked a solid start to the fiscal year.</p>'
+                             '<h2>2. Key Metrics</h2><table><tr><th>Metric</th><th>Target</th><th>Actual</th></tr>'
+                             '<tr><td>Revenue</td><td>—</td><td>—</td></tr><tr><td>Projects</td><td>—</td><td>—</td></tr></table>'),
+                        ]
+                        for title, cat, status, content in samples:
+                            doc = DocHubDocument(
+                                title=title,
+                                filename='',
+                                stored_path='',
+                                file_type='',
+                                doc_type='content',
+                                content=content,
+                                category=cat,
+                                status=status,
+                                author_id=author_id
+                            )
+                            db.session.add(doc)
+                        db.session.commit()
+                        logger.info("Seeded 5 sample DocHub documents")
+                except Exception as seed_err:
+                    logger.warning(f"Could not seed DocHub samples (non-critical): {seed_err}")
 
-            # Step 6: Seed ticketing / FM / demo teams when empty (local + Render parity).
-            # Does not insert sample HR/hiring rows — that is opt-in via seed_all_sample_data.py.
-            try:
-                from common.runtime_seed import bootstrap_demo_data
-                seed_summary = bootstrap_demo_data()
-                logger.info("Reference/demo data bootstrap: %s", seed_summary)
-            except Exception as bootstrap_err:
-                logger.warning(
-                    "Could not bootstrap reference/demo data (non-critical): %s",
-                    bootstrap_err,
-                )
+                # Step 5: Ensure ticket/asset additive columns before any ORM seed writes.
+                # Blueprint record_once migrators also run later; this covers Postgres before seeds.
+                try:
+                    from module_ticketing.routes import (
+                        _migrate_ticket_columns,
+                        _migrate_ticket_project_columns,
+                    )
+                    _migrate_ticket_columns(app)
+                    _migrate_ticket_project_columns(app)
+                except Exception as tkt_mig_err:
+                    logger.warning('Early ticket column migrate: %s', tkt_mig_err)
+                try:
+                    from module_assets.routes import _ensure_asset_columns
+                    _ensure_asset_columns(app)
+                except Exception as asset_mig_err:
+                    logger.warning('Early asset column ensure: %s', asset_mig_err)
 
-            logger.info("✅ Database initialization and migration complete")
+                # Step 6: Seed ticketing / FM / demo teams when empty (local + Render parity).
+                # Does not insert sample HR/hiring rows — that is opt-in via seed_all_sample_data.py.
+                try:
+                    from common.runtime_seed import bootstrap_demo_data
+                    seed_summary = bootstrap_demo_data()
+                    logger.info("Reference/demo data bootstrap: %s", seed_summary)
+                except Exception as bootstrap_err:
+                    logger.warning(
+                        "Could not bootstrap reference/demo data (non-critical): %s",
+                        bootstrap_err,
+                    )
+
+                logger.info("✅ Database initialization and migration complete")
             
-        except Exception as e:
-            # Log the full error for debugging
-            logger.error(f"❌ Database initialization failed: {str(e)}", exc_info=True)
-            # Don't fail startup - app might still work if tables exist
-            logger.warning("⚠️  App will continue, but some features may not work until database is initialized")
+            except Exception as e:
+                # Log the full error for debugging
+                logger.error(f"❌ Database initialization failed: {str(e)}", exc_info=True)
+                # Don't fail startup - app might still work if tables exist
+                logger.warning("⚠️  App will continue, but some features may not work until database is initialized")
     
     # Set environment variables for cloudinary library
     if app.config.get('CLOUDINARY_CLOUD_NAME'):
@@ -917,8 +920,39 @@ def create_app():
 
     @app.context_processor
     def inject_kynvera_hub():
-        from common.kynvera_hub import hub_public_config
-        return {'hub': hub_public_config()}
+        from common.kynvera_hub import (
+            auth_home_url,
+            hub_public_config,
+            is_marketing_host,
+            staff_forgot_url,
+            staff_login_url,
+            staff_register_url,
+        )
+        return {
+            'hub': hub_public_config(),
+            'marketing_host': is_marketing_host(),
+            'staff_login_url': staff_login_url(),
+            'staff_forgot_url': staff_forgot_url(),
+            'staff_register_url': staff_register_url(),
+            'allow_public_registration': bool(app.config.get('ALLOW_PUBLIC_REGISTRATION')),
+            'auth_home_url': auth_home_url(),
+        }
+
+    @app.before_request
+    def _kynvera_marketing_only_gate():
+        """kynvera.net serves the public landing; staff paths go to operations."""
+        if not app.config.get('KYNVERA_MARKETING_ONLY'):
+            return None
+        path = request.path or '/'
+        public_exact = {
+            '/', '/privacy', '/terms', '/robots.txt', '/health',
+            '/manifest.json', '/favicon.ico', '/offline',
+            '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png',
+        }
+        if path in public_exact or path.startswith('/static/'):
+            return None
+        from common.kynvera_hub import operations_login_url
+        return redirect(operations_login_url())
     
     # Ensure directories exist (critical for Render deployment)
     try:
@@ -1071,11 +1105,15 @@ def create_app():
     
     @app.route('/manifest.json')
     def pwa_manifest():
-        """Serve PWA manifest (use static_folder so path works regardless of process cwd)."""
-        return send_from_directory(
-            app.static_folder, 'manifest.json', mimetype='application/manifest+json'
-        )
-    
+        """PWA manifest: marketing host opens the landing; product host opens the app."""
+        import json
+        from common.kynvera_hub import is_marketing_host
+        path = os.path.join(app.static_folder, 'manifest.json')
+        with open(path, encoding='utf-8') as fh:
+            data = json.load(fh)
+        data['start_url'] = '/' if is_marketing_host() else '/dashboard'
+        return Response(json.dumps(data), mimetype='application/manifest+json')
+
     @app.route('/favicon.ico')
     def favicon():
         """Serve favicon"""
@@ -1083,6 +1121,67 @@ def create_app():
             os.path.join(app.static_folder, 'images', 'kynvera'),
             'kynvera-mark-32.png',
             mimetype='image/png',
+        )
+    
+    @app.route('/apple-touch-icon.png')
+    @app.route('/apple-touch-icon-precomposed.png')
+    def apple_touch_icon():
+        """iOS fetches this at the site root when adding to the home screen."""
+        return send_from_directory(
+            os.path.join(app.static_folder, 'images', 'kynvera'),
+            'kynvera-mark-180.png',
+            mimetype='image/png',
+        )
+
+    @app.route('/robots.txt')
+    def robots_txt():
+        body = (
+            "User-agent: *\n"
+            "Allow: /\n"
+            "Allow: /login\n"
+            "Allow: /forgot-password\n"
+            "Allow: /reset-password\n"
+            "Allow: /privacy\n"
+            "Allow: /terms\n"
+            "Allow: /static/\n"
+            "Allow: /offline\n"
+            "Allow: /manifest.json\n"
+            "Disallow: /admin\n"
+            "Disallow: /api/\n"
+            "Disallow: /dashboard\n"
+            "Disallow: /hr\n"
+            "Disallow: /tickets\n"
+            "Disallow: /procurement\n"
+            "Disallow: /qhsi\n"
+            "Disallow: /inspection\n"
+            "Disallow: /assets\n"
+            "Disallow: /files\n"
+            "Disallow: /automations\n"
+            "Disallow: /dochub\n"
+            "Disallow: /workflow\n"
+            "Disallow: /register\n"
+            "Disallow: /logout\n"
+            "Disallow: /sso/\n"
+        )
+        return Response(body, mimetype='text/plain')
+
+    @app.route('/privacy')
+    def privacy_page():
+        return render_template('legal.html', legal_page='privacy')
+
+    @app.route('/terms')
+    def terms_page():
+        return render_template('legal.html', legal_page='terms')
+
+    @app.route('/forgot-password')
+    def forgot_password_page():
+        return render_template('forgot_password.html')
+
+    @app.route('/reset-password')
+    def reset_password_page():
+        return render_template(
+            'reset_password.html',
+            reset_token=(request.args.get('token') or '').strip(),
         )
 
     # Legacy trade URLs → unified inspection form (bookmarks / old emails)
@@ -1148,8 +1247,9 @@ def create_app():
         app.register_blueprint(bd_bp)
         logger.info("✅ Registered BD blueprint at /bd")
         try:
-            from app.bd.email_scheduler import init_scheduler as init_bd_email_scheduler
-            init_bd_email_scheduler(app)
+            if not app.config.get('KYNVERA_MARKETING_ONLY'):
+                from app.bd.email_scheduler import init_scheduler as init_bd_email_scheduler
+                init_bd_email_scheduler(app)
         except Exception as sched_err:
             logger.warning("⚠️  BD email scheduler not started: %s", sched_err)
     else:
@@ -1208,8 +1308,9 @@ def create_app():
             return redirect('/automations/', code=302)
         logger.info("✅ Registered Automations blueprint at /automations")
         try:
-            from app.automations.scheduler import init_scheduler as init_automations_scheduler
-            init_automations_scheduler(app)
+            if not app.config.get('KYNVERA_MARKETING_ONLY'):
+                from app.automations.scheduler import init_scheduler as init_automations_scheduler
+                init_automations_scheduler(app)
         except Exception as sched_err:
             logger.warning("⚠️  Automations scheduler not started: %s", sched_err)
     else:
@@ -1235,8 +1336,9 @@ def create_app():
         logger.info("✅ Registered MMR blueprint at /admin/mmr")
         # Start APScheduler for daily report emails
         try:
-            from module_mmr.scheduler import init_scheduler as init_mmr_scheduler
-            init_mmr_scheduler(app)
+            if not app.config.get('KYNVERA_MARKETING_ONLY'):
+                from module_mmr.scheduler import init_scheduler as init_mmr_scheduler
+                init_mmr_scheduler(app)
         except Exception as sched_err:
             logger.warning(f"⚠️  MMR scheduler not started: {sched_err}")
     else:
@@ -1314,11 +1416,9 @@ def create_app():
 
     # Security headers middleware.
     #
-    # Defaults are chosen to be additive — they do NOT block any current
-    # rendering path. CSP is intentionally sent as Report-Only so the existing
-    # inline `<script>` blocks and event handlers keep working; flip to
-    # Content-Security-Policy (enforced) in a later iteration once any
-    # violations have been triaged.
+    # CSP is enforced with a policy that still allows the inline scripts and
+    # Google Fonts this app uses. Set CSP_ENFORCE=false to fall back to
+    # Report-Only while debugging a new third-party origin.
     _is_prod = app.config.get('FLASK_ENV', 'development') == 'production'
     _csp_default = (
         "default-src 'self'; "
@@ -1333,7 +1433,7 @@ def create_app():
         "object-src 'none'"
     )
     _csp_policy = os.environ.get('CSP_POLICY', _csp_default)
-    _csp_enforce = os.environ.get('CSP_ENFORCE', '').lower() == 'true'
+    _csp_enforce = os.environ.get('CSP_ENFORCE', 'true').lower() not in ('0', 'false', 'no', 'off')
 
     @app.after_request
     def add_security_headers(response):
@@ -1351,8 +1451,7 @@ def create_app():
                 'Strict-Transport-Security',
                 'max-age=15552000; includeSubDomains'
             )
-        # Report-Only by default to avoid breaking inline handlers used by
-        # existing forms. Set CSP_ENFORCE=true once violations are clean.
+        # Enforced Content-Security-Policy unless CSP_ENFORCE=false.
         csp_header = 'Content-Security-Policy' if _csp_enforce else 'Content-Security-Policy-Report-Only'
         response.headers.setdefault(csp_header, _csp_policy)
 
@@ -1360,7 +1459,11 @@ def create_app():
         # restoring the previous app page without a server round-trip.
         mimetype = (response.mimetype or '')
         path = request.path or ''
-        public_exact = {'/', '/offline', '/manifest.json', '/register'}
+        public_exact = {
+            '/', '/offline', '/manifest.json', '/privacy', '/terms',
+            '/robots.txt', '/forgot-password', '/reset-password',
+            '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png',
+        }
         public_prefixes = (
             '/static/', '/assets/tag/', '/sso/', '/login', '/logout',
         )
@@ -1383,12 +1486,10 @@ def create_app():
     
     @app.route('/register')
     def register_page():
-        """Render register page"""
-        from common.password_admin import get_default_registration_password
-        return render_template(
-            'register.html',
-            default_password=get_default_registration_password(),
-        )
+        """Public signup wizard. Closed when ALLOW_PUBLIC_REGISTRATION is false."""
+        if current_app.config.get('ALLOW_PUBLIC_REGISTRATION'):
+            return render_template('register.html')
+        return redirect(url_for('login_page'))
     
     @app.route('/logout')
     def logout_page():
@@ -1535,10 +1636,9 @@ def create_app():
         """DocHub module - all users with access"""
         return render_template('dochub.html', active_page='dochub')
 
-    # Root route: public marketing landing
+    # Root: public landing. On kynvera-marketing, Sign in goes to operations.kynvera.net.
     @app.route('/')
     def index():
-        """Render public landing page"""
         return render_template('landing.html')
 
     # Serve generated files (downloads) - DEPRECATED in production (use cloud URLs)
@@ -1573,6 +1673,12 @@ def create_app():
     @app.route('/health', methods=['GET'])
     def health_check():
         """Health check endpoint for monitoring and load balancers"""
+        if app.config.get('KYNVERA_MARKETING_ONLY'):
+            return jsonify({
+                'status': 'healthy',
+                'site': 'marketing',
+                'timestamp': datetime.now(timezone.utc).isoformat(),
+            }), 200
         try:
             # Check database connection and that core schema is present.
             # SELECT 1 alone was green after a local SQLite schema loss
