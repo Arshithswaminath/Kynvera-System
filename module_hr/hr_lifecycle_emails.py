@@ -58,7 +58,7 @@ def _base_url(app: Flask) -> str:
                 return root
         except Exception:
             pass
-    return (app.config.get("APP_BASE_URL") or "http://localhost:5002").rstrip("/")
+    return (app.config.get("APP_BASE_URL") or "http://localhost:5004").rstrip("/")
 
 
 def my_request_url(app: Flask, submission: Submission) -> str:

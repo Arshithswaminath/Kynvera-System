@@ -10,7 +10,7 @@ if not exist "venv\Scripts\python.exe" (
 echo Initializing database...
 venv\Scripts\python.exe scripts\init_db.py
 echo.
-echo Starting Flask server (see PORT in .env, default http://localhost:5000)
+echo Starting Flask server (see PORT in .env, default http://localhost:5004)
 echo Press Ctrl+C to stop
 echo.
 venv\Scripts\python.exe Injaaz.py

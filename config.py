@@ -130,6 +130,8 @@ APP_BASE_URL = os.getenv("APP_BASE_URL", "https://operations.kynvera.net")
 KYNVERA_HUB_MODE = os.getenv("KYNVERA_HUB_MODE", "false").lower() in ("1", "true", "yes")
 # Public marketing site (apex). Product app lives on APP_BASE_URL (operations.kynvera.net).
 KYNVERA_HOME_URL = (os.getenv("KYNVERA_HOME_URL") or "https://kynvera.net").rstrip("/")
+# Public booking calendar (Cal.com / Calendly). Empty → mailto fallback on the landing CTAs.
+KYNVERA_BOOKING_URL = (os.getenv("KYNVERA_BOOKING_URL") or "").strip()
 KYNVERA_MARKETING_HOSTS = os.getenv("KYNVERA_MARKETING_HOSTS", "kynvera.net,www.kynvera.net")
 KYNVERA_FIRE_APP_URL = (os.getenv("KYNVERA_FIRE_APP_URL") or "").rstrip("/")
 KYNVERA_MUNICIPALITY_APP_URL = (os.getenv("KYNVERA_MUNICIPALITY_APP_URL") or "").rstrip("/")

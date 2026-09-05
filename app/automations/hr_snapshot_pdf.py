@@ -218,7 +218,7 @@ def resolve_snapshot_base_url() -> str:
     override = (os.environ.get('AUTOMATION_SNAPSHOT_BASE_URL') or '').strip()
     if override:
         return override.rstrip('/')
-    port = (os.environ.get('PORT') or '5002').strip() or '5002'
+    port = (os.environ.get('PORT') or '5004').strip() or '5004'
     return f'http://127.0.0.1:{port}'
 
 

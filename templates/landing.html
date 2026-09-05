@@ -88,6 +88,8 @@
 
 {# Public marketing vs staff access: landing sells the product; /login is the link you send users. #}
 {% set lp_talk_href = 'mailto:support@kynvera.store?subject=Kynvera%20workspace' %}
+{% set lp_book_href = booking_url|default('', true) or (hub.booking_url if hub is defined else '') or 'mailto:support@kynvera.store?subject=Book%20a%20Kynvera%20appointment' %}
+{% set lp_book_external = lp_book_href.startswith('http') %}
 
 <a class="lp-skip" href="#lp-main">Skip to content</a>
 
@@ -110,8 +112,7 @@
         </nav>
 
         <div class="lp-nav-actions">
-            <a href="{{ staff_login_url|default('/login') }}" class="lp-link-action">Sign in</a>
-            <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-outline">Talk to us</a>
+            <a href="{{ lp_book_href }}" class="lp-btn lp-btn-outline lp-nav-book"{% if lp_book_external %} target="_blank" rel="noopener noreferrer"{% endif %}>Book an appointment</a>
             {# Label lives on the button, not in a child span, so the two bars
                remain the only <span> children and :first/:last-of-type match them. #}
             <button type="button" class="lp-nav-toggle" id="lp-nav-toggle" aria-label="Menu" aria-expanded="false" aria-controls="lp-nav-links">
@@ -147,7 +148,7 @@
                 </p>
                 <div class="lp-hero-cta">
                     <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-primary lp-btn-lg">Talk to us</a>
-                    <a href="{{ staff_login_url|default('/login') }}" class="lp-btn lp-btn-ghost lp-btn-lg">Sign in</a>
+                    <a href="{{ lp_book_href }}" class="lp-btn lp-btn-ghost lp-btn-lg"{% if lp_book_external %} target="_blank" rel="noopener noreferrer"{% endif %}>Book an appointment</a>
                 </div>
             </div>
 
@@ -631,11 +632,11 @@
         <div class="lp-cta-band">
             <div class="lp-cta-copy">
                 <h2 id="lp-cta-title">Ready to run everything from one place?</h2>
-                <p>New organisations start with a conversation. If your team already has access, sign in with the link your administrator sent.</p>
+                <p>New organisations start with a conversation. Book a time, or if your team already has access, sign in from the header.</p>
             </div>
             <div class="lp-cta-actions">
                 <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-on-coral lp-btn-lg">Talk to us</a>
-                <a href="{{ staff_login_url|default('/login') }}" class="lp-btn lp-btn-ghost-on-coral lp-btn-lg">Sign in</a>
+                <a href="{{ lp_book_href }}" class="lp-btn lp-btn-ghost-on-coral lp-btn-lg"{% if lp_book_external %} target="_blank" rel="noopener noreferrer"{% endif %}>Book an appointment</a>
             </div>
         </div>
     </div>
@@ -694,13 +695,13 @@
 
     <div class="lp-footer-scene" aria-hidden="true">
         <picture>
-            <source type="image/webp" srcset="{{ url_for('static', filename='images/kynvera/footer-skyline.webp') }}?v=3">
+            <source type="image/webp" srcset="{{ url_for('static', filename='images/kynvera/footer-skyline.webp') }}?v=4">
             <img
                 class="lp-footer-scene-img"
-                src="{{ url_for('static', filename='images/kynvera/footer-skyline.png') }}?v=3"
+                src="{{ url_for('static', filename='images/kynvera/footer-skyline.png') }}?v=4"
                 alt=""
-                width="1024"
-                height="285"
+                width="2560"
+                height="713"
                 loading="lazy"
                 decoding="async">
         </picture>

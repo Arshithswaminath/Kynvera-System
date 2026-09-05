@@ -138,4 +138,16 @@ def test_landing_has_no_public_signup(client):
     assert '/terms' in html
     assert '/forgot-password' in html
     assert 'Talk to us' in html
+    assert 'Book an appointment' in html
     assert 'mailto:support@kynvera.store' in html
+
+
+def test_booking_url_used_on_landing_when_configured(client, app):
+    previous = app.config.get('KYNVERA_BOOKING_URL')
+    app.config['KYNVERA_BOOKING_URL'] = 'https://cal.com/kynvera/intro'
+    try:
+        html = client.get('/').get_data(as_text=True)
+        assert 'https://cal.com/kynvera/intro' in html
+        assert 'Book an appointment' in html
+    finally:
+        app.config['KYNVERA_BOOKING_URL'] = previous

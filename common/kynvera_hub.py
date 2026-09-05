@@ -71,6 +71,18 @@ def operations_login_url() -> str:
     return operations_url().rstrip("/") + "/login"
 
 
+def booking_url() -> str:
+    """Calendar booking link for marketing CTAs. Empty if not configured."""
+    raw = ""
+    try:
+        raw = (current_app.config.get("KYNVERA_BOOKING_URL") or "").strip()
+    except RuntimeError:
+        raw = ""
+    if is_safe_external_base(raw):
+        return raw.rstrip("/")
+    return ""
+
+
 def staff_login_url() -> str:
     """Sign-in href: absolute product URL on the marketing site, /login on operations."""
     if marketing_only() or is_marketing_host():
@@ -139,6 +151,7 @@ def hub_public_config() -> dict:
         "fire_app_url": fire_app_url(),
         "municipality_app_url": municipality_app_url(),
         "app_name": app_name(),
+        "booking_url": booking_url(),
     }
 
 

@@ -922,6 +922,7 @@ def create_app():
     def inject_kynvera_hub():
         from common.kynvera_hub import (
             auth_home_url,
+            booking_url,
             hub_public_config,
             is_marketing_host,
             staff_forgot_url,
@@ -933,6 +934,7 @@ def create_app():
             'staff_login_url': staff_login_url(),
             'staff_forgot_url': staff_forgot_url(),
             'auth_home_url': auth_home_url(),
+            'booking_url': booking_url(),
         }
 
     @app.before_request
@@ -1743,8 +1745,8 @@ if __name__ == '__main__':
         logger.info("Running from git branch: %s", _branch)
     else:
         logger.info("Git branch: (not available)")
-    # Local default: 5002 (matches APP_BASE_URL in .env). Production hosts set PORT.
-    _port = int(os.environ.get("PORT", "5002"))
+    # Local default: 5004 (matches APP_BASE_URL in .env). Production hosts set PORT.
+    _port = int(os.environ.get("PORT", "5004"))
     logger.info("Starting server on http://0.0.0.0:%s", _port)
     # For local development use debug=True. Remove or set False in production.
     app.run(debug=False, host='0.0.0.0', port=_port)
