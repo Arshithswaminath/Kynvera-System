@@ -17,7 +17,9 @@ Lanes:
   HR head office.
 * office staff (everyone else, including operations_manager / general_manager /
   hr_manager / employee / bd / procurement / business_development) ->
-  General manager (pool) -> HR head office (pool).
+  Reporting manager (if assigned on the profile) -> General manager (pool,
+  excluding that reporting manager and the submitter) -> HR head office
+  (``hr_manager`` designation, or an administrator if none is assigned).
 * Admin with no profile data continues to bypass the chain to the HR review
   queue (unchanged).
 
@@ -105,14 +107,14 @@ def _canonical_hr_user() -> User | None:
         named = [u for u in mgrs if not _is_legacy_hr_seed_account(u)]
         pool = named if named else mgrs
         return max(pool, key=lambda u: int(u.id or 0))
-    # Fallback: HR module access without a formal designation row yet.
+    # No HR manager designation: an administrator handles the step. Do not
+    # promote a random person who only has HR module access (forms).
     return (
         User.query.filter(
             User.is_active == True,  # noqa: E712
-            User.access_hr == True,  # noqa: E712
-            User.role != "admin",
+            User.role == "admin",
         )
-        .order_by(User.full_name, User.username)
+        .order_by(User.id)
         .first()
     )
 
@@ -171,6 +173,23 @@ def _step(
     if also_mirrors_gm_fields:
         d["also_mirrors_gm_fields"] = True
     return d
+
+
+def _exclude_ids(step: dict[str, Any] | None) -> set[int]:
+    out: set[int] = set()
+    if not step:
+        return out
+    for raw in step.get("exclude_signer_ids") or []:
+        try:
+            out.add(int(raw))
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def _gm_pool(*, exclude: set[int] | None = None) -> list[User]:
+    skip = exclude or set()
+    return [u for u in _active_users_with_designation("general_manager") if u.id not in skip]
 
 
 def _supervisor_for(submitter: User) -> User | None:
@@ -316,15 +335,30 @@ def _build_chain_for_submitter(submitter: User) -> tuple[list[dict[str, Any]], s
         )
 
     elif lane == "office_staff":
-        steps.append(
-            _step(
+        rm = _supervisor_for(submitter)
+        exclude_gm: set[int] = {int(submitter.id)}
+        if rm and rm.id != submitter.id:
+            steps.append(
+                _step(
+                    "reporting_manager",
+                    WF_MGMT_RM,
+                    "Reporting manager",
+                    signer_mode="fixed_user",
+                    signer_id=rm.id,
+                )
+            )
+            exclude_gm.add(rm.id)
+        gm_pool = _gm_pool(exclude=exclude_gm)
+        if gm_pool:
+            gm_step = _step(
                 "general_manager",
                 WF_MGMT_GM,
                 "General manager",
                 signer_mode="designation",
                 designation_gate="general_manager",
             )
-        )
+            gm_step["exclude_signer_ids"] = sorted(exclude_gm)
+            steps.append(gm_step)
 
     steps.append(
         _step(
@@ -524,6 +558,8 @@ def user_allowed_to_sign_step(user: User, step: dict[str, Any]) -> bool:
     if gate == "operations_manager":
         return _desig(user) == "operations_manager"
     if gate == "general_manager":
+        if int(user.id) in _exclude_ids(step):
+            return False
         return _desig(user) == "general_manager"
     if gate == "hr_head_office" or gate == "hr_manager":
         return user_is_hr_head(user)
@@ -627,6 +663,8 @@ def notify_submitter_management_final(
             sid,
             "hr_rejected",
         )
+        from module_hr.hr_lifecycle_emails import send_submitter_outcome
+        send_submitter_outcome(app, submission, approved=False, reason=reason)
         return
     if completed:
         _notify_user(
@@ -637,15 +675,54 @@ def notify_submitter_management_final(
             sid,
             "hr_approved",
         )
+        from module_hr.hr_lifecycle_emails import send_submitter_outcome
+        send_submitter_outcome(app, submission, approved=True)
+
+
+def current_management_signer_users(submission: Submission) -> tuple[list[User], str]:
+    """Users who may sign the current management step, plus that step's display label."""
+    fd = submission.form_data if isinstance(submission.form_data, dict) else {}
+    if not has_management_chain(fd):
+        return [], ""
+    block = fd[MGMT_CHAIN_KEY]
+    step = current_step(block)
+    if not step or step.get("signature"):
+        return [], ""
+    role = str(step.get("pdf_label") or step.get("who_label") or "Approver")
+    recipients: list[User] = []
+    mode = step.get("signer_mode")
+    if mode == "fixed_user":
+        try:
+            uid = int(step.get("signer_id"))
+        except (TypeError, ValueError):
+            return [], role
+        recipient = db.session.get(User, uid)
+        if recipient:
+            recipients.append(recipient)
+        return recipients, role
+    gate = (step.get("designation_gate") or "").lower()
+    if gate == "operations_manager":
+        recipients = list(_active_users_with_designation("operations_manager"))
+    elif gate == "general_manager":
+        recipients = list(_gm_pool(exclude=_exclude_ids(step)))
+    elif gate in ("hr_head_office", "hr_manager"):
+        recipients = [u for u in _active_hr_signers() if u.role != "admin"]
+    return recipients, role
 
 
 def notify_current_management_signers(app: Flask, submission: Submission) -> None:
     fd = submission.form_data if isinstance(submission.form_data, dict) else {}
-    if not has_management_chain(fd):
-        return
-    block = fd[MGMT_CHAIN_KEY]
-    step = current_step(block)
-    if not step or step.get("signature"):
+    recipients, role = current_management_signer_users(submission)
+    if not recipients:
+        if has_management_chain(fd):
+            block = fd[MGMT_CHAIN_KEY]
+            step = current_step(block)
+            if step and step.get("signer_mode") == "fixed_user" and not step.get("signature"):
+                app.logger.warning(
+                    "mgmt chain notify skipped: signer missing submission=%s signer_id=%r",
+                    submission.submission_id,
+                    step.get("signer_id"),
+                )
         return
     submission_id = submission.submission_id
     form_type_display = (submission.module_type or "HR").replace("hr_", "").replace("_", " ").title()
@@ -655,48 +732,16 @@ def notify_current_management_signers(app: Flask, submission: Submission) -> Non
     title = "HR form — your management sign-off"
     msg = f"{employee_name} — {form_type_display} ({submission_id}). Your signature is required for the official PDF trail."
     n_type = "hr_mgmt_chain_signoff"
-
-    mode = step.get("signer_mode")
-    if mode == "fixed_user":
-        try:
-            uid = int(step.get("signer_id"))
-        except (TypeError, ValueError):
-            app.logger.warning(
-                "mgmt chain notify skipped: invalid signer_id %r submission=%s",
-                step.get("signer_id"),
-                submission_id,
-            )
-            return
-        recipient = db.session.get(User, uid)
-        if not recipient:
-            app.logger.warning(
-                "mgmt chain notify skipped: user id=%s missing submission=%s",
-                uid,
-                submission_id,
-            )
-            return
+    for recipient in recipients:
         if not recipient.is_active:
             app.logger.warning(
                 "mgmt chain notify target user id=%s inactive submission=%s (notification still queued)",
-                uid,
+                recipient.id,
                 submission_id,
             )
-        _notify_user(app, uid, title, msg, submission_id, n_type)
-        return
-    gate = (step.get("designation_gate") or "").lower()
-    if gate == "operations_manager":
-        for u in _active_users_with_designation("operations_manager"):
-            _notify_user(app, u.id, title, msg, submission_id, n_type)
-        return
-    if gate == "general_manager":
-        for u in _active_users_with_designation("general_manager"):
-            _notify_user(app, u.id, title, msg, submission_id, n_type)
-        return
-    if gate == "hr_head_office" or gate == "hr_manager":
-        for u in _active_hr_signers():
-            if u.role != "admin":
-                _notify_user(app, u.id, title, msg, submission_id, n_type)
-        return
+        _notify_user(app, recipient.id, title, msg, submission_id, n_type)
+    from module_hr.hr_lifecycle_emails import send_action_required_to_users
+    send_action_required_to_users(app, submission, recipients, role_label=role)
 
 
 def attach_submission_enter_management(fd: dict[str, Any], submission_id: str) -> str | None:
@@ -867,14 +912,15 @@ _LANE_INTRO = {
         "Manager, the General Manager, and finally HR."
     ),
     "office_staff": (
-        "You are office staff. Your form is signed by the General Manager and then HR."
+        "You are office staff. Your form is signed by your reporting manager "
+        "(if one is set), then the General Manager, then HR."
     ),
 }
 
 _LANE_FLOW = {
     "technician": "Immediate supervisor -> Operations manager -> General manager -> HR",
     "supervisor": "Operations manager -> General manager -> HR",
-    "office_staff": "General manager -> HR",
+    "office_staff": "Reporting manager -> General manager -> HR",
     "interview_routing": "Interviewer sign -> Next approver (chosen at sign) -> General manager -> HR",
 }
 
@@ -965,20 +1011,41 @@ def _chain_descriptor(submitter: User, steps: list[dict[str, Any]]) -> list[dict
                 "signer_mode": "designation",
                 "missing": not om_pool,
             })
+        elif key == "reporting_manager":
+            rm = db.session.get(User, int(s.get("signer_id") or 0)) if s.get("signer_id") else None
+            who_label = (rm.full_name or rm.username) if rm else "Not assigned"
+            out.append({
+                "key": key,
+                "role_label": "Reporting manager",
+                "who_label": who_label,
+                "who_detail": "Assigned on your profile by an administrator.",
+                "signer_mode": s.get("signer_mode"),
+                "signer_id": s.get("signer_id"),
+                "missing": rm is None,
+            })
         elif key == "general_manager":
-            who_label, who_detail = _people_label(gm_pool, "General Manager")
+            pool = [u for u in gm_pool if u.id not in _exclude_ids(s)]
+            who_label, who_detail = _people_label(pool, "General Manager")
             out.append({
                 "key": key,
                 "role_label": "General manager",
                 "who_label": who_label,
                 "who_detail": who_detail,
                 "signer_mode": "designation",
-                "missing": not gm_pool,
+                "missing": not pool,
             })
         elif key == "hr_head_office":
             if hr_display:
                 who_label = hr_display.full_name or hr_display.username or "HR manager"
-                who_detail = "HR head office (final sign-off)."
+                if (hr_display.role or "").strip().lower() == "admin" and _desig(hr_display) not in (
+                    "hr_manager",
+                    "hr",
+                ):
+                    who_detail = (
+                        "No HR manager is assigned — an administrator handles this sign-off."
+                    )
+                else:
+                    who_detail = "HR head office (final sign-off)."
                 missing = False
             else:
                 who_label = "Not assigned"
@@ -1071,6 +1138,21 @@ def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
 
     chain = _chain_descriptor(submitter, steps)
 
+    keys = [c.get("key") for c in chain]
+    if lane == "office_staff":
+        if "reporting_manager" in keys and "general_manager" in keys:
+            lane_flow = "Reporting manager -> General manager -> HR"
+        elif "reporting_manager" in keys:
+            lane_flow = "Reporting manager -> HR"
+        elif "general_manager" in keys:
+            lane_flow = "General manager -> HR"
+        else:
+            lane_flow = "Administrator / HR"
+        lane_intro = _LANE_INTRO.get(lane)
+    else:
+        lane_flow = _LANE_FLOW.get(lane)
+        lane_intro = _LANE_INTRO.get(lane)
+
     sup_descriptor = None
     if lane == "technician":
         sup_step = next((c for c in chain if c.get("key") == "supervisor"), None)
@@ -1094,8 +1176,8 @@ def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
     return {
         "success": True,
         "lane": lane,
-        "lane_intro": _LANE_INTRO.get(lane),
-        "lane_flow": _LANE_FLOW.get(lane),
+        "lane_intro": lane_intro,
+        "lane_flow": lane_flow,
         "chain": chain,
         "supervisor": sup_descriptor,
         "default_reporting_to": default_reporting_to,

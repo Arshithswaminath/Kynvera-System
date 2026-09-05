@@ -411,6 +411,7 @@ def create_app():
                     ('access_civil', 'BOOLEAN DEFAULT FALSE'),
                     ('access_cleaning', 'BOOLEAN DEFAULT FALSE'),
                     ('access_hr', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_hiring', 'BOOLEAN DEFAULT FALSE'),
                     ('access_procurement_module', 'BOOLEAN DEFAULT FALSE'),
                     ('access_business_development', 'BOOLEAN DEFAULT FALSE'),
                     ('access_sales_manager', 'BOOLEAN DEFAULT FALSE'),
@@ -452,6 +453,9 @@ def create_app():
                                         logger.info(f"Column {col_name} already exists, skipping")
                                     else:
                                         logger.warning(f"Could not add {col_name}: {col_error}")
+                            if any(name == 'access_hiring' for name, _col_def in missing_columns):
+                                conn.execute(text("UPDATE users SET access_hiring = access_hr"))
+                                logger.info("Backfilled access_hiring from existing HR module access")
                     except Exception as e:
                         logger.warning(f"Could not add missing columns (non-critical): {e}")
 
@@ -486,6 +490,70 @@ def create_app():
                         ))
                 except Exception:
                     pass
+
+            if 'ticket_materials' in inspector.get_table_names():
+                tm_cols = {col['name'] for col in inspector.get_columns('ticket_materials')}
+                for col_name, col_sql in (
+                    ('catalog_item_id', 'INTEGER'),
+                    ('qty_short', 'FLOAT DEFAULT 0'),
+                    ('created_at', 'DATETIME'),
+                ):
+                    if col_name in tm_cols:
+                        continue
+                    try:
+                        with db.engine.begin() as conn:
+                            conn.execute(text(
+                                f'ALTER TABLE ticket_materials ADD COLUMN {col_name} {col_sql}'
+                            ))
+                        logger.info('Added %s to ticket_materials', col_name)
+                    except Exception as tm_err:
+                        logger.warning('Could not add ticket_materials.%s: %s', col_name, tm_err)
+
+            if 'proc_stock' in inspector.get_table_names():
+                ps_cols = {col['name'] for col in inspector.get_columns('proc_stock')}
+                if 'imported_from_excel' not in ps_cols:
+                    try:
+                        with db.engine.begin() as conn:
+                            conn.execute(text('ALTER TABLE proc_stock ADD COLUMN imported_from_excel BOOLEAN DEFAULT 0'))
+                        logger.info('Added imported_from_excel to proc_stock')
+                    except Exception as ps_err:
+                        logger.warning('Could not add proc_stock.imported_from_excel: %s', ps_err)
+
+            if 'proc_properties' in inspector.get_table_names():
+                pp_cols = {col['name'] for col in inspector.get_columns('proc_properties')}
+                if 'ticket_property_id' not in pp_cols:
+                    try:
+                        with db.engine.begin() as conn:
+                            conn.execute(text('ALTER TABLE proc_properties ADD COLUMN ticket_property_id INTEGER'))
+                        logger.info('Added ticket_property_id to proc_properties')
+                    except Exception as pp_err:
+                        logger.warning('Could not add proc_properties.ticket_property_id: %s', pp_err)
+                if 'is_shared' not in pp_cols:
+                    try:
+                        with db.engine.begin() as conn:
+                            conn.execute(text('ALTER TABLE proc_properties ADD COLUMN is_shared BOOLEAN DEFAULT 0'))
+                        logger.info('Added is_shared to proc_properties')
+                    except Exception as pp_err:
+                        logger.warning('Could not add proc_properties.is_shared: %s', pp_err)
+                if 'icon' not in pp_cols:
+                    try:
+                        with db.engine.begin() as conn:
+                            conn.execute(text('ALTER TABLE proc_properties ADD COLUMN icon VARCHAR(32)'))
+                        logger.info('Added icon to proc_properties')
+                    except Exception as pp_err:
+                        logger.warning('Could not add proc_properties.icon: %s', pp_err)
+
+            if 'proc_email_templates' in inspector.get_table_names():
+                pe_cols = {col['name'] for col in inspector.get_columns('proc_email_templates')}
+                if 'attach_pdf' not in pe_cols:
+                    try:
+                        with db.engine.begin() as conn:
+                            conn.execute(text(
+                                'ALTER TABLE proc_email_templates ADD COLUMN attach_pdf BOOLEAN DEFAULT 1'
+                            ))
+                        logger.info('Added attach_pdf to proc_email_templates')
+                    except Exception as pe_err:
+                        logger.warning('Could not add proc_email_templates.attach_pdf: %s', pe_err)
 
             if 'submissions' in inspector.get_table_names():
                 columns = [col['name'] for col in inspector.get_columns('submissions')]
@@ -654,6 +722,35 @@ def create_app():
                         ))
                 except Exception as idx_err:
                     logger.debug('hr_ref index note: %s', idx_err)
+            if 'hiring_offer_letters' not in inspector.get_table_names():
+                try:
+                    db.create_all()
+                    logger.info('✅ Ensured hiring_offer_letters table')
+                except Exception as tbl_err:
+                    logger.warning('Could not ensure hiring_offer_letters: %s', tbl_err)
+            if 'hiring_offer_letters' in inspector.get_table_names():
+                try:
+                    hol_cols = {col['name'] for col in inspector.get_columns('hiring_offer_letters')}
+                    if 'not_accepted' not in hol_cols:
+                        with db.engine.begin() as conn:
+                            conn.execute(text(
+                                'ALTER TABLE hiring_offer_letters '
+                                'ADD COLUMN not_accepted BOOLEAN DEFAULT FALSE NOT NULL'
+                            ))
+                        logger.info('✅ Added hiring_offer_letters.not_accepted')
+                except Exception as hol_err:
+                    logger.warning('Could not ensure hiring_offer_letters.not_accepted: %s', hol_err)
+            if 'automation_jobs' in inspector.get_table_names():
+                try:
+                    auto_cols = {col['name'] for col in inspector.get_columns('automation_jobs')}
+                    if 'export_modules' not in auto_cols:
+                        with db.engine.begin() as conn:
+                            conn.execute(text(
+                                'ALTER TABLE automation_jobs ADD COLUMN export_modules TEXT'
+                            ))
+                        logger.info('✅ Added automation_jobs.export_modules')
+                except Exception as auto_err:
+                    logger.warning('Could not ensure automation_jobs.export_modules: %s', auto_err)
             # Step 3: Ensure default admin user exists (fully automatic for Render)
             try:
                 from app.models import User
@@ -759,7 +856,8 @@ def create_app():
             except Exception as asset_mig_err:
                 logger.warning('Early asset column ensure: %s', asset_mig_err)
 
-            # Step 6: Seed ticketing / FM / demo teams when empty (local + Render parity)
+            # Step 6: Seed ticketing / FM / demo teams when empty (local + Render parity).
+            # Does not insert sample HR/hiring rows — that is opt-in via seed_all_sample_data.py.
             try:
                 from common.runtime_seed import bootstrap_demo_data
                 seed_summary = bootstrap_demo_data()
@@ -1250,7 +1348,7 @@ def create_app():
         # restoring the previous app page without a server round-trip.
         mimetype = (response.mimetype or '')
         path = request.path or ''
-        public_exact = {'/', '/about', '/offline', '/manifest.json', '/register'}
+        public_exact = {'/', '/offline', '/manifest.json', '/register'}
         public_prefixes = (
             '/static/', '/assets/tag/', '/sso/', '/login', '/logout',
         )
@@ -1324,8 +1422,8 @@ def create_app():
     
     @app.route('/about')
     def about():
-        """About page - accessible to all users"""
-        return render_template('about.html')
+        """About is hidden from the product; old links go to the public landing."""
+        return redirect('/', code=302)
     
     @app.route('/workflow/pending-reviews')
     def pending_reviews():

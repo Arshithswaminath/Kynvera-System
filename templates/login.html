@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="auth-html-login">
 <head>
     {% set title = 'Sign in — Kynvera' %}
     {% include 'partials/auth_head.html' %}
+    <meta name="theme-color" content="#ff8e68">
 </head>
 <body class="auth-page-login">
     {% from 'partials/auth_shell.html' import auth_shell %}
     {% call auth_shell(
         headline='All Operations.<br>One Platform.',
         description='The hub for your teams to run logistics, facilities, and day-to-day operations in one place.',
-        footer='No account? <a href="' ~ url_for('register_page') ~ '" class="auth-link">Create one</a>'
+        sheet_closed=(request.args.get('form') != '1')
     ) %}
         <header class="auth-form-header">
             <h1>Sign in</h1>
@@ -46,6 +47,7 @@
                     <path d="M5 12h14M13 6l6 6-6 6"/>
                 </svg>
             </button>
+            <p class="auth-form-alt">No account? <a href="{{ url_for('register_page') }}" class="auth-link">Create one</a></p>
             <div id="error-message" class="auth-error auth-error--login" hidden role="alert"></div>
         </form>
     {% endcall %}
@@ -141,6 +143,89 @@
             /* Chrome Back from dashboard (bfcache or reload) → clean credential form */
             resetLoginForm();
         });
+
+        (function initLoginSheet() {
+            const shell = document.querySelector('.auth-shell');
+            const panel = document.getElementById('auth-form-panel');
+            const handle = document.getElementById('auth-sheet-handle');
+            const peek = document.getElementById('auth-sheet-peek');
+            if (!shell || !panel || !handle || !peek) return;
+
+            function isMobileSheet() {
+                return window.matchMedia('(max-width: 1023px)').matches;
+            }
+
+            function setSheetOpen(open) {
+                const wasClosed = shell.classList.contains('auth-shell--sheet-closed');
+                if (open === !wasClosed) return;
+
+                handle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                peek.setAttribute('aria-expanded', open ? 'true' : 'false');
+                peek.setAttribute('aria-hidden', open ? 'true' : 'false');
+                panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+
+                if (open) {
+                    if ('inert' in panel) panel.inert = false;
+                    shell.classList.remove('auth-shell--sheet-closed');
+                    window.setTimeout(function () {
+                        if (!shell.classList.contains('auth-shell--sheet-closed')) {
+                            usernameInput.focus({ preventScroll: true });
+                        }
+                    }, 520);
+                } else {
+                    usernameInput.blur();
+                    shell.classList.add('auth-shell--sheet-closed');
+                    if ('inert' in panel) panel.inert = true;
+                    window.setTimeout(function () {
+                        if (shell.classList.contains('auth-shell--sheet-closed')) {
+                            peek.focus({ preventScroll: true });
+                        }
+                    }, 280);
+                }
+            }
+
+            function markSheetReady() {
+                shell.classList.add('auth-shell--ready');
+            }
+
+            function syncDesktopSheet() {
+                if (isMobileSheet()) {
+                    markSheetReady();
+                    return;
+                }
+                handle.setAttribute('aria-expanded', 'true');
+                peek.setAttribute('aria-expanded', 'false');
+                peek.setAttribute('aria-hidden', 'true');
+                panel.setAttribute('aria-hidden', 'false');
+                if ('inert' in panel) panel.inert = false;
+                shell.classList.remove('auth-shell--sheet-closed');
+                markSheetReady();
+            }
+
+            syncDesktopSheet();
+            window.matchMedia('(max-width: 1023px)').addEventListener('change', syncDesktopSheet);
+
+            handle.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!isMobileSheet()) return;
+                setSheetOpen(false);
+            });
+
+            peek.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!isMobileSheet()) return;
+                setSheetOpen(true);
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key !== 'Escape' || !isMobileSheet()) return;
+                if (!shell.classList.contains('auth-shell--sheet-closed')) {
+                    setSheetOpen(false);
+                }
+            });
+        })();
 
         usernameInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {

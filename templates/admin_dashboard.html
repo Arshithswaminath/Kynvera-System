@@ -26,10 +26,11 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/signature-display.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard-shell.css') }}?v=45">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard-shell.css') }}?v=56">
   <!-- Neat-glow styles for main content only (see .container.admin-content.admin-neat-glow) -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-neat-glow.css') }}?v=35">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/injz-profile-mgmt-theme.css') }}?v=4">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-neat-glow.css') }}?v=39">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-manage-profile-modal.css') }}?v=24">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/injz-profile-mgmt-theme.css') }}?v=31">
 </head>
 <body class="has-main-nav admin-dh-page admin-v2 admin-v4">
   {% set active_page = 'admin' %}
@@ -96,10 +97,10 @@
     <!-- Admin hero: coral gradient + 4 KPI tiles -->
     <div class="neat-hero neat-anim" id="section-overview">
       <div class="neat-hero-dots" aria-hidden="true"></div>
+      {% set module_back_url = url_for('dashboard') %}
+      {% include 'partials/module_back_link.html' %}
       <div class="neat-hero-grid">
-        <div>
-          {% set module_back_url = url_for('dashboard') %}
-          {% include 'partials/module_back_link.html' %}
+        <div class="neat-hero-copy">
           <h1 class="neat-hero-title">Operations Pulse <span class="neat-amp">&amp;</span> Workflow Control</h1>
           <p class="neat-hero-desc">Spot-check headcount below and review document workflow. Day-to-day people management lives under <strong>Users & Teams</strong>.</p>
           <div class="neat-hero-actions">
@@ -182,7 +183,7 @@
           </div>
           <div class="admv2-card-body admv-dash-people-body">
             <p class="admv-dash-people-lede">
-              Snapshot of headcount only. Staff cards, roster imports, passwords, and <strong>Create login</strong> live in the <strong>Users</strong> module.
+              Snapshot of headcount only. Staff cards, roster imports, passwords, and <strong>Create system user</strong> live in the <strong>Users</strong> module.
             </p>
             <div class="admv-dash-people-metrics">
               <div class="admv-dash-pm-card">
@@ -520,7 +521,6 @@
         <div class="modal-actions admin-profile-modal-actions">
           <button type="button" class="btn btn-cancel" onclick="closeCreateUserModal()">Cancel</button>
           <button type="submit" class="btn btn-primary injz-mgmt-btn-submit" id="createUserSubmitBtn">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
             <span class="injz-mgmt-btn-label">Create account</span>
           </button>
         </div>
@@ -987,6 +987,7 @@
     </div>
   </div>
 
+  <script src="{{ url_for('static', filename='js/admin-edit-otp.js') }}?v=10"></script>
   <script>
     let users = [];
     /** Matches DEFAULT_ADMIN_RESET_PASSWORD in app/admin/routes.py when ADMIN_RESET_PASSWORD is unset */
@@ -1016,8 +1017,12 @@
         ev.preventDefault();
         const uid = parseInt(delBtn.getAttribute('data-user-id'), 10);
         if (!Number.isFinite(uid)) return;
-        const u = Array.isArray(users) ? users.find((x) => x.id === uid) : null;
-        deleteUser(uid, u ? u.username : '');
+        if (typeof openProfileDeleteConfirmModal === 'function') {
+          openProfileDeleteConfirmModal(uid);
+        } else {
+          const u = Array.isArray(users) ? users.find((x) => x.id === uid) : null;
+          deleteUser(uid, u ? u.username : '');
+        }
       }
     });
 
@@ -1099,14 +1104,28 @@
     }
 
     function handleUnauthorized(response) {
-      if (response.status === 401 || response.status === 403) {
-        showAlert('Access denied. Please log in again.', 'error');
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 1500);
-        return true;
-      }
-      return false;
+      if (response.status !== 401) return false;
+      showAlert('Access denied. Please log in again.', 'error');
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 1500);
+      return true;
+    }
+
+    function handleOtpRequired(data) {
+      if (!data || !data.otp_required) return false;
+      showAlert(data.error || 'This administrator account is locked to prevent unconfirmed profile, password, or access changes. Verify the one-time code sent to the account email before editing.', 'error');
+      if (window.AdminEditOtp) AdminEditOtp.relock();
+      return true;
+    }
+
+    function configureAdminEditOtp() {
+      if (!window.AdminEditOtp) return;
+      AdminEditOtp.configure({
+        fetch: adminAuthenticatedFetch,
+        notify: function (msg, type) { showAlert(msg, type || 'success'); },
+        syncOverlay: syncKynOverlayLock,
+      });
     }
 
     const EMAIL_LOG_SOURCE_LABELS = {
@@ -2052,8 +2071,8 @@
                 <button type="button" class="btn btn-sm btn-toggle" onclick="toggleActive(${user.id}, ${user.is_active})">
                   ${user.is_active ? 'Deactivate' : 'Activate'}
                 </button>
-                ${user.role !== 'admin' ? `<button type="button" class="btn btn-sm btn-access" data-action="manage-profile" data-user-id="${user.id}">Manage profile</button>` : ''}
-                <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id}, '${user.username}')" id="deleteUserBtn_${user.id}">Delete</button>
+                <button type="button" class="btn btn-sm btn-access" data-action="manage-profile" data-user-id="${user.id}">Manage profile</button>
+                ${!user.is_active && Number(user.id) !== Number(_adminSelfUserId()) ? `<button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id}, '${user.username}')" id="deleteUserBtn_${user.id}">Delete</button>` : ''}
               </div>
             </td>
           </tr>
@@ -2093,11 +2112,32 @@
     }
 
     let passwordResetConfirmContext = null;
+    let emailCredentialsConfirmContext = null;
 
     function ensurePortalModal(modalEl) {
-      if (modalEl && modalEl.parentElement !== document.body) {
-        document.body.appendChild(modalEl);
-      }
+      if (modalEl) (document.documentElement || document.body).appendChild(modalEl);
+    }
+
+    function syncKynOverlayLock() {
+      const ids = [
+        'accessModal',
+        'passwordResetConfirmModal',
+        'passwordResetResultModal',
+        'userActivityModal',
+        'profileStatusConfirmModal',
+        'profileDeleteConfirmModal',
+        'profileAdminOtpModal',
+        'emailCredentialsConfirmModal',
+        'createUserModal',
+      ];
+      const any = ids.some(function (id) {
+        const el = document.getElementById(id);
+        return el && el.classList.contains('active');
+      });
+      document.documentElement.classList.toggle('kyn-overlay-open', any);
+      document.body.classList.toggle('kyn-overlay-open', any);
+      document.documentElement.style.overflow = any ? 'hidden' : '';
+      if (!any) document.body.style.overflow = '';
     }
 
     function openPasswordResetConfirmModal(userId, username) {
@@ -2106,12 +2146,12 @@
       if (!modal) return;
       const intro = document.getElementById('passwordResetConfirmIntro');
       if (intro) {
-        intro.textContent = 'Reset the password for "' + (username || 'this user')
-          + '"? The standard temporary password will be shown next.';
+        intro.textContent = 'Reset the password for ' + (username || 'this user')
+          + '? The temporary password will be shown next.';
       }
       ensurePortalModal(modal);
       modal.classList.add('active');
-      document.body.style.overflow = 'hidden';
+      syncKynOverlayLock();
     }
 
     function closePasswordResetConfirmModal() {
@@ -2120,7 +2160,7 @@
       passwordResetConfirmContext = null;
       const resOpen = document.getElementById('passwordResetResultModal');
       if (!resOpen || !resOpen.classList.contains('active')) {
-        document.body.style.overflow = '';
+        syncKynOverlayLock();
       }
     }
 
@@ -2142,14 +2182,10 @@
           }
         });
 
+        const data = await response.json().catch(() => ({}));
+        if (handleOtpRequired(data)) return;
         if (handleUnauthorized(response)) return;
 
-        if (!response || typeof response.json !== 'function') {
-          showAlert('Could not complete the request. Reload the page and try again.', 'error');
-          return;
-        }
-
-        const data = await response.json();
         if (data.success) {
           const pw = data.temp_password || DEFAULT_RESET_DISPLAY_PASSWORD;
           patchUserPasswordInDirectory(userId, pw);
@@ -2169,10 +2205,19 @@
       const conf = document.getElementById('passwordResetConfirmModal');
       const prof = document.getElementById('accessModal');
       const act = document.getElementById('userActivityModal');
+      const statusConf = document.getElementById('profileStatusConfirmModal');
+      const deleteConf = document.getElementById('profileDeleteConfirmModal');
+      const otpConf = document.getElementById('profileAdminOtpModal');
       if (res && res.classList.contains('active')) {
         closePasswordResetResultModal();
       } else if (conf && conf.classList.contains('active')) {
         closePasswordResetConfirmModal();
+      } else if (otpConf && otpConf.classList.contains('active')) {
+        closeAdminProfileOtpModal();
+      } else if (deleteConf && deleteConf.classList.contains('active')) {
+        closeProfileDeleteConfirmModal();
+      } else if (statusConf && statusConf.classList.contains('active')) {
+        closeProfileStatusConfirmModal();
       } else if (prof && prof.classList.contains('active')) {
         closeUserProfileModal();
       } else if (act && act.classList.contains('active')) {
@@ -2181,11 +2226,57 @@
     });
 
     async function toggleActive(userId, currentStatus) {
-      const action = currentStatus ? 'deactivate' : 'activate';
-      if (!confirm(`Are you sure you want to ${action} this user?`)) {
-        return;
-      }
+      const u = Array.isArray(users) ? users.find((x) => Number(x.id) === Number(userId)) : null;
+      openProfileStatusConfirmModal(
+        userId,
+        currentStatus,
+        u ? (u.full_name || u.username || '') : ''
+      );
+    }
 
+    let statusConfirmContext = null;
+
+    function openProfileStatusConfirmModal(userId, isActive, username) {
+      statusConfirmContext = { userId: userId, isActive: isActive };
+      const modal = document.getElementById('profileStatusConfirmModal');
+      if (!modal) return;
+      const title = document.getElementById('profileStatusConfirmTitle');
+      const intro = document.getElementById('profileStatusConfirmIntro');
+      const btn = document.getElementById('profileStatusConfirmBtn');
+      const name = username || 'this user';
+      if (title) title.textContent = isActive ? 'Deactivate account?' : 'Activate account?';
+      if (intro) {
+        intro.textContent = isActive
+          ? name + ' will not be able to sign in until you activate this account again.'
+          : name + ' will be able to sign in again.';
+      }
+      if (btn) {
+        btn.textContent = isActive ? 'Deactivate' : 'Activate';
+        btn.classList.toggle('injz-mgmt-btn-danger', !!isActive);
+      }
+      ensurePortalModal(modal);
+      modal.classList.add('active');
+      syncKynOverlayLock();
+    }
+
+    function closeProfileStatusConfirmModal() {
+      const modal = document.getElementById('profileStatusConfirmModal');
+      if (modal) modal.classList.remove('active');
+      statusConfirmContext = null;
+      syncKynOverlayLock();
+    }
+
+    async function submitProfileStatusConfirm() {
+      const ctx = statusConfirmContext;
+      if (!ctx) return;
+      const userId = ctx.userId;
+      const isActive = ctx.isActive;
+      closeProfileStatusConfirmModal();
+      closeUserProfileModal();
+      await runToggleUserActive(userId, isActive);
+    }
+
+    async function runToggleUserActive(userId, currentStatus) {
       try {
         const response = await adminAuthenticatedFetch(`/api/admin/users/${userId}/toggle-active`, {
           method: 'POST',
@@ -2194,9 +2285,10 @@
           }
         });
 
+        const data = await response.json().catch(() => ({}));
+        if (handleOtpRequired(data)) return;
         if (handleUnauthorized(response)) return;
 
-        const data = await response.json();
         if (data.success) {
           showAlert(data.message, 'success');
           loadUsers();
@@ -2291,12 +2383,22 @@
       }
     }
 
+    function syncProfileSignatureFileName() {
+      const input = document.getElementById('profileSignatureFile');
+      const name = document.getElementById('profileSignatureFileName');
+      if (!name) return;
+      const f = input && input.files && input.files[0];
+      name.textContent = f ? f.name : 'No file chosen';
+      name.classList.toggle('is-empty', !f);
+    }
+
     function clearProfileSignaturePreview() {
       profileSignatureDataUrl = '';
       const f = document.getElementById('profileSignatureFile');
       if (f) f.value = '';
       const img = document.getElementById('profileSignaturePreview');
       if (img) { img.src = ''; img.hidden = true; }
+      syncProfileSignatureFileName();
     }
 
     function updateProfileSignaturePreview() {
@@ -2324,36 +2426,152 @@
       if (Number.isFinite(uid)) openUserActivityModal(uid);
     }
 
-    async function profileModalToggleActive() {
+    function profileModalToggleActive() {
       const uid = parseInt(document.getElementById('profileUserId').value, 10);
       const u = Array.isArray(users) ? users.find((x) => x.id === uid) : null;
       if (!u || !Number.isFinite(uid)) return;
-      closeUserProfileModal();
-      await toggleActive(uid, u.is_active);
+      openProfileStatusConfirmModal(uid, u.is_active, u.full_name || u.username || '');
     }
 
-    const ADMIN_PROFILE_LAYOUT_KEY = 'injaaz_admin_profile_layout';
+    let deleteConfirmContext = null;
 
-    function getAdminProfileLayoutMode() {
-      return localStorage.getItem(ADMIN_PROFILE_LAYOUT_KEY) || 'cards';
+    function openProfileDeleteConfirmModal(userId) {
+      const uid = Number(userId);
+      const u = Array.isArray(users) ? users.find((x) => Number(x.id) === uid) : null;
+      if (!u) {
+        showAlert('User not found', 'error');
+        return;
+      }
+      if (u.is_active) {
+        showAlert('Deactivate this account before deleting it.', 'error');
+        return;
+      }
+      if (Number(u.id) === Number(_adminSelfUserId())) {
+        showAlert('You cannot delete your own account', 'error');
+        return;
+      }
+      deleteConfirmContext = { userId: uid };
+      const modal = document.getElementById('profileDeleteConfirmModal');
+      if (!modal) return;
+      const intro = document.getElementById('profileDeleteConfirmIntro');
+      const name = u.full_name || u.username || 'this user';
+      if (intro) {
+        intro.textContent = 'Are you sure you want to delete user "' + name
+          + '"? This action cannot be undone.';
+      }
+      ensurePortalModal(modal);
+      modal.classList.add('active');
+      syncKynOverlayLock();
+    }
+
+    function closeProfileDeleteConfirmModal() {
+      const modal = document.getElementById('profileDeleteConfirmModal');
+      if (modal) modal.classList.remove('active');
+      deleteConfirmContext = null;
+      syncKynOverlayLock();
+    }
+
+    async function submitProfileDeleteConfirm() {
+      const ctx = deleteConfirmContext;
+      if (!ctx) return;
+      const userId = ctx.userId;
+      closeProfileDeleteConfirmModal();
+      closeUserProfileModal();
+      try {
+        const response = await adminAuthenticatedFetch('/api/admin/users/' + userId, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (handleOtpRequired(data)) return;
+        if (handleUnauthorized(response)) return;
+        if (data.success) {
+          showAlert(data.message || 'User deleted', 'success');
+          loadUsers();
+        } else {
+          showAlert(data.error || 'Failed to delete user', 'error');
+        }
+      } catch (e) {
+        console.error('Error deleting user:', e);
+        showAlert('Error deleting user', 'error');
+      }
+    }
+
+    function profileModalDeleteUser() {
+      const uid = parseInt(document.getElementById('profileUserId').value, 10);
+      if (!Number.isFinite(uid)) return;
+      openProfileDeleteConfirmModal(uid);
+    }
+
+    function profileModalEmailCredentials() {
+      const uid = parseInt(document.getElementById('profileUserId').value, 10);
+      const u = Array.isArray(users) ? users.find((x) => Number(x.id) === uid) : null;
+      if (!Number.isFinite(uid)) return;
+      const emailEl = document.getElementById('profileEmail');
+      const email = ((emailEl && emailEl.value) || (u && u.email) || '').trim();
+      const pwEl = document.getElementById('profilePassword');
+      const typed = pwEl && pwEl.value ? pwEl.value.trim() : '';
+      const stored = pwEl && pwEl.dataset.storedPassword ? pwEl.dataset.storedPassword.trim() : '';
+      if (!email) {
+        showAlert('This account has no email address.', 'error');
+        return;
+      }
+      if (typed && stored && typed !== stored) {
+        showAlert('Save the new password first, then email login details.', 'error');
+        return;
+      }
+      if (!stored) {
+        showAlert('No password on file for admin view. Reset password or save a new password first.', 'error');
+        return;
+      }
+      const name = (u && (u.full_name || u.username)) || 'this user';
+      emailCredentialsConfirmContext = { userId: uid };
+      const modal = document.getElementById('emailCredentialsConfirmModal');
+      if (!modal) return;
+      const intro = document.getElementById('emailCredentialsConfirmIntro');
+      if (intro) {
+        intro.textContent = 'Send the username and stored password for ' + name
+          + ' to ' + email + '?';
+      }
+      ensurePortalModal(modal);
+      modal.classList.add('active');
+      syncKynOverlayLock();
+    }
+
+    function closeEmailCredentialsConfirmModal() {
+      const modal = document.getElementById('emailCredentialsConfirmModal');
+      if (modal) modal.classList.remove('active');
+      emailCredentialsConfirmContext = null;
+      syncKynOverlayLock();
+    }
+
+    async function submitEmailCredentialsConfirm() {
+      const ctx = emailCredentialsConfirmContext;
+      if (!ctx) return;
+      const userId = ctx.userId;
+      closeEmailCredentialsConfirmModal();
+      try {
+        const response = await adminAuthenticatedFetch(`/api/admin/users/${userId}/email-login-details`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (handleOtpRequired(data)) return;
+        if (handleUnauthorized(response)) return;
+        if (response.ok && data.success) {
+          showAlert(data.message || 'Login details were emailed.', 'success');
+        } else {
+          showAlert(data.error || data.message || 'Could not send the email.', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showAlert('Could not send the email.', 'error');
+      }
     }
 
     function applyAdminProfileLayout() {
       const modal = document.getElementById('accessModal');
-      if (!modal) return;
-      const isLine = getAdminProfileLayoutMode() === 'line';
-      modal.classList.toggle('admin-profile-shell--v2', isLine);
-      const btn = document.getElementById('adminProfileLayoutToggle');
-      if (btn) {
-        btn.textContent = isLine ? 'Cards' : 'Line';
-        btn.setAttribute('aria-pressed', isLine ? 'true' : 'false');
-      }
-    }
-
-    function toggleAdminProfileLayout() {
-      const next = getAdminProfileLayoutMode() === 'line' ? 'cards' : 'line';
-      localStorage.setItem(ADMIN_PROFILE_LAYOUT_KEY, next);
-      applyAdminProfileLayout();
+      if (modal) modal.classList.remove('admin-profile-shell--v2');
     }
 
     function fillReportingManagerDropdown(selectEl, excludeUserId) {
@@ -2444,7 +2662,7 @@
         if (isAdminTarget) {
           modNote.hidden = false;
           modNote.textContent = 'Administrators have full access to all modules by policy.';
-          ['accessInspection', 'accessHvac', 'accessCivil', 'accessCleaning', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessSalesManager', 'accessQuotations', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessQhsi', 'accessFiles'].forEach((id) => {
+          ['accessInspection', 'accessHr', 'accessHiring', 'accessProcurement', 'accessBusinessDev', 'accessSalesManager', 'accessQuotations', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessQhsi', 'accessFiles'].forEach((id) => {
             const cb = document.getElementById(id);
             if (cb) { cb.checked = true; cb.disabled = true; }
           });
@@ -2454,10 +2672,9 @@
           const inspOn = !!(user.access_hvac || user.access_civil || user.access_cleaning);
           const inspEl = document.getElementById('accessInspection');
           if (inspEl) inspEl.checked = inspOn;
-          document.getElementById('accessHvac').checked = !!user.access_hvac;
-          document.getElementById('accessCivil').checked = !!user.access_civil;
-          document.getElementById('accessCleaning').checked = !!user.access_cleaning;
-          document.getElementById('accessHr').checked = !!user.access_hr;
+          document.getElementById('accessHr').checked = !!user.access_hr || !!user.access_hiring;
+          const hiringCb = document.getElementById('accessHiring');
+          if (hiringCb) hiringCb.checked = !!user.access_hiring;
           document.getElementById('accessProcurement').checked = !!user.access_procurement_module;
           const bd = document.getElementById('accessBusinessDev');
           if (bd) bd.checked = !!user.access_business_development || !!user.access_sales_manager;
@@ -2487,6 +2704,7 @@
       profileSignatureDataUrl = user.default_signature || '';
       document.getElementById('profileSignatureFile').value = '';
       updateProfileSignaturePreview();
+      syncProfileSignatureFileName();
 
       const tbtn = document.getElementById('profileQuickToggleBtn');
       if (tbtn) {
@@ -2497,19 +2715,24 @@
         tbtn.classList.toggle('is-deactivate', !!user.is_active);
         tbtn.classList.toggle('is-activate', !user.is_active);
       }
+      const delBtn = document.getElementById('profileDeleteUserBtn');
+      if (delBtn) {
+        const hideDel = !!user.is_active || Number(user.id) === Number(_adminSelfUserId());
+        delBtn.hidden = hideDel;
+        delBtn.style.display = hideDel ? 'none' : '';
+      }
+
+      configureAdminEditOtp();
+      if (window.AdminEditOtp) AdminEditOtp.apply(user);
 
       modal.classList.add('active');
-      document.body.style.overflow = 'hidden';
+      syncKynOverlayLock();
     }
 
     function closeUserProfileModal() {
       const modal = document.getElementById('accessModal');
       if (modal) modal.classList.remove('active');
-      const pr = document.getElementById('passwordResetResultModal');
-      const pc = document.getElementById('passwordResetConfirmModal');
-      const pu = pr && pr.classList.contains('active');
-      const pcc = pc && pc.classList.contains('active');
-      if (!pu && !pcc) document.body.style.overflow = '';
+      syncKynOverlayLock();
     }
 
     function openAccessModal(userId) {
@@ -2529,13 +2752,13 @@
       const inp = document.getElementById('passwordResetResultValue');
       if (inp) inp.value = password || '';
       modal.classList.add('active');
-      document.body.style.overflow = 'hidden';
+      syncKynOverlayLock();
     }
 
     function closePasswordResetResultModal() {
       const modal = document.getElementById('passwordResetResultModal');
       if (modal) modal.classList.remove('active');
-      document.body.style.overflow = '';
+      syncKynOverlayLock();
     }
 
     function copyPasswordResetResult() {
@@ -2575,7 +2798,9 @@
           <p style="margin-top: 1rem; color: #666;">Loading user activity...</p>
         </div>
       `;
+      ensurePortalModal(modal);
       modal.classList.add('active');
+      syncKynOverlayLock();
       
       try {
         const response = await adminAuthenticatedFetch(`/api/admin/users/${userId}/activity`);
@@ -2789,7 +3014,9 @@
     }
     
     function closeUserActivityModal() {
-      document.getElementById('userActivityModal').classList.remove('active');
+      const modal = document.getElementById('userActivityModal');
+      if (modal) modal.classList.remove('active');
+      syncKynOverlayLock();
     }
     
     // Close user activity modal on outside click
@@ -2818,12 +3045,12 @@
         cuRm.value = '';
       }
       modal.classList.add('active');
-      document.body.style.overflow = 'hidden';
+      syncKynOverlayLock();
     }
     function closeCreateUserModal() {
       const modal = document.getElementById('createUserModal');
       if (modal) modal.classList.remove('active');
-      document.body.style.overflow = '';
+      syncKynOverlayLock();
     }
 
     document.getElementById('createUserForm').addEventListener('submit', async (e) => {
@@ -2886,6 +3113,10 @@
 
     document.getElementById('userProfileForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (window.AdminEditOtp && AdminEditOtp.isLocked()) {
+        showAlert('This administrator account is locked to prevent unconfirmed profile, password, or access changes. Verify the one-time code first.', 'error');
+        return;
+      }
       const userId = document.getElementById('profileUserId').value;
       if (!userId) return;
 
@@ -2916,15 +3147,13 @@
       const u = users.find(x => String(x.id) === String(userId));
       if (u && u.role !== 'admin') {
         const inspToggle = document.getElementById('accessInspection');
-        const inspVal = inspToggle ? inspToggle.checked : (document.getElementById('accessHvac').checked || document.getElementById('accessCivil').checked || document.getElementById('accessCleaning').checked);
+        const inspVal = !!(inspToggle && inspToggle.checked);
         payload.access_hvac = inspVal;
         payload.access_civil = inspVal;
         payload.access_cleaning = inspVal;
-        // keep hidden legacy boxes in sync
-        document.getElementById('accessHvac').checked = inspVal;
-        document.getElementById('accessCivil').checked = inspVal;
-        document.getElementById('accessCleaning').checked = inspVal;
-        payload.access_hr = document.getElementById('accessHr').checked;
+        const hiringOn = !!(document.getElementById('accessHiring') && document.getElementById('accessHiring').checked);
+        payload.access_hiring = hiringOn;
+        payload.access_hr = !!(document.getElementById('accessHr') && document.getElementById('accessHr').checked) || hiringOn;
         payload.access_procurement_module = document.getElementById('accessProcurement').checked;
         const salesMgrOn = !!(document.getElementById('accessSalesManager') && document.getElementById('accessSalesManager').checked);
         payload.access_sales_manager = salesMgrOn;
@@ -2945,9 +3174,10 @@
           body: JSON.stringify(payload)
         });
 
+        const data = await response.json().catch(() => ({}));
+        if (handleOtpRequired(data)) return;
         if (handleUnauthorized(response)) return;
 
-        const data = await response.json();
         if (response.ok && data.success) {
           if (data.user && data.user.admin_visible_password != null) {
             patchUserPasswordInDirectory(userId, data.user.admin_visible_password);
@@ -2985,6 +3215,9 @@
 
     function showAlert(message, type = 'success', showPassword = false) {
       const container = document.getElementById('alertContainer');
+      if (container && container.parentElement !== document.body) {
+        document.body.appendChild(container);
+      }
       const alertDiv = document.createElement('div');
       alertDiv.className = `alert alert-${type}`;
       
@@ -3001,10 +3234,35 @@
       
       container.innerHTML = '';
       container.appendChild(alertDiv);
-      
-      setTimeout(() => {
+
+      const duration = showPassword ? 30000 : (type === 'error' ? 10000 : 5000);
+      let remaining = duration;
+      let deadline = Date.now() + duration;
+      let timer = null;
+      let paused = false;
+
+      function dismiss() {
         alertDiv.remove();
-      }, showPassword ? 30000 : 5000);
+      }
+      function arm(ms) {
+        clearTimeout(timer);
+        remaining = ms;
+        deadline = Date.now() + ms;
+        timer = setTimeout(dismiss, ms);
+      }
+      arm(duration);
+
+      alertDiv.addEventListener('mouseenter', function () {
+        if (paused) return;
+        paused = true;
+        remaining = Math.max(0, deadline - Date.now());
+        clearTimeout(timer);
+      });
+      alertDiv.addEventListener('mouseleave', function () {
+        if (!paused) return;
+        paused = false;
+        arm(remaining > 0 ? remaining : duration);
+      });
     }
 
     // Close modal on outside click
@@ -3376,32 +3634,15 @@
         showAlert('You cannot delete your own account', 'error');
         return;
       }
-      
-      if (!confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
+      const target = typeof users !== 'undefined' && Array.isArray(users)
+        ? users.find((x) => Number(x.id) === Number(userId))
+        : null;
+      if (target && target.is_active) {
+        showAlert('Deactivate this account before deleting it.', 'error');
         return;
       }
 
-      try {
-        const response = await adminAuthenticatedFetch(`/api/admin/users/${userId}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (handleUnauthorized(response)) return;
-
-        const data = await response.json();
-        if (data.success) {
-          showAlert(data.message, 'success');
-          loadUsers();
-        } else {
-          showAlert(data.error || 'Failed to delete user', 'error');
-        }
-      } catch (error) {
-        console.error('Error deleting user:', error);
-        showAlert('Error deleting user', 'error');
-      }
+      openProfileDeleteConfirmModal(userId);
     }
 
     // Documents bulk delete functions (toggleSelectAll defined above)
@@ -4170,8 +4411,8 @@
           </div>
           <div class="admv3-op-card-actions">
             <button type="button" class="btn btn-sm btn-reset" data-action="reset-password" data-user-id="${u.id}">Reset password</button>
-            ${!isAdmin ? `<button type="button" class="btn btn-sm btn-access" data-action="manage-profile" data-user-id="${u.id}">Manage profile</button>` : ''}
-            <button type="button" class="btn btn-sm btn-danger" data-action="delete-user" data-user-id="${u.id}">Delete</button>
+            <button type="button" class="btn btn-sm btn-access" data-action="manage-profile" data-user-id="${u.id}">Manage profile</button>
+            ${!u.is_active && Number(u.id) !== Number(_adminSelfUserId()) ? `<button type="button" class="btn btn-sm btn-danger" data-action="delete-user" data-user-id="${u.id}">Delete</button>` : ''}
           </div>
         </div>`;
       }).join('');
@@ -4346,16 +4587,25 @@
       try {
         ensurePortalModal(document.getElementById('passwordResetConfirmModal'));
         ensurePortalModal(document.getElementById('passwordResetResultModal'));
+        ensurePortalModal(document.getElementById('profileStatusConfirmModal'));
+        ensurePortalModal(document.getElementById('profileDeleteConfirmModal'));
+        ensurePortalModal(document.getElementById('emailCredentialsConfirmModal'));
         ensurePortalModal(document.getElementById('accessModal'));
       } catch (e) { /* ignore */ }
       applyAdminProfileLayout();
       try {
-        const lt = document.getElementById('adminProfileLayoutToggle');
-        if (lt && !lt.dataset.layoutBound) {
-          lt.dataset.layoutBound = '1';
-          lt.addEventListener('click', toggleAdminProfileLayout);
+        const hrCb = document.getElementById('accessHr');
+        const hiringCb = document.getElementById('accessHiring');
+        if (hrCb && hiringCb && !hiringCb.dataset.hrCoupled) {
+          hiringCb.dataset.hrCoupled = '1';
+          hiringCb.addEventListener('change', () => {
+            if (hiringCb.checked) hrCb.checked = true;
+          });
+          hrCb.addEventListener('change', () => {
+            if (!hrCb.checked) hiringCb.checked = false;
+          });
         }
-      } catch (e2) { /* ignore */ }
+      } catch (eHr) { /* ignore */ }
       try {
         const pwToggle = document.getElementById('profilePasswordToggle');
         if (pwToggle && !pwToggle.dataset.bound) {
@@ -4377,12 +4627,14 @@
             if (f.size > 400 * 1024) {
               showAlert('Signature image must be under 400KB.', 'error');
               sigFile.value = '';
+              syncProfileSignatureFileName();
               return;
             }
             const reader = new FileReader();
             reader.onload = () => {
               profileSignatureDataUrl = reader.result || '';
               updateProfileSignaturePreview();
+              syncProfileSignatureFileName();
             };
             reader.readAsDataURL(f);
           });

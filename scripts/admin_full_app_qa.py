@@ -122,7 +122,6 @@ def section_shell():
     expect_page("Landing", "/", "Kynvera")
     expect_page("Login page", "/login")
     expect_page("Dashboard", "/dashboard")
-    expect_page("About", "/about")
     expect_page("Offline page", "/offline")
     hubs = [
         ("/hr/", "HR hub"),

@@ -1,5 +1,8 @@
 """
 Manpower Tracker — Excel template, export, and All Trades import.
+
+Export layout: All Trades (every vacancy) plus one sheet per project
+(all trades for that site). Import still reads All Trades only.
 """
 from __future__ import annotations
 
@@ -9,7 +12,6 @@ from io import BytesIO
 from typing import Any, Optional
 
 from openpyxl import Workbook, load_workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
@@ -22,6 +24,15 @@ from app.models import (
     ManpowerTrade,
     ManpowerVacancy,
     db,
+)
+from common.kynvera_excel_brand import (
+    HINT_FONT,
+    TITLE_FONT,
+    InstructionSpec,
+    apply_column_widths,
+    style_header_row,
+    write_data_row,
+    write_instructions_sheet,
 )
 
 logger = logging.getLogger(__name__)
@@ -171,20 +182,188 @@ def _normalize_req_type(raw) -> str:
     return 'new'
 
 
-def _thin_border():
-    side = Side(style='thin', color='D0D5DD')
-    return Border(left=side, right=side, top=side, bottom=side)
-
-
 def _style_header_row(ws, row: int, cols: int):
-    fill = PatternFill('solid', fgColor='125435')
-    font = Font(bold=True, color='FFFFFF', size=11)
-    for c in range(1, cols + 1):
-        cell = ws.cell(row, c)
-        cell.fill = fill
-        cell.font = font
-        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-        cell.border = _thin_border()
+    style_header_row(ws, row, cols)
+
+
+_INVALID_SHEET_CHARS = set(r':\/?*[]')
+_RESERVED_SHEET_TITLES = frozenset({'all trades', 'lists', 'instructions'})
+_VACANCY_COL_WIDTHS = [22, 22, 16, 20, 14, 28, 18, 14, 14, 28, 16]
+
+
+def _safe_sheet_title(name: str, used: set[str]) -> str:
+    """Excel sheet names: max 31 chars, no : \\ / ? * [ ]. Unique in the workbook."""
+    cleaned = ''.join(ch for ch in (name or 'Project') if ch not in _INVALID_SHEET_CHARS)
+    cleaned = ' '.join(cleaned.split()).strip("'")
+    if not cleaned:
+        cleaned = 'Project'
+    if cleaned.lower() in _RESERVED_SHEET_TITLES:
+        cleaned = f'{cleaned} project'
+    base = cleaned[:31]
+    title = base
+    n = 2
+    used_lower = {u.lower() for u in used}
+    while title.lower() in used_lower:
+        suffix = f' ({n})'
+        title = (base[: max(1, 31 - len(suffix))] + suffix)[:31]
+        n += 1
+    used.add(title)
+    return title
+
+
+def _vacancy_row_values(v: ManpowerVacancy) -> list:
+    status = v.normalized_status()
+    req = v.normalized_requirement_type()
+    return [
+        v.trade.name if v.trade else '',
+        v.project.name if v.project else '',
+        MANPOWER_REQUIREMENT_TYPE_LABELS.get(req, req),
+        v.replacement_name or '',
+        v.replacement_employee_id or '',
+        v.candidate_name or '',
+        v.contact_number or '',
+        MANPOWER_STATUS_LABELS.get(status, status),
+        v.date_joined.isoformat() if v.date_joined else '',
+        v.remarks or '',
+        v.hiring_candidate_id or '',
+    ]
+
+
+def _sort_vacancies(vacancies: list[ManpowerVacancy]) -> list[ManpowerVacancy]:
+    def key(v: ManpowerVacancy):
+        return (
+            (v.trade.sort_order if v.trade else 0),
+            (v.trade.name if v.trade else ''),
+            (v.project.sort_order if v.project else 0),
+            (v.project.name if v.project else ''),
+            v.sort_order or 0,
+            v.id or 0,
+        )
+
+    return sorted(vacancies, key=key)
+
+
+def _projects_for_sheets(
+    project_rows: list[ManpowerProject],
+    vacancies: Optional[list[ManpowerVacancy]],
+) -> list[ManpowerProject]:
+    """Active projects, plus any inactive/unlisted project that still has vacancies."""
+    vacancy_ids = {
+        getattr(v.project, 'id', None)
+        for v in (vacancies or [])
+        if getattr(v, 'project', None) is not None
+    }
+    vacancy_ids.discard(None)
+
+    out: list[ManpowerProject] = []
+    listed_ids: set[int] = set()
+    listed_names: set[str] = set()
+    for p in project_rows or []:
+        name = (getattr(p, 'name', None) or '').strip()
+        if not name:
+            continue
+        pid = getattr(p, 'id', None)
+        active = bool(getattr(p, 'active', True))
+        if active or pid in vacancy_ids:
+            out.append(p)
+            if pid is not None:
+                listed_ids.add(pid)
+            listed_names.add(name.lower())
+
+    extra: list[ManpowerProject] = []
+    for v in vacancies or []:
+        proj = getattr(v, 'project', None)
+        if not proj or not (getattr(proj, 'name', None) or '').strip():
+            continue
+        pid = getattr(proj, 'id', None)
+        name_key = proj.name.strip().lower()
+        if (pid is not None and pid in listed_ids) or name_key in listed_names:
+            continue
+        extra.append(proj)
+        if pid is not None:
+            listed_ids.add(pid)
+        listed_names.add(name_key)
+    return out + extra
+
+
+def _attach_vacancy_validations(
+    ws,
+    *,
+    n_trades: int,
+    n_projects: int,
+    n_status: int,
+    n_req: int,
+) -> None:
+    dv_trade = DataValidation(
+        type='list',
+        formula1=f'Lists!$A$2:$A${n_trades + 1}',
+        allow_blank=True,
+    )
+    dv_project = DataValidation(
+        type='list',
+        formula1=f'Lists!$B$2:$B${n_projects + 1}',
+        allow_blank=True,
+    )
+    dv_status = DataValidation(
+        type='list',
+        formula1=f'Lists!$C$2:$C${n_status + 1}',
+        allow_blank=True,
+    )
+    dv_req = DataValidation(
+        type='list',
+        formula1=f'Lists!$D$2:$D${n_req + 1}',
+        allow_blank=True,
+    )
+    for dv in (dv_trade, dv_project, dv_status, dv_req):
+        ws.add_data_validation(dv)
+    dv_trade.add('A5:A500')
+    dv_project.add('B5:B500')
+    dv_req.add('C5:C500')
+    dv_status.add('H5:H500')
+
+
+def _write_vacancy_sheet(
+    wb: Workbook,
+    *,
+    sheet_title: str,
+    heading: str,
+    subtitle: str,
+    index: int,
+    vacancies: list[ManpowerVacancy],
+    n_trades: int,
+    n_projects: int,
+    n_status: int,
+    n_req: int,
+    example: Optional[list] = None,
+):
+    ws = wb.create_sheet(sheet_title, index)
+    ws['A1'] = heading
+    ws['A1'].font = TITLE_FONT
+    ws['A2'] = subtitle
+    ws['A2'].font = HINT_FONT
+    ws.merge_cells('A1:K1')
+    ws.merge_cells('A2:K2')
+
+    header_row = 4
+    for c, h in enumerate(ALL_TRADES_HEADERS, start=1):
+        ws.cell(header_row, c, h)
+    _style_header_row(ws, header_row, len(ALL_TRADES_HEADERS))
+    apply_column_widths(ws, _VACANCY_COL_WIDTHS)
+    _attach_vacancy_validations(
+        ws,
+        n_trades=n_trades,
+        n_projects=n_projects,
+        n_status=n_status,
+        n_req=n_req,
+    )
+
+    if example:
+        write_data_row(ws, header_row + 1, example, example=True)
+        return ws
+
+    for i, v in enumerate(vacancies):
+        write_data_row(ws, header_row + 1 + i, _vacancy_row_values(v))
+    return ws
 
 
 def build_manpower_workbook(
@@ -194,7 +373,7 @@ def build_manpower_workbook(
     projects: Optional[list[ManpowerProject]] = None,
     template_only: bool = False,
 ) -> bytes:
-    """Build flat All Trades + Lists workbook (template or export)."""
+    """All Trades (every vacancy) + one sheet per project + Lists + Instructions."""
     wb = Workbook()
 
     # Lists sheet first so validations can reference it
@@ -229,91 +408,147 @@ def build_manpower_workbook(
     n_projects = max(len(project_rows), 1)
     n_status = len(MANPOWER_STATUSES)
     n_req = len(MANPOWER_REQUIREMENT_TYPES)
-
-    ws = wb.create_sheet('All Trades', 0)
-    ws['A1'] = 'Injaaz — Manpower Requirement Tracker'
-    ws['A1'].font = Font(bold=True, size=14, color='125435')
-    ws['A2'] = (
-        'One row per vacancy. Trade and Project are required. '
-        'Use Lists sheet values for Status and Requirement Type.'
+    sheet_kwargs = dict(
+        n_trades=n_trades,
+        n_projects=n_projects,
+        n_status=n_status,
+        n_req=n_req,
     )
-    ws['A2'].font = Font(size=10, color='5C616E')
 
-    header_row = 4
-    for c, h in enumerate(ALL_TRADES_HEADERS, start=1):
-        ws.cell(header_row, c, h)
-    _style_header_row(ws, header_row, len(ALL_TRADES_HEADERS))
-
-    widths = [22, 22, 16, 20, 14, 28, 18, 14, 14, 28, 16]
-    for i, w in enumerate(widths, start=1):
-        ws.column_dimensions[get_column_letter(i)].width = w
-
-    # Data validations
-    dv_trade = DataValidation(
-        type='list',
-        formula1=f'Lists!$A$2:$A${n_trades + 1}',
-        allow_blank=True,
-    )
-    dv_project = DataValidation(
-        type='list',
-        formula1=f'Lists!$B$2:$B${n_projects + 1}',
-        allow_blank=True,
-    )
-    dv_status = DataValidation(
-        type='list',
-        formula1=f'Lists!$C$2:$C${n_status + 1}',
-        allow_blank=True,
-    )
-    dv_req = DataValidation(
-        type='list',
-        formula1=f'Lists!$D$2:$D${n_req + 1}',
-        allow_blank=True,
-    )
-    for dv in (dv_trade, dv_project, dv_status, dv_req):
-        ws.add_data_validation(dv)
-    dv_trade.add(f'A5:A500')
-    dv_project.add(f'B5:B500')
-    dv_req.add(f'C5:C500')
-    dv_status.add(f'H5:H500')
-
+    all_rows: list[ManpowerVacancy] = []
     if not template_only and vacancies:
-        # Sort like the board: trade sort, then project, then sort_order
-        rows = sorted(
-            vacancies,
-            key=lambda v: (
-                (v.trade.sort_order if v.trade else 0),
-                (v.trade.name if v.trade else ''),
-                (v.project.sort_order if v.project else 0),
-                (v.project.name if v.project else ''),
-                v.sort_order or 0,
-                v.id or 0,
+        all_rows = _sort_vacancies(list(vacancies))
+
+    example = None
+    if template_only:
+        example = [
+            'Electrician',
+            'Tower A',
+            MANPOWER_REQUIREMENT_TYPE_LABELS['new'],
+            '',
+            '',
+            'Sara Ahmed',
+            '+971500000000',
+            MANPOWER_STATUS_LABELS['open'],
+            '',
+            'Example row — replace or delete before importing',
+            '',
+        ]
+
+    _write_vacancy_sheet(
+        wb,
+        sheet_title='All Trades',
+        heading='Kynvera — Manpower Requirement Tracker',
+        subtitle=(
+            'All projects, all trades. One row per vacancy. Trade and Project are required. '
+            'Use Lists sheet values for Status and Requirement Type. '
+            'Each project also has its own sheet. Import uses this All Trades sheet.'
+        ),
+        index=0,
+        vacancies=all_rows,
+        example=example,
+        **sheet_kwargs,
+    )
+
+    used_titles = {'All Trades', 'Lists', 'Instructions'}
+    project_sheets = _projects_for_sheets(project_rows, None if template_only else vacancies)
+    for offset, project in enumerate(project_sheets, start=1):
+        project_name = (project.name if hasattr(project, 'name') else str(project)).strip()
+        title = _safe_sheet_title(project_name, used_titles)
+        pid = getattr(project, 'id', None)
+        project_vacancies = [
+            v for v in all_rows
+            if v.project and (
+                (pid is not None and getattr(v.project, 'id', None) == pid)
+                or (v.project.name or '').strip().lower() == project_name.lower()
+            )
+        ]
+        project_vacancies = _sort_vacancies(project_vacancies)
+        _write_vacancy_sheet(
+            wb,
+            sheet_title=title,
+            heading=f'Kynvera — {project_name}',
+            subtitle=(
+                f'Project-wise view: all trades for {project_name}. '
+                'Same columns as All Trades. To re-import, edit and upload the All Trades sheet.'
             ),
+            index=offset,
+            vacancies=project_vacancies,
+            **sheet_kwargs,
         )
-        for i, v in enumerate(rows):
-            r = header_row + 1 + i
-            status = v.normalized_status()
-            req = v.normalized_requirement_type()
-            values = [
-                v.trade.name if v.trade else '',
-                v.project.name if v.project else '',
-                MANPOWER_REQUIREMENT_TYPE_LABELS.get(req, req),
-                v.replacement_name or '',
-                v.replacement_employee_id or '',
-                v.candidate_name or '',
-                v.contact_number or '',
-                MANPOWER_STATUS_LABELS.get(status, status),
-                v.date_joined.isoformat() if v.date_joined else '',
-                v.remarks or '',
-                v.hiring_candidate_id or '',
-            ]
-            for c, val in enumerate(values, start=1):
-                cell = ws.cell(r, c, val)
-                cell.border = _thin_border()
-                cell.alignment = Alignment(vertical='center', wrap_text=True)
+
+    write_instructions_sheet(wb, _manpower_instruction_spec())
 
     buf = BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+def _manpower_instruction_spec() -> InstructionSpec:
+    status_opts = ', '.join(MANPOWER_STATUS_LABELS[k] for k in MANPOWER_STATUSES)
+    req_opts = ', '.join(MANPOWER_REQUIREMENT_TYPE_LABELS[k] for k in MANPOWER_REQUIREMENT_TYPES)
+    return InstructionSpec(
+        title='Manpower vacancies template',
+        module_label='HR / Manpower',
+        about=(
+            'Import vacancies into the Manpower Tracker (one row per open or filled role).',
+            'The workbook has All Trades (every vacancy) and a project-wise sheet for each site (all trades on that project).',
+            'Trade and Project are required. New trade or project names are created on import if they do not already exist.',
+            'Dropdowns read from the Lists sheet (trades, projects, status, requirement type).',
+        ),
+        how_to=(
+            'Open All Trades for the full list, or open a project tab for that site only. Keep the coral header row on row 4.',
+            'Pick Trade and Project from the dropdowns (or type a new name to create it on import).',
+            'Choose Requirement Type (New or Replacement) and Status from the lists.',
+            'For replacements, fill Replacement Name and Replacement ID. For new hires, fill New Candidate Name and Contact Number.',
+            'Date Joined is optional (YYYY-MM-DD). Use Hiring Candidate ID to link a hiring-docs candidate.',
+            'Save as .xlsx and click Import on the Manpower Tracker page. Import reads All Trades only, not the project sheets.',
+        ),
+        columns=(
+            ('Trade', 'Required. Must match a Lists value or a new trade name will be created.'),
+            ('Project', 'Required. Must match a Lists value or a new project name will be created.'),
+            ('Requirement Type', f'Required. Allowed: {req_opts}.'),
+            ('Replacement Name', 'Optional. Person being replaced (when type is Replacement).'),
+            ('Replacement ID', 'Optional. Employee ID of the person being replaced.'),
+            ('New Candidate Name', 'Optional. Candidate being considered or hired.'),
+            ('Contact Number', 'Optional. Phone for the new candidate.'),
+            ('Status', f'Optional (defaults to Open). Allowed: {status_opts}.'),
+            ('Date Joined', 'Optional. YYYY-MM-DD, DD/MM/YYYY, or Excel date.'),
+            ('Remarks', 'Optional notes.'),
+            ('Hiring Candidate ID', 'Optional numeric ID from Hiring Docs. Links the vacancy to that candidate.'),
+        ),
+        example_headers=ALL_TRADES_HEADERS,
+        example_rows=((
+            'Electrician',
+            'Tower A',
+            'New',
+            '',
+            '',
+            'Sara Ahmed',
+            '+971500000000',
+            'Open',
+            '',
+            'Example row — replace or delete before importing',
+            '',
+        ),),
+        import_rules=(
+            'Rows missing Trade or Project are skipped.',
+            'Status and Requirement Type are normalised from common aliases (e.g. Hired → Joined).',
+            'Import can append vacancies or replace all existing vacancies, depending on the option you choose in the UI.',
+            'The Lists sheet is not imported as data; it only feeds dropdowns.',
+            'Project sheets are a site-wise view of the same vacancies. Edits there are not imported — copy them to All Trades first.',
+        ),
+        extra_sections=(
+            (
+                'Workbook sheets',
+                (
+                    'All Trades — every vacancy across every project and trade. This is the sheet used on import.',
+                    'One tab per project — the same vacancies filtered to that site, still covering all trades.',
+                    'Lists — dropdown values for trades, projects, status, and requirement type.',
+                ),
+            ),
+        ),
+    )
 
 
 def build_manpower_template_bytes() -> bytes:
@@ -666,6 +901,9 @@ def apply_manpower_import(file_storage, *, replace: bool = False, created_by: Op
 
     for i, row in enumerate(rows, start=1):
         try:
+            remarks = (row.get('remarks') or '').lower()
+            if 'example row' in remarks or '[sample]' in remarks:
+                continue
             trade = _get_or_create_trade(row['trade'], trade_cache, trade_sort)
             project = _get_or_create_project(row['project'], project_cache, project_sort)
             key = (trade.id, project.id)

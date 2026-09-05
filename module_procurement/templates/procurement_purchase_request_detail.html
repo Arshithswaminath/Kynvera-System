@@ -1,0 +1,958 @@
+{% set proc_page_title = 'Request ' ~ request_id %}
+{% set proc_topbar_title = 'Purchase request' %}
+{% include 'partials/proc_shell_start.html' %}
+
+<div class="proc-dash-head">
+  <div>
+    <p class="proc-kicker">Purchasing</p>
+    <h1 id="prTitle">{{ request_id }}</h1>
+    <p class="proc-sub" id="prMeta">Loading…</p>
+  </div>
+  <div class="proc-dash-actions" id="prActions"></div>
+</div>
+
+<ol class="proc-pr-steps" id="prSteps" hidden></ol>
+
+<div class="proc-pr-facts" id="prFacts" hidden></div>
+
+<div class="proc-pr-stack">
+<section class="proc-card" id="notesCard" hidden>
+  <div class="proc-card-head">
+    <div>
+      <h2>Notes</h2>
+      <p>From the requester</p>
+    </div>
+  </div>
+  <div class="proc-card-body">
+    <p class="proc-pr-notes" id="prNotes"></p>
+  </div>
+</section>
+
+<section class="proc-card">
+  <div class="proc-card-head">
+    <div>
+      <h2>Lines</h2>
+      <p id="prLineCount"></p>
+    </div>
+    <p class="proc-card-kpi" id="prLinesTotal"></p>
+  </div>
+  <div class="proc-pr-item-head hide-sm" aria-hidden="true">
+    <span>Material</span>
+    <span>Qty</span>
+    <span>Unit price</span>
+    <span>Line total</span>
+  </div>
+  <div id="prLinesBody" class="proc-pr-items"></div>
+  <div class="proc-pr-foot" id="prLinesFoot" hidden>
+    <span>Request total</span>
+    <b id="prFootTotal"></b>
+  </div>
+</section>
+
+<section class="proc-card" id="docsCard">
+  <div class="proc-card-head">
+    <div>
+      <h2>Documents</h2>
+      <p>Four files. The current step is highlighted — later ones stay quiet until they are due.</p>
+    </div>
+  </div>
+  <div id="prDocsBody" class="proc-pr-docs"></div>
+</section>
+
+<section class="proc-card" id="receiveCard" hidden>
+  <div class="proc-card-head">
+    <div>
+      <h2>Receive goods</h2>
+      <p>Quantities post to this request’s property stock.</p>
+    </div>
+  </div>
+  <div class="proc-card-body">
+    <div id="recvLines" class="proc-pr-recv-lines"></div>
+    <label class="proc-field-label" for="recvNotes">Receiving notes</label>
+    <textarea class="form-control proc-field" id="recvNotes" rows="2" placeholder="Optional — delivery note, condition, reference"></textarea>
+    <div class="proc-pr-actions">
+      <button type="button" class="proc-btn proc-btn-dark" id="recvBtn">Post goods received</button>
+    </div>
+  </div>
+</section>
+
+<section class="proc-card proc-card-danger" id="rejectCard" hidden>
+  <div class="proc-card-head">
+    <div>
+      <h2 id="rejectTitle">Reject request</h2>
+      <p id="rejectHelp">This stops the request and notifies the requester.</p>
+    </div>
+  </div>
+  <div class="proc-card-body" id="rejectForm">
+    <label class="proc-field-label" for="rejectReason">Reason</label>
+    <textarea class="form-control proc-field" id="rejectReason" rows="3" placeholder="Why this request cannot go ahead"></textarea>
+    <p class="proc-field-hint">Required. Shown on the request and sent to the person who submitted it.</p>
+    <div class="proc-pr-actions">
+      <button type="button" class="proc-btn proc-btn-danger" id="rejectBtn">Reject request</button>
+    </div>
+  </div>
+</section>
+</div>
+
+<div class="modal fade proc-modal gm-review-modal" id="gmReviewModal" tabindex="-1" aria-labelledby="gmReviewHeading" aria-hidden="true">
+  <div class="modal-dialog gm-review-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" id="gmReviewHeading">Review and approve</h2>
+          <p class="gm-review-kicker" id="gmReviewTitle">Purchase request</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <ol class="gm-review-steps" id="gmReviewSteps" aria-label="Review steps">
+          <li id="gmReviewStep1" class="is-now">1 · Purchase request</li>
+          <li id="gmReviewStep2">2 · Supplier quotation</li>
+        </ol>
+        <div id="gmReviewPicks" class="gm-review-picks" hidden></div>
+        <div class="gm-review-stage">
+          <div class="gm-review-tools" id="gmReviewTools" hidden>
+            <span class="gm-review-tools-label" id="gmReviewToolsLabel">Preview</span>
+            <button type="button" class="gm-review-tool-btn" id="gmReviewDownload">Download</button>
+          </div>
+          <div class="gm-review-paper">
+            <div id="gmReviewPages" class="gm-review-pages" hidden></div>
+            <iframe id="gmReviewFrame" class="gm-review-frame" title="Document preview" hidden allow="fullscreen"></iframe>
+            <img id="gmReviewImage" class="gm-review-image" alt="Document preview" hidden>
+          </div>
+        </div>
+        <p class="gm-review-hint" id="gmReviewHint" hidden></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="proc-btn proc-btn-outline" id="gmReviewBack" hidden>Back</button>
+        <button type="button" class="proc-btn proc-btn-dark" id="gmReviewNext">Next</button>
+        <button type="button" class="proc-btn proc-btn-dark" id="gmReviewApprove" hidden>Approve</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const TRADE_DOT = {
+    HVAC: '#18181b',
+    Cleaning: '#ff8e68',
+    Electrical: '#c4c4cc',
+    Plumbing: '#71717a',
+  };
+  const token = localStorage.getItem('access_token');
+  const id = {{ request_id | tojson }};
+  const h = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
+  const STEPS = [
+    ['procurement_review', 'Procurement'],
+    ['awaiting_quotation', 'Quotation'],
+    ['gm_review', 'GM / Admin'],
+    ['approved', 'Approved'],
+    ['ordered', 'Ordered'],
+    ['received', 'Received'],
+    ['closed', 'Closed'],
+  ];
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+  function fmtAed(n) {
+    return 'AED ' + Number(n || 0).toLocaleString('en-AE', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+  function fmtQty(n) {
+    return Number(n || 0).toLocaleString('en-AE', { maximumFractionDigits: 2 });
+  }
+  function stLabel(status) {
+    const map = {
+      draft: 'Draft',
+      submitted: 'Submitted',
+      procurement_review: 'Procurement review',
+      awaiting_quotation: 'Awaiting quotation',
+      gm_review: 'GM review',
+      approved: 'Approved',
+      ordered: 'Ordered',
+      received: 'Received',
+      closed: 'Closed',
+      rejected: 'Rejected',
+      cancelled: 'Cancelled',
+    };
+    const key = (status || '').trim();
+    if (map[key]) return map[key];
+    return key.replace(/_/g, ' ');
+  }
+  function statusPill(status) {
+    const s = status || '';
+    let cls = 'proc-pill-low';
+    if (s === 'approved' || s === 'received' || s === 'ordered' || s === 'closed') cls = 'proc-pill-ok';
+    if (s === 'awaiting_quotation' || s === 'gm_review' || s === 'procurement_review') cls = 'proc-pill-low';
+    if (s === 'rejected' || s === 'cancelled') cls = 'proc-pill-refill';
+    if (s === 'draft') cls = 'proc-pill-returned';
+    return `<span class="proc-pill ${cls}">${esc(stLabel(s) || 'Unknown')}</span>`;
+  }
+  function parseWhen(iso) {
+    if (!iso) return null;
+    let s = String(iso).trim().replace(' ', 'T').replace(/(\.\d{3})\d+/, '$1');
+    if (!s) return null;
+    if (!/[zZ]$/.test(s) && !/[+-]\d{2}:?\d{2}$/.test(s)) s += 'Z';
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  function fmtWhen(iso) {
+    const d = parseWhen(iso);
+    if (!d) return '—';
+    const diff = Date.now() - d.getTime();
+    const mins = Math.round(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return mins + 'm ago';
+    const hours = Math.round(mins / 60);
+    if (hours < 24) return hours + 'h ago';
+    const days = Math.round(hours / 24);
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return days + 'd ago';
+    return d.toLocaleString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+  }
+  function fmtWhenFull(iso) {
+    const d = parseWhen(iso);
+    if (!d) return '';
+    return d.toLocaleString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+  }
+
+  async function act(path, extra) {
+    const res = await fetch('/procurement/api/purchase-requests/' + id + path, {
+      method: 'POST', headers: h, body: JSON.stringify(extra || {}),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) { procAlert(data.error || 'Failed'); return false; }
+    procHint({ title: 'Updated', message: stLabel(data.request && data.request.status) });
+    await load();
+    return true;
+  }
+
+  function renderSteps(r) {
+    const el = document.getElementById('prSteps');
+    if (r.status === 'rejected') {
+      el.hidden = false;
+      el.innerHTML = `<li class="is-done is-reject">Rejected</li>`;
+      return;
+    }
+    const order = STEPS;
+    const idx = order.findIndex(([key]) => key === r.status);
+    el.hidden = false;
+    el.innerHTML = order.map(([key, label], i) => {
+      const cls = idx < 0 ? '' : (i < idx ? 'is-done' : (i === idx ? 'is-now' : ''));
+      return `<li class="${cls}">${esc(label)}</li>`;
+    }).join('');
+  }
+
+  function slotBadge(key, d, r) {
+    const st = (r && r.status) || '';
+    if (key === 'pr_pdf') {
+      if (d.has_original) return ['Ready', 'ok'];
+      if (st === 'procurement_review') return ['After procurement approves', 'wait'];
+      return ['Waiting', 'wait'];
+    }
+    if (key === 'quotes') {
+      const n = Number(d.count || 0);
+      if (d.has_stamped) return ['Done', 'ok'];
+      if (st === 'gm_review') return ['Sent for approval', 'wait'];
+      if (n > 0) return [n + ' of 3', 'up'];
+      if (st === 'awaiting_quotation') return ['Add a file', 'now'];
+      if (st === 'procurement_review') return ['Next', 'later'];
+      return ['Closed', 'later'];
+    }
+    if (key === 'approved') {
+      if (d.has_stamped) return ['Stamped', 'ok'];
+      if (st === 'gm_review') return ['Waiting for GM / admin', 'wait'];
+      return ['After approval', 'later'];
+    }
+    if (d.has_stamped) return ['Stamped', 'ok'];
+    if (d.status === 'pending_approval' || d.can_approve) return ['Waiting for GM / admin', 'wait'];
+    if (d.has_original) return ['Uploaded', 'up'];
+    if (st === 'received') return ['Upload invoice', 'now'];
+    return ['After goods received', 'later'];
+  }
+  function isCurrentSlot(key, d, r) {
+    const st = (r && r.status) || '';
+    if (key === 'pr_pdf') return st === 'procurement_review' && !d.has_original;
+    if (key === 'quotes') return st === 'awaiting_quotation';
+    if (key === 'approved') return st === 'gm_review';
+    return st === 'received' && !d.has_stamped;
+  }
+  function fileIco(name) {
+    const n = (name || '').toLowerCase();
+    if (/\.(png|jpe?g)$/.test(n)) return 'IMG';
+    return 'PDF';
+  }
+  function fileChip(title, name, acts) {
+    return `<div class="proc-pr-quote">
+      <span class="proc-pr-file-ico" aria-hidden="true">${fileIco(name)}</span>
+      <div class="proc-pr-quote-copy">
+        <strong>${esc(title)}</strong>
+        <p>${esc(name || 'File')}</p>
+      </div>
+      ${acts ? `<div class="proc-pr-doc-acts">${acts}</div>` : ''}
+    </div>`;
+  }
+  function docBtn(href, dl, label, cls) {
+    return `<button type="button" class="proc-btn ${cls || 'proc-btn-outline'} proc-doc-dl" data-href="${href}" data-dl="${dl}">${esc(label)}</button>`;
+  }
+  function docLinks(kind, d) {
+    const href = `/procurement/api/purchase-requests/${id}/documents/${kind}`;
+    if (d.has_stamped) {
+      return docBtn(href + '?stamped=1', kind + '-stamped', 'Updated PDF', 'proc-btn-primary');
+    }
+    if (d.has_original) {
+      const label = kind === 'pr_pdf' ? 'Download PDF' : 'Download original';
+      return docBtn(href, kind, label, kind === 'pr_pdf' ? 'proc-btn-primary' : 'proc-btn-outline');
+    }
+    return '';
+  }
+  async function authDownload(ev) {
+    const btn = ev.currentTarget;
+    if (!btn.dataset.dl || btn.disabled) return;
+    ev.preventDefault();
+    btn.disabled = true;
+    try {
+      const res = await fetch(btn.dataset.href, { headers: { Authorization: 'Bearer ' + token } });
+      if (!res.ok) { procAlert('Could not download'); return; }
+      const buf = await res.arrayBuffer();
+      const disp = res.headers.get('Content-Disposition') || '';
+      const named = /filename\*?=(?:UTF-8''|"?)([^";]+)/i.exec(disp);
+      let filename = named ? decodeURIComponent(named[1].replace(/"/g, '').trim()) : '';
+      if (!filename) {
+        const ext = (res.headers.get('Content-Type') || '').includes('png') ? '.png'
+          : (res.headers.get('Content-Type') || '').includes('jpeg') ? '.jpg'
+          : '.pdf';
+        filename = (btn.dataset.dl || 'document') + ext;
+      }
+      const isPdf = /\.pdf$/i.test(filename);
+      const blob = new Blob([buf], {
+        type: isPdf ? 'application/pdf' : (res.headers.get('Content-Type') || 'application/octet-stream'),
+      });
+      const url = URL.createObjectURL(blob);
+      const tmp = document.createElement('a');
+      tmp.href = url;
+      tmp.download = filename;
+      tmp.rel = 'noopener';
+      tmp.style.display = 'none';
+      document.body.appendChild(tmp);
+      tmp.click();
+      tmp.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      procAlert('Could not download');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+  function docDrop(kind, label, hint) {
+    return `<label class="proc-pr-drop">
+      <input type="file" accept=".pdf,image/png,image/jpeg" data-kind="${kind}" hidden>
+      <span class="proc-pr-drop-mark" aria-hidden="true">↑</span>
+      <span class="proc-pr-drop-copy">
+        <strong>${esc(label)}</strong>
+        <em>${esc(hint)}</em>
+      </span>
+    </label>`;
+  }
+  async function uploadDocFile(kind, file) {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch('/procurement/api/purchase-requests/' + id + '/documents/' + kind, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+      body: fd,
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) { procAlert(data.error || 'Upload failed'); return; }
+    procHint({ title: 'Uploaded', message: kind === 'quotation' ? 'Quotation saved' : 'Invoice sent for GM / admin approval' });
+    await load();
+  }
+  let gmReview = { step: 0, quotes: [], previewUrl: '', canApprove: false, pdfBytes: null, renderId: 0, mode: 'quote', invoiceStamped: false };
+  const PDFJS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  function gmReviewEl(id) { return document.getElementById(id); }
+  function revokeGmPreview() {
+    gmReview.renderId += 1;
+    gmReview.pdfBytes = null;
+    gmReview.renderedWidth = 0;
+    gmReview.renderedKey = '';
+    gmReview.rendering = false;
+    const pages = gmReviewEl('gmReviewPages');
+    if (pages) { pages.hidden = true; pages.innerHTML = ''; }
+    if (gmReview.previewUrl) {
+      URL.revokeObjectURL(gmReview.previewUrl);
+      gmReview.previewUrl = '';
+    }
+  }
+  function ensurePdfJs() {
+    if (window.pdfjsLib && typeof window.pdfjsLib.getDocument === 'function') {
+      return Promise.resolve(true);
+    }
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[data-gm-pdfjs="1"]');
+      if (existing) {
+        existing.addEventListener('load', () => resolve(!!(window.pdfjsLib && window.pdfjsLib.getDocument)));
+        existing.addEventListener('error', () => reject(new Error('pdf.js failed')));
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = PDFJS_CDN;
+      s.crossOrigin = 'anonymous';
+      s.setAttribute('data-gm-pdfjs', '1');
+      s.onload = () => resolve(!!(window.pdfjsLib && window.pdfjsLib.getDocument));
+      s.onerror = () => reject(new Error('pdf.js load failed'));
+      document.head.appendChild(s);
+    });
+  }
+  function showGmPdfIframeFallback() {
+    const pages = gmReviewEl('gmReviewPages');
+    if (pages) { pages.hidden = true; pages.innerHTML = ''; }
+    const frame = gmReviewEl('gmReviewFrame');
+    if (!gmReview.previewUrl || !frame) return;
+    frame.src = gmReview.previewUrl + '#toolbar=0&navpanes=0&pagemode=none&scrollbar=1&view=FitH&zoom=page-width';
+    frame.hidden = false;
+  }
+  async function renderGmPdfPages() {
+    const host = gmReviewEl('gmReviewPages');
+    const paper = host && host.parentElement;
+    const bytes = gmReview.pdfBytes;
+    if (!host || !paper || !bytes || gmReview.rendering) return;
+    const cssW = Math.max(280, Math.round(paper.clientWidth || 0));
+    if (cssW < 40) return;
+    if (
+      gmReview.renderedKey === gmReview.previewUrl &&
+      gmReview.renderedWidth &&
+      Math.abs(cssW - gmReview.renderedWidth) < 8
+    ) {
+      return;
+    }
+    const renderId = ++gmReview.renderId;
+    gmReview.rendering = true;
+    try {
+      await ensurePdfJs();
+      if (renderId !== gmReview.renderId) return;
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+      const pdf = await window.pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+      if (renderId !== gmReview.renderId) return;
+      const frame = gmReviewEl('gmReviewFrame');
+      frame.hidden = true;
+      frame.removeAttribute('src');
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const frag = document.createDocumentFragment();
+      for (let i = 1; i <= pdf.numPages; i++) {
+        if (renderId !== gmReview.renderId) return;
+        const page = await pdf.getPage(i);
+        const base = page.getViewport({ scale: 1 });
+        const scale = Math.min(3.5, Math.max(0.5, (cssW * dpr) / base.width));
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.className = 'gm-review-page';
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        if (renderId !== gmReview.renderId) return;
+        frag.appendChild(canvas);
+      }
+      host.innerHTML = '';
+      host.appendChild(frag);
+      host.hidden = false;
+      gmReview.renderedWidth = cssW;
+      gmReview.renderedKey = gmReview.previewUrl;
+    } catch (err) {
+      if (renderId === gmReview.renderId) showGmPdfIframeFallback();
+    } finally {
+      if (renderId === gmReview.renderId) gmReview.rendering = false;
+    }
+  }
+  function bindGmPaperResize() {
+    const stage = document.querySelector('#gmReviewModal .gm-review-stage');
+    if (!stage || gmReview.resizeObs) return;
+    let timer;
+    gmReview.resizeObs = new ResizeObserver(() => {
+      if (!gmReview.pdfBytes || gmReview.rendering) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => renderGmPdfPages(), 200);
+    });
+    gmReview.resizeObs.observe(stage);
+  }
+  async function loadGmPreview(href) {
+    const frame = gmReviewEl('gmReviewFrame');
+    const img = gmReviewEl('gmReviewImage');
+    const hint = gmReviewEl('gmReviewHint');
+    const pages = gmReviewEl('gmReviewPages');
+    frame.hidden = true;
+    img.hidden = true;
+    hint.hidden = true;
+    if (pages) { pages.hidden = true; pages.innerHTML = ''; }
+    const res = await fetch(href, { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) { procAlert('Could not open document'); return; }
+    const buf = await res.arrayBuffer();
+    const type = res.headers.get('Content-Type') || 'application/pdf';
+    revokeGmPreview();
+    const blob = new Blob([buf], { type });
+    gmReview.previewUrl = URL.createObjectURL(blob);
+    const tools = gmReviewEl('gmReviewTools');
+    const label = gmReviewEl('gmReviewToolsLabel');
+    if (tools) tools.hidden = false;
+    if (label) label.textContent = gmReviewEl('gmReviewTitle').textContent || 'Preview';
+    if (type.includes('png') || type.includes('jpeg') || type.includes('jpg')) {
+      img.src = gmReview.previewUrl;
+      img.hidden = false;
+      return;
+    }
+    gmReview.pdfBytes = new Uint8Array(buf);
+    bindGmPaperResize();
+    await renderGmPdfPages();
+  }
+  async function showGmReviewStep() {
+    const invoiceMode = gmReview.mode === 'invoice';
+    const step1 = gmReviewEl('gmReviewStep1');
+    const step2 = gmReviewEl('gmReviewStep2');
+    step1.textContent = invoiceMode ? 'Supplier invoice' : '1 · Purchase request';
+    step2.hidden = invoiceMode;
+    if (invoiceMode) {
+      step1.classList.add('is-now');
+      step1.classList.remove('is-done');
+      step2.classList.remove('is-now', 'is-done');
+      gmReviewEl('gmReviewBack').hidden = true;
+      gmReviewEl('gmReviewNext').hidden = true;
+      gmReviewEl('gmReviewApprove').hidden = !gmReview.canApprove;
+      gmReviewEl('gmReviewPicks').hidden = true;
+      gmReviewEl('gmReviewTitle').textContent = 'Supplier invoice';
+      gmReviewEl('gmReviewHeading').textContent = gmReview.canApprove ? 'Review and approve' : 'Invoice';
+      const stamped = gmReview.invoiceStamped ? '?stamped=1' : '';
+      await loadGmPreview(`/procurement/api/purchase-requests/${id}/documents/invoice${stamped}`);
+      return;
+    }
+    gmReviewEl('gmReviewHeading').textContent = 'Review and approve';
+    const step = gmReview.step;
+    step1.classList.toggle('is-now', step === 0);
+    step2.classList.toggle('is-now', step === 1);
+    step1.classList.toggle('is-done', step > 0);
+    gmReviewEl('gmReviewBack').hidden = step === 0;
+    gmReviewEl('gmReviewNext').hidden = step !== 0;
+    gmReviewEl('gmReviewApprove').hidden = step !== 1 || !gmReview.canApprove;
+    const picks = gmReviewEl('gmReviewPicks');
+    if (step === 0) {
+      picks.hidden = true;
+      gmReviewEl('gmReviewTitle').textContent = 'Purchase request';
+      await loadGmPreview(`/procurement/api/purchase-requests/${id}/documents/pr_pdf`);
+      return;
+    }
+    const quotes = gmReview.quotes || [];
+    picks.hidden = quotes.length <= 1;
+    if (quotes.length > 1 && !picks.innerHTML) {
+      picks.innerHTML = quotes.map((q, i) =>
+        `<label class="proc-pr-quote-pick"><input type="radio" name="gmQuotePick" value="${esc(q.kind)}"${i === 0 ? ' checked' : ''}> Quotation ${q.slot || (i + 1)}</label>`
+      ).join('');
+      picks.querySelectorAll('input').forEach(inp => inp.addEventListener('change', () => showGmReviewStep()));
+    }
+    const picked = document.querySelector('input[name="gmQuotePick"]:checked');
+    const kind = (picked && picked.value) || (quotes[0] && quotes[0].kind) || 'quotation';
+    gmReviewEl('gmReviewTitle').textContent = 'Supplier quotation';
+    await loadGmPreview(`/procurement/api/purchase-requests/${id}/documents/${kind}`);
+  }
+  function openGmReview(mode) {
+    gmReview.mode = mode === 'invoice' ? 'invoice' : 'quote';
+    gmReview.step = 0;
+    gmReview.canApprove = gmReview.mode === 'invoice' ? !!gmReview.canApproveInvoice : !!gmReview.canApproveQuote;
+    gmReviewEl('gmReviewPicks').innerHTML = '';
+    const el = gmReviewEl('gmReviewModal');
+    const inst = bootstrap.Modal.getOrCreateInstance(el, { backdrop: 'static', keyboard: true });
+    const start = () => showGmReviewStep();
+    if (el.classList.contains('show')) start();
+    else el.addEventListener('shown.bs.modal', start, { once: true });
+    inst.show();
+  }
+  function renderDocs(docs, r, data) {
+    const quote = docs.quotation || {};
+    const quotes = docs.quotations || [];
+    const inv = docs.invoice || {};
+    gmReview.quotes = quotes;
+    gmReview.canApproveQuote = !!(data && data.can_approve_gm) && r.status === 'gm_review' && !quote.has_stamped;
+    gmReview.canApproveInvoice = !!(inv.can_approve && data && data.can_approve_gm);
+    gmReview.invoiceStamped = !!inv.has_stamped;
+    gmReview.canApprove = gmReview.canApproveQuote;
+    const prPdf = docs.pr_pdf || {};
+    const gmPick = false;
+    const quoteList = quotes.map((q, i) => {
+      return `<div class="proc-pr-quote">
+        <span class="proc-pr-file-ico" aria-hidden="true">${fileIco(q.original_name)}</span>
+        <div class="proc-pr-quote-copy">
+          <strong>Quotation ${q.slot || (i + 1)}</strong>
+          <p>${esc(q.original_name || 'Supplier file')}</p>
+        </div>
+        <div class="proc-pr-doc-acts">${docLinks(q.kind, q)}</div>
+      </div>`;
+    }).join('');
+    const sendBtn = quote.can_send
+      ? `<button type="button" class="proc-btn proc-btn-dark" id="sendQuotesBtn">Send for approval</button>`
+      : '';
+    const quoteDrop = quote.can_upload
+      ? docDrop(
+          'quotation',
+          quotes.length ? 'Add another quotation' : 'Upload quotation',
+          quotes.length ? `${quotes.length} of 3 · PDF, PNG, or JPEG` : 'PDF, PNG, or JPEG · one is enough, up to three',
+        )
+      : '';
+    const quoteIdle = !quotes.length && !quoteDrop
+      ? `<p class="proc-pr-idle">${r.status === 'procurement_review'
+          ? 'Opens after procurement approves this request.'
+          : 'No quotations on this request.'}</p>`
+      : '';
+    const approvedKind = quote.has_stamped ? (quote.kind || 'quotation') : 'quotation';
+    const canReviewQuotes = !quote.has_stamped && r.status === 'gm_review' && data && data.can_approve_gm;
+    const invDrop = inv.can_upload
+      ? docDrop('invoice', inv.has_original ? 'Replace invoice' : 'Upload invoice', 'PDF, PNG, or JPEG · after goods received')
+      : '';
+    const slots = [
+      {
+        n: '1',
+        key: 'pr_pdf',
+        title: 'Purchase request',
+        hint: 'Generated from the lines, property, and total when procurement approves.',
+        d: prPdf,
+        body: prPdf.has_original
+          ? fileChip('Purchase request PDF', prPdf.original_name || 'Purchase request.pdf', docLinks('pr_pdf', prPdf))
+          : `<p class="proc-pr-idle">${r.status === 'procurement_review'
+              ? 'Created automatically when procurement approves.'
+              : 'Not generated yet.'}</p>`,
+        acts: '',
+      },
+      {
+        n: '2',
+        key: 'quotes',
+        title: 'Supplier quotations',
+        hint: 'One file is enough. Add up to three, then send for GM or system admin approval.',
+        d: quote,
+        body: quoteList + quoteIdle + quoteDrop,
+        acts: sendBtn,
+      },
+      {
+        n: '3',
+        key: 'approved',
+        title: 'Approved quotation',
+        hint: 'The stamped PDF appears only after GM or system admin approval.',
+        d: quote,
+        body: quote.has_stamped
+          ? fileChip(
+              'Approved quotation',
+              'Updated PDF',
+              docBtn(`/procurement/api/purchase-requests/${id}/documents/${approvedKind}?stamped=1`, approvedKind + '-stamped', 'Updated PDF', 'proc-btn-primary'),
+            )
+          : `<p class="proc-pr-idle">${r.status === 'gm_review'
+              ? (data && data.can_approve_gm
+                ? 'Open the purchase request and the quotation, then approve.'
+                : 'Waiting for the GM or system admin to approve a quotation on this page.')
+              : 'Empty until a quotation is approved.'}</p>`,
+        acts: (!quote.has_stamped && r.status === 'gm_review' && data && data.can_approve_gm)
+          ? `<button type="button" class="proc-btn proc-btn-dark" id="reviewQuotesBtn">Review and approve</button>`
+          : '',
+      },
+      {
+        n: '4',
+        key: 'invoice',
+        title: 'Supplier invoice',
+        hint: r.status === 'closed'
+          ? 'Invoice is stamped. This purchase request is closed.'
+          : 'Upload after goods are received. GM or system admin must approve before it is stamped.',
+        d: inv,
+        body: (inv.has_original
+          ? fileChip(inv.has_stamped ? 'Approved invoice' : 'Supplier invoice', inv.original_name || 'Invoice', docLinks('invoice', inv))
+          : (invDrop ? '' : `<p class="proc-pr-idle">Opens after goods are received.</p>`))
+          + (inv.has_original && !inv.has_stamped
+            ? `<p class="proc-pr-idle">${data && data.can_approve_gm
+              ? 'Open the invoice, then approve to stamp it.'
+              : 'Waiting for the GM or system admin to approve this invoice.'}</p>`
+            : '')
+          + invDrop,
+        acts: inv.has_original
+          ? `<button type="button" class="proc-btn proc-btn-dark" id="reviewInvBtn">${gmReview.canApproveInvoice ? 'Review and approve' : 'View invoice'}</button>`
+          : '',
+      },
+    ];
+    const box = document.getElementById('prDocsBody');
+    box.innerHTML = slots.map(slot => {
+      const [label, cls] = slotBadge(slot.key, slot.d, r);
+      const current = isCurrentSlot(slot.key, slot.d, r) ? ' is-current' : '';
+      const reviewPack = canReviewQuotes && slot.key === 'approved';
+      const invPack = inv.has_original && slot.key === 'invoice';
+      const packKind = reviewPack ? 'quote' : (invPack ? 'invoice' : '');
+      return `<article class="proc-pr-doc is-${cls}${current}${packKind ? ' is-review' : ''}"${packKind ? ` data-open-review="${packKind}" tabindex="0" role="button"` : ''}>
+        <div class="proc-pr-doc-num" aria-hidden="true">${slot.n}</div>
+        <div class="proc-pr-doc-main">
+          <div class="proc-pr-doc-top">
+            <div>
+              <strong>${esc(slot.title)}</strong>
+              <p>${esc(slot.hint)}</p>
+            </div>
+            <span class="proc-pr-doc-state">${esc(label)}</span>
+          </div>
+          ${slot.body || ''}
+          ${slot.acts ? `<div class="proc-pr-doc-acts">${slot.acts}</div>` : ''}
+        </div>
+      </article>`;
+    }).join('');
+    box.querySelectorAll('button.proc-doc-dl').forEach(btn => btn.addEventListener('click', authDownload));
+    box.querySelectorAll('[data-open-review]').forEach((el) => {
+      const mode = el.getAttribute('data-open-review') || 'quote';
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('button, a, input, label')) return;
+        openGmReview(mode);
+      });
+      el.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        openGmReview(mode);
+      });
+    });
+    document.getElementById('reviewQuotesBtn')?.addEventListener('click', () => openGmReview('quote'));
+    document.getElementById('reviewInvBtn')?.addEventListener('click', () => openGmReview('invoice'));
+    document.getElementById('sendQuotesBtn')?.addEventListener('click', async () => {
+      const ok = await procPrompt({
+        title: 'Send for approval?',
+        message: 'The general manager and system administrator will be notified. They open this purchase request to approve a quotation and the request. The stamped PDF appears only after that.',
+        okText: 'Send for approval',
+        info: true,
+      });
+      if (!ok) return;
+      await act('/send-quotations');
+    });
+    box.querySelectorAll('input[type=file][data-kind]').forEach(input => {
+      input.addEventListener('change', async () => {
+        if (!input.files || !input.files[0]) return;
+        await uploadDocFile(input.dataset.kind, input.files[0]);
+      });
+      const drop = input.closest('.proc-pr-drop');
+      if (!drop) return;
+      ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => {
+        e.preventDefault();
+        drop.classList.add('is-over');
+      }));
+      drop.addEventListener('dragleave', () => drop.classList.remove('is-over'));
+      drop.addEventListener('drop', async e => {
+        e.preventDefault();
+        drop.classList.remove('is-over');
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file) await uploadDocFile(input.dataset.kind, file);
+      });
+    });
+  }
+
+  function renderFacts(r) {
+    const el = document.getElementById('prFacts');
+    const raised = fmtWhen(r.created_at);
+    const raisedFull = fmtWhenFull(r.created_at);
+    const cells = [
+      ['Status', statusPill(r.status)],
+      ['Property', esc(r.property || 'Unassigned')],
+      ['Supplier', esc(r.supplier || 'Not set')],
+      ['Requested by', esc(r.requested_by || '—')],
+      ['Raised', `<time datetime="${esc(r.created_at || '')}" title="${esc(raisedFull)}">${esc(raised)}</time>`],
+    ];
+    el.hidden = false;
+    el.innerHTML = cells.map(([label, value]) => `
+      <div class="proc-pr-fact">
+        <span>${label}</span>
+        <b>${value}</b>
+      </div>`).join('');
+  }
+
+  async function load() {
+    const res = await fetch('/procurement/api/purchase-requests/' + id, { headers: h });
+    const data = await res.json();
+    if (!data.success) {
+      document.getElementById('prMeta').textContent = data.error || 'Not found';
+      return;
+    }
+    const r = data.request;
+    document.getElementById('prTitle').textContent = r.id;
+    document.getElementById('prMeta').textContent =
+      `${r.property || 'Unassigned'} · ${r.supplier || 'No supplier'}`;
+    renderSteps(r);
+    renderFacts(r);
+
+    const notesCard = document.getElementById('notesCard');
+    if (r.notes) {
+      notesCard.hidden = false;
+      document.getElementById('prNotes').textContent = r.notes;
+    } else {
+      notesCard.hidden = true;
+    }
+
+    const lines = r.lines || [];
+    const total = lines.reduce((s, l) => s + Number(l.line_total || 0), 0);
+    document.getElementById('prLineCount').textContent =
+      `${lines.length} line${lines.length === 1 ? '' : 's'}`;
+    document.getElementById('prLinesTotal').innerHTML =
+      lines.length ? `<span>Total</span> ${fmtAed(r.total_aed || total)}` : '';
+    document.getElementById('prFootTotal').textContent = fmtAed(r.total_aed || total);
+    document.getElementById('prLinesFoot').hidden = !lines.length;
+
+    const body = document.getElementById('prLinesBody');
+    if (!lines.length) {
+      body.innerHTML = `<div class="proc-pr-empty">No materials on this request.</div>`;
+    } else {
+      body.innerHTML = lines.map(l => {
+        const dot = TRADE_DOT[l.department] || '#a1a1aa';
+        const meta = [l.department, l.brand].filter(Boolean).join(' · ') || 'Catalog';
+        return `<article class="proc-pr-item">
+          <div class="proc-pr-item-main">
+            <div class="proc-pr-item-name">
+              <span class="proc-trade-dot" style="background:${dot}"></span>
+              <strong>${esc(l.name || 'Untitled')}</strong>
+            </div>
+            <div class="proc-pr-item-meta">${esc(meta)}</div>
+          </div>
+          <div class="proc-pr-item-qty" data-label="Qty">
+            <b>${fmtQty(l.qty)}</b>
+            <em>${esc(l.uom || 'PCS')}</em>
+          </div>
+          <div class="proc-pr-item-price" data-label="Unit price">${fmtAed(l.unit_price)}</div>
+          <div class="proc-pr-item-total" data-label="Line total">${fmtAed(l.line_total)}</div>
+        </article>`;
+      }).join('');
+    }
+
+    renderDocs(data.documents || {}, r, data);
+    const actions = document.getElementById('prActions');
+    let html = '';
+    if (r.status === 'procurement_review' && data.can_approve_procurement) {
+      html += `<button type="button" class="proc-btn proc-btn-dark" id="approveBtn">Approve</button>`;
+    }
+    if (r.status === 'gm_review' && data.can_approve_gm) {
+      html += `<button type="button" class="proc-btn proc-btn-dark" id="approveBtn">Approve quotation</button>`;
+    }
+    if (r.status === 'approved') {
+      html += `<button type="button" class="proc-btn proc-btn-dark" id="orderBtn">Mark ordered</button>`;
+    }
+    if (r.status === 'received' && data.documents && data.documents.invoice && data.documents.invoice.can_approve && data.can_approve_gm) {
+      html += `<button type="button" class="proc-btn proc-btn-dark" id="approveInvBtn">Approve invoice</button>`;
+    }
+    actions.innerHTML = html;
+    actions.hidden = !html;
+    document.getElementById('approveBtn')?.addEventListener('click', () => {
+      if (r.status === 'gm_review') { openGmReview('quote'); return; }
+      return act('/approve');
+    });
+    document.getElementById('orderBtn')?.addEventListener('click', () => act('/order'));
+    document.getElementById('approveInvBtn')?.addEventListener('click', () => openGmReview('invoice'));
+
+    const canReject = (r.status === 'procurement_review' && data.can_approve_procurement)
+      || (r.status === 'awaiting_quotation' && data.can_approve_procurement)
+      || (r.status === 'gm_review' && data.can_approve_gm);
+    const rejectCard = document.getElementById('rejectCard');
+    const rejectForm = document.getElementById('rejectForm');
+    if (r.status === 'rejected') {
+      rejectCard.hidden = false;
+      rejectForm.hidden = true;
+      document.getElementById('rejectTitle').textContent = 'Rejected';
+      document.getElementById('rejectHelp').textContent = r.reject_reason
+        ? r.reject_reason
+        : 'No reason was recorded.';
+    } else if (canReject) {
+      rejectCard.hidden = false;
+      rejectForm.hidden = false;
+      document.getElementById('rejectTitle').textContent = 'Reject request';
+      document.getElementById('rejectHelp').textContent = 'This stops the request and notifies the requester.';
+      document.getElementById('rejectBtn').onclick = async () => {
+        const reason = document.getElementById('rejectReason').value.trim();
+        if (!reason) { procAlert('Add a reject reason.'); return; }
+        const ok = await procPrompt({
+          title: 'Reject this request?',
+          message: 'The requester will be notified with your reason.',
+          okText: 'Reject request',
+          danger: true,
+        });
+        if (!ok) return;
+        await act('/reject', { reason });
+      };
+    } else {
+      rejectCard.hidden = true;
+    }
+
+    const canRecv = r.status === 'ordered' || r.status === 'approved';
+    const recvCard = document.getElementById('receiveCard');
+    recvCard.hidden = !canRecv;
+    if (canRecv) {
+      document.getElementById('recvLines').innerHTML = lines.map(l => {
+        const dot = TRADE_DOT[l.department] || '#a1a1aa';
+        return `<label class="proc-pr-recv">
+          <span>
+            <span class="proc-pr-item-name">
+              <span class="proc-trade-dot" style="background:${dot}"></span>
+              <strong>${esc(l.name)}</strong>
+            </span>
+            <em>Ordered ${fmtQty(l.qty)} ${esc(l.uom || 'PCS')}</em>
+          </span>
+          <input class="form-control proc-field recv-qty" type="number" min="0" step="0.01" value="${l.qty}" data-id="${esc(l.catalog_id)}" aria-label="Receive quantity for ${esc(l.name)}">
+        </label>`;
+      }).join('');
+    }
+  }
+
+  document.getElementById('recvBtn').onclick = async () => {
+    const quantities = {};
+    document.querySelectorAll('.recv-qty').forEach(el => { quantities[el.dataset.id] = el.value; });
+    const res = await fetch('/procurement/api/purchase-requests/' + id + '/receive', {
+      method: 'POST', headers: h,
+      body: JSON.stringify({ quantities, notes: document.getElementById('recvNotes').value }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) { procAlert(data.error || 'Failed'); return; }
+    procHint({ title: 'Goods received', message: 'Stock updated on the property.' });
+    await load();
+  };
+
+  document.getElementById('gmReviewNext').onclick = () => {
+    gmReview.step = 1;
+    showGmReviewStep();
+  };
+  document.getElementById('gmReviewBack').onclick = () => {
+    gmReview.step = 0;
+    showGmReviewStep();
+  };
+  document.getElementById('gmReviewApprove').onclick = async () => {
+    if (!gmReview.canApprove) return;
+    let ok;
+    if (gmReview.mode === 'invoice') {
+      ok = await act('/approve');
+    } else {
+      const picked = document.querySelector('input[name="gmQuotePick"]:checked');
+      const kind = picked ? picked.value : ((gmReview.quotes[0] && gmReview.quotes[0].kind) || 'quotation');
+      ok = await act('/approve', { quotation_kind: kind });
+    }
+    if (!ok) return;
+    const el = gmReviewEl('gmReviewModal');
+    bootstrap.Modal.getInstance(el)?.hide();
+  };
+  document.getElementById('gmReviewDownload').onclick = () => {
+    if (!gmReview.previewUrl) return;
+    const a = document.createElement('a');
+    a.href = gmReview.previewUrl;
+    const title = (gmReviewEl('gmReviewTitle').textContent || 'document').trim();
+    a.download = title.replace(/\s+/g, '-') + '.pdf';
+    a.click();
+  };
+  document.getElementById('gmReviewModal').addEventListener('hidden.bs.modal', () => {
+    revokeGmPreview();
+    gmReviewEl('gmReviewFrame').removeAttribute('src');
+    gmReviewEl('gmReviewImage').removeAttribute('src');
+    const tools = gmReviewEl('gmReviewTools');
+    if (tools) tools.hidden = true;
+  });
+
+  load();
+</script>
+
+{% include 'partials/proc_shell_end.html' %}

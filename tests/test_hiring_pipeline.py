@@ -144,3 +144,34 @@ def test_pipeline_rejects_unknown_status(client, admin_auth_headers):
     data = response.get_json()
     assert data.get('success') is False
     assert 'paused' in (data.get('error') or '')
+
+
+def test_employed_cannot_move_to_hold_or_not_hired(client, admin_auth_headers):
+    created = _create_candidate(client, admin_auth_headers)
+    cid = created['id']
+    hired = client.patch(
+        f'/hr/api/hiring/candidates/{cid}',
+        headers=admin_auth_headers,
+        json={'pipeline_status': 'candidate_employee'},
+    )
+    assert hired.status_code == 200, hired.get_json()
+    assert hired.get_json()['candidate']['pipeline_status'] == 'candidate_employee'
+
+    for status in ('on_hold', 'not_hired'):
+        blocked = client.patch(
+            f'/hr/api/hiring/candidates/{cid}',
+            headers=admin_auth_headers,
+            json={'pipeline_status': status},
+        )
+        assert blocked.status_code == 400, blocked.get_json()
+        body = blocked.get_json()
+        assert body.get('success') is False
+        assert 'already been hired' in (body.get('error') or '').lower()
+
+    still_hired = client.patch(
+        f'/hr/api/hiring/candidates/{cid}',
+        headers=admin_auth_headers,
+        json={'pipeline_status': 'visa_process_started'},
+    )
+    assert still_hired.status_code == 200, still_hired.get_json()
+    assert still_hired.get_json()['candidate']['pipeline_status'] == 'visa_process_started'

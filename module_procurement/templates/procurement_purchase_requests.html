@@ -1,0 +1,210 @@
+{% set proc_page_title = 'Purchase requests — Procurement' %}
+{% set proc_topbar_title = 'Purchase requests' %}
+{% include 'partials/proc_shell_start.html' %}
+
+<div class="proc-dash-head">
+  <div>
+    <p class="proc-kicker">Purchasing</p>
+    <h1>Purchase requests</h1>
+    <p class="proc-sub">Review, approve, order, and receive stock. Requests at or above AED 1,000 need GM approval.</p>
+  </div>
+  <div class="proc-dash-actions">
+    <button type="button" class="proc-btn proc-btn-outline" onclick="procExportDownload('purchase-requests','xlsx')">Excel</button>
+    <button type="button" class="proc-btn proc-btn-outline" onclick="procExportDownload('purchase-requests','pdf')">PDF</button>
+    <button type="button" class="proc-btn proc-btn-dark" id="newPrBtn">New request</button>
+  </div>
+</div>
+
+<section class="proc-card">
+  <div class="proc-card-head">
+    <div>
+      <h2>Requests</h2>
+      <p id="prCount">Loading…</p>
+    </div>
+  </div>
+  <div class="proc-table-wrap">
+    <table class="proc-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Status</th>
+          <th>Property</th>
+          <th>Supplier</th>
+          <th>Total (AED)</th>
+        </tr>
+      </thead>
+      <tbody id="prBody">
+        <tr><td colspan="5">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="modal fade proc-modal" id="newPrModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">New purchase request</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="proc-pr-grid">
+          <div>
+            <label class="form-label" for="prProp">Property</label>
+            <select class="form-select" id="prProp"></select>
+          </div>
+          <div>
+            <label class="form-label" for="prSup">Supplier</label>
+            <select class="form-select" id="prSup"></select>
+          </div>
+          <div class="proc-pr-span">
+            <label class="form-label" for="prNotes">Notes</label>
+            <input class="form-control" id="prNotes" placeholder="Optional">
+          </div>
+        </div>
+        <div class="proc-pr-lines-head">
+          <span>Lines</span>
+          <button type="button" class="proc-btn proc-btn-outline" id="addLineBtn">Add line</button>
+        </div>
+        <div id="prLines" class="proc-pr-lines"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="proc-btn proc-btn-outline" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="proc-btn proc-btn-dark" id="submitPrBtn">Submit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const token = localStorage.getItem('access_token');
+  const h = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
+  let catalogItems = [];
+  let lineSeq = 0;
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+  function fmtAed(n) {
+    return Number(n || 0).toLocaleString('en-AE', { maximumFractionDigits: 0 });
+  }
+  function stPill(status) {
+    const map = {
+      draft: ['proc-pill-returned', 'Draft'],
+      submitted: ['proc-pill-low', 'Submitted'],
+      procurement_review: ['proc-pill-low', 'Procurement review'],
+      awaiting_quotation: ['proc-pill-low', 'Awaiting quotation'],
+      gm_review: ['proc-pill-low', 'GM review'],
+      approved: ['proc-pill-ok', 'Approved'],
+      ordered: ['proc-pill-ok', 'Ordered'],
+      received: ['proc-pill-ok', 'Received'],
+      closed: ['proc-pill-ok', 'Closed'],
+      rejected: ['proc-pill-refill', 'Rejected'],
+      cancelled: ['proc-pill-returned', 'Cancelled'],
+    };
+    const [cls, label] = map[status] || ['proc-pill-returned', status || '—'];
+    return `<span class="proc-pill ${cls}">${esc(label)}</span>`;
+  }
+
+  async function load() {
+    const res = await fetch('/procurement/api/purchase-requests', { headers: h });
+    const data = await res.json();
+    const rows = data.requests || [];
+    document.getElementById('prCount').textContent = rows.length
+      ? `${rows.length} request${rows.length === 1 ? '' : 's'}`
+      : 'No requests yet';
+    document.getElementById('prBody').innerHTML = rows.map(r => `
+      <tr style="cursor:pointer" onclick="location.href='/procurement/purchase-requests/${esc(r.id)}'">
+        <td data-label="ID"><a href="/procurement/purchase-requests/${esc(r.id)}">${esc(r.id)}</a></td>
+        <td data-label="Status">${stPill(r.status)}</td>
+        <td data-label="Property">${esc(r.property)}</td>
+        <td data-label="Supplier">${esc(r.supplier)}</td>
+        <td data-label="Total">${fmtAed(r.total_aed)}</td>
+      </tr>`).join('') || '<tr><td colspan="5">No requests yet.</td></tr>';
+  }
+
+  function lineRow(itemId) {
+    const id = ++lineSeq;
+    const opts = catalogItems.map(i =>
+      `<option value="${esc(i.id)}" data-price="${i.unit_price}">${esc(i.dept)} — ${esc(i.name)}</option>`
+    ).join('');
+    const wrap = document.createElement('div');
+    wrap.className = 'proc-pr-line';
+    wrap.dataset.line = String(id);
+    wrap.innerHTML = `
+      <select class="form-select pr-cat">${opts}</select>
+      <input class="form-control pr-qty" type="number" min="0.01" step="0.01" value="1" aria-label="Qty">
+      <input class="form-control pr-price" type="number" min="0" step="0.01" value="0" aria-label="Unit price">
+      <button type="button" class="proc-btn proc-btn-outline pr-del" aria-label="Remove line">Remove</button>`;
+    const sel = wrap.querySelector('.pr-cat');
+    const price = wrap.querySelector('.pr-price');
+    function syncPrice() {
+      const opt = sel.selectedOptions[0];
+      if (opt) price.value = opt.dataset.price || '0';
+    }
+    sel.addEventListener('change', syncPrice);
+    if (itemId) sel.value = itemId;
+    syncPrice();
+    wrap.querySelector('.pr-del').onclick = () => {
+      if (document.querySelectorAll('.proc-pr-line').length <= 1) return;
+      wrap.remove();
+    };
+    return wrap;
+  }
+
+  async function openNew() {
+    const [p, s, c] = await Promise.all([
+      fetch('/procurement/api/registered-properties', { headers: h }).then(r => r.json()),
+      fetch('/procurement/api/suppliers', { headers: h }).then(r => r.json()),
+      fetch('/procurement/api/catalog/materials', { headers: h }).then(r => r.json()),
+    ]);
+    document.getElementById('prProp').innerHTML = (p.properties || []).map(x =>
+      `<option value="${esc(x.id)}">${esc(x.name)}</option>`
+    ).join('');
+    document.getElementById('prSup').innerHTML = '<option value="">—</option>' + (s.suppliers || []).map(x =>
+      `<option value="${esc(x.id)}">${esc(x.name)}</option>`
+    ).join('');
+    catalogItems = [];
+    Object.entries(c.materials || {}).forEach(([dept, arr]) =>
+      (arr || []).forEach(i => catalogItems.push({ ...i, dept }))
+    );
+    const box = document.getElementById('prLines');
+    box.innerHTML = '';
+    box.appendChild(lineRow());
+    document.getElementById('prNotes').value = '';
+    new bootstrap.Modal(document.getElementById('newPrModal')).show();
+  }
+
+  async function submitPr() {
+    const lines = [];
+    document.querySelectorAll('.proc-pr-line').forEach(row => {
+      const sel = row.querySelector('.pr-cat');
+      const qty = parseFloat(row.querySelector('.pr-qty').value);
+      const price = parseFloat(row.querySelector('.pr-price').value);
+      if (!sel.value || !(qty > 0)) return;
+      lines.push({ catalog_id: sel.value, qty, unit_price: Number.isFinite(price) ? price : 0 });
+    });
+    if (!lines.length) { procAlert('Add at least one catalog line.'); return; }
+    const res = await fetch('/procurement/api/purchase-requests', {
+      method: 'POST', headers: h,
+      body: JSON.stringify({
+        property_id: document.getElementById('prProp').value,
+        supplier_id: document.getElementById('prSup').value,
+        notes: document.getElementById('prNotes').value,
+        lines,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) { procAlert(data.error || 'Failed'); return; }
+    location.href = '/procurement/purchase-requests/' + data.request.id;
+  }
+
+  document.getElementById('newPrBtn').onclick = openNew;
+  document.getElementById('addLineBtn').onclick = () => document.getElementById('prLines').appendChild(lineRow());
+  document.getElementById('submitPrBtn').onclick = submitPr;
+  load();
+</script>
+
+{% include 'partials/proc_shell_end.html' %}

@@ -28,7 +28,15 @@ from common.document_display import (
 from datetime import datetime, timedelta
 import copy
 
-from module_hr.hr_management_chain import WF_MGMT_HR, WF_MGMT_RM, WF_MGMT_GM
+from module_hr.hr_management_chain import (
+    ALL_MGMT_WF_STATUSES,
+    WF_MGMT_HR,
+    WF_MGMT_RM,
+    WF_MGMT_GM,
+    has_management_chain,
+    pending_management_step_for_user,
+    user_mgmt_chain_completed_step,
+)
 
 workflow_bp = Blueprint('workflow_bp', __name__, url_prefix='/api/workflow')
 
@@ -1759,6 +1767,28 @@ def _attach_latest_job_ids(serialized, submission_rows):
         item['latest_job_id'] = latest.get(sub.id)
 
 
+def _query_hr_reviewed_mgmt_chain_for_user(user, list_opts):
+    """HR forms this user already signed on the management chain (any step).
+
+    Legacy GM/HR columns do not record a reporting-manager or OM sign, so a GM
+    who signed as RM would otherwise vanish from My Reviews → Signed off.
+    """
+    past = list(ALL_MGMT_WF_STATUSES) + [
+        'approved', 'completed', 'rejected', 'gm_review', 'hr_review',
+    ]
+    rows = (
+        Submission.query.options(*list_opts)
+        .filter(
+            _filter_hr(),
+            Submission.workflow_status.in_(past),
+        )
+        .order_by(Submission.updated_at.desc())
+        .limit(400)
+        .all()
+    )
+    return [s for s in rows if user_mgmt_chain_completed_step(user, s.form_data)]
+
+
 @workflow_bp.route('/submissions/my-trail', methods=['GET'])
 @jwt_required()
 def get_my_trail():
@@ -1850,6 +1880,14 @@ def get_my_trail():
                 .order_by(Submission.created_at.desc()).all()
             )
 
+        def _hr_awaiting_this_user(sub):
+            fd = sub.form_data if isinstance(sub.form_data, dict) else {}
+            if has_management_chain(fd):
+                return bool(pending_management_step_for_user(fd, sub.workflow_status, user))
+            return True
+
+        hr_pending_rows = [s for s in hr_pending_rows if _hr_awaiting_this_user(s)]
+
         pending_ids = {s.id for s in insp_pending_rows + hr_pending_rows}
         pending_rows = insp_pending_rows + hr_pending_rows
         pending = [_serial(s) for s in pending_rows]
@@ -1905,6 +1943,13 @@ def get_my_trail():
                             [WF_MGMT_RM, 'submitted', 'draft']))
                 .order_by(Submission.updated_at.desc()).all()
             )
+
+        chain_signed = _query_hr_reviewed_mgmt_chain_for_user(user, list_opts)
+        seen_hr = {s.id for s in hr_reviewed_rows}
+        for s in chain_signed:
+            if s.id not in seen_hr:
+                hr_reviewed_rows.append(s)
+                seen_hr.add(s.id)
 
         # Deduplicate — exclude anything already listed as pending
         reviewed_rows = [s for s in insp_reviewed_rows + hr_reviewed_rows if s.id not in pending_ids]

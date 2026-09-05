@@ -1,5 +1,5 @@
 /**
- * Shared “Back to previous” behaviour for module navigation links.
+ * Shared back-link behaviour for module navigation.
  * Prefer same-origin history.back(); otherwise follow the link href (fallback).
  */
 (function () {

@@ -2,8 +2,76 @@
    Ticketing / Work Order — Shared JS
    ========================================================= */
 
-// ── Toast ────────────────────────────────────────────────
+// ── Confirm + Toast ──────────────────────────────────────
 let _toastEl = null;
+function tktConfirm(opts) {
+  const options = opts || {};
+  const title = options.title || 'Are you sure?';
+  const message = options.message || '';
+  const okText = options.okText || 'OK';
+  const cancelText = options.cancelText || 'Cancel';
+  const danger = options.danger !== false;
+
+  return new Promise((resolve) => {
+    let backdrop = document.getElementById('tktConfirmModal');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'tktConfirmModal';
+      backdrop.className = 'tkt-modal-backdrop tkt-confirm-backdrop';
+      backdrop.setAttribute('role', 'dialog');
+      backdrop.setAttribute('aria-modal', 'true');
+      backdrop.innerHTML =
+        '<div class="tkt-modal tkt-confirm-modal">' +
+        '<div class="tkt-modal-header">' +
+        '<h3 id="tktConfirmTitle"></h3>' +
+        '</div>' +
+        '<div class="tkt-modal-body"><p id="tktConfirmMsg"></p></div>' +
+        '<div class="tkt-modal-footer">' +
+        '<button type="button" class="tkt-btn tkt-btn-outline" data-tkt-confirm-cancel></button>' +
+        '<button type="button" class="tkt-btn" data-tkt-confirm-ok></button>' +
+        '</div></div>';
+      document.body.appendChild(backdrop);
+    }
+
+    const titleEl = backdrop.querySelector('#tktConfirmTitle');
+    const msgEl = backdrop.querySelector('#tktConfirmMsg');
+    const cancelBtn = backdrop.querySelector('[data-tkt-confirm-cancel]');
+    const okBtn = backdrop.querySelector('[data-tkt-confirm-ok]');
+    titleEl.textContent = title;
+    msgEl.textContent = message;
+    cancelBtn.textContent = cancelText;
+    okBtn.textContent = okText;
+    okBtn.style.background = danger ? '#dc2626' : '';
+    okBtn.style.color = danger ? '#fff' : '';
+    okBtn.style.border = danger ? 'none' : '';
+    okBtn.style.fontWeight = '600';
+    if (!danger) okBtn.className = 'tkt-btn tkt-btn-primary';
+    else okBtn.className = 'tkt-btn';
+
+    function cleanup(result) {
+      backdrop.classList.remove('open');
+      backdrop.setAttribute('aria-hidden', 'true');
+      backdrop.removeEventListener('click', onBackdrop);
+      cancelBtn.removeEventListener('click', onCancel);
+      okBtn.removeEventListener('click', onOk);
+      document.removeEventListener('keydown', onKey);
+      resolve(result);
+    }
+    function onCancel() { cleanup(false); }
+    function onOk() { cleanup(true); }
+    function onBackdrop(e) { if (e.target === backdrop) cleanup(false); }
+    function onKey(e) { if (e.key === 'Escape') cleanup(false); }
+
+    cancelBtn.addEventListener('click', onCancel);
+    okBtn.addEventListener('click', onOk);
+    backdrop.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKey);
+    backdrop.classList.add('open');
+    backdrop.setAttribute('aria-hidden', 'false');
+    okBtn.focus();
+  });
+}
+
 function tktToast(msg, type = 'info', ms = 3200) {
   if (!_toastEl) {
     _toastEl = document.createElement('div');

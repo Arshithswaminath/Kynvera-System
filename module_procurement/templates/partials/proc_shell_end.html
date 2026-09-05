@@ -1,0 +1,256 @@
+</main>
+</div>{# tkt-content #}
+</div>{# tkt-dh-main #}
+</div></div>{# tkt-dh-page-root / tkt-dh-app-root #}
+
+<div class="modal fade proc-modal" id="procPromptModal" tabindex="-1" aria-labelledby="procPromptTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered prompt-dialog">
+    <div class="modal-content">
+      <div class="modal-body">
+        <div class="proc-prompt-icon" id="procPromptIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+        </div>
+        <h5 class="proc-prompt-title" id="procPromptTitle">Are you sure?</h5>
+        <p class="proc-prompt-msg" id="procPromptMsg"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="proc-prompt-cancel" id="procPromptCancel">Cancel</button>
+        <button type="button" class="proc-prompt-ok" id="procPromptOk">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="proc-notice" id="procNotice" hidden role="status">
+  <span class="proc-notice-icon" id="procNoticeIcon" aria-hidden="true"></span>
+  <div class="proc-notice-body">
+    <p class="proc-notice-kicker" id="procNoticeKicker"></p>
+    <p class="proc-notice-title" id="procNoticeTitle"></p>
+    <ul class="proc-notice-rows" id="procNoticeRows"></ul>
+    <p class="proc-notice-msg" id="procNoticeMsg"></p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.querySelectorAll('.proc-modal').forEach(function (el) {
+    if (el.parentElement !== document.body) document.body.appendChild(el);
+  });
+  var noticeEl = document.getElementById('procNotice');
+  if (noticeEl && noticeEl.parentElement !== document.body) document.body.appendChild(noticeEl);
+  function showProcNotice(payload, kind) {
+    var el = document.getElementById('procNotice');
+    var opts = (payload && typeof payload === 'object') ? payload : { message: payload || '' };
+    if (!el) {
+      window.alert(opts.message || opts.title || '');
+      return Promise.resolve(true);
+    }
+    var isError = kind === 'error';
+    el.classList.toggle('is-error', isError);
+    var icon = document.getElementById('procNoticeIcon');
+    if (icon) {
+      icon.innerHTML = isError
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>';
+    }
+    var kicker = document.getElementById('procNoticeKicker');
+    var title = document.getElementById('procNoticeTitle');
+    var msg = document.getElementById('procNoticeMsg');
+    var rows = document.getElementById('procNoticeRows');
+    if (kicker) {
+      kicker.textContent = opts.kicker || (isError ? 'Couldn’t complete' : '');
+      kicker.hidden = !kicker.textContent;
+    }
+    if (title) {
+      title.textContent = opts.title || '';
+      title.hidden = !opts.title;
+    }
+    if (msg) {
+      msg.textContent = opts.message || '';
+      msg.hidden = !opts.message;
+    }
+    if (rows) {
+      rows.innerHTML = '';
+      (opts.rows || []).forEach(function (row) {
+        var li = document.createElement('li');
+        li.className = 'proc-notice-row';
+        var label = document.createElement('span');
+        label.textContent = row.label || '';
+        var val = document.createElement('b');
+        val.textContent = String(row.value == null ? '' : row.value);
+        if (row.note) {
+          var note = document.createElement('em');
+          note.textContent = row.note;
+          val.appendChild(note);
+        }
+        li.appendChild(label);
+        li.appendChild(val);
+        rows.appendChild(li);
+      });
+      rows.hidden = !rows.childElementCount;
+    }
+    el.hidden = false;
+    el.classList.remove('is-in');
+    requestAnimationFrame(function () { el.classList.add('is-in'); });
+    clearTimeout(window._procNoticeT);
+    window._procNoticeT = setTimeout(function () {
+      el.classList.remove('is-in');
+      el.hidden = true;
+    }, 3200);
+    el.onclick = function () {
+      clearTimeout(window._procNoticeT);
+      el.classList.remove('is-in');
+      el.hidden = true;
+    };
+    return Promise.resolve(true);
+  }
+  window.procHint = function (message) { return showProcNotice(message, 'ok'); };
+  window.procAlert = function (message) { return showProcNotice(message, 'error'); };
+  window.procPrompt = function (opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      var el = document.getElementById('procPromptModal');
+      if (!el || typeof bootstrap === 'undefined') {
+        if (opts.cancelText === '') {
+          window.alert(opts.message || '');
+          resolve(true);
+        } else {
+          resolve(window.confirm(opts.message || ''));
+        }
+        return;
+      }
+      var title = document.getElementById('procPromptTitle');
+      var msg = document.getElementById('procPromptMsg');
+      var ok = document.getElementById('procPromptOk');
+      var cancel = document.getElementById('procPromptCancel');
+      var icon = document.getElementById('procPromptIcon');
+      title.textContent = opts.title || 'Are you sure?';
+      msg.textContent = opts.message || '';
+      ok.textContent = opts.okText || 'OK';
+      cancel.textContent = opts.cancelText || 'Cancel';
+      cancel.hidden = opts.cancelText === '';
+      ok.classList.toggle('is-danger', !!opts.danger);
+      if (icon) {
+        var isInfo = !!opts.info && !opts.danger;
+        icon.classList.toggle('is-info', isInfo);
+        icon.classList.toggle('is-danger', !!opts.danger);
+        icon.innerHTML = isInfo
+          ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 11.25V16.5"/><circle cx="12" cy="8.25" r="1" fill="currentColor" stroke="none"/></svg>'
+          : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>';
+      }
+      var inst = bootstrap.Modal.getOrCreateInstance(el, { backdrop: 'static', keyboard: true });
+      var settled = false;
+      function finish(val) {
+        if (settled) return;
+        settled = true;
+        inst.hide();
+        resolve(val);
+      }
+      ok.onclick = function () { finish(true); };
+      cancel.onclick = function () { finish(false); };
+      el.addEventListener('hidden.bs.modal', function onHide() {
+        el.removeEventListener('hidden.bs.modal', onHide);
+        if (!settled) finish(false);
+      });
+      inst.show();
+    });
+  };
+</script>
+<script src="{{ url_for('static', filename='api-client.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}?v=22" defer></script>
+<script>window.FILES_SAVE_MODULE = 'procurement'; window.FILES_SAVE_MODULE_LABEL = 'Procurement';</script>
+<script src="{{ url_for('static', filename='js/files-save.js') }}?v=16"></script>
+<script>
+  function procAuthHeaders(extra) {
+    const h = Object.assign({ 'Content-Type': 'application/json' }, extra || {});
+    const t = localStorage.getItem('access_token');
+    if (t) h['Authorization'] = 'Bearer ' + t;
+    return h;
+  }
+  function tktOpenMobileSidebar(){
+    const s=document.getElementById('tktDhSidebar');
+    const o=document.getElementById('tktDhOverlay');
+    const btn=document.getElementById('tktDhSidebarToggle');
+    if(s)s.classList.add('open');
+    if(o){o.classList.add('active');o.setAttribute('aria-hidden','false');}
+    if(btn){btn.setAttribute('aria-expanded','true');btn.setAttribute('aria-label','Close procurement menu');}
+  }
+  function tktCloseMobileSidebar(){
+    const s=document.getElementById('tktDhSidebar');
+    const o=document.getElementById('tktDhOverlay');
+    const btn=document.getElementById('tktDhSidebarToggle');
+    if(s)s.classList.remove('open');
+    if(o){o.classList.remove('active');o.setAttribute('aria-hidden','true');}
+    if(btn){btn.setAttribute('aria-expanded','false');btn.setAttribute('aria-label','Open procurement menu');}
+  }
+  function tktToggleMobileSidebar(){
+    const s=document.getElementById('tktDhSidebar');
+    if(!s)return;
+    s.classList.contains('open')?tktCloseMobileSidebar():tktOpenMobileSidebar();
+  }
+  (function procScrollActiveNav(){
+    var item=document.querySelector('#tktDhSidebar .sb-nav-item.active');
+    if(item && item.scrollIntoView) item.scrollIntoView({block:'nearest'});
+  })();
+  document.addEventListener('click',function(e){
+    const s=document.getElementById('tktDhSidebar'),btn=document.getElementById('tktDhSidebarToggle');
+    if(s&&s.classList.contains('open')&&!s.contains(e.target)&&btn&&!btn.contains(e.target))tktCloseMobileSidebar();
+  });
+  document.querySelectorAll('#tktDhSidebar .sb-nav-item').forEach(function(el){
+    el.addEventListener('click',function(){ tktCloseMobileSidebar(); });
+  });
+
+  (function procRefillNavHint() {
+    var SEEN_KEY = 'proc_refill_seen_at';
+    var hint = document.getElementById('procRefillHint');
+    var countEl = document.getElementById('procRefillCount');
+    var newEl = document.getElementById('procRefillNew');
+    var nav = document.getElementById('procRefillNav');
+    if (!hint || !countEl) return;
+    var onRefill = (location.pathname || '').indexOf('/procurement/refill') !== -1;
+
+    function apply(data) {
+      var total = Number((data && data.total) || 0);
+      var newest = (data && data.newest_at) || '';
+      var out = Number((data && data.out_of_stock) || 0);
+      if (!total) {
+        hint.hidden = true;
+        if (nav) nav.setAttribute('aria-label', 'Refill queue');
+        return;
+      }
+      hint.hidden = false;
+      countEl.textContent = total > 99 ? '99+' : String(total);
+      var seen = '';
+      try { seen = localStorage.getItem(SEEN_KEY) || ''; } catch (e) {}
+      var isNew = !!(newest && newest > seen);
+      if (newEl) newEl.hidden = !isNew || onRefill;
+      countEl.classList.toggle('sb-badge--alert', isNew || out > 0);
+      if (nav) {
+        nav.setAttribute(
+          'aria-label',
+          isNew && !onRefill
+            ? 'Refill queue, ' + total + ' items, new since last visit'
+            : 'Refill queue, ' + total + ' items'
+        );
+      }
+      if (onRefill && newest) {
+        try { localStorage.setItem(SEEN_KEY, newest); } catch (e) {}
+        if (newEl) newEl.hidden = true;
+      }
+    }
+
+    function load() {
+      fetch('/procurement/api/refill/summary', { headers: procAuthHeaders() })
+        .then(function (res) { return res.json(); })
+        .then(apply)
+        .catch(function () {});
+    }
+    load();
+    setInterval(function () {
+      if (document.hidden) return;
+      load();
+    }, 45000);
+  })();
+</script>
+</body>
+</html>

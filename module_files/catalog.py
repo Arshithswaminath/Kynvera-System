@@ -1,4 +1,4 @@
-"""Predictable Save-to-Files options per source module."""
+"""Predictable Save-to-Files options per source module + Excel template library."""
 
 from __future__ import annotations
 
@@ -89,7 +89,7 @@ MODULE_OPTIONS = {
         ],
     },
     'mmr': {
-        'label': 'Report Generation (MMR)',
+        'label': 'Report Generation',
         'folder_path_key': 'reports/mmr',
         'folder_label': 'Reports / MMR',
         'options': [
@@ -150,11 +150,104 @@ MODULE_OPTIONS = {
         'label': 'Service Tickets',
         'folder_path_key': 'ticketing',
         'folder_label': 'Service Tickets',
-        'options': [],
+        'options': [
+            {
+                'kind': 'locations',
+                'label': 'Location hierarchy template (Excel)',
+                'description': 'Blank Property / Zone / Sub Zone / Base Unit import workbook.',
+            },
+        ],
     },
 }
 
+# Access flags: admin always sees all; otherwise require the listed User attribute
+# (or 'access_files' / role checks applied in list_excel_templates_for_user).
+EXCEL_TEMPLATES = [
+    {
+        'id': 'manpower',
+        'module': 'manpower',
+        'kind': 'template',
+        'label': 'Manpower vacancies template',
+        'filename': 'Manpower_Tracker_Template.xlsx',
+        'description': 'Blank template for importing vacancies.',
+        'module_label': 'HR / Manpower',
+        'access': 'access_hiring',
+    },
+    {
+        'id': 'leave',
+        'module': 'leave',
+        'kind': 'template',
+        'label': 'Leave log template',
+        'filename': 'Leave_Log_Template.xlsx',
+        'description': 'Blank leave-log template for the current window.',
+        'module_label': 'HR / Leave Tracker',
+        'access': 'access_hiring',
+    },
+    {
+        'id': 'hiring',
+        'module': 'hiring',
+        'kind': 'template',
+        'label': 'Hiring document tracker template',
+        'filename': 'Hiring_Document_Tracker_Template.xlsx',
+        'description': 'Blank template for importing hiring candidates.',
+        'module_label': 'HR / Hiring Docs',
+        'access': 'access_hiring',
+    },
+    {
+        'id': 'procurement',
+        'module': 'procurement',
+        'kind': 'template',
+        'label': 'Procurement materials sample',
+        'filename': 'Procurement_Import_Sample.xlsx',
+        'description': 'Sample import workbook for materials.',
+        'module_label': 'Procurement',
+        'access': 'access_procurement_module',
+    },
+    {
+        'id': 'qhsi',
+        'module': 'qhsi',
+        'kind': 'template',
+        'label': 'QHSE staff compliance template',
+        'filename': 'QHSE_Staff_Compliance_Import_Template.xlsx',
+        'description': 'Blank template for staff compliance import.',
+        'module_label': 'QHSE / Staff Compliance',
+        'access': 'access_qhsi',
+    },
+    {
+        'id': 'devices',
+        'module': 'devices',
+        'kind': 'template',
+        'label': 'Device import sample',
+        'filename': 'Device_Import_Sample.xlsx',
+        'description': 'Sample workbook for bulk device import.',
+        'module_label': 'Admin / Devices',
+        'access': 'access_files',
+    },
+    {
+        'id': 'technicians',
+        'module': 'technicians',
+        'kind': 'template',
+        'label': 'Technicians import template',
+        'filename': 'Technicians_Import_Template.xlsx',
+        'description': 'Blank template for technician bulk import.',
+        'module_label': 'Admin / Technicians',
+        'access': 'access_files',
+    },
+    {
+        'id': 'locations',
+        'module': 'ticketing',
+        'kind': 'locations',
+        'label': 'Location hierarchy template',
+        'filename': 'Location_Template.xlsx',
+        'description': 'Blank Property / Zone / Sub Zone / Base Unit import workbook.',
+        'module_label': 'Service Tickets',
+        'access': 'access_ticketing',
+    },
+]
+
+
 DEFAULT_FOLDER_TREE = [
+    {'path_key': 'branding', 'name': 'Branding', 'parent_key': None},
     {'path_key': 'hr', 'name': 'HR', 'parent_key': None},
     {'path_key': 'hr/leave', 'name': 'Leave Tracker', 'parent_key': 'hr'},
     {'path_key': 'hr/manpower', 'name': 'Manpower', 'parent_key': 'hr'},
@@ -168,6 +261,8 @@ DEFAULT_FOLDER_TREE = [
     {'path_key': 'admin/technicians', 'name': 'Technicians', 'parent_key': 'admin'},
     {'path_key': 'dochub', 'name': 'DocHub', 'parent_key': None},
     {'path_key': 'ticketing', 'name': 'Service Tickets', 'parent_key': None},
+    {'path_key': 'qhse', 'name': 'QHSE', 'parent_key': None},
+    {'path_key': 'qhse/staff', 'name': 'Staff Compliance', 'parent_key': 'qhse'},
 ]
 
 
@@ -178,11 +273,60 @@ def get_module_catalog(module: str) -> dict | None:
         'ticket': 'ticketing',
         'service_tickets': 'ticketing',
         'service_ticket': 'ticketing',
+        'qhse': 'qhsi',
     }
     resolved = aliases.get(key, key)
-    if resolved == 'qhsi':
-        return None
     return MODULE_OPTIONS.get(resolved)
+
+
+def get_excel_template(template_id: str) -> dict | None:
+    tid = (template_id or '').strip().lower()
+    for entry in EXCEL_TEMPLATES:
+        if entry['id'] == tid:
+            return entry
+    return None
+
+
+def user_can_see_excel_template(user, entry: dict) -> bool:
+    """Admin sees all; others need the template's access flag (or access_files for admin templates)."""
+    if not user:
+        return False
+    if getattr(user, 'role', None) == 'admin':
+        return True
+    access = entry.get('access') or ''
+    if access == 'access_hiring':
+        hiring_fn = getattr(user, 'has_hiring_submodule', None)
+        hiring_ok = bool(hiring_fn()) if callable(hiring_fn) else bool(getattr(user, 'access_hiring', False))
+        return hiring_ok or bool(getattr(user, 'access_files', False))
+    if access == 'access_hr':
+        return bool(getattr(user, 'access_hr', False) or getattr(user, 'access_files', False))
+    if access == 'access_procurement_module':
+        return bool(getattr(user, 'access_procurement_module', False) or getattr(user, 'access_files', False))
+    if access == 'access_qhsi':
+        return bool(getattr(user, 'access_qhsi', False) or getattr(user, 'access_files', False))
+    if access == 'access_ticketing':
+        return bool(getattr(user, 'access_ticketing', False) or getattr(user, 'access_files', False))
+    if access == 'access_files':
+        return bool(getattr(user, 'access_files', False))
+    return False
+
+
+def list_excel_templates_for_user(user) -> list[dict]:
+    """Return public template dicts the user is allowed to see."""
+    out = []
+    for entry in EXCEL_TEMPLATES:
+        if not user_can_see_excel_template(user, entry):
+            continue
+        out.append({
+            'id': entry['id'],
+            'module': entry['module'],
+            'kind': entry['kind'],
+            'label': entry['label'],
+            'filename': entry['filename'],
+            'description': entry['description'],
+            'module_label': entry['module_label'],
+        })
+    return out
 
 
 def list_dochub_document_options() -> list:
@@ -274,4 +418,4 @@ def expand_module_catalog(module: str, catalog: dict, user=None) -> dict:
 
 
 def list_catalog() -> dict:
-    return {k: v for k, v in MODULE_OPTIONS.items() if k != 'qhsi'}
+    return dict(MODULE_OPTIONS)

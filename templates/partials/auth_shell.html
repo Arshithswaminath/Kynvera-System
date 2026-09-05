@@ -6,12 +6,13 @@
      {% endcall %}
 
    form_variant: 'default' | 'register' | 'status'
+   sheet_closed: start with the mobile form sheet dismissed (login/register splash)
    steps (register only): list of {num, label, state} where state is '' | 'active' | 'done'
 #}
-{% macro auth_shell(headline=None, description=None, footer=None, form_variant='default', steps=None) %}
-<div class="auth-shell">
+{% macro auth_shell(headline=None, description=None, footer=None, form_variant='default', steps=None, sheet_closed=false) %}
+{% set sheetable = form_variant == 'default' or form_variant == 'register' %}
+<div class="auth-shell{% if form_variant != 'status' %} auth-shell--split{% endif %}{% if sheet_closed %} auth-shell--sheet-closed{% endif %}{% if sheetable %} auth-shell--ready{% endif %}">
   <div class="auth-shell-overlay" aria-hidden="true"></div>
-
   <a href="{{ url_for('index') }}" class="auth-back" aria-label="Back to home">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M15 18l-6-6 6-6"/>
@@ -63,7 +64,12 @@
       </div>
       {% endif %}
 
-      <div class="auth-form-panel{% if form_variant == 'status' %} auth-status-panel{% endif %}">
+      <div class="auth-form-panel{% if form_variant == 'status' %} auth-status-panel{% endif %}"{% if sheetable %} id="auth-form-panel"{% if sheet_closed %} aria-hidden="true" inert{% endif %}{% endif %}>
+        {% if sheetable %}
+        <button type="button" class="auth-sheet-handle" id="auth-sheet-handle" aria-label="{{ 'Close sign up' if form_variant == 'register' else 'Close sign in' }}" aria-expanded="{{ 'false' if sheet_closed else 'true' }}" aria-controls="auth-form-panel">
+          <span class="auth-sheet-handle-bar" aria-hidden="true"></span>
+        </button>
+        {% endif %}
         <div class="auth-form-panel-glow" aria-hidden="true"></div>
 
         {% if form_variant == 'status' %}
@@ -72,9 +78,6 @@
         </div>
         {% else %}
         <div class="auth-form-inner{% if form_variant == 'register' %} auth-form-inner--register{% endif %}">
-          <div class="auth-mobile-logo">
-            <img src="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}" alt="Kynvera" class="auth-logo auth-logo--md">
-          </div>
           <div class="auth-form-content">
             {{ caller() }}
           </div>
@@ -84,6 +87,12 @@
         </div>
         {% endif %}
       </div>
+
+      {% if sheetable %}
+      <button type="button" class="auth-sheet-peek" id="auth-sheet-peek" form="" aria-label="{{ 'Open sign up' if form_variant == 'register' else 'Open sign in' }}" aria-controls="auth-form-panel" aria-expanded="{{ 'true' if not sheet_closed else 'false' }}" aria-hidden="{{ 'false' if sheet_closed else 'true' }}">
+        <span class="auth-sheet-handle-bar" aria-hidden="true"></span>
+      </button>
+      {% endif %}
 
     </div>
   </div>

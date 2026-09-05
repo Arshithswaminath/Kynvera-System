@@ -15,13 +15,22 @@ from flask import (
     request,
     send_file,
 )
+from io import BytesIO
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.models import FilesItem, User, db
 from common.error_responses import error_response, success_response
 from module_files import drive_service
 from module_files import service as files_service
-from module_files.catalog import expand_module_catalog, get_module_catalog, list_catalog
+from module_files import sync_job
+from module_files.catalog import (
+    expand_module_catalog,
+    get_excel_template,
+    get_module_catalog,
+    list_catalog,
+    list_excel_templates_for_user,
+    user_can_see_excel_template,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +116,115 @@ def api_tree():
     tree = files_service.build_tree()
     tree['drive'] = drive_service.drive_status()
     return success_response(tree)
+
+
+# ── Excel template library (local, Drive opt-in) ─────────────────────────────
+
+@files_bp.route('/api/templates', methods=['GET'])
+@jwt_required()
+def api_templates_list():
+    user, err = _require_files_user()
+    if err:
+        return err
+    templates = list_excel_templates_for_user(user)
+    return success_response({
+        'templates': templates,
+        'count': len(templates),
+        'unsynced_count': files_service.count_unsynced_items(),
+        'drive': drive_service.drive_status(),
+    })
+
+
+@files_bp.route('/api/templates/<template_id>/download', methods=['GET'])
+@jwt_required()
+def api_template_download(template_id):
+    user, err = _require_files_user()
+    if err:
+        return err
+    entry = get_excel_template(template_id)
+    if not entry:
+        return error_response('Template not found', status_code=404)
+    if not user_can_see_excel_template(user, entry):
+        return error_response('Access denied', status_code=403)
+    try:
+        data, filename, _display = files_service.build_excel_template_bytes(template_id)
+    except ValueError as ve:
+        return error_response(str(ve), status_code=400)
+    except Exception as e:
+        logger.exception('template download failed id=%s', template_id)
+        return error_response(f'Could not build template: {e}', status_code=500)
+    return send_file(
+        BytesIO(data),
+        as_attachment=True,
+        download_name=filename,
+        mimetype=files_service.XLSX_MIME,
+    )
+
+
+@files_bp.route('/api/templates/download-zip', methods=['POST'])
+@jwt_required()
+def api_templates_download_zip():
+    user, err = _require_files_user()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    ids = data.get('ids')
+    if not isinstance(ids, list):
+        ids = []
+    try:
+        zip_bytes, zip_name = files_service.build_templates_zip(ids, user=user)
+    except ValueError as ve:
+        return error_response(str(ve), status_code=400)
+    except Exception as e:
+        logger.exception('template zip failed')
+        return error_response(f'Could not build zip: {e}', status_code=500)
+    return send_file(
+        BytesIO(zip_bytes),
+        as_attachment=True,
+        download_name=zip_name,
+        mimetype='application/zip',
+    )
+
+
+@files_bp.route('/api/templates/push-to-drive', methods=['POST'])
+@jwt_required()
+def api_templates_push_to_drive():
+    user, err = _require_files_user()
+    if err:
+        return err
+    status = drive_service.drive_status()
+    if not status.get('connected'):
+        return error_response('Connect Google Drive first', status_code=400)
+    data = request.get_json(silent=True) or {}
+    ids = data.get('ids')
+    if not isinstance(ids, list) or not ids:
+        return error_response('Select at least one template', status_code=400)
+    try:
+        result = files_service.push_excel_templates_to_drive(
+            ids, created_by=user.id, user=user
+        )
+    except ValueError as ve:
+        return error_response(str(ve), status_code=400)
+    except Exception as e:
+        logger.exception('push templates to drive failed')
+        return error_response(str(e), status_code=500)
+    saved = result['saved']
+    synced = len(result.get('synced') or [])
+    failed = result.get('failed') or []
+    if not saved and failed:
+        first = failed[0].get('error') or 'Could not push templates'
+        return error_response(first, status_code=400)
+    noun = 'template' if saved == 1 else 'templates'
+    return success_response(
+        {
+            'items': [i.to_dict() for i in result['items']],
+            'saved': saved,
+            'synced': result.get('synced') or [],
+            'failed': failed,
+            'message': f'Pushed {synced} of {saved} {noun} to Google Drive.',
+        },
+        message=f'Pushed {synced} of {saved} {noun} to Google Drive',
+    )
 
 
 # ── Save from Leave / Manpower ──────────────────────────────────────────────
@@ -438,18 +556,42 @@ def api_sync_item(item_id):
     return success_response({'item': item.to_dict()})
 
 
+def _parse_sync_ids(data) -> list:
+    ids = []
+    raw = (data or {}).get('ids') if isinstance(data, dict) else None
+    if raw is None:
+        return ids
+    if not isinstance(raw, list):
+        return ids
+    for x in raw:
+        try:
+            n = int(x)
+        except (TypeError, ValueError):
+            continue
+        if n not in ids:
+            ids.append(n)
+    return ids
+
+
+def _require_drive_ready():
+    if not drive_service.drive_enabled():
+        raise RuntimeError('Google Drive sync is disabled')
+    if not drive_service.drive_configured():
+        raise RuntimeError('Google Drive credentials are not configured')
+    if not drive_service.get_connection():
+        raise RuntimeError('Connect Google Drive first')
+
+
+def _start_selected_sync(user, item_ids, folder_id=None):
+    _require_drive_ready()
+    return sync_job.start_sync_job(user.id, item_ids, folder_id=folder_id)
+
+
 @files_bp.route('/api/sync-pending', methods=['POST'])
 @jwt_required()
 def api_sync_pending():
-    """Legacy route — same as Sync now."""
-    user, err = _require_files_user()
-    if err:
-        return err
-    try:
-        result = drive_service.sync_now()
-    except Exception as e:
-        return error_response(str(e), status_code=400)
-    return success_response(result)
+    """Legacy route — same as Sync now (selected ids only)."""
+    return api_sync_now()
 
 
 @files_bp.route('/api/sync-now', methods=['POST'])
@@ -458,11 +600,25 @@ def api_sync_now():
     user, err = _require_files_user()
     if err:
         return err
+    ids = _parse_sync_ids(request.get_json(silent=True) or {})
+    if not ids:
+        return error_response('Select files to sync', status_code=400)
     try:
-        result = drive_service.sync_now()
+        result = _start_selected_sync(user, ids)
+    except ValueError as ve:
+        return error_response(str(ve), status_code=400)
     except Exception as e:
         return error_response(str(e), status_code=400)
-    return success_response(result)
+    return success_response(result, status_code=202)
+
+
+@files_bp.route('/api/sync-status', methods=['GET'])
+@jwt_required()
+def api_sync_status():
+    user, err = _require_files_user()
+    if err:
+        return err
+    return success_response({'job': sync_job.get_latest_job(user.id)})
 
 
 @files_bp.route('/api/drive/resolve-missing', methods=['POST'])
@@ -494,9 +650,13 @@ def api_sync_folder(folder_id):
     if err:
         return err
     try:
-        result = drive_service.sync_folder(folder_id)
+        _require_drive_ready()
+        ids = sync_job.collect_folder_item_ids(folder_id)
+        if not ids:
+            return error_response('No files in this folder to sync', status_code=400)
+        result = sync_job.start_sync_job(user.id, ids, folder_id=folder_id)
     except ValueError as ve:
         return error_response(str(ve), status_code=400)
     except Exception as e:
         return error_response(str(e), status_code=400)
-    return success_response(result)
+    return success_response(result, status_code=202)

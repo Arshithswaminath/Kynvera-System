@@ -126,6 +126,8 @@ def test_twin_drawing_page_has_ops_hooks(client, app, admin_auth_headers):
         assert 'Place pins' in html
         assert 'downloadPlanBtn' in html
         assert 'Download drawing' in html
+        assert 'replaceImageBtn' in html
+        assert 'Replace drawing' in html
         assert 'fm-twin.js' in html
     finally:
         _cleanup(app, plan_id=plan_id)
@@ -136,6 +138,8 @@ def test_twin_js_exports_drawing_with_kynvera_logo():
     assert 'function downloadDrawing' in js
     assert 'kynvera-wordmark.png' in js
     assert 'drawKynveraFooter' in js
+    assert 'replaceImageBtn' in js
+    assert '/image' in js
 
 
 def test_twin_legacy_plan_query_redirects(client, app, admin_auth_headers):
@@ -397,8 +401,32 @@ def test_image_upload(client, app, admin_auth_headers):
             content_type='multipart/form-data',
         )
         assert res.status_code == 200
-        url = res.get_json()['image_url']
-        assert url.startswith('/static/uploads/floor-plans/')
+        payload = res.get_json()
+        url = payload['image_url']
+        assert url.startswith('/generated/uploads/') or url.startswith('http')
+        file_res = client.get(
+            f'/assets/api/floor-plans/{plan_id}/file',
+            headers=admin_auth_headers,
+        )
+        assert file_res.status_code in (200, 302)
+        if file_res.status_code == 200:
+            assert (file_res.mimetype or '').startswith('image')
+    finally:
+        _cleanup(app, plan_id=plan_id)
+
+
+def test_missing_local_plan_image_uses_placeholder(client, app, admin_auth_headers):
+    plan_id = _add_plan(app, image_url='/static/uploads/floor-plans/plan-1-missing.jpeg')
+    try:
+        res = client.get(f'/assets/api/floor-plans/{plan_id}', headers=admin_auth_headers)
+        assert res.status_code == 200
+        display = res.get_json()['plan']['display_url']
+        assert display.startswith('data:image/svg+xml')
+        missing = client.get(
+            f'/assets/api/floor-plans/{plan_id}/file',
+            headers=admin_auth_headers,
+        )
+        assert missing.status_code == 404
     finally:
         _cleanup(app, plan_id=plan_id)
 

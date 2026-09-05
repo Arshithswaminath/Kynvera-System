@@ -719,8 +719,8 @@ def sync_pending() -> dict:
     return sync_now()
 
 
-def sync_now() -> dict:
-    """Push full folder structure (create/rename) + all pending/error files to Drive.
+def sync_now(item_ids: Optional[list] = None) -> dict:
+    """Push folder structure plus selected (or all pending) files to Drive.
 
     Does not auto-recreate items deleted on Drive — returns missing_on_drive for the UI
     to ask whether to delete locally or keep and restore.
@@ -741,9 +741,17 @@ def sync_now() -> dict:
     root_id = _ensure_root_drive_folder(service, conn)
     folder_stats = _sync_all_local_folders(service, root_id, recreate_missing=False)
 
-    items = FilesItem.query.filter(
-        FilesItem.sync_status.in_(['local', 'error'])
-    ).order_by(FilesItem.id.asc()).all()
+    if item_ids:
+        wanted = {int(x) for x in item_ids}
+        items = (
+            FilesItem.query.filter(FilesItem.id.in_(wanted))
+            .order_by(FilesItem.id.asc())
+            .all()
+        )
+    else:
+        items = FilesItem.query.filter(
+            FilesItem.sync_status.in_(['local', 'error'])
+        ).order_by(FilesItem.id.asc()).all()
     ok, failed = [], []
     for item in items:
         if item.id in missing_item_ids or item.folder_id in missing_folder_ids:

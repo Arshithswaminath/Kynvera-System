@@ -9,7 +9,11 @@
     items: [],
     drive: {},
     currentFolderId: null, // null = all
+    viewMode: 'folder', // 'folder' | 'templates' | 'unsynced'
+    templates: [],
     selected: {},
+    selectedTemplates: {},
+    query: '',
     modalMode: null, // 'folder' | 'rename-folder' | 'rename-item'
     modalTargetId: null,
     driveSetupInFlight: false,
@@ -119,6 +123,13 @@
     return parts.join(' · ');
   }
 
+  function setSidebarToggleState(open) {
+    var toggle = document.getElementById('filesSidebarToggle');
+    if (!toggle) return;
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.setAttribute('aria-label', open ? 'Close Files menu' : 'Open Files menu');
+  }
+
   window.filesToggleSidebar = function () {
     var sb = document.getElementById('filesSidebar');
     var ov = document.getElementById('filesOverlay');
@@ -126,9 +137,10 @@
     var open = !sb.classList.contains('open');
     sb.classList.toggle('open', open);
     if (ov) {
-      ov.classList.toggle('open', open);
+      ov.classList.toggle('active', open);
       ov.setAttribute('aria-hidden', open ? 'false' : 'true');
     }
+    setSidebarToggleState(open);
   };
 
   window.filesCloseSidebar = function () {
@@ -136,9 +148,10 @@
     var ov = document.getElementById('filesOverlay');
     if (sb) sb.classList.remove('open');
     if (ov) {
-      ov.classList.remove('open');
+      ov.classList.remove('active');
       ov.setAttribute('aria-hidden', 'true');
     }
+    setSidebarToggleState(false);
   };
 
   function folderChildren(parentId) {
@@ -185,9 +198,10 @@
 
     var html = '';
     var allCount = state.items.length;
+    var allActive = state.viewMode === 'folder' && state.currentFolderId === null;
     html +=
       '<div class="files-folder-row files-folder-row--all' +
-      (state.currentFolderId === null ? ' is-active' : '') +
+      (allActive ? ' is-active' : '') +
       '">' +
       '<span class="files-folder-chevron-spacer" aria-hidden="true"></span>' +
       '<button type="button" class="files-folder-item files-folder-item--all" data-folder-id="">' +
@@ -202,7 +216,7 @@
       folderChildren(parentId).forEach(function (f) {
         var kids = folderChildren(f.id);
         var hasKids = kids.length > 0;
-        var active = String(state.currentFolderId) === String(f.id);
+        var active = state.viewMode === 'folder' && String(state.currentFolderId) === String(f.id);
         var open = hasKids && isExpanded(f.id);
         var count = itemCountInFolder(f.id);
         var kind = hasKids ? 'parent' : 'leaf';
@@ -242,10 +256,13 @@
       if (btn.getAttribute('data-folder-act')) return;
       btn.addEventListener('click', function () {
         var id = btn.getAttribute('data-folder-id');
+        state.viewMode = 'folder';
         state.currentFolderId = id === '' ? null : parseInt(id, 10);
         state.selected = {};
+        state.selectedTemplates = {};
+        renderLocalNav();
         renderTree();
-        renderTable();
+        renderMain();
         filesCloseSidebar();
       });
     });
@@ -278,16 +295,12 @@
       .replace(/"/g, '&quot;');
   }
 
-  function visibleItems() {
-    if (state.currentFolderId == null) return state.items.slice();
-    return state.items.filter(function (i) { return i.folder_id === state.currentFolderId; });
-  }
-
-  function syncBadge(status) {
-    var s = status || 'local';
-    var cls = 'files-sync files-sync-' + (s === 'synced' ? 'synced' : s === 'error' ? 'error' : 'local');
-    var label = s === 'synced' ? 'Synced' : s === 'error' ? 'Error' : 'Local';
-    return '<span class="' + cls + '">' + label + '</span>';
+  function titleCaseWords(s) {
+    return String(s || '')
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
   }
 
   function sourceLabel(item) {
@@ -297,16 +310,326 @@
       manpower: 'Manpower',
       leave: 'Leave',
       hiring: 'Hiring',
+      hr: 'HR',
       procurement: 'Procurement',
       qhsi: 'QHSE',
       mmr: 'MMR',
       devices: 'Devices',
       technicians: 'Technicians',
       upload: 'Upload',
+      branding: 'Branding',
+      dochub: 'DocHub',
+      ticketing: 'Ticketing',
+      bd: 'BD',
     };
-    var base = names[m] || m || '—';
-    if (m === 'upload') return base;
-    return base + ' · ' + (k || '—');
+    var kinds = {
+      template: 'Template',
+      export: 'Export',
+      upload: 'Upload',
+      ui_snapshot: 'Snapshot',
+      'brand-asset': 'Brand asset',
+      'brand-kit-2.0': 'Brand kit',
+      locations: 'Locations',
+    };
+    var base = names[m] || titleCaseWords(m) || '—';
+    if (!k || m === 'upload' || k === 'upload') return base;
+    if (k.indexOf('doc:') === 0) return base + ' · Document';
+    if (k.indexOf('ticket:') === 0) {
+      if (k.indexOf(':report') !== -1) return base + ' · Report';
+      if (k.indexOf(':invoice') !== -1) return base + ' · Invoice';
+      return base + ' · Ticket';
+    }
+    var kindLabel = kinds[k] || titleCaseWords(k);
+    if (kindLabel && kindLabel !== base) return base + ' · ' + kindLabel;
+    return base;
+  }
+
+  function matchesQuery(hay) {
+    var q = (state.query || '').trim().toLowerCase();
+    if (!q) return true;
+    return String(hay || '').toLowerCase().indexOf(q) !== -1;
+  }
+
+  function visibleItems() {
+    var items;
+    if (state.viewMode === 'unsynced') {
+      items = state.items.filter(function (i) {
+        return i.sync_status === 'local' || i.sync_status === 'error';
+      });
+    } else if (state.currentFolderId == null) {
+      items = state.items.slice();
+    } else {
+      items = state.items.filter(function (i) { return i.folder_id === state.currentFolderId; });
+    }
+    return items.filter(function (i) {
+      return matchesQuery((i.name || '') + ' ' + (i.filename || '') + ' ' + sourceLabel(i));
+    });
+  }
+
+  function visibleTemplates() {
+    return (state.templates || []).filter(function (t) {
+      return matchesQuery(
+        (t.label || '') + ' ' + (t.filename || '') + ' ' +
+        (t.module_label || t.module || '') + ' ' + (t.description || '')
+      );
+    });
+  }
+
+  function folderById(id) {
+    return state.folders.find(function (f) { return f.id === id; });
+  }
+
+  function folderPath(folderId) {
+    var path = [];
+    var id = folderId;
+    var guard = 0;
+    while (id != null && guard++ < 40) {
+      var f = folderById(id);
+      if (!f) break;
+      path.unshift(f);
+      id = f.parent_id || null;
+    }
+    return path;
+  }
+
+  function renderCrumb() {
+    var el = document.getElementById('filesCrumb');
+    if (!el) return;
+    if (state.viewMode !== 'folder' || state.currentFolderId == null) {
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+    var path = folderPath(state.currentFolderId);
+    if (!path.length) {
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+    el.hidden = false;
+    var html = '<button type="button" class="files-crumb-btn" data-crumb="">All files</button>';
+    path.forEach(function (f, i) {
+      html += '<span class="files-crumb-sep" aria-hidden="true">›</span>';
+      if (i === path.length - 1) {
+        html += '<span class="files-crumb-current">' + escapeHtml(f.name) + '</span>';
+      } else {
+        html += '<button type="button" class="files-crumb-btn" data-crumb="' + f.id + '">' + escapeHtml(f.name) + '</button>';
+      }
+    });
+    el.innerHTML = html;
+    el.querySelectorAll('[data-crumb]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-crumb');
+        state.viewMode = 'folder';
+        state.currentFolderId = id === '' ? null : parseInt(id, 10);
+        state.selected = {};
+        renderLocalNav();
+        renderTree();
+        renderMain();
+      });
+    });
+  }
+
+  function updateSearchPlaceholder() {
+    var search = document.getElementById('filesSearch');
+    if (!search) return;
+    search.placeholder = state.viewMode === 'templates' ? 'Search templates…' : 'Search files…';
+    search.setAttribute('aria-label', search.placeholder);
+  }
+
+  function unsyncedCount() {
+    return state.items.filter(function (i) {
+      return i.sync_status === 'local' || i.sync_status === 'error';
+    }).length;
+  }
+
+  function renderLocalNav() {
+    var tplBtn = document.getElementById('filesNavTemplates');
+    var unsyncBtn = document.getElementById('filesNavUnsynced');
+    var tplCount = document.getElementById('filesTemplatesCount');
+    var unsyncCountEl = document.getElementById('filesUnsyncedCount');
+    if (tplCount) tplCount.textContent = String((state.templates || []).length);
+    if (unsyncCountEl) unsyncCountEl.textContent = String(unsyncedCount());
+    if (tplBtn) tplBtn.classList.toggle('is-active', state.viewMode === 'templates');
+    if (unsyncBtn) unsyncBtn.classList.toggle('is-active', state.viewMode === 'unsynced');
+  }
+
+  function setToolbarVisibility() {
+    var toolbar = document.getElementById('filesToolbar');
+    var mode = state.viewMode === 'templates' || state.viewMode === 'unsynced'
+      ? state.viewMode
+      : 'folder';
+    if (toolbar) toolbar.setAttribute('data-mode', mode);
+    updateSearchPlaceholder();
+    renderCrumb();
+    updateTemplateToolbar();
+    updateSyncFolderBtn();
+  }
+
+  function updateTemplateToolbar() {
+    var ids = Object.keys(state.selectedTemplates || {});
+    var n = ids.length;
+    var visible = visibleTemplates();
+    var visibleSelected = visible.filter(function (t) { return state.selectedTemplates[t.id]; }).length;
+    var dlSel = document.getElementById('filesTplDownloadSelected');
+    var pushBtn = document.getElementById('filesTplPushDrive');
+    var selectAll = document.getElementById('filesSelectAll');
+    var connected = !!(state.drive && state.drive.connected);
+    if (dlSel) dlSel.disabled = n === 0;
+    if (pushBtn) {
+      pushBtn.disabled = n === 0 || !connected;
+      pushBtn.title = connected
+        ? 'Save selected templates to Files and sync to Google Drive'
+        : 'Connect Google Drive first';
+    }
+    if (selectAll && state.viewMode === 'templates') {
+      selectAll.checked = visible.length > 0 && visibleSelected === visible.length;
+      selectAll.indeterminate = visibleSelected > 0 && visibleSelected < visible.length;
+    }
+  }
+
+  function setTemplateSelected(id, selected) {
+    if (!id) return;
+    if (selected) state.selectedTemplates[id] = true;
+    else delete state.selectedTemplates[id];
+    var tr = document.querySelector('#filesTableBody tr[data-template-id="' + id + '"]');
+    if (tr) {
+      tr.classList.toggle('is-selected', !!selected);
+      var cb = tr.querySelector('.files-row-check');
+      if (cb) cb.checked = !!selected;
+    }
+    updateTemplateToolbar();
+  }
+
+  function folderTableHeadHtml() {
+    return (
+      '<tr>' +
+      '<th class="files-col-check"><input type="checkbox" id="filesSelectAll" aria-label="Select all"></th>' +
+      '<th>Name</th><th>Source</th><th>Size</th><th>Sync</th><th>Updated</th><th></th>' +
+      '</tr>'
+    );
+  }
+
+  function templateTableHeadHtml() {
+    return (
+      '<tr>' +
+      '<th class="files-col-check"><input type="checkbox" id="filesSelectAll" aria-label="Select all"></th>' +
+      '<th>Name</th><th>Module</th><th>Description</th><th></th>' +
+      '</tr>'
+    );
+  }
+
+  function renderMain() {
+    setToolbarVisibility();
+    if (state.viewMode === 'templates') {
+      renderTemplatesTable();
+    } else {
+      renderTable();
+    }
+    renderLocalNav();
+  }
+
+  function bindSelectAll() {
+    var selectAll = document.getElementById('filesSelectAll');
+    if (!selectAll) return;
+    selectAll.onchange = function () {
+      if (state.viewMode === 'templates') {
+        if (selectAll.checked) {
+          visibleTemplates().forEach(function (t) { state.selectedTemplates[t.id] = true; });
+        } else {
+          state.selectedTemplates = {};
+        }
+        renderTemplatesTable();
+        return;
+      }
+      var items = visibleItems();
+      if (selectAll.checked) {
+        items.forEach(function (i) { state.selected[i.id] = true; });
+      } else {
+        state.selected = {};
+      }
+      renderTable();
+    };
+  }
+
+  function renderTemplatesTable() {
+    var head = document.getElementById('filesTableHead');
+    var body = document.getElementById('filesTableBody');
+    var heading = document.getElementById('filesHeading');
+    var sub = document.getElementById('filesSub');
+    if (heading) heading.textContent = 'Excel templates';
+    if (sub) {
+      sub.textContent = 'Stay local until you add them to Drive. Download one, selected, or all.';
+    }
+    if (head) head.innerHTML = templateTableHeadHtml();
+    bindSelectAll();
+    if (!body) return;
+    var templates = visibleTemplates();
+    if (!templates.length) {
+      var emptyTpl = (state.query || '').trim()
+        ? 'No templates match your search.'
+        : 'No Excel templates available for your account.';
+      body.innerHTML = '<tr><td colspan="5" class="files-empty">' + emptyTpl + '</td></tr>';
+      updateTemplateToolbar();
+      return;
+    }
+    body.innerHTML = templates.map(function (t) {
+      var selected = !!state.selectedTemplates[t.id];
+      var checked = selected ? ' checked' : '';
+      return (
+        '<tr data-template-id="' + escapeHtml(t.id) + '" class="files-tpl-row' + (selected ? ' is-selected' : '') + '" tabindex="0" role="row" aria-selected="' + (selected ? 'true' : 'false') + '">' +
+        '<td class="files-col-check"><label class="files-check-hit"><input type="checkbox" class="files-row-check" data-tpl-id="' + escapeHtml(t.id) + '"' + checked + ' aria-label="Select ' + escapeHtml(t.label) + '"></label></td>' +
+        '<td><div class="files-name-cell"><strong>' + escapeHtml(t.label) + '</strong><span class="files-filename">' + escapeHtml(t.filename) + '</span></div></td>' +
+        '<td><span class="files-source-pill">' + escapeHtml(t.module_label || t.module) + '</span></td>' +
+        '<td class="files-tpl-desc">' + escapeHtml(t.description || '—') + '</td>' +
+        '<td class="files-actions-cell"><div class="files-row-actions" role="group" aria-label="Template actions">' +
+        '<button type="button" class="files-icon-btn" data-tpl-act="download" data-tpl-id="' + escapeHtml(t.id) + '" data-tooltip="Download" aria-label="Download">' + actionIcon('download') + '</button>' +
+        '</div></td></tr>'
+      );
+    }).join('');
+
+    body.querySelectorAll('tr[data-template-id]').forEach(function (tr) {
+      tr.addEventListener('click', function (e) {
+        if (e.target.closest('[data-tpl-act="download"]')) return;
+        if (e.target.closest('input[type="checkbox"]') || e.target.closest('label.files-check-hit')) return;
+        var id = tr.getAttribute('data-template-id');
+        setTemplateSelected(id, !state.selectedTemplates[id]);
+        tr.setAttribute('aria-selected', state.selectedTemplates[id] ? 'true' : 'false');
+      });
+      tr.addEventListener('keydown', function (e) {
+        if (e.key !== ' ' && e.key !== 'Enter') return;
+        if (e.target.closest('[data-tpl-act="download"]')) return;
+        e.preventDefault();
+        var id = tr.getAttribute('data-template-id');
+        setTemplateSelected(id, !state.selectedTemplates[id]);
+        tr.setAttribute('aria-selected', state.selectedTemplates[id] ? 'true' : 'false');
+      });
+    });
+    body.querySelectorAll('.files-row-check').forEach(function (cb) {
+      cb.addEventListener('click', function (e) {
+        e.stopPropagation();
+      });
+      cb.addEventListener('change', function () {
+        var id = cb.getAttribute('data-tpl-id');
+        setTemplateSelected(id, cb.checked);
+        var tr = cb.closest('tr');
+        if (tr) tr.setAttribute('aria-selected', cb.checked ? 'true' : 'false');
+      });
+    });
+    body.querySelectorAll('[data-tpl-act="download"]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        downloadTemplate(btn.getAttribute('data-tpl-id'));
+      });
+    });
+    updateTemplateToolbar();
+  }
+
+  function syncBadge(status) {
+    var s = status || 'local';
+    var cls = 'files-sync files-sync-' + (s === 'synced' ? 'synced' : s === 'error' ? 'error' : 'local');
+    var label = s === 'synced' ? 'Synced' : s === 'error' ? 'Error' : 'Local';
+    return '<span class="' + cls + '">' + label + '</span>';
   }
 
   function formatDate(iso) {
@@ -334,19 +657,41 @@
   }
 
   function renderTable() {
+    var head = document.getElementById('filesTableHead');
     var body = document.getElementById('filesTableBody');
     var heading = document.getElementById('filesHeading');
+    var sub = document.getElementById('filesSub');
     var items = visibleItems();
+    if (head) head.innerHTML = folderTableHeadHtml();
+    bindSelectAll();
     if (heading) {
-      if (state.currentFolderId == null) heading.textContent = 'All files';
-      else {
+      if (state.viewMode === 'unsynced') {
+        heading.textContent = 'Not synced yet';
+      } else if (state.currentFolderId == null) {
+        heading.textContent = 'All files';
+      } else {
         var f = state.folders.find(function (x) { return x.id === state.currentFolderId; });
         heading.textContent = f ? f.name : 'Folder';
       }
     }
+    if (sub) {
+      if (state.viewMode === 'unsynced') {
+        sub.textContent = 'These files are saved in Files but not yet on Google Drive. Use Sync now to push them.';
+      } else {
+        sub.textContent = 'Save exports from modules, then sync to Google Drive when ready.';
+      }
+    }
     if (!body) return;
     if (!items.length) {
-      body.innerHTML = '<tr><td colspan="7" class="files-empty">No files here yet. Use Save to Files from Leave or Manpower, or upload.</td></tr>';
+      var emptyMsg;
+      if ((state.query || '').trim()) {
+        emptyMsg = 'No files match your search.';
+      } else if (state.viewMode === 'unsynced') {
+        emptyMsg = 'Everything here is already synced to Drive — or nothing has been saved yet.';
+      } else {
+        emptyMsg = 'No files here yet. Upload a file, or save an export from a module.';
+      }
+      body.innerHTML = '<tr><td colspan="7" class="files-empty">' + emptyMsg + '</td></tr>';
       updateSyncFolderBtn();
       return;
     }
@@ -375,7 +720,7 @@
         var id = parseInt(cb.getAttribute('data-id'), 10);
         if (cb.checked) state.selected[id] = true;
         else delete state.selected[id];
-        updateSyncFolderBtn();
+        updateBulkToolbar();
       });
     });
     body.querySelectorAll('[data-act]').forEach(function (btn) {
@@ -391,10 +736,76 @@
     updateSyncFolderBtn();
   }
 
+  function selectedVisibleIds() {
+    return visibleItems()
+      .filter(function (i) { return state.selected[i.id]; })
+      .map(function (i) { return i.id; });
+  }
+
+  function updateBulkToolbar() {
+    var ids = selectedVisibleIds();
+    var n = ids.length;
+    var folderBulk = document.getElementById('filesBulkActions');
+    var unsyncBulk = document.getElementById('filesUnsyncedBulk');
+    if (folderBulk) folderBulk.hidden = !(state.viewMode === 'folder' && n > 0);
+    if (unsyncBulk) unsyncBulk.hidden = !(state.viewMode === 'unsynced' && n > 0);
+    var selectAll = document.getElementById('filesSelectAll');
+    var items = visibleItems();
+    if (selectAll && state.viewMode !== 'templates') {
+      selectAll.checked = items.length > 0 && n === items.length;
+      selectAll.indeterminate = n > 0 && n < items.length;
+    }
+  }
+
   function updateSyncFolderBtn() {
     var btn = document.getElementById('filesSyncFolderBtn');
-    if (!btn) return;
-    btn.disabled = state.currentFolderId == null;
+    var inFolder = state.viewMode === 'folder' && state.currentFolderId != null;
+    if (btn) {
+      btn.hidden = !inFolder;
+      btn.disabled = !inFolder;
+    }
+    updateBulkToolbar();
+  }
+
+  function bulkDownload() {
+    var ids = selectedVisibleIds();
+    if (!ids.length) return;
+    toast('Downloading ' + ids.length + ' file' + (ids.length === 1 ? '' : 's') + '…');
+    var i = 0;
+    function next() {
+      if (i >= ids.length) return;
+      downloadItem(ids[i]);
+      i += 1;
+      if (i < ids.length) setTimeout(next, 400);
+    }
+    next();
+  }
+
+  function bulkSync() {
+    startSelectedSync(selectedVisibleIds());
+  }
+
+  function bulkDelete() {
+    var ids = selectedVisibleIds();
+    if (!ids.length) return;
+    openConfirm({
+      title: ids.length === 1 ? 'Delete file?' : 'Delete ' + ids.length + ' files?',
+      message: 'This removes them from Files' + (state.drive && state.drive.connected ? ' and from Google Drive if they were synced' : '') + '.',
+      confirmLabel: 'Delete',
+      onConfirm: function () {
+        toastLoading('Deleting…');
+        var chain = Promise.resolve();
+        ids.forEach(function (id) {
+          chain = chain.then(function () {
+            return api('/files/api/items/' + id, { method: 'DELETE' }).catch(function () {});
+          });
+        });
+        chain.then(function () {
+          state.selected = {};
+          return loadTree().then(function () { toast('Deleted'); });
+        });
+      },
+    });
   }
 
   function renderDrive() {
@@ -457,13 +868,24 @@
   }
 
   function loadTree() {
-    return api('/files/api/tree').then(function (data) {
+    return Promise.all([
+      api('/files/api/tree'),
+      api('/files/api/templates').catch(function (err) {
+        console.warn('Files templates catalog failed:', err && err.message ? err.message : err);
+        toast((err && err.message) || 'Could not load Excel templates', { error: true });
+        return { templates: [], count: 0, unsynced_count: 0 };
+      }),
+    ]).then(function (results) {
+      var data = results[0] || {};
+      var tpl = results[1] || {};
       state.folders = data.folders || [];
       state.items = data.items || [];
-      state.drive = data.drive || {};
+      state.drive = data.drive || tpl.drive || {};
+      state.templates = tpl.templates || [];
       renderTree();
-      renderTable();
+      renderMain();
       renderDrive();
+      applyFolderQuery();
       if (state.drive.connected && !state.drive.root_drive_folder_id) {
         setupDriveFolders();
       }
@@ -474,36 +896,154 @@
     });
   }
 
+  var folderQueryApplied = false;
+
+  function applyFolderQuery() {
+    if (folderQueryApplied) return;
+    folderQueryApplied = true;
+    var params = new URLSearchParams(window.location.search);
+    var folder = params.get('folder');
+    if (!folder) return;
+    var id = parseInt(folder, 10);
+    if (!id) return;
+    var found = state.folders.some(function (f) { return f.id === id; });
+    if (!found) return;
+    state.viewMode = 'folder';
+    state.currentFolderId = id;
+    state.selected = {};
+    renderTree();
+    renderMain();
+    try {
+      var url = new URL(window.location.href);
+      url.searchParams.delete('folder');
+      window.history.replaceState({}, '', url.pathname + url.search);
+    } catch (e) { /* ignore */ }
+  }
+
+  function downloadBlobResponse(res, fallbackName) {
+    if (!res.ok) throw new Error('Download failed');
+    var disp = res.headers.get('Content-Disposition') || '';
+    var name = fallbackName || 'download';
+    var m = /filename="?([^";]+)"?/i.exec(disp);
+    if (m) name = m[1];
+    return res.blob().then(function (blob) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+  }
+
   function downloadItem(id) {
-    var token = localStorage.getItem('access_token') || localStorage.getItem('token');
     var url = '/files/api/items/' + id + '/download';
     fetch(url, { headers: authHeaders(false), credentials: 'same-origin' })
-      .then(function (res) {
-        if (!res.ok) throw new Error('Download failed');
-        var disp = res.headers.get('Content-Disposition') || '';
-        var name = 'download';
-        var m = /filename="?([^";]+)"?/i.exec(disp);
-        if (m) name = m[1];
-        return res.blob().then(function (blob) {
-          var a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
-          a.download = name;
-          a.click();
-          URL.revokeObjectURL(a.href);
-        });
-      })
+      .then(function (res) { return downloadBlobResponse(res, 'download'); })
       .catch(function (e) { toast(e.message); });
   }
 
-  function syncOne(id) {
-    toastLoading('Syncing…');
-    api('/files/api/items/' + id + '/sync', { method: 'POST', body: '{}' })
-      .then(function () {
-        return loadTree().then(function () {
-          toast('Synced');
+  function downloadTemplate(id) {
+    if (!id) return;
+    toastLoading('Preparing template…');
+    fetch('/files/api/templates/' + encodeURIComponent(id) + '/download', {
+      headers: authHeaders(false),
+      credentials: 'same-origin',
+    })
+      .then(function (res) {
+        return downloadBlobResponse(res, id + '.xlsx').then(function () {
+          toast('Downloaded');
         });
       })
-      .catch(function (e) { toast(e.message || 'Sync failed', { error: true }); });
+      .catch(function (e) { toast(e.message || 'Download failed', { error: true }); });
+  }
+
+  function downloadTemplatesZip(ids) {
+    toastLoading('Preparing zip…');
+    fetch('/files/api/templates/download-zip', {
+      method: 'POST',
+      headers: authHeaders(true),
+      body: JSON.stringify({ ids: ids || [] }),
+      credentials: 'same-origin',
+    })
+      .then(function (res) {
+        return downloadBlobResponse(res, 'excel_templates.zip').then(function () {
+          toast('Downloaded');
+        });
+      })
+      .catch(function (e) { toast(e.message || 'Download failed', { error: true }); });
+  }
+
+  function pushTemplatesToDrive() {
+    var ids = Object.keys(state.selectedTemplates || {});
+    if (!ids.length) {
+      toast('Select at least one template');
+      return;
+    }
+    if (!(state.drive && state.drive.connected)) {
+      toast('Connect Google Drive first', { error: true });
+      return;
+    }
+    toastLoading('Adding to Drive…');
+    api('/files/api/templates/push-to-drive', {
+      method: 'POST',
+      body: JSON.stringify({ ids: ids }),
+    })
+      .then(function (data) {
+        state.selectedTemplates = {};
+        return loadTree().then(function () {
+          var saved = (data && data.saved) || 0;
+          var synced = ((data && data.synced) || []).length;
+          var failed = ((data && data.failed) || []).length;
+          var msg = 'Pushed ' + synced + ' of ' + saved + ' template' + (saved === 1 ? '' : 's') + ' to Drive';
+          if (failed) msg += ' · ' + failed + ' failed';
+          toast(msg, { error: !!failed && !synced });
+        });
+      })
+      .catch(function (e) { toast(e.message || 'Could not add to Drive', { error: true }); });
+  }
+
+  function setViewMode(mode) {
+    state.viewMode = mode;
+    if (mode !== 'folder') {
+      state.currentFolderId = null;
+    }
+    state.selected = {};
+    if (mode !== 'templates') state.selectedTemplates = {};
+    renderTree();
+    renderMain();
+    filesCloseSidebar();
+  }
+
+  function notifySyncChip() {
+    if (window.FilesSyncStatus && typeof window.FilesSyncStatus.start === 'function') {
+      window.FilesSyncStatus.start();
+    }
+  }
+
+  function startSelectedSync(ids) {
+    if (!ids || !ids.length) {
+      toast('Select files to sync');
+      return;
+    }
+    if (!(state.drive && state.drive.connected)) {
+      toast('Connect Google Drive first', { error: true });
+      return;
+    }
+    setSyncBusy(true);
+    api('/files/api/sync-now', { method: 'POST', body: JSON.stringify({ ids: ids }) })
+      .then(function () {
+        notifySyncChip();
+      })
+      .catch(function (e) { toast(e.message || 'Sync failed', { error: true }); })
+      .finally(function () { setSyncBusy(false); });
+  }
+
+  function syncNow() {
+    startSelectedSync(selectedVisibleIds());
+  }
+
+  function syncOne(id) {
+    startSelectedSync([id]);
   }
 
   function syncFolder() {
@@ -511,30 +1051,14 @@
       toast('Select a folder first');
       return;
     }
-    var folder = state.folders.find(function (x) { return x.id === state.currentFolderId; });
-    var label = folder ? folder.name : 'folder';
+    if (!(state.drive && state.drive.connected)) {
+      toast('Connect Google Drive first', { error: true });
+      return;
+    }
     setSyncBusy(true);
-    toastLoading('Syncing "' + label + '"…');
     api('/files/api/folders/' + state.currentFolderId + '/sync', { method: 'POST', body: '{}' })
-      .then(function (data) {
-        return loadTree().then(function () {
-          toast(formatSyncFolderMessage(label, data));
-          maybePromptMissing(data);
-        });
-      })
-      .catch(function (e) { toast(e.message || 'Sync failed', { error: true }); })
-      .finally(function () { setSyncBusy(false); });
-  }
-
-  function syncNow() {
-    setSyncBusy(true);
-    toastLoading('Syncing…');
-    api('/files/api/sync-now', { method: 'POST', body: '{}' })
-      .then(function (data) {
-        return loadTree().then(function () {
-          toast(formatSyncNowMessage(data));
-          maybePromptMissing(data);
-        });
+      .then(function () {
+        notifySyncChip();
       })
       .catch(function (e) { toast(e.message || 'Sync failed', { error: true }); })
       .finally(function () { setSyncBusy(false); });
@@ -857,7 +1381,6 @@
     var newFolderBtn = document.getElementById('filesNewFolderBtn');
     var syncNowBtn = document.getElementById('filesSyncNowBtn');
     var syncFolderBtn = document.getElementById('filesSyncFolderBtn');
-    var selectAll = document.getElementById('filesSelectAll');
     var connectBtn = document.getElementById('filesDriveConnectBtn');
     var disconnectBtn = document.getElementById('filesDriveDisconnectBtn');
     var modalCancel = document.getElementById('filesModalCancel');
@@ -869,6 +1392,48 @@
     var missingDelete = document.getElementById('filesMissingDelete');
     var missingKeep = document.getElementById('filesMissingKeep');
     var missingBackdrop = document.getElementById('filesMissingBackdrop');
+    var navTemplates = document.getElementById('filesNavTemplates');
+    var navUnsynced = document.getElementById('filesNavUnsynced');
+    var tplDlSelected = document.getElementById('filesTplDownloadSelected');
+    var tplDlAll = document.getElementById('filesTplDownloadAll');
+    var tplPush = document.getElementById('filesTplPushDrive');
+    var unsyncSync = document.getElementById('filesUnsyncedSyncBtn');
+    var search = document.getElementById('filesSearch');
+    var bulkDownloadBtn = document.getElementById('filesBulkDownload');
+    var bulkSyncBtn = document.getElementById('filesBulkSync');
+    var bulkDeleteBtn = document.getElementById('filesBulkDelete');
+    var unsyncDownload = document.getElementById('filesUnsyncedDownload');
+    var unsyncSelectedSync = document.getElementById('filesUnsyncedSync');
+    var unsyncDelete = document.getElementById('filesUnsyncedDelete');
+
+    if (navTemplates) {
+      navTemplates.addEventListener('click', function () { setViewMode('templates'); });
+    }
+    if (navUnsynced) {
+      navUnsynced.addEventListener('click', function () { setViewMode('unsynced'); });
+    }
+    if (tplDlSelected) {
+      tplDlSelected.addEventListener('click', function () {
+        downloadTemplatesZip(Object.keys(state.selectedTemplates || {}));
+      });
+    }
+    if (tplDlAll) {
+      tplDlAll.addEventListener('click', function () { downloadTemplatesZip([]); });
+    }
+    if (tplPush) tplPush.addEventListener('click', pushTemplatesToDrive);
+    if (unsyncSync) unsyncSync.addEventListener('click', syncNow);
+    if (search) {
+      search.addEventListener('input', function () {
+        state.query = search.value || '';
+        renderMain();
+      });
+    }
+    if (bulkDownloadBtn) bulkDownloadBtn.addEventListener('click', bulkDownload);
+    if (bulkSyncBtn) bulkSyncBtn.addEventListener('click', bulkSync);
+    if (bulkDeleteBtn) bulkDeleteBtn.addEventListener('click', bulkDelete);
+    if (unsyncDownload) unsyncDownload.addEventListener('click', bulkDownload);
+    if (unsyncSelectedSync) unsyncSelectedSync.addEventListener('click', bulkSync);
+    if (unsyncDelete) unsyncDelete.addEventListener('click', bulkDelete);
 
     if (uploadBtn && uploadInput) {
       uploadBtn.addEventListener('click', function () { uploadInput.click(); });
@@ -884,17 +1449,7 @@
     }
     if (syncNowBtn) syncNowBtn.addEventListener('click', syncNow);
     if (syncFolderBtn) syncFolderBtn.addEventListener('click', syncFolder);
-    if (selectAll) {
-      selectAll.addEventListener('change', function () {
-        var items = visibleItems();
-        if (selectAll.checked) {
-          items.forEach(function (i) { state.selected[i.id] = true; });
-        } else {
-          state.selected = {};
-        }
-        renderTable();
-      });
-    }
+    bindSelectAll();
     if (connectBtn) {
       connectBtn.addEventListener('click', function () {
         if (state.connecting || connectBtn.disabled) return;
@@ -954,5 +1509,12 @@
     bind();
     handleDriveQuery();
     loadTree();
+    window.addEventListener('files-sync-complete', function () {
+      loadTree();
+    });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') filesCloseSidebar();
   });
 })();

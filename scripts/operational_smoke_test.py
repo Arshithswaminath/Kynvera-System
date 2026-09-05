@@ -181,7 +181,6 @@ def main() -> int:
     print('\n3) Dashboard & module shells')
     for path in (
         '/dashboard',
-        '/about',
         '/admin',
         '/admin/dashboard',
         '/dochub',

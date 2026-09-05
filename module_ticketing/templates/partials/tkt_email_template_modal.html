@@ -1,0 +1,108 @@
+{# Draft-email template for inbound tickets. Include once per page, after the main shell. #}
+<div class="tkt-modal-backdrop" id="tktEmailTplModal" aria-hidden="true">
+  <div class="tkt-modal tkt-email-tpl-modal" role="dialog" aria-modal="true" aria-labelledby="tktEmailTplTitle">
+    <div class="tkt-modal-header">
+      <h3 id="tktEmailTplTitle">How to email a ticket</h3>
+      <button type="button" class="tkt-modal-close" id="tktEmailTplClose" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="tkt-modal-body">
+      <p class="tkt-email-tpl-lead">
+        Send mail to <strong>{{ intake_email }}</strong> — no Kynvera login needed.
+        It lands as a draft for a supervisor to review. Following this template fills in more fields automatically.
+      </p>
+
+      <div class="tkt-email-tpl-row">
+        <span class="tkt-email-tpl-kicker">To</span>
+        <code class="tkt-email-tpl-code" id="tktEmailTplAddr">{{ intake_email }}</code>
+        <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" data-tkt-email-copy="email">Copy</button>
+      </div>
+
+      <div class="tkt-email-tpl-block">
+        <div class="tkt-email-tpl-block-head">
+          <span class="tkt-email-tpl-kicker">Subject</span>
+          <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" data-tkt-email-copy="subject">Copy</button>
+        </div>
+        <pre class="tkt-email-tpl-pre">{{ intake_subject_template }}</pre>
+        <p class="tkt-email-tpl-hint">Priority: low / medium / high / critical. Skip any part you do not know.</p>
+      </div>
+
+      <div class="tkt-email-tpl-block">
+        <div class="tkt-email-tpl-block-head">
+          <span class="tkt-email-tpl-kicker">Body</span>
+          <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" data-tkt-email-copy="body">Copy</button>
+        </div>
+        <pre class="tkt-email-tpl-pre">{{ intake_body_template }}</pre>
+      </div>
+
+      <div class="tkt-email-tpl-example">
+        <p class="tkt-email-tpl-kicker">Full example</p>
+        <p class="tkt-email-tpl-example-line"><strong>To:</strong> {{ intake_email }}</p>
+        <p class="tkt-email-tpl-example-line"><strong>Subject:</strong> {{ intake_example_subject }}</p>
+        <pre class="tkt-email-tpl-example-body">{{ intake_example_body }}</pre>
+      </div>
+    </div>
+    <div class="tkt-modal-footer">
+      <button type="button" class="tkt-btn tkt-btn-outline" data-tkt-email-copy="all">Copy template</button>
+      <a class="tkt-btn tkt-btn-primary" href="{{ intake_mailto }}" id="tktEmailTplMailto">Open in Mail</a>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  if (window.__tktEmailTplBound) return;
+  window.__tktEmailTplBound = true;
+  const COPY = {
+    email: {{ intake_email|tojson }},
+    subject: {{ intake_subject_template|tojson }},
+    body: {{ intake_body_template|tojson }},
+    all: {{ intake_copy_text|tojson }}
+  };
+  const modal = document.getElementById('tktEmailTplModal');
+  if (!modal) return;
+
+  function toast(msg, type) {
+    if (typeof tktToast === 'function') tktToast(msg, type);
+  }
+  function openModal() {
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+  function closeModal() {
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+  function copyText(key) {
+    const text = COPY[key] || '';
+    const done = function () { toast('Copied.', 'success'); };
+    const fail = function () { toast('Could not copy — select the text and copy it.', 'error'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(fail);
+    } else {
+      fail();
+    }
+  }
+
+  document.addEventListener('click', function (e) {
+    const openBtn = e.target.closest && e.target.closest('.tkt-email-tpl-open');
+    if (openBtn) {
+      e.preventDefault();
+      openModal();
+      return;
+    }
+    const copyBtn = e.target.closest && e.target.closest('[data-tkt-email-copy]');
+    if (copyBtn) {
+      e.preventDefault();
+      copyText(copyBtn.getAttribute('data-tkt-email-copy'));
+      return;
+    }
+    if (e.target === modal || (e.target.closest && e.target.closest('#tktEmailTplClose'))) {
+      closeModal();
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+  });
+})();
+</script>

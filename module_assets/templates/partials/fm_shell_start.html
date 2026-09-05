@@ -14,12 +14,12 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=21">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/fm-assets.css') }}?v=59">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fm-assets.css') }}?v=68">
   {% if fm_head_extra is defined %}{{ fm_head_extra|safe }}{% endif %}
 </head>
-<body class="tkt-dh-page fm-assets-shell has-main-nav">
+<body class="tkt-dh-page fm-assets-shell has-main-nav{% if fm_dash %} fm-dash-page{% endif %}">
 <div class="dh-overlay" id="tktDhOverlay" onclick="if(typeof tktCloseMobileSidebar==='function'){tktCloseMobileSidebar();}" aria-hidden="true"></div>
 <div class="tkt-dh-app-root">
 {% set active_page = active_page | default('fm-assets') %}
@@ -31,12 +31,18 @@
    Notifications, assistant, profile, and logout live in the main nav. #}
 <header class="tkt-topbar">
   <div class="tkt-topbar-left">
-    <button type="button" id="tktDhSidebarToggle" aria-label="Toggle menu"
-            onclick="if(typeof tktToggleMobileSidebar==='function'){tktToggleMobileSidebar();}">&#9776;</button>
+    <button type="button" id="tktDhSidebarToggle" class="tkt-menu-toggle"
+            aria-label="Open FM Assets menu" aria-expanded="false"
+            onclick="if(typeof tktToggleMobileSidebar==='function'){tktToggleMobileSidebar();}">
+      <span aria-hidden="true">&#9776;</span>
+      <span class="tkt-menu-toggle-label">Menu</span>
+    </button>
     <h1 class="tkt-topbar-title">{{ fm_topbar_title | default('FM Assets') }}</h1>
   </div>
 </header>
 <div class="tkt-content">
-<main class="fm-wrap{% if fm_narrow %} fm-wrap-narrow{% endif %}">
-{% set module_back_url = module_back_url|default(url_for('dashboard')) %}
+<main class="fm-wrap{% if fm_narrow %} fm-wrap-narrow{% endif %}{% if fm_wide %} fm-wrap-wide{% endif %}">
+{% if not fm_hide_module_back|default(false) %}
+{% set module_back_url = module_back_url|default(url_for('assets_bp.assets_dashboard')) %}
 {% include 'partials/module_back_link.html' %}
+{% endif %}

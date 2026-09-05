@@ -1,9 +1,8 @@
 """Parse staff compliance Excel files for QHSE dashboard metrics."""
 from __future__ import annotations
 
-import re
 from datetime import date, datetime
-from io import BytesIO, StringIO
+from io import BytesIO
 
 from module_qhsi.catalog import staff_kit_types
 
@@ -124,29 +123,14 @@ def _match_kit_column(col_name, kit_map):
 
 
 def read_excel_dataframe(file_storage):
-    """Return pandas DataFrame from uploaded file."""
-    import pandas as pd
-
+    """Return pandas DataFrame from uploaded file (skips Instructions)."""
     filename = (file_storage.filename or '').lower()
     if not filename.endswith(('.xlsx', '.xls', '.csv')):
         raise ValueError('Upload .xlsx, .xls, or .csv')
 
-    if filename.endswith('.csv'):
-        return pd.read_csv(file_storage)
+    from common.kynvera_excel_brand import read_import_dataframe
 
-    if filename.endswith('.xlsx'):
-        return pd.read_excel(file_storage)
-
-    try:
-        file_storage.stream.seek(0)
-        return pd.read_excel(file_storage, engine='xlrd')
-    except Exception:
-        file_storage.stream.seek(0)
-        html_text = file_storage.stream.read().decode('utf-8', errors='ignore')
-        tables = pd.read_html(StringIO(html_text))
-        if not tables:
-            raise ValueError('Could not read any table from the file')
-        return max(tables, key=lambda t: t.shape[0])
+    return read_import_dataframe(file_storage, preferred_sheets=('Staff Compliance',))
 
 
 def _map_meta_columns(df):
@@ -333,41 +317,85 @@ def stats_from_rows(rows):
 def build_import_template_bytes():
     """Downloadable .xlsx template (long format)."""
     from openpyxl import Workbook
-    from openpyxl.styles import Font, PatternFill
+    from openpyxl.worksheet.datavalidation import DataValidation
+
+    from common.kynvera_excel_brand import (
+        InstructionSpec,
+        apply_column_widths,
+        write_data_row,
+        write_header_row,
+        write_instructions_sheet,
+    )
+
+    headers = (
+        'Employee Name', 'Employee ID', 'Project', 'Record Date',
+        'Department', 'Supervisor', 'Item', 'Condition', 'Comments',
+    )
+    sample_rows = (
+        (
+            'Ahmed Hassan', 'EMP-1001', 'Site A', date.today().isoformat(),
+            'Operations', 'John Smith', 'Uniform — Shirt / Top', 'OK', 'Size L',
+        ),
+        (
+            'Ahmed Hassan', 'EMP-1001', 'Site A', date.today().isoformat(),
+            'Operations', 'John Smith', 'Safety Helmet / Hard Hat', 'OK', '',
+        ),
+        (
+            'Sara Ali', 'EMP-1002', 'Site B', date.today().isoformat(),
+            'Hospitality', 'Jane Doe', 'Hi-Vis Vest / Jacket', 'Missing', 'Re-issue requested',
+        ),
+    )
 
     wb = Workbook()
     ws = wb.active
     ws.title = 'Staff Compliance'
-    headers = [
-        'Employee Name', 'Employee ID', 'Project', 'Record Date',
-        'Department', 'Supervisor', 'Item', 'Condition', 'Comments',
-    ]
-    ws.append(headers)
-    for cell in ws[1]:
-        cell.font = Font(bold=True, color='FFFFFF')
-        cell.fill = PatternFill('solid', fgColor='125435')
-    ws.append([
-        'Ahmed Hassan', 'EMP-1001', 'Site A', date.today().isoformat(),
-        'Operations', 'John Smith', 'Uniform — Shirt / Top', 'OK', 'Size L',
-    ])
-    ws.append([
-        'Ahmed Hassan', 'EMP-1001', 'Site A', date.today().isoformat(),
-        'Operations', 'John Smith', 'Safety Helmet / Hard Hat', 'OK', '',
-    ])
-    ws.append([
-        'Sara Ali', 'EMP-1002', 'Site B', date.today().isoformat(),
-        'Hospitality', 'Jane Doe', 'Hi-Vis Vest / Jacket', 'Missing', 'Re-issue requested',
-    ])
-    ws.freeze_panes = 'A2'
-    for col, width in zip('ABCDEFGHI', [22, 14, 18, 14, 16, 18, 28, 14, 30]):
-        ws.column_dimensions[col].width = width
+    write_header_row(ws, headers)
+    for i, row in enumerate(sample_rows, start=2):
+        write_data_row(ws, i, row, example=True)
+    apply_column_widths(ws, [22, 14, 18, 14, 16, 18, 28, 14, 30])
 
-    ws2 = wb.create_sheet('Instructions')
-    ws2['A1'] = 'QHSE Excel import — column guide'
-    ws2['A3'] = 'Required: Employee Name, Project, Item, Condition'
-    ws2['A4'] = 'Condition values: OK, Issue, Missing (or Compliant / Replacement needed / Missing)'
-    ws2['A5'] = 'One row per kit item per employee (long format).'
-    ws2['A6'] = 'Wide format is also supported: put kit names as column headers with OK/Issue/Missing in cells.'
+    cond_dv = DataValidation(
+        type='list',
+        formula1='"OK,Issue,Missing"',
+        allow_blank=True,
+        showDropDown=False,
+    )
+    cond_dv.add('H2:H500')
+    ws.add_data_validation(cond_dv)
+
+    write_instructions_sheet(wb, InstructionSpec(
+        title='QHSE staff compliance template',
+        module_label='QHSE / Staff Compliance',
+        about=(
+            'Import staff PPE / kit compliance checks. Prefer long format: one row per kit item per employee.',
+            'Employee Name, Project, Item, and Condition are required in long format.',
+            'Wide format is also supported: put kit names as column headers with OK / Issue / Missing in the cells.',
+        ),
+        how_to=(
+            'Open the Staff Compliance sheet. Keep the coral header row.',
+            'Replace the sample rows. Repeat the employee on a new row for each kit item.',
+            'Set Condition to OK, Issue, or Missing (dropdown). Aliases such as Compliant or Replacement needed are accepted.',
+            'Save as .xlsx and click Import on QHSE Staff Compliance.',
+        ),
+        columns=(
+            ('Employee Name', 'Required.'),
+            ('Employee ID', 'Optional. Also accepted as Emp ID or Staff ID.'),
+            ('Project', 'Required in practice (defaults to — if blank). Also accepted as Site or Location.'),
+            ('Record Date', 'Optional. YYYY-MM-DD or DD/MM/YYYY.'),
+            ('Department', 'Optional.'),
+            ('Supervisor', 'Optional.'),
+            ('Item', 'Required in long format. Kit item name (e.g. Safety Helmet / Hard Hat).'),
+            ('Condition', 'Required in long format. OK, Issue, or Missing.'),
+            ('Comments', 'Optional line notes.'),
+        ),
+        example_headers=headers,
+        example_rows=sample_rows,
+        import_rules=(
+            'Rows without Employee Name are skipped.',
+            'Condition values map to ok / issue / missing (Compliant, Good, Pass → ok; Damaged, Replace → issue).',
+            'Wide format: one row per employee, kit types as extra columns with the condition in the cell.',
+        ),
+    ))
 
     buf = BytesIO()
     wb.save(buf)

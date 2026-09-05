@@ -1,38 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>Properties — Procurement</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="/static/animations.css">
-  <link rel="stylesheet" href="/static/css/dashboard.css">
-  <link rel="stylesheet" href="/static/mobile_responsive.css">
-  <style>
+{% set proc_page_title = 'Properties — Procurement' %}
+{% set proc_topbar_title = 'Properties' %}
+{% set module_back_url = url_for('procurement_module.procurement_dashboard') %}
+{% set proc_head_extra %}
+<style>
+
     *, *::before, *::after { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; box-sizing: border-box; }
     :root {
       --brand: #ff8e68; --brand-mid: #f97e54; --brand-light: #10b981;
       --brand-pale: #f0fdf4; --bg: #f4f6f5;
       --text: #0f172a; --muted: #64748b; --border: #e2e8f0;
     }
-    body { background: var(--bg); min-height: 100vh; }
+    body.procurement-page { background: var(--bg); min-height: 100vh; }
+    body.procurement-page .nav { border-bottom: none !important; }
+    .page-banner { padding-top: calc(5.75rem + 2.5rem); }
 
     /* ── Banner ── */
     .page-banner {
-      background: linear-gradient(135deg, #0a3d26, #ff8e68 55%, #f97e54);
+      background: #111;
       padding: 2.5rem 2.5rem 2rem; position: relative; overflow: hidden;
     }
-    .page-banner::before {
-      content: ''; position: absolute; inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    }
-    .page-banner::after {
-      content: ''; position: absolute; right: -5%; top: -30%;
-      width: 40%; height: 160%;
-      background: radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%);
-    }
+    .page-banner::before,
+    .page-banner::after { display: none; }
     .banner-inner { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
     .back-link { display: inline-flex; align-items: center; gap: .4rem; color: rgba(255,255,255,.65); text-decoration: none; font-size: .82rem; font-weight: 500; margin-bottom: .6rem; transition: color .2s; }
     .back-link:hover { color: #fff; }
@@ -48,18 +36,21 @@
     .btn-add-prop svg { width: 15px; height: 15px; stroke: var(--brand); }
 
     /* ── Content wrapper ── */
-    .content { max-width: 1400px; margin: 2.5rem auto; padding: 0 2rem; }
+    .content { margin: 0 auto 2rem; padding: 0; }
 
     /* ── Grid ── */
     .props-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
-      gap: 1.5rem;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 1rem;
+      align-items: stretch;
+    }
+    @media (max-width: 1100px) {
+      .props-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
     @media (max-width: 768px) {
       .props-grid { grid-template-columns: 1fr; gap: 1rem; }
-      .content { padding: 0 1rem; margin: 1.25rem auto; }
-      .page-banner { padding: 1.25rem 1rem; }
+      .content { padding: 0; margin: 0 auto 1.25rem; }
     }
 
     /* ── Property card ── */
@@ -72,7 +63,7 @@
     .prop-card:hover { transform: translateY(-6px); box-shadow: 0 18px 44px rgba(0,0,0,.11); }
 
     .prop-card-top {
-      padding: 1.75rem 1.5rem; position: relative; overflow: hidden;
+      padding: 1.25rem 1.1rem 1.15rem; position: relative; overflow: hidden;
       display: flex; flex-direction: column;
     }
     .prop-card-top::after {
@@ -88,21 +79,24 @@
       margin-bottom: .9rem; align-self: flex-start;
     }
     .prop-icon-wrap {
-      width: 54px; height: 54px; border-radius: 14px;
+      width: 44px; height: 44px; border-radius: 12px;
       background: rgba(255,255,255,.18); border: 1.5px solid rgba(255,255,255,.25);
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.4rem; margin-bottom: 1rem;
+      font-size: 1.2rem; margin-bottom: 0.75rem;
+      cursor: pointer; position: relative; color: inherit;
+      font-family: inherit; padding: 0; line-height: 1;
     }
-    .prop-name { font-size: 1.15rem; font-weight: 800; color: #fff; margin: 0; line-height: 1.2; }
+    .prop-icon-wrap:hover { background: rgba(255,255,255,.3); }
+    .prop-name { font-size: 1.02rem; font-weight: 800; color: #fff; margin: 0; line-height: 1.2; }
 
-    .prop-card-body { padding: 1.25rem 1.5rem; }
-    .prop-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: .75rem; }
-    .prop-stat { text-align: center; background: #f8fafc; border-radius: 10px; padding: .7rem .5rem; }
-    .prop-stat-val { font-size: 1.3rem; font-weight: 800; color: var(--text); line-height: 1; }
-    .prop-stat-lbl { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: .2rem; }
+    .prop-card-body { padding: 0.9rem 0.85rem; }
+    .prop-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: .4rem; }
+    .prop-stat { text-align: center; background: #f8fafc; border-radius: 10px; padding: .55rem .25rem; }
+    .prop-stat-val { font-size: 1.05rem; font-weight: 800; color: var(--text); line-height: 1; }
+    .prop-stat-lbl { font-size: .58rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-top: .2rem; }
 
     .prop-card-foot {
-      padding: .9rem 1.5rem; border-top: 1px solid var(--border);
+      padding: .7rem 1rem; border-top: 1px solid var(--border);
       display: flex; align-items: center; justify-content: space-between;
       background: #fafcfb;
     }
@@ -114,18 +108,43 @@
     }
     .prop-foot-btn:hover { opacity: .85; }
     .prop-foot-btn svg { width: 13px; height: 13px; stroke: white; }
+    .prop-link-btn {
+      display: inline-flex; align-items: center; gap: .3rem;
+      padding: .35rem .7rem; border-radius: 7px; border: 1.5px solid #ff8e68;
+      background: #fff; color: #c2440c; font-size: .72rem; font-weight: 700;
+      cursor: pointer; font-family: inherit; white-space: nowrap;
+    }
+    .prop-link-btn:hover { background: #fff5f0; }
+    .prop-create-hint {
+      margin-top: .55rem; padding: .7rem .85rem; border-radius: 10px;
+      font-size: .8rem; line-height: 1.4; font-weight: 550;
+    }
+    .prop-create-hint.match { background: #ecfdf3; color: #047857; border: 1px solid #a7f3d0; }
+    .prop-create-hint.standalone { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+    .prop-create-hint.linked-already { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    .prop-stock-banner {
+      display: flex; align-items: flex-start; gap: .7rem;
+      margin: 0 0 1rem; padding: .85rem 1rem;
+      background: #fff7f3; border: 1.5px solid #ffd4c4; border-radius: 14px;
+    }
+    .prop-stock-banner[hidden] { display: none !important; }
+    .prop-stock-banner p { margin: 0; font-size: .86rem; color: #7c2d12; line-height: 1.45; }
+    .prop-stock-hint {
+      margin: 0 .85rem .75rem; padding: .55rem .7rem; border-radius: 10px;
+      background: #fff7f3; color: #9a3412; font-size: .72rem; font-weight: 650; line-height: 1.35;
+    }
 
     /* ── Add card ── */
     .add-card {
       background: #fff; border: 2px dashed #cbd5e1; border-radius: 20px;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      padding: 3rem 2rem; cursor: pointer; min-height: 280px;
-      transition: all .28s; text-decoration: none;
+      padding: 1.5rem 1rem; cursor: pointer; min-height: 0;
+      transition: all .28s; text-decoration: none; text-align: center;
     }
     .add-card:hover { border-color: var(--brand-light); background: var(--brand-pale); transform: translateY(-4px); }
     .add-card-icon {
-      width: 64px; height: 64px; border-radius: 16px; background: #f1f5f9;
-      display: flex; align-items: center; justify-content: center; margin-bottom: 1.1rem;
+      width: 48px; height: 48px; border-radius: 14px; background: #f1f5f9;
+      display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;
       transition: background .28s;
     }
     .add-card:hover .add-card-icon { background: rgba(16,185,129,.15); }
@@ -151,30 +170,29 @@
     .proc-modal .form-control, .proc-modal .form-select { border-radius: 10px; padding: .7rem 1rem; border-color: #d1d5db; }
     .proc-modal .form-control:focus, .proc-modal .form-select:focus { border-color: var(--brand-light); box-shadow: 0 0 0 3px rgba(16,185,129,.12); }
     .proc-modal .form-label { font-weight: 600; font-size: .85rem; color: #374151; }
-  </style>
-</head>
-<body>
+  
+</style>
+{% endset %}
+{% include 'partials/proc_shell_start.html' %}
 
-  <!-- Banner -->
-  <div class="page-banner">
-    <div class="banner-inner">
-      <div>
-        <a href="/procurement/" class="back-link">
-          <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-          Back to Procurement
-        </a>
-        <div class="banner-title">Property Management</div>
-        <div class="banner-sub">Organize and track materials by site or location</div>
-      </div>
-      <button class="btn-add-prop" onclick="showAddPropertyModal()">
-        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-        Add Property
-      </button>
-    </div>
+<div class="proc-dash-head">
+  <div>
+    <p class="proc-kicker">Inventory</p>
+    <h1>Property Management</h1>
+    <p class="proc-sub">Organize and track materials by site or location</p>
   </div>
+  <div class="proc-dash-actions">
+    <button type="button" class="proc-btn proc-btn-outline" onclick="procExportDownload('properties','xlsx')">Excel</button>
+    <button type="button" class="proc-btn proc-btn-outline" onclick="procExportDownload('properties','pdf')">PDF</button>
+    <a class="proc-btn proc-btn-primary" href="/tickets/settings?tab=projects&add=1">Add Project</a>
+  </div>
+</div>
 
   <!-- Content -->
   <div class="content">
+    <div class="prop-stock-banner" id="propStockBanner" hidden>
+      <p><strong>New project on the list.</strong> Add materials so tickets at this site can draw from stock.</p>
+    </div>
     <div id="propertiesContainer">
       <div class="loading-state">
         <div class="spinner-border text-secondary mb-3"></div>
@@ -193,8 +211,15 @@
         </div>
         <div class="modal-body">
           <div class="mb-3">
+            <label class="form-label">Use a site from ticketing</label>
+            <select class="form-select" id="ticketPropertyPick">
+              <option value="">Create a new name, or pick a common site…</option>
+            </select>
+          </div>
+          <div class="mb-3">
             <label class="form-label">Property Name *</label>
-            <input type="text" class="form-control" id="propertyName" placeholder="e.g., Tower A, Villa 12, Site B">
+            <input type="text" class="form-control" id="propertyName" placeholder="e.g., Tower A, Villa 12, Site B" autocomplete="off">
+            <div id="propertyHint" class="prop-create-hint" hidden></div>
           </div>
           <div class="mb-3">
             <label class="form-label">Address</label>
@@ -213,9 +238,38 @@
     </div>
   </div>
 
+  <div class="modal fade proc-modal" id="iconPickerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered icon-picker-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Choose an icon</h5>
+          <p class="icon-picker-site" id="iconPickerSite"></p>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="icon-pick-preview">
+            <div class="icon-pick-card-mock">
+              <div class="icon-pick-preview-well" id="iconPickerPreviewGlyph"></div>
+              <p class="icon-pick-preview-kind" id="iconPickerPreviewKind">Site</p>
+            </div>
+            <p class="icon-pick-preview-hint">This is how it appears on the card.</p>
+          </div>
+          <div class="icon-pick-grid" id="iconPickerGrid"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600;">Cancel</button>
+          <button type="button" class="btn" style="background:linear-gradient(135deg,#ff8e68,#f97e54);color:white;border-radius:10px;font-weight:600;padding:.6rem 1.5rem;" onclick="savePropertyIcon()">Save icon</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     const token = localStorage.getItem('access_token');
+    let _ticketProps = [];
+    let _propertyIcons = [];
+    let _iconPick = { id: '', name: '', ticketId: '', current: '', chosen: '' };
 
     const propGradients = [
       'linear-gradient(135deg,#6366f1,#4f46e5)',
@@ -230,6 +284,68 @@
     const propBtnColors = ['#4f46e5','#be185d','#d97706','#1d4ed8','#6d28d9','#0d9488','#e11d48','#047857'];
     const propIcons = ['🏢','🏠','🏗️','🏭','🏛️','🏨','🏪','🏬'];
 
+    async function loadTicketProperties() {
+      try {
+        const response = await fetch('/procurement/api/ticket-properties', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        _ticketProps = (data.success && data.properties) ? data.properties : [];
+      } catch (err) {
+        _ticketProps = [];
+      }
+      const sel = document.getElementById('ticketPropertyPick');
+      if (!sel) return;
+      const current = sel.value;
+      sel.innerHTML = '<option value="">Create a new name, or pick a common site…</option>';
+      _ticketProps.forEach((tp) => {
+        const opt = document.createElement('option');
+        opt.value = String(tp.id);
+        const shown = tp.display_name || tp.name;
+        const used = tp.linked ? ' (already in procurement)' : '';
+        opt.textContent = `${shown}${used}`;
+        if (tp.linked) opt.disabled = true;
+        sel.appendChild(opt);
+      });
+      if (current) sel.value = current;
+    }
+
+    function matchTicketProperty(name) {
+      const q = (name || '').trim().toLowerCase();
+      if (!q) return null;
+      return _ticketProps.find((tp) => (tp.name || '').toLowerCase() === q) || null;
+    }
+
+    function updatePropertyHint() {
+      const hint = document.getElementById('propertyHint');
+      const name = document.getElementById('propertyName').value.trim();
+      const pickId = document.getElementById('ticketPropertyPick').value;
+      if (!hint) return;
+      let match = pickId
+        ? _ticketProps.find((tp) => String(tp.id) === pickId)
+        : matchTicketProperty(name);
+      if (!name && !pickId) {
+        hint.hidden = true;
+        return;
+      }
+      if (match && match.linked) {
+        hint.hidden = false;
+        hint.className = 'prop-create-hint linked-already';
+        hint.textContent = `${match.display_name || match.name} is already in procurement. Open that card to add materials.`;
+        return;
+      }
+      if (match) {
+        const project = match.project_name ? ` (project ${match.project_name})` : '';
+        hint.hidden = false;
+        hint.className = 'prop-create-hint match';
+        hint.textContent = `This is in the common property list${project}. Stock will be available on tickets at that site.`;
+        return;
+      }
+      hint.hidden = false;
+      hint.className = 'prop-create-hint standalone';
+      hint.textContent = 'This name is not in the common property database. It will stand alone in procurement. Tickets will not see this stock until you Link it.';
+    }
+
     async function loadProperties() {
       try {
         const response = await fetch('/procurement/api/properties', {
@@ -237,30 +353,65 @@
         });
         const data = await response.json();
         const container = document.getElementById('propertiesContainer');
+        if (data.icons && data.icons.length) _propertyIcons = data.icons;
 
         if (data.properties && data.properties.length > 0) {
-          const sorted = data.properties.sort((a,b) => {
+          const stockBanner = document.getElementById('propStockBanner');
+          const needsStock = data.properties.some((p) => p.needs_stock);
+          if (stockBanner) stockBanner.hidden = !needsStock;
+          const sorted = data.properties.slice().sort((a, b) => {
+            const aShared = a.is_shared || a.name === 'Shared';
+            const bShared = b.is_shared || b.name === 'Shared';
+            if (aShared !== bShared) return aShared ? -1 : 1;
             if (a.name === 'Unassigned') return 1;
             if (b.name === 'Unassigned') return -1;
-            return b.materials_count - a.materials_count;
+            if (!!a.needs_stock !== !!b.needs_stock) return a.needs_stock ? -1 : 1;
+            const an = (a.display_name || a.name || '');
+            const bn = (b.display_name || b.name || '');
+            return an.localeCompare(bn, undefined, { sensitivity: 'base', numeric: true });
           });
 
           let html = '<div class="props-grid">';
           sorted.forEach((prop, idx) => {
+            const shownName = prop.display_name || prop.name;
             const isUnassigned = prop.name === 'Unassigned';
-            const gradient = isUnassigned ? 'linear-gradient(135deg,#94a3b8,#64748b)' : propGradients[idx % propGradients.length];
-            const btnColor  = isUnassigned ? '#64748b' : propBtnColors[idx % propBtnColors.length];
-            const icon      = isUnassigned ? '📦' : propIcons[idx % propIcons.length];
+            const isShared = !!prop.is_shared || prop.name === 'Shared';
+            const isLinked = (!!prop.linked || !!prop.from_tickets) && !isShared;
+            const isStandalone = !isShared && !isLinked && !isUnassigned;
+            const needsImport = !!prop.needs_import;
+            const needsStock = !!prop.needs_stock;
+            const theme = prop.theme || {};
+            const gradient = theme.gradient || (isShared
+              ? 'linear-gradient(135deg,#0ea5e9,#0369a1)'
+              : (isUnassigned ? 'linear-gradient(135deg,#94a3b8,#64748b)' : propGradients[idx % propGradients.length]));
+            const btnColor  = theme.solid || (isShared ? '#0369a1' : (isUnassigned ? '#64748b' : propBtnColors[idx % propBtnColors.length]));
+            const icon      = theme.icon || (isShared ? '📦' : (isUnassigned ? '📦' : propIcons[idx % propIcons.length]));
+            const badge = isShared ? 'Shared store' : (isUnassigned ? 'Unassigned' : (needsStock ? 'New project' : (isLinked ? 'Linked' : 'Standalone')));
             const valK = prop.total_value >= 1000
               ? (prop.total_value / 1000).toFixed(1) + 'K'
               : (prop.total_value || 0).toFixed(0);
+            let footNote = 'Click to add materials';
+            if (isShared) footNote = 'Available on every ticket';
+            else if (isUnassigned) footNote = 'Needs assignment';
+            else if (needsStock) footNote = 'Add materials for this site';
+            else if (isLinked) {
+              footNote = 'Stock for this site · any floor';
+            } else {
+              footNote = 'Procurement only';
+            }
+            const linkBtn = isStandalone
+              ? `<button type="button" class="prop-link-btn" data-proc-id="${esc(prop.id || '')}" data-proc-name="${esc(prop.name)}" onclick="event.preventDefault(); event.stopPropagation(); linkToTickets(this.dataset.procId, this.dataset.procName)">Link to tickets</button>`
+              : `<span class="prop-foot-btn" style="background:${btnColor}">${needsImport ? 'Add materials' : 'View'}<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>`;
+            const stockHint = needsStock
+              ? '<div class="prop-stock-hint">No stock yet — add materials for this site</div>'
+              : '';
 
             html += `
-              <a href="/procurement/property/${encodeURIComponent(prop.name)}" class="prop-card">
+              <a href="/procurement/property/${encodeURIComponent(prop.name)}" class="prop-card" data-needs-import="${needsImport ? '1' : ''}" data-ticket-id="${prop.ticket_property_id || ''}" data-prop-name="${esc(prop.name)}" onclick="return openPropertyCard(event, this)">
                 <div class="prop-card-top" style="background:${gradient}">
-                  <span class="prop-card-badge">${isUnassigned ? 'Unassigned' : 'Property'}</span>
-                  <div class="prop-icon-wrap">${icon}</div>
-                  <h3 class="prop-name">${esc(prop.name)}</h3>
+                  <span class="prop-card-badge">${badge}</span>
+                  <button type="button" class="prop-icon-wrap" title="Change icon" data-proc-id="${esc(prop.id || '')}" data-prop-name="${esc(prop.name)}" data-display-name="${esc(shownName)}" data-ticket-id="${prop.ticket_property_id || ''}" data-current-icon="${esc(icon)}" onclick="event.preventDefault(); event.stopPropagation(); openIconPicker(this)">${icon}</button>
+                  <h3 class="prop-name">${esc(shownName)}</h3>
                 </div>
                 <div class="prop-card-body">
                   <div class="prop-stats">
@@ -278,36 +429,36 @@
                     </div>
                   </div>
                 </div>
+                ${stockHint}
                 <div class="prop-card-foot">
-                  <span class="prop-foot-note">${isUnassigned ? 'Needs assignment' : 'Click to view'}</span>
-                  <span class="prop-foot-btn" style="background:${btnColor}">
-                    View
-                    <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-                  </span>
+                  <span class="prop-foot-note">${footNote}</span>
+                  ${linkBtn}
                 </div>
               </a>`;
           });
 
           html += `
-            <div class="add-card" onclick="showAddPropertyModal()">
+            <a class="add-card" href="/tickets/settings?tab=projects&add=1">
               <div class="add-card-icon"><svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg></div>
-              <div class="add-card-label">Add New Property</div>
-              <div class="add-card-sub">Create a new site or location</div>
-            </div>
+              <div class="add-card-label">Add Project</div>
+              <div class="add-card-sub">Create a contract, then add locations</div>
+            </a>
           </div>`;
 
           container.innerHTML = html;
         } else {
+          const stockBanner = document.getElementById('propStockBanner');
+          if (stockBanner) stockBanner.hidden = true;
           container.innerHTML = `
             <div class="empty-state">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.3" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
               </svg>
               <h4 style="font-weight:700;margin-bottom:.5rem;">No Properties Yet</h4>
-              <p class="text-muted mb-4">Create your first property to organize materials by location</p>
-              <button class="btn" style="background:linear-gradient(135deg,#ff8e68,#f97e54);color:white;border-radius:10px;font-weight:600;padding:.65rem 1.75rem;" onclick="showAddPropertyModal()">
-                Add First Property
-              </button>
+              <p class="text-muted mb-4">Create a project first, then add locations so stock can sit on a site</p>
+              <a class="btn" href="/tickets/settings?tab=projects&add=1" style="background:linear-gradient(135deg,#ff8e68,#f97e54);color:white;border-radius:10px;font-weight:600;padding:.65rem 1.75rem;display:inline-block;text-decoration:none;">
+                Add Project
+              </a>
             </div>`;
         }
       } catch (error) {
@@ -315,7 +466,115 @@
       }
     }
 
+    const ICON_CHECK = '<span class="icon-pick-check" aria-hidden="true"><svg fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></span>';
+
+    function iconLabelFor(glyph) {
+      const hit = (_propertyIcons || []).find((item) => item.icon === glyph);
+      return (hit && hit.label) || 'Site';
+    }
+
+    function syncIconPreview() {
+      const glyph = document.getElementById('iconPickerPreviewGlyph');
+      const kind = document.getElementById('iconPickerPreviewKind');
+      if (glyph) glyph.textContent = _iconPick.chosen || '';
+      if (kind) kind.textContent = iconLabelFor(_iconPick.chosen);
+    }
+
+    function openIconPicker(btn) {
+      _iconPick = {
+        id: btn.dataset.procId || '',
+        name: btn.dataset.propName || '',
+        displayName: btn.dataset.displayName || btn.dataset.propName || '',
+        ticketId: btn.dataset.ticketId || '',
+        current: btn.dataset.currentIcon || '',
+        chosen: btn.dataset.currentIcon || '',
+      };
+      const site = document.getElementById('iconPickerSite');
+      if (site) site.textContent = _iconPick.displayName;
+      const grid = document.getElementById('iconPickerGrid');
+      grid.innerHTML = (_propertyIcons.length ? _propertyIcons : []).map((item) => {
+        const on = item.icon === _iconPick.chosen ? ' is-on' : '';
+        return `<button type="button" class="icon-pick-btn${on}" data-icon="${esc(item.icon)}" onclick="choosePropertyIcon(this)">
+          <span class="icon-pick-glyph">${item.icon}</span>
+          <span class="icon-pick-label">${esc(item.label)}</span>
+          ${ICON_CHECK}
+        </button>`;
+      }).join('');
+      syncIconPreview();
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('iconPickerModal')).show();
+    }
+
+    function choosePropertyIcon(btn) {
+      _iconPick.chosen = btn.dataset.icon || '';
+      document.querySelectorAll('#iconPickerGrid .icon-pick-btn').forEach((el) => {
+        el.classList.toggle('is-on', el === btn);
+      });
+      syncIconPreview();
+    }
+
+    async function savePropertyIcon() {
+      if (!_iconPick.chosen) {
+        alert('Choose an icon first');
+        return;
+      }
+      try {
+        const response = await fetch('/procurement/api/properties/icon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            icon: _iconPick.chosen,
+            id: _iconPick.id || undefined,
+            name: _iconPick.name,
+            ticket_property_id: _iconPick.ticketId || undefined,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          alert(result.error || 'Could not save icon');
+          return;
+        }
+        bootstrap.Modal.getInstance(document.getElementById('iconPickerModal'))?.hide();
+        loadProperties();
+      } catch (err) {
+        alert(err.message || 'Could not save icon');
+      }
+    }
+
+    function linkToTickets(procId, name) {
+      const params = new URLSearchParams({
+        from: 'procurement',
+        prefill_name: name || '',
+        proc_id: procId || '',
+      });
+      window.location.href = `/tickets/settings/locations/standalone?${params.toString()}`;
+    }
+
+    async function openPropertyCard(event, el) {
+      if (el.dataset.needsImport !== '1') return true;
+      event.preventDefault();
+      const name = el.dataset.propName || '';
+      const ticketId = el.dataset.ticketId;
+      try {
+        const response = await fetch('/procurement/api/properties', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ name, ticket_property_id: ticketId }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          alert(result.error || 'Could not open this property');
+          return false;
+        }
+        window.location.href = `/procurement/property/${encodeURIComponent(name)}`;
+      } catch (err) {
+        alert(err.message || 'Could not open this property');
+      }
+      return false;
+    }
+
     function showAddPropertyModal() {
+      loadTicketProperties();
+      updatePropertyHint();
       new bootstrap.Modal(document.getElementById('addPropertyModal')).show();
     }
 
@@ -323,12 +582,22 @@
       const name        = document.getElementById('propertyName').value.trim();
       const address     = document.getElementById('propertyAddress').value.trim();
       const description = document.getElementById('propertyDescription').value.trim();
+      const pickId      = document.getElementById('ticketPropertyPick').value;
       if (!name) { alert('Property name is required'); return; }
+      const match = pickId
+        ? _ticketProps.find((tp) => String(tp.id) === pickId)
+        : matchTicketProperty(name);
+      const payload = { name, address, description };
+      if (match && !match.linked) {
+        payload.ticket_property_id = match.id;
+      } else if (!match) {
+        payload.standalone = true;
+      }
       try {
         const response = await fetch('/procurement/api/properties', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ name, address, description })
+          body: JSON.stringify(payload)
         });
         const result = await response.json();
         if (result.success) {
@@ -336,8 +605,11 @@
           document.getElementById('propertyName').value        = '';
           document.getElementById('propertyAddress').value    = '';
           document.getElementById('propertyDescription').value = '';
+          document.getElementById('ticketPropertyPick').value = '';
+          updatePropertyHint();
+          loadTicketProperties();
           loadProperties();
-        } else { alert('Error: ' + result.error); }
+        } else { alert('Error: ' + (result.error || 'Could not add property')); }
       } catch (error) { alert('Error: ' + error.message); }
     }
 
@@ -347,7 +619,23 @@
       return d.innerHTML;
     }
 
+    document.getElementById('propertyName')?.addEventListener('input', () => {
+      const name = document.getElementById('propertyName').value.trim();
+      const match = matchTicketProperty(name);
+      const sel = document.getElementById('ticketPropertyPick');
+      if (match && !match.linked) sel.value = String(match.id);
+      else if (!match) sel.value = '';
+      updatePropertyHint();
+    });
+    document.getElementById('ticketPropertyPick')?.addEventListener('change', () => {
+      const pickId = document.getElementById('ticketPropertyPick').value;
+      const match = _ticketProps.find((tp) => String(tp.id) === pickId);
+      if (match) document.getElementById('propertyName').value = match.name;
+      updatePropertyHint();
+    });
+
+    loadTicketProperties();
     loadProperties();
   </script>
-</body>
-</html>
+  
+{% include 'partials/proc_shell_end.html' %}

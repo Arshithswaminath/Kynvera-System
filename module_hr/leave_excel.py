@@ -11,7 +11,7 @@ from typing import Any, Optional
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.formatting.rule import CellIsRule, FormulaRule
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.styles import Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
@@ -23,6 +23,8 @@ from app.models import (
     LEAVE_TRACKER_MONTH_LABELS,
     LEAVE_TRACKER_MONTHS,
     LEAVE_TRACKER_YEAR,
+    LEAVE_WINDOW_END,
+    LEAVE_WINDOW_START,
     normalize_leave_company,
     LEAVE_TYPES,
     LeaveEmployee,
@@ -32,20 +34,21 @@ from app.models import (
     recompute_monthly_usage,
 )
 from common.datetime_utils import utc_now_naive
+from common.kynvera_excel_brand import (
+    HINT_FONT,
+    THIN,
+    TITLE_FONT,
+    InstructionSpec,
+    style_header_row,
+    write_instructions_sheet,
+)
 
 logger = logging.getLogger(__name__)
 
-HEADER_FILL = PatternFill('solid', fgColor='FF8E68')
-HEADER_FONT = Font(bold=True, color='FFFFFF')
 WARN_FILL = PatternFill('solid', fgColor='FEF3C7')
 CRIT_FILL = PatternFill('solid', fgColor='FFEDD5')
 EXHAUST_FILL = PatternFill('solid', fgColor='FECACA')
-THIN = Border(
-    left=Side(style='thin', color='E9EAEE'),
-    right=Side(style='thin', color='E9EAEE'),
-    top=Side(style='thin', color='E9EAEE'),
-    bottom=Side(style='thin', color='E9EAEE'),
-)
+INPUT_FILL = PatternFill('solid', fgColor='FFF2CC')
 
 MONTH_HEADERS = [LEAVE_TRACKER_MONTH_LABELS[m] for m in LEAVE_TRACKER_MONTHS]
 
@@ -79,20 +82,9 @@ LOGS_HEADERS = (
 LOG_INPUT_COLS = (2, 7, 8, 9, 11, 12)  # Emp ID, Type, Start, End, Reason, Approved
 LOG_SHEET_NAMES = ('Leave Log', 'Leave Logs')
 
-LEAVE_WINDOW_START = date(LEAVE_TRACKER_YEAR, 8, 1)
-LEAVE_WINDOW_END = date(LEAVE_TRACKER_YEAR, 12, 31)
-INPUT_FILL = PatternFill('solid', fgColor='FFF2CC')
-TITLE_FONT = Font(bold=True, size=13, color='1F2937')
-HINT_FONT = Font(size=10, color='5C616E')
-
 
 def _style_header(ws, ncols: int) -> None:
-    for col in range(1, ncols + 1):
-        cell = ws.cell(1, col)
-        cell.fill = HEADER_FILL
-        cell.font = HEADER_FONT
-        cell.alignment = Alignment(horizontal='center', wrap_text=True)
-        cell.border = THIN
+    style_header_row(ws, 1, ncols)
 
 
 def _autosize(ws, min_w=10, max_w=36) -> None:
@@ -465,14 +457,14 @@ def build_leave_log_template_bytes() -> BytesIO:
     ws.merge_cells('A1:M1')
     ws['A1'] = (
         f'Leave Log — Enter every Sick / Annual leave instance here '
-        f'(Aug – Dec {LEAVE_TRACKER_YEAR})'
+        f'(from {LEAVE_WINDOW_START.isoformat()})'
     )
     ws['A1'].font = TITLE_FONT
     ws.merge_cells('A2:M2')
     ws['A2'] = (
         'Fill yellow cells only: Emp ID, Leave Type, Start/End Date, Reason / Notes, Approved. '
         'No. of Days and Month calculate automatically. Upload this file via Import on Leave Tracker. '
-        'Dates must fall within Aug–Dec of the tracker year.'
+        f'Dates must fall on or after {LEAVE_WINDOW_START.isoformat()}.'
     )
     ws['A2'].font = HINT_FONT
     ws['A2'].alignment = Alignment(wrap_text=True)
@@ -480,11 +472,8 @@ def build_leave_log_template_bytes() -> BytesIO:
 
     header_row = 3
     for col_idx, header in enumerate(LOGS_HEADERS, start=1):
-        cell = ws.cell(header_row, col_idx, header)
-        cell.fill = HEADER_FILL
-        cell.font = HEADER_FONT
-        cell.alignment = Alignment(horizontal='center', wrap_text=True)
-        cell.border = THIN
+        ws.cell(header_row, col_idx, header)
+    style_header_row(ws, header_row, len(LOGS_HEADERS))
 
     blank_rows = 50
     first_data = header_row + 1
@@ -538,25 +527,61 @@ def build_leave_log_template_bytes() -> BytesIO:
         ws.column_dimensions[letter].width = w
     ws.freeze_panes = 'A4'
 
-    # Instructions
-    wi = wb.create_sheet('Instructions', 0)
-    wi['A1'] = 'How to use this Leave Log template'
-    wi['A1'].font = TITLE_FONT
-    lines = [
-        '1. Open the Leave Log sheet.',
-        '2. Enter Emp ID (must already exist in Leave Tracker — use Seed Staff first if needed).',
-        '3. Choose Leave Type: Sick or Annual.',
-        '4. Enter Start Date and End Date (inclusive). No. of Days fills in automatically.',
-        '5. Optionally fill Reason / Notes and Approved (Yes / No / Pending).',
-        '6. Save the file and click Import on the Leave Tracker page.',
-        f'7. Only dates from {LEAVE_WINDOW_START.isoformat()} to {LEAVE_WINDOW_END.isoformat()} are imported.',
-        '8. You can also upload the full Injaaz Leave Tracker workbook — the Leave Log sheet is detected automatically.',
-        '9. Employee Name / Designation / Company / Project are optional on import (looked up from Emp ID).',
-    ]
-    for i, line in enumerate(lines, start=3):
-        wi.cell(i, 1, line)
-        wi.cell(i, 1).font = HINT_FONT
-    wi.column_dimensions['A'].width = 100
+    write_instructions_sheet(wb, InstructionSpec(
+        title='Leave log template',
+        module_label='HR / Leave Tracker',
+        about=(
+            f'Blank Leave Log for Sick and Annual leave in the current tracker window '
+            f'(from {LEAVE_WINDOW_START.isoformat()}).',
+            'Fill yellow cells only. No. of Days and Month calculate automatically from the dates.',
+            'Emp ID must already exist in Leave Tracker (seed staff first if needed).',
+        ),
+        how_to=(
+            'Open the Leave Log sheet. Keep the coral header on row 3.',
+            'Enter Emp ID (must match an existing employee).',
+            'Choose Leave Type: Sick or Annual (dropdown).',
+            'Enter Start Date and End Date (inclusive). No. of Days fills in automatically.',
+            'Optionally fill Reason / Notes and Approved (Yes / No / Pending).',
+            'Save as .xlsx and click Import on the Leave Tracker page.',
+        ),
+        columns=(
+            ('SN', 'Auto. Leave blank; formula fills when Emp ID is set.'),
+            ('Emp ID', 'Required. Must already exist in Leave Tracker.'),
+            ('Employee Name', 'Optional on import (looked up from Emp ID).'),
+            ('Designation', 'Optional on import.'),
+            ('Company', 'Optional on import.'),
+            ('Project', 'Optional.'),
+            ('Leave Type', 'Required. Sick or Annual.'),
+            ('Start Date', f'Required. Inclusive. Must fall in {LEAVE_WINDOW_START.isoformat()} – {LEAVE_WINDOW_END.isoformat()}.'),
+            ('End Date', 'Required. Inclusive. No. of Days = End − Start + 1.'),
+            ('No. of Days', 'Auto from dates. Do not type over the formula.'),
+            ('Reason / Notes', 'Optional.'),
+            ('Approved', 'Optional. Yes / No / Pending.'),
+            ('Month', 'Auto from Start Date. Do not type over the formula.'),
+        ),
+        example_headers=LOGS_HEADERS,
+        example_rows=((
+            1,
+            170,
+            'Example — replace Emp ID / dates before import',
+            '',
+            '',
+            '',
+            'Sick',
+            date(LEAVE_TRACKER_YEAR, 8, 3).isoformat(),
+            date(LEAVE_TRACKER_YEAR, 8, 3).isoformat(),
+            1,
+            'Example sick leave',
+            'Yes',
+            f'August {LEAVE_TRACKER_YEAR}',
+        ),),
+        import_rules=(
+            f'Only dates from {LEAVE_WINDOW_START.isoformat()} to {LEAVE_WINDOW_END.isoformat()} are imported.',
+            'Unknown Emp IDs are reported and skipped; other rows still import.',
+            'You can also upload the full Leave Tracker workbook — the Leave Log sheet is detected automatically.',
+            'Employee Name / Designation / Company / Project are optional (looked up from Emp ID).',
+        ),
+    ))
 
     buf = BytesIO()
     wb.save(buf)
@@ -695,6 +720,8 @@ def import_leave_workbook(file_storage) -> dict[str, Any]:
                 notes = ''
                 if 'notes' in col and col['notes'] < len(row) and row[col['notes']]:
                     notes = str(row[col['notes']]).strip()
+                if notes.lower().startswith('example'):
+                    continue
                 if 'approved' in col and col['approved'] < len(row) and row[col['approved']]:
                     appr = str(row[col['approved']]).strip()
                     if appr and appr.lower() not in ('yes', 'y', 'true', '1'):
@@ -958,7 +985,10 @@ def split_plan_days_by_month(start: date, end: date) -> dict[int, int]:
     buckets: dict[int, int] = {}
     cur = start
     while cur <= end:
-        if cur.year == LEAVE_TRACKER_YEAR and cur.month in LEAVE_TRACKER_MONTHS:
+        if (
+            LEAVE_WINDOW_START <= cur <= LEAVE_WINDOW_END
+            and cur.year == LEAVE_TRACKER_YEAR
+        ):
             buckets[cur.month] = buckets.get(cur.month, 0) + 1
         cur += timedelta(days=1)
     return buckets

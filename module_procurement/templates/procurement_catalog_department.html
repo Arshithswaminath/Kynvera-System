@@ -1,16 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>{{ department }} Catalog — Kynvera Procurement</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
-  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <style>
+{% set proc_page_title = department ~ ' catalog — Procurement' %}
+{% set proc_topbar_title = department %}
+{% set proc_head_extra %}
+<style>
+
     *, *::before, *::after { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; box-sizing: border-box; }
     :root {
       --dc: {{ meta.color }};
@@ -18,17 +10,13 @@
       --bg: #f4f6f5; --surface: #fff;
       --text: #0f172a; --muted: #64748b; --border: #e2e8f0;
     }
-    body { background: var(--bg); min-height: 100vh; }
+    body.procurement-page { background: var(--bg); min-height: 100vh; }
+    body.procurement-page .nav { border-bottom: none !important; }
 
-    /* ── Navbar spacer (main_navbar is included) ── */
     /* ── Hero banner ── */
     .cat-hero {
       background: var(--dg); padding: 7.5rem 0 3rem;
       position: relative; overflow: hidden;
-    }
-    .cat-hero::before {
-      content: ''; position: absolute; inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
     }
     .cat-hero::after {
       content: ''; position: absolute; right: -8%; top: -30%;
@@ -44,14 +32,6 @@
       transition: color .2s;
     }
     .back-btn:hover { color: #fff; }
-    .cat-hero-tag {
-      display: inline-flex; align-items: center; gap:.5rem;
-      background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22);
-      border-radius: 100px; padding: .28rem .9rem;
-      font-size: .7rem; font-weight: 700; color: rgba(255,255,255,.9);
-      letter-spacing: .08em; text-transform: uppercase; margin-bottom: .9rem;
-    }
-    .cat-hero-tag .dot { width: 6px; height: 6px; background: rgba(255,255,255,.9); border-radius: 50%; }
     .cat-hero-title {
       font-size: clamp(1.75rem, 4vw, 2.75rem); font-weight: 800;
       color: #fff; line-height: 1.12; margin-bottom: .5rem; letter-spacing: -.02em;
@@ -178,9 +158,6 @@
     .btn-modal-delete svg { width: 14px; height: 14px; stroke: #dc2626; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
     .cat-modal .modal-content { border-radius: 18px; border: none; overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.14); }
-    /* Open modal near the top (below fixed navbar) */
-    .cat-modal .modal-dialog { margin-top: 90px; }
-    @media (max-width: 768px) { .cat-modal .modal-dialog { margin-top: 72px; } }
     .cat-modal .modal-header {
       background: var(--dg);
       color: white; border: none; padding: 1.25rem 1.5rem;
@@ -188,11 +165,37 @@
     .cat-modal .modal-title { font-weight: 800; font-size: 1.05rem; }
     .cat-modal .modal-body { padding: 1.25rem 1.5rem; }
     .cat-modal .modal-footer { border: none; padding: 0 1.5rem 1.25rem; gap: .5rem; }
-    .cat-modal .form-label { font-weight: 700; font-size: .82rem; color: #334155; }
-    .cat-modal .form-control, .cat-modal .form-select { border-radius: 10px; padding: .7rem .95rem; border-color: #d1d5db; }
+    .cat-modal .form-label {
+      display: block;
+      font-weight: 700;
+      font-size: .72rem;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: .35rem;
+    }
+    .cat-modal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.85rem 0.75rem;
+      align-items: end;
+    }
+    .cat-modal-span { grid-column: 1 / -1; }
+    .cat-modal-field { min-width: 0; display: flex; flex-direction: column; }
+    @media (max-width: 768px) {
+      .cat-modal-grid { grid-template-columns: 1fr; }
+    }
     .cat-modal .form-control:focus, .cat-modal .form-select:focus {
       border-color: var(--dc);
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--dc) 14%, transparent);
+      outline: none;
+    }
+    .cat-modal .proc-aed-field:focus-within .proc-aed-prefix {
+      border-color: var(--color-brand, #ff8e68);
+    }
+    .cat-modal .proc-aed-field .form-control:focus {
+      border-color: var(--color-brand, #ff8e68);
+      box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.22);
     }
     .btn-save {
       background: var(--dg);
@@ -257,22 +260,16 @@
       animation: shimmer 1.2s infinite;
     }
     @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-  </style>
-</head>
-<body>
-  {% set active_page = 'procurement' %}
-  {% include 'partials/main_navbar.html' with context %}
-
-  <!-- Hero -->
-  <header class="cat-hero">
+  
+</style>
+{% endset %}
+{% include 'partials/proc_shell_start.html' %}
+<header class="cat-hero">
     <div class="cat-hero-inner">
-      <a href="/procurement/" class="back-btn">
-        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-        </svg>
-        Back to Procurement
-      </a>
-      <div class="cat-hero-tag"><span class="dot"></span> Department Catalog</div>
+      {% set module_back_url = url_for('procurement_module.procurement_dashboard') %}
+      {% set module_back_label = 'Back to Procurement' %}
+      {% set module_back_extra_class = 'back-btn' %}
+      {% include 'partials/module_back_link.html' %}
       <h1 class="cat-hero-title">{{ department }} <br>Materials Catalog</h1>
       <p class="cat-hero-sub">{{ meta.desc }}</p>
     </div>
@@ -358,17 +355,17 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">Item Name *</label>
-            <input type="text" class="form-control" id="cmName" placeholder="e.g., Copper Pipe 1/2 inch">
-          </div>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">Brand</label>
-              <input type="text" class="form-control" id="cmBrand" placeholder="Optional">
+          <div class="cat-modal-grid">
+            <div class="cat-modal-field cat-modal-span">
+              <label class="form-label" for="cmName">Item Name *</label>
+              <input type="text" class="form-control" id="cmName" placeholder="e.g., Copper Pipe 1/2 inch" autocomplete="off">
             </div>
-            <div class="col-md-6">
-              <label class="form-label">UOM</label>
+            <div class="cat-modal-field">
+              <label class="form-label" for="cmBrand">Brand</label>
+              <input type="text" class="form-control" id="cmBrand" placeholder="Optional" autocomplete="off">
+            </div>
+            <div class="cat-modal-field">
+              <label class="form-label" for="cmUom">UOM</label>
               <select class="form-select" id="cmUom">
                 <option value="PCS">PCS</option>
                 <option value="NOS">NOS</option>
@@ -380,12 +377,15 @@
                 <option value="KG">KG</option>
               </select>
             </div>
+            <div class="cat-modal-field">
+              <label class="form-label" for="cmPrice">Unit Price</label>
+              <div class="proc-aed-field">
+                <span class="proc-aed-prefix" aria-hidden="true">AED</span>
+                <input type="number" class="form-control" id="cmPrice" min="0" step="0.01" placeholder="0.00" inputmode="decimal">
+              </div>
+            </div>
           </div>
-          <div class="mb-3 mt-3">
-            <label class="form-label">Unit Price (AED)</label>
-            <input type="number" class="form-control" id="cmPrice" min="0" step="0.01" placeholder="0.00">
-          </div>
-          <div id="cmError" style="display:none;margin-top:.5rem;color:#b91c1c;font-weight:600;font-size:.85rem;"></div>
+          <div id="cmError" style="display:none;margin-top:.75rem;color:#b91c1c;font-weight:600;font-size:.85rem;"></div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn-modal-delete" id="cmDeleteBtn" style="display:none" onclick="deleteCatalogMaterial()">
@@ -401,6 +401,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script>window.FILES_SAVE_MODULE = 'procurement'; window.FILES_SAVE_MODULE_LABEL = 'Procurement';</script>
+  <script src="{{ url_for('static', filename='js/files-save.js') }}?v=16"></script>
   <script>
     const TOKEN     = localStorage.getItem('access_token');
     const DEPT      = {{ department | tojson }};
@@ -730,5 +733,5 @@
 
     loadCatalog();
   </script>
-</body>
-</html>
+
+{% include 'partials/proc_shell_end.html' %}

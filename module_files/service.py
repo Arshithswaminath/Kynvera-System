@@ -23,7 +23,13 @@ from app.models import (
     db,
 )
 from common.datetime_utils import utc_now_naive
-from module_files.catalog import DEFAULT_FOLDER_TREE, get_module_catalog
+from module_files.catalog import (
+    DEFAULT_FOLDER_TREE,
+    get_excel_template,
+    get_module_catalog,
+    list_excel_templates_for_user,
+    user_can_see_excel_template,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +72,66 @@ def ensure_default_folders(created_by: Optional[int] = None) -> dict:
         db.session.flush()
         by_key[key] = folder
     db.session.commit()
+    try:
+        ensure_brand_kit(created_by=created_by, folders=by_key)
+    except Exception:
+        logger.exception('Could not seed Kynvera brand assets into Files')
     return by_key
+
+
+BRAND_KIT_SOURCE_KIND = 'brand-kit-2.0'
+BRAND_ASSET_SOURCE_KIND = 'brand-asset'
+
+
+def _remove_seeded_brand_kit_pdf() -> None:
+    """Drop previously seeded brand-kit PDFs from Files. The PDF stays in the repo."""
+    rows = FilesItem.query.filter_by(source_kind=BRAND_KIT_SOURCE_KIND).all()
+    for item in rows:
+        try:
+            delete_item(item.id)
+        except Exception:
+            logger.exception('Could not remove seeded brand kit PDF (item %s)', item.id)
+
+
+def ensure_brand_kit(created_by: Optional[int] = None, folders: Optional[dict] = None) -> list:
+    """Place logo files into Files → Branding (idempotent).
+
+    The brand kit PDF is kept in the codebase (`static/brand/`) and is not
+    shown in the Files app.
+    """
+    from common.kynvera_brand import existing_logos
+
+    _remove_seeded_brand_kit_pdf()
+
+    folder = (folders or {}).get('branding')
+    if folder is None:
+        folder = FilesFolder.query.filter_by(path_key='branding').first()
+    if folder is None:
+        return []
+
+    seeded = []
+    for logo in existing_logos():
+        already = (
+            FilesItem.query.filter_by(folder_id=folder.id, filename=logo.files_filename)
+            .first()
+        )
+        if already:
+            continue
+        with open(logo.abs_path, 'rb') as fh:
+            data = fh.read()
+        seeded.append(
+            save_bytes_to_folder(
+                folder=folder,
+                data=data,
+                display_name=logo.label,
+                filename=logo.files_filename,
+                mime_type='image/png',
+                source_module='branding',
+                source_kind=BRAND_ASSET_SOURCE_KIND,
+                created_by=created_by,
+            )
+        )
+    return seeded
 
 
 def get_folder_by_path_key(path_key: str, created_by: Optional[int] = None) -> FilesFolder:
@@ -434,14 +499,14 @@ def _build_procurement_bytes(kind: str) -> Tuple[bytes, str, str]:
 
     stamp = datetime.utcnow().strftime('%Y%m%d_%H%M')
     if kind == 'template':
-        rows = [
-            {'Material Name': 'Office Paper A4 Ream', 'Category': 'Stationery', 'Description': '500 sheets per ream', 'Unit': 'ream', 'Quantity': 50, 'Unit Price': 12.50, 'Supplier': 'Gulf Paper Co', 'Notes': 'Monthly supply'},
-            {'Material Name': 'Printer Toner Cartridge', 'Category': 'IT Supplies', 'Description': 'Laser printer compatible', 'Unit': 'pcs', 'Quantity': 10, 'Unit Price': 85.00, 'Supplier': 'Tech Supplies LLC', 'Notes': ''},
-        ]
-        df = pd.DataFrame(rows)
-        filename = f'procurement_import_sample_{stamp}.xlsx'
-        display = f'Procurement sample ({stamp})'
-    elif kind == 'export':
+        from module_procurement.excel_template import build_procurement_sample_bytes
+
+        return (
+            build_procurement_sample_bytes(),
+            f'procurement_import_sample_{stamp}.xlsx',
+            f'Procurement sample ({stamp})',
+        )
+    if kind == 'export':
         submissions = (
             Submission.query.filter(Submission.module_type == 'procurement_material')
             .order_by(Submission.created_at.desc())
@@ -561,14 +626,14 @@ def _build_devices_bytes(kind: str) -> Tuple[bytes, str, str]:
 
     stamp = datetime.utcnow().strftime('%Y%m%d_%H%M')
     if kind == 'template':
-        rows = [
-            {'Device Name': 'LAPTOP-HQ-001', 'Device Type': 'Laptop', 'OS': 'Windows 11 Pro', 'Status': 'online', 'Health': 96, 'Assigned User Email': 'admin@injaaz.ae', 'Serial / Asset Tag': 'AST-10001'},
-            {'Device Name': 'DESKTOP-FIN-014', 'Device Type': 'Desktop', 'OS': 'Windows 10', 'Status': 'idle', 'Health': 88, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10002'},
-        ]
-        df = pd.DataFrame(rows)
-        filename = f'device_import_sample_{stamp}.xlsx'
-        display = f'Device sample ({stamp})'
-    elif kind == 'export':
+        from app.admin.excel_templates import build_devices_sample_bytes
+
+        return (
+            build_devices_sample_bytes(),
+            f'device_import_sample_{stamp}.xlsx',
+            f'Device sample ({stamp})',
+        )
+    if kind == 'export':
         from app.models import Device
 
         devices = Device.query.order_by(Device.name.asc()).all()
@@ -697,39 +762,32 @@ def _read_dochub_document(doc_id: int) -> Tuple[bytes, str, str, str]:
     return data, filename, title, mime
 
 
-def _build_technicians_bytes(kind: str) -> Tuple[bytes, str, str]:
-    import openpyxl
-    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+def _build_locations_bytes(kind: str) -> Tuple[bytes, str, str]:
+    from module_ticketing.location_excel import build_location_workbook
 
+    if kind not in ('locations', 'template'):
+        raise ValueError('Invalid kind for ticketing locations')
+    stamp = datetime.utcnow().strftime('%Y%m%d_%H%M')
+    buf = build_location_workbook()
+    data = buf.getvalue() if isinstance(buf, BytesIO) else bytes(buf)
+    filename = f'location_template_{stamp}.xlsx'
+    display = f'Location template ({stamp})'
+    return data, filename, display
+
+
+def _build_technicians_bytes(kind: str) -> Tuple[bytes, str, str]:
     if kind == 'export':
         return _build_technicians_export_bytes()
     if kind != 'template':
         raise ValueError('Invalid kind for technicians')
+    from app.admin.excel_templates import build_technicians_template_bytes
+
     stamp = datetime.utcnow().strftime('%Y%m%d_%H%M')
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = 'Technicians'
-    headers = [
-        'Employee ID', 'Full Name', 'Designation', 'Department',
-        'Specialization', 'Phone', 'Email', 'Salary', 'Joining Date',
-        'Status', 'Supervisor User ID', 'Notes',
-    ]
-    header_fill = PatternFill('solid', fgColor='125435')
-    header_font = Font(bold=True, color='FFFFFF', size=11)
-    header_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
-    thin = Side(style='thin', color='AAAAAA')
-    border = Border(left=thin, right=thin, top=thin, bottom=thin)
-    for col_idx, h in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col_idx, value=h)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = header_align
-        cell.border = border
-    buf = BytesIO()
-    wb.save(buf)
-    filename = f'technicians_import_template_{stamp}.xlsx'
-    display = f'Technicians template ({stamp})'
-    return buf.getvalue(), filename, display
+    return (
+        build_technicians_template_bytes(),
+        f'technicians_import_template_{stamp}.xlsx',
+        f'Technicians template ({stamp})',
+    )
 
 
 def _build_technicians_export_bytes() -> Tuple[bytes, str, str]:
@@ -866,6 +924,22 @@ def save_from_module(module: str, kind: str, created_by: Optional[int]) -> Tuple
         )
         return item, catalog.get('folder_label') or folder.name
 
+    # Ticketing location hierarchy blank template
+    if mod == 'ticketing' and kind == 'locations':
+        data, filename, display = _build_locations_bytes('locations')
+        folder = get_folder_by_path_key(catalog['folder_path_key'], created_by=created_by)
+        item = save_bytes_to_folder(
+            folder=folder,
+            data=data,
+            display_name=display,
+            filename=filename,
+            mime_type=XLSX_MIME,
+            source_module=mod,
+            source_kind=kind,
+            created_by=created_by,
+        )
+        return item, catalog.get('folder_label') or folder.name
+
     kinds = {o['kind'] for o in catalog['options']}
     if kind not in kinds:
         raise ValueError(f'Unsupported kind for {mod}: {kind}')
@@ -880,6 +954,7 @@ def save_from_module(module: str, kind: str, created_by: Optional[int]) -> Tuple
         'devices': _build_devices_bytes,
         'technicians': _build_technicians_bytes,
         'dochub': _build_dochub_bytes,
+        'ticketing': _build_locations_bytes,
     }
     builder = builders.get(mod)
     if not builder:
@@ -927,3 +1002,204 @@ def save_from_module_many(module: str, kinds: list, created_by: Optional[int]) -
         'failed': failed,
         'folder_label': folder_label,
     }
+
+
+def count_unsynced_items() -> int:
+    """Files that exist locally but are not synced to Drive (local or error)."""
+    return (
+        FilesItem.query.filter(FilesItem.sync_status.in_(['local', 'error']))
+        .count()
+    )
+
+
+def build_excel_template_bytes(template_id: str) -> Tuple[bytes, str, str]:
+    """Generate a library template with a stable download filename.
+
+    Returns (data, stable_filename, display_name).
+    """
+    entry = get_excel_template(template_id)
+    if not entry:
+        raise ValueError(f'Unknown template: {template_id}')
+
+    mod = entry['module']
+    kind = entry['kind']
+    stable = entry['filename']
+    display = entry['label']
+
+    builders = {
+        'manpower': _build_manpower_bytes,
+        'leave': _build_leave_bytes,
+        'hiring': _build_hiring_bytes,
+        'procurement': _build_procurement_bytes,
+        'qhsi': _build_qhsi_bytes,
+        'devices': _build_devices_bytes,
+        'technicians': _build_technicians_bytes,
+        'ticketing': _build_locations_bytes,
+    }
+    builder = builders.get(mod)
+    if not builder:
+        raise ValueError(f'No builder for module: {mod}')
+    data, _ts_name, _ts_display = builder(kind)
+    return data, stable, display
+
+
+def upsert_bytes_to_folder(
+    *,
+    folder: FilesFolder,
+    data: bytes,
+    display_name: str,
+    filename: str,
+    mime_type: str,
+    source_module: Optional[str],
+    source_kind: Optional[str],
+    created_by: Optional[int],
+) -> FilesItem:
+    """Save bytes; if a file with the same filename already exists in the folder, replace it."""
+    existing = (
+        FilesItem.query.filter_by(folder_id=folder.id, filename=filename)
+        .order_by(FilesItem.id.desc())
+        .first()
+    )
+    if existing:
+        # Replace disk bytes and reset sync so Drive push updates the same logical file
+        try:
+            old_path = resolve_item_abs_path(existing)
+            if os.path.isfile(old_path):
+                os.remove(old_path)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            logger.warning('Could not remove old template file for %s', filename, exc_info=True)
+
+        folder_dir = os.path.join(_files_root(), str(folder.id))
+        os.makedirs(folder_dir, exist_ok=True)
+        store_name = _safe_store_name(filename)
+        abs_path = os.path.join(folder_dir, store_name)
+        with open(abs_path, 'wb') as fh:
+            fh.write(data)
+
+        gen = current_app.config.get('GENERATED_DIR') or ''
+        stored = abs_path
+        if gen and abs_path.startswith(gen):
+            stored = os.path.relpath(abs_path, gen)
+
+        now = utc_now_naive()
+        existing.name = display_name
+        existing.filename = filename
+        existing.mime_type = mime_type
+        existing.size_bytes = len(data)
+        existing.stored_path = stored
+        existing.source_module = source_module
+        existing.source_kind = source_kind
+        existing.sync_status = 'local'
+        existing.sync_error = None
+        # Keep drive_file_id so sync_item can update the same Drive file if present
+        existing.updated_at = now
+        if created_by is not None:
+            existing.created_by = created_by
+        db.session.commit()
+        return existing
+
+    return save_bytes_to_folder(
+        folder=folder,
+        data=data,
+        display_name=display_name,
+        filename=filename,
+        mime_type=mime_type,
+        source_module=source_module,
+        source_kind=source_kind,
+        created_by=created_by,
+    )
+
+
+def push_excel_templates_to_drive(template_ids: list, created_by: Optional[int], user=None) -> dict:
+    """Generate templates with stable names, upsert into module folders, sync each to Drive."""
+    from module_files import drive_service
+
+    if not template_ids:
+        raise ValueError('Select at least one template')
+
+    seen = set()
+    items = []
+    failed = []
+    synced = []
+
+    for raw in template_ids:
+        tid = str(raw or '').strip().lower()
+        if not tid or tid in seen:
+            continue
+        seen.add(tid)
+        entry = get_excel_template(tid)
+        if not entry:
+            failed.append({'id': tid, 'error': 'Unknown template'})
+            continue
+        if user is not None and not user_can_see_excel_template(user, entry):
+            failed.append({'id': tid, 'error': 'Access denied'})
+            continue
+        try:
+            data, filename, display = build_excel_template_bytes(tid)
+            catalog = get_module_catalog(entry['module'])
+            if not catalog:
+                raise ValueError(f'No folder catalog for {entry["module"]}')
+            folder = get_folder_by_path_key(catalog['folder_path_key'], created_by=created_by)
+            item = upsert_bytes_to_folder(
+                folder=folder,
+                data=data,
+                display_name=display,
+                filename=filename,
+                mime_type=XLSX_MIME,
+                source_module=entry['module'],
+                source_kind=entry['kind'],
+                created_by=created_by,
+            )
+            items.append(item)
+            try:
+                drive_service.sync_item(item.id)
+                synced.append(item.id)
+            except Exception as sync_exc:
+                logger.exception('push template sync failed id=%s', tid)
+                failed.append({'id': tid, 'error': f'Saved locally but Drive sync failed: {sync_exc}'})
+        except Exception as exc:
+            logger.exception('push template failed id=%s', tid)
+            failed.append({'id': tid, 'error': str(exc)})
+
+    return {
+        'items': items,
+        'saved': len(items),
+        'synced': synced,
+        'failed': failed,
+    }
+
+
+def build_templates_zip(template_ids: list, user=None) -> Tuple[bytes, str]:
+    """Zip one or more Excel templates. Empty ids = all allowed for user."""
+    import zipfile
+
+    from module_files.catalog import EXCEL_TEMPLATES
+
+    if user is not None:
+        allowed = list_excel_templates_for_user(user)
+    else:
+        allowed = [{'id': e['id']} for e in EXCEL_TEMPLATES]
+    allowed_ids = {t['id'] for t in allowed}
+    ids = [str(x or '').strip().lower() for x in (template_ids or []) if str(x or '').strip()]
+    if not ids:
+        ids = [e['id'] for e in EXCEL_TEMPLATES if e['id'] in allowed_ids]
+    else:
+        ids = [i for i in ids if i in allowed_ids]
+    if not ids:
+        raise ValueError('No templates to download')
+
+    buf = BytesIO()
+    with zipfile.ZipFile(buf, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+        used_names = set()
+        for tid in ids:
+            data, filename, _display = build_excel_template_bytes(tid)
+            name = filename
+            if name in used_names:
+                stem, ext = os.path.splitext(filename)
+                name = f'{stem}_{tid}{ext}'
+            used_names.add(name)
+            zf.writestr(name, data)
+    stamp = datetime.utcnow().strftime('%Y%m%d')
+    return buf.getvalue(), f'excel_templates_{stamp}.zip'

@@ -1,0 +1,140 @@
+{% set proc_page_title = 'Usage log — Procurement' %}
+{% set proc_topbar_title = 'Usage log' %}
+{% include 'partials/proc_shell_start.html' %}
+
+<div class="proc-dash-head">
+  <div>
+    <p class="proc-kicker">Overview</p>
+    <h1>Usage log</h1>
+    <p class="proc-sub">Every material issued to a ticket, returned, or received into stock.</p>
+  </div>
+  <div class="proc-dash-actions">
+    <a class="proc-btn proc-btn-outline" href="{{ url_for('procurement_module.refill_page') }}">Refill queue</a>
+    <button type="button" class="proc-btn proc-btn-outline" id="exportExcelBtn">Excel</button>
+    <button type="button" class="proc-btn proc-btn-outline" id="exportPdfBtn">PDF</button>
+  </div>
+</div>
+
+<section class="proc-card">
+  <div class="proc-card-head">
+    <div>
+      <h2>Material movements</h2>
+      <p id="logCount">Loading…</p>
+    </div>
+    <div class="proc-toolbar">
+      <input class="proc-search" id="q" type="search" placeholder="Search ticket, material, property…" autocomplete="off">
+      <select class="proc-select" id="typeFilter">
+        <option value="">All types</option>
+        <option value="issue">Issued</option>
+        <option value="return">Returned</option>
+        <option value="receipt">Received</option>
+        <option value="transfer">Reallocated</option>
+        <option value="adjust">Adjust</option>
+      </select>
+      <select class="proc-select" id="deptFilter">
+        <option value="">All trades</option>
+        <option>HVAC</option>
+        <option>Cleaning</option>
+        <option>Electrical</option>
+        <option>Plumbing</option>
+      </select>
+      <select class="proc-select" id="statusFilter">
+        <option value="">All status</option>
+        <option value="ok">In stock</option>
+        <option value="low">Low stock</option>
+        <option value="refill">Refill needed</option>
+        <option value="returned">Returned</option>
+      </select>
+    </div>
+  </div>
+  <div class="proc-table-wrap table-scroll">
+    <table class="proc-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Ticket</th>
+          <th>Material</th>
+          <th>Property</th>
+          <th>Qty</th>
+          <th>Status</th>
+          <th>Issued by</th>
+          <th>Date</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="logBody">
+        <tr><td colspan="9" class="proc-empty">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = String(s ?? '');
+    return d.innerHTML;
+  }
+  function statusPill(status) {
+    const map = { ok: ['proc-pill-ok', 'In stock'], low: ['proc-pill-low', 'Low stock'], refill: ['proc-pill-refill', 'Refill needed'], returned: ['proc-pill-returned', 'Returned'] };
+    const [cls, label] = map[status] || ['proc-pill-ok', status || 'In stock'];
+    return `<span class="proc-pill ${cls}">${label}</span>`;
+  }
+  function qs() {
+    const p = new URLSearchParams();
+    const q = document.getElementById('q').value.trim();
+    const type = document.getElementById('typeFilter').value;
+    const dept = document.getElementById('deptFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    if (q) p.set('q', q);
+    if (type) p.set('type', type);
+    if (dept) p.set('department', dept);
+    if (status) p.set('status', status);
+    return p.toString();
+  }
+  async function loadLog() {
+    const query = qs();
+    const res = await fetch('/procurement/api/usage-log?' + query, { headers: procAuthHeaders() });
+    const data = await res.json();
+    const rows = data.rows || [];
+    document.getElementById('logCount').textContent = rows.length + ' movement' + (rows.length === 1 ? '' : 's');
+    const body = document.getElementById('logBody');
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="9" class="proc-empty">No movements match these filters.</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(r => {
+      const ticket = r.ticket_id
+        ? `<a href="/tickets/${encodeURIComponent(r.ticket_id)}">${esc(r.ticket_id)}</a>`
+        : '—';
+      const refillBtn = r.needs_refill && r.catalog_id
+        ? `<a class="proc-btn proc-btn-outline" style="min-height:36px;padding:.3rem .7rem;font-size:.75rem" href="/procurement/refill">Refill</a>`
+        : '';
+      return `<tr>
+        <td data-label="ID">${esc(r.log_id)}</td>
+        <td data-label="Ticket">${ticket}</td>
+        <td data-label="Material">${esc(r.material_name)}</td>
+        <td data-label="Property">${esc(r.property || '—')}</td>
+        <td data-label="Qty">${Number(r.qty||0).toLocaleString('en-AE')} ${esc(r.uom||'')}</td>
+        <td data-label="Status">${statusPill(r.status)}</td>
+        <td data-label="Issued by">${esc(r.submitted_by)}</td>
+        <td data-label="Date">${esc((r.created_at||'').slice(0,16).replace('T',' '))}</td>
+        <td data-label="Actions" class="proc-row-actions">${refillBtn}</td>
+      </tr>`;
+    }).join('');
+  }
+  ['q','typeFilter','deptFilter','statusFilter'].forEach(id => {
+    document.getElementById(id).addEventListener('input', loadLog);
+    document.getElementById(id).addEventListener('change', loadLog);
+  });
+  function logExportParams() {
+    const p = {};
+    new URLSearchParams(qs()).forEach((v, k) => { p[k] = v; });
+    return p;
+  }
+  document.getElementById('exportExcelBtn').addEventListener('click', () => procExportDownload('usage-log', 'xlsx', logExportParams()));
+  document.getElementById('exportPdfBtn').addEventListener('click', () => procExportDownload('usage-log', 'pdf', logExportParams()));
+  loadLog();
+</script>
+
+{% include 'partials/proc_shell_end.html' %}

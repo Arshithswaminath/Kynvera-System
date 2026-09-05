@@ -33,6 +33,7 @@ HR_ADMIN_PATHS = [
     "/hr/pending-review",
     "/hr/approved-forms",
     "/hr/gm-approval",
+    "/hr/staffing-assignments",
 ]
 
 
@@ -50,6 +51,33 @@ def test_hr_root_redirects_employee_to_my_requests(client, auth_headers):
     assert r.status_code == 200
     path = (r.request.path or "").lower()
     assert "my-requests" in path or "request" in r.data.decode("utf-8", errors="ignore").lower()
+
+
+def test_my_requests_page_is_inbox_not_hub(client, admin_auth_headers):
+    r = client.get("/hr/my-requests", headers=admin_auth_headers)
+    assert r.status_code == 200
+    body = r.data.decode("utf-8", errors="ignore")
+    assert "<title>My Requests" in body
+    assert "My submitted requests" in body
+    assert "Start a new request" in body
+
+
+def test_hr_hub_leave_and_manpower_are_not_hiring_kickers(client, admin_auth_headers):
+    r = client.get("/hr/", headers=admin_auth_headers)
+    assert r.status_code == 200
+    body = r.data.decode("utf-8", errors="ignore")
+    assert "Hiring &mdash; Leave" not in body
+    assert "Hiring &mdash; Manpower" not in body
+    assert "Leave &mdash; Tracker" in body
+    assert "Manpower &mdash; Board" in body
+
+
+def test_staffing_assignments_renders_own_page(client, admin_auth_headers):
+    r = client.get("/hr/staffing-assignments", headers=admin_auth_headers)
+    assert r.status_code == 200
+    body = r.data.decode("utf-8", errors="ignore")
+    assert "Staffing Assignments" in body
+    assert '<h1 class="hh-title">Staffing Assignments</h1>' in body
 
 
 @pytest.mark.parametrize("path", HR_ADMIN_PATHS)

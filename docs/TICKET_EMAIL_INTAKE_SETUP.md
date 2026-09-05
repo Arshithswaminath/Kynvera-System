@@ -32,14 +32,18 @@ table (`TicketEmailIntake` model) for auditing/debugging.
 
 ## One-time setup
 
-### 1. Pick a receiving subdomain
+### 1. Pick the receiving address
 
-Use a subdomain dedicated to intake, e.g. `intake.injaaz.ae` (separate from your
-sending domain). Any mailbox at that subdomain works — e.g. `tickets@intake.injaaz.ae`.
+The public intake mailbox is **`support@kynvera.store`**. Mailjet Parse `Email`
+must match that address (or another address you set in `TICKET_INTAKE_EMAIL`).
+
+If you use a dedicated parse subdomain instead, any mailbox there works — e.g.
+`tickets@intake.example.com` — and you would update `TICKET_INTAKE_EMAIL` to match.
 
 ### 2. Point MX records at Mailjet
 
-In your DNS provider, add for `intake.injaaz.ae` (or whichever subdomain you chose):
+In your DNS provider, add MX for the domain (or subdomain) that receives mail
+(`kynvera.store` for `support@kynvera.store`, or a dedicated intake subdomain):
 
 | Type | Priority | Value |
 |------|----------|-------|
@@ -80,26 +84,26 @@ curl -X POST https://api.mailjet.com/v3/REST/parseroute \
   -H "Content-Type: application/json" \
   -d '{
     "Url": "https://<your-app-host>/tickets/api/inbound-email/<TICKET_INBOUND_WEBHOOK_SECRET>",
-    "Email": "tickets@intake.injaaz.ae"
+    "Email": "support@kynvera.store"
   }'
 ```
 
 Replace `Email` with the intake address you chose. Mailjet will POST parsed JSON to `Url`
 when mail arrives at that address.
 
-### 5. (Optional) Set the display address shown in-app
+### 5. (Optional) Override the address shown in-app
 
-The "Email a Ticket" settings tab shows a suggested intake address to requesters. By
-default it displays `tickets@intake.injaaz.com` — override with:
+The app shows `support@kynvera.store` on the Email template info button and under
+**Tickets → Settings → Email a Ticket**. Override with:
 
 ```env
-TICKET_INTAKE_EMAIL=tickets@intake.injaaz.ae
+TICKET_INTAKE_EMAIL=support@kynvera.store
 ```
 
 ### 6. Test end-to-end
 
-1. Send an email to `tickets@intake.injaaz.ae` (or your chosen address) following the
-   format shown in **Tickets → Settings → Email a Ticket**.
+1. Send an email to `support@kynvera.store` (or your chosen address) following the
+   format shown by the **Email template** info button (or **Tickets → Settings → Email a Ticket**).
 2. Within a few seconds, check **Tickets → Draft Tickets (Email)** as a supervisor/admin.
 3. If nothing appears, check the `ticket_email_intakes` table (or app logs).
 
@@ -111,7 +115,7 @@ curl -s -X POST "http://localhost:5002/tickets/api/inbound-email/<your-secret>" 
   -d '{
     "Sender": "requester@example.com",
     "From": "Requester Name <requester@example.com>",
-    "Recipient": "tickets@intake.injaaz.ae",
+    "Recipient": "support@kynvera.store",
     "Subject": "[Project Alpha] Plumbing / high — Leaking pipe",
     "Text-part": "Property: Building A\nZone: Floor 2\nUnit: 201\n\nWater leaking under sink.",
     "Headers": {"Message-ID": "<test-001@example.com>"}

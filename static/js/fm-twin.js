@@ -8,11 +8,19 @@
   const editBtn = document.getElementById('editBtn');
   const saveBtn = document.getElementById('savePinsBtn');
   const deleteBtn = document.getElementById('deletePlanBtn');
+  const replaceBtn = document.getElementById('replaceImageBtn');
+  const replaceInput = document.getElementById('replaceImageInput');
   const pinPanel = document.getElementById('twinPinPanel');
   const recPanel = document.getElementById('twinRecPanel');
   const sideHint = document.getElementById('twinSideHint');
   const kpis = document.getElementById('twinKpis');
 
+  function humanLabel(value, fallback) {
+    if (typeof fmHumanLabel === 'function') return fmHumanLabel(value, fallback);
+    const raw = String(value == null ? '' : value).trim();
+    if (!raw) return fallback == null ? '—' : fallback;
+    return raw;
+  }
   let plan = null;
   let pins = [];
   let selectedId = null;
@@ -297,7 +305,7 @@
     const n = buildingAssets.length;
     const rows = buildingAssets.map((a) => {
       const on = pinnedCodes.has(String(a.asset_id));
-      const where = [a.room, a.asset_type].filter(Boolean).join(' · ');
+      const where = [a.room, humanLabel(a.asset_type, '')].filter(Boolean).join(' · ');
       const href = a.url || ('/assets/' + a.asset_id);
       return `<li>
         <a href="${esc(href)}">${esc(a.asset_id)}</a>
@@ -399,7 +407,7 @@
           <li>
             <a href="${esc(a.url)}">${esc(a.asset_id)}</a>
             <span>${esc(a.name)}</span>
-            <span class="twin-chip ${esc(a.severity || 'ok')}">${a.health_score != null ? esc(a.health_score) + '%' : esc(a.status || '')}</span>
+            <span class="twin-chip ${esc(a.severity || 'ok')}">${a.health_score != null ? esc(a.health_score) + '%' : esc(humanLabel(a.status, ''))}</span>
           </li>`).join('')
       : '<li class="fm-muted">No assets linked</li>';
     const pinAddHref = addAssetHref(pin.room);
@@ -408,7 +416,7 @@
           <li>
             <a href="${esc(t.url)}">${esc(t.ticket_id)}</a>
             <span>${esc(t.title)}</span>
-            <span class="twin-chip ${esc((t.priority === 'critical' || t.priority === 'high') ? 'crit' : 'warn')}">${esc(t.priority)}</span>
+            <span class="twin-chip ${esc((t.priority === 'critical' || t.priority === 'high') ? 'crit' : 'warn')}">${esc(humanLabel(t.priority))}</span>
           </li>`).join('')
       : '<li class="fm-muted">No open work orders</li>';
     if (tickets.length && (pin.open_ticket_count || 0) > tickets.length) {
@@ -684,6 +692,7 @@
     if (editBtn) editBtn.disabled = true;
     if (saveBtn) { saveBtn.hidden = true; saveBtn.disabled = true; }
     if (deleteBtn) deleteBtn.disabled = true;
+    if (replaceBtn) replaceBtn.disabled = true;
     pinPanel.hidden = true;
     recPanel.hidden = true;
     if (sideHint) sideHint.hidden = false;
@@ -707,9 +716,10 @@
   const KYNVERA_WORDMARK = '/static/images/kynvera/kynvera-wordmark.png';
   const KYNVERA_MARK = '/static/images/kynvera/kynvera-mark.png';
 
-  function loadHtmlImage(src) {
+  function loadHtmlImage(src, crossOrigin) {
     return new Promise((resolve, reject) => {
       const img = new Image();
+      if (crossOrigin) img.crossOrigin = crossOrigin;
       img.onload = () => resolve(img);
       img.onerror = () => reject(new Error('Could not load image'));
       img.src = src;
@@ -727,6 +737,9 @@
     if (!src) throw new Error('No drawing loaded');
     if (src.startsWith('data:') || src.startsWith('blob:')) {
       return loadHtmlImage(src);
+    }
+    if (/^https?:\/\//i.test(src)) {
+      return loadHtmlImage(src, 'anonymous');
     }
     const headers = typeof fmAuthHeaders === 'function' ? fmAuthHeaders() : {};
     const res = await fetch(src, { headers: headers, credentials: 'same-origin' });
@@ -1200,6 +1213,7 @@
     if (downloadBtn) downloadBtn.disabled = false;
     if (editBtn) editBtn.disabled = false;
     if (deleteBtn) deleteBtn.disabled = false;
+    if (replaceBtn) replaceBtn.disabled = false;
     setEditMode(false);
     setDirty(false);
     await loadBuildingAssets(plan.building, plan.floor);
@@ -1287,6 +1301,34 @@
     renderKpis();
     renderPins();
     renderSide();
+  });
+
+  replaceBtn?.addEventListener('click', () => {
+    if (!plan) return;
+    replaceInput?.click();
+  });
+
+  replaceInput?.addEventListener('change', async () => {
+    const file = replaceInput.files && replaceInput.files[0];
+    replaceInput.value = '';
+    if (!file || !plan) return;
+    const fd = new FormData();
+    fd.set('image', file);
+    if (replaceBtn) replaceBtn.disabled = true;
+    const res = await fetch('/assets/api/floor-plans/' + plan.id + '/image', {
+      method: 'POST',
+      headers: fmAuthHeaders(),
+      body: fd,
+    });
+    let data = {};
+    try { data = await res.json(); } catch (_) {}
+    if (replaceBtn) replaceBtn.disabled = false;
+    if (!res.ok || !data.success) {
+      fmNotify((data && data.error) || 'Could not replace drawing');
+      return;
+    }
+    fmNotify('Drawing updated', 'info');
+    await loadPlan(plan.id);
   });
 
   deleteBtn?.addEventListener('click', async () => {

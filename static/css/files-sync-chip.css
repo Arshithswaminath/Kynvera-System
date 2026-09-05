@@ -1,0 +1,146 @@
+/* Files Drive-sync status chip — lives in the main navbar next to the hamburger. */
+
+.files-sync-chip {
+  display: none;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 36px;
+  max-width: min(22rem, 52vw);
+  padding: 0.2rem 0.35rem 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #fff7f3;
+  border: 1px solid #ffcdb8;
+  color: #9a3412;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.2;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.files-sync-chip[hidden] {
+  display: none !important;
+}
+
+.files-sync-chip:not([hidden]) {
+  display: inline-flex;
+}
+
+.files-sync-chip[data-state="done"] {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+.files-sync-chip[data-state="error"] {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.files-sync-chip-spinner {
+  display: none;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(154, 52, 18, 0.22);
+  border-top-color: #ff8e68;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: files-sync-spin 0.7s linear infinite;
+}
+
+.files-sync-chip[data-state="running"] .files-sync-chip-spinner {
+  display: inline-block;
+}
+
+.files-sync-chip-check {
+  display: none;
+  flex-shrink: 0;
+}
+
+.files-sync-chip[data-state="done"] .files-sync-chip-check,
+.files-sync-chip[data-state="error"] .files-sync-chip-check {
+  display: inline-flex;
+}
+
+.files-sync-chip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.files-sync-chip-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.files-sync-chip-bar {
+  display: none;
+  height: 3px;
+  width: 100%;
+  min-width: 4.5rem;
+  border-radius: 99px;
+  background: rgba(255, 142, 104, 0.22);
+  overflow: hidden;
+}
+
+.files-sync-chip[data-state="running"] .files-sync-chip-bar {
+  display: block;
+}
+
+.files-sync-chip-bar-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: #ff8e68;
+  transition: width 0.25s ease;
+}
+
+.files-sync-chip-link {
+  flex-shrink: 0;
+  color: inherit;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.files-sync-chip-link[hidden] {
+  display: none !important;
+}
+
+.files-sync-chip-close {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.files-sync-chip-close:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+@keyframes files-sync-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 720px) {
+  .files-sync-chip {
+    max-width: min(14rem, 48vw);
+    padding-left: 0.45rem;
+    font-size: 0.72rem;
+  }
+}

@@ -1,0 +1,345 @@
+{% set proc_page_title = 'Email settings — Procurement' %}
+{% set proc_topbar_title = 'Email settings' %}
+{% set proc_body_class = 'proc-mail-page' %}
+{% include 'partials/proc_shell_start.html' %}
+
+<div class="proc-dash-head">
+  <div>
+    <p class="proc-kicker">Settings</p>
+    <h1>Purchase request emails</h1>
+    <p class="proc-sub">Four messages follow a request from quotation to invoice. Nothing sends until you add a To address and save.</p>
+  </div>
+</div>
+
+<div class="proc-mail-layout">
+  <aside class="proc-mail-aside">
+    <section class="proc-card proc-mail-guide-card">
+      <div class="proc-card-head">
+        <div>
+          <h2>How to set this up</h2>
+          <p>Do these once. After that, emails follow the purchase request.</p>
+        </div>
+      </div>
+      <ol class="proc-mail-setup">
+        <li>
+          <span>1</span>
+          <div>
+            <strong>Put real addresses in To</strong>
+            <p>Comma-separated. Leave To empty and that email is skipped. CC is optional.</p>
+          </div>
+        </li>
+        <li>
+          <span>2</span>
+          <div>
+            <strong>Keep the approve link on the two approval emails</strong>
+            <p>Leave <code>{approve_url}</code> in the body so GM or finance can approve from the message. They can also open the request in Procurement and review both PDFs there.</p>
+          </div>
+        </li>
+        <li>
+          <span>3</span>
+          <div>
+            <strong>Save each card</strong>
+            <p>Click a placeholder below to insert it into the subject or body. Use Attach PDF if that email should include the related file. Reset default restores the standard wording.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="proc-card proc-mail-guide-card">
+      <div class="proc-card-head">
+        <div>
+          <h2>When they send</h2>
+          <p>Matches the steps on the purchase request.</p>
+        </div>
+      </div>
+      <ol class="proc-mail-flow">
+        <li>
+          <span>1</span>
+          <div>
+            <strong>Send for approval</strong>
+            <p>Procurement has uploaded quotations and clicks Send for approval.</p>
+            <em>Email: Quotation ready for GM / finance</em>
+          </div>
+        </li>
+        <li>
+          <span>2</span>
+          <div>
+            <strong>GM or admin reviews</strong>
+            <p>They open the email link, or open the request and check the purchase-request PDF then the quotation, then approve.</p>
+          </div>
+        </li>
+        <li>
+          <span>3</span>
+          <div>
+            <strong>Quotation approved</strong>
+            <p>Both PDFs are stamped. Notify procurement or the requester.</p>
+            <em>Email: Quotation approved</em>
+          </div>
+        </li>
+        <li>
+          <span>4</span>
+          <div>
+            <strong>Goods received, then invoice</strong>
+            <p>After receive, upload the supplier invoice. GM or system admin must approve it. Once stamped, the request is closed.</p>
+            <em>Emails: Invoice for approval, then Invoice approved</em>
+          </div>
+        </li>
+      </ol>
+    </section>
+  </aside>
+
+  <div class="proc-mail-main">
+    <div class="proc-mail-placeholders" id="mailPlaceholders"></div>
+    <div class="proc-mail-scroller">
+      <div id="mailBody" class="proc-mail-grid">
+        <div class="proc-empty">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const h = procAuthHeaders();
+  const PLACEHOLDERS = [
+    { token: '{pr_id}', hint: 'Request number' },
+    { token: '{property}', hint: 'Property name' },
+    { token: '{total}', hint: 'Total in AED' },
+    { token: '{status}', hint: 'Current status' },
+    { token: '{approve_url}', hint: 'One-tap approve link' },
+    { token: '{supplier}', hint: 'Supplier name' },
+  ];
+  const MAIL_META = {
+    quotation_for_approval: {
+      group: 'quotation',
+      step: 1,
+      when: 'Sends when procurement clicks Send for approval.',
+      who: 'General manager and system administrators who approve quotations.',
+      theyDo: 'Open the approve link, or open the purchase request, review both PDFs, then approve.',
+      needsUrl: true,
+      attachHint: 'Attach the purchase request PDF and the quotation files.',
+    },
+    quotation_approved: {
+      group: 'quotation',
+      step: 2,
+      when: 'Sends after GM or admin approves a quotation.',
+      who: 'Procurement, or the person who raised the request.',
+      theyDo: 'No action in email. The stamped PDFs can be attached below, and they stay on the purchase request.',
+      needsUrl: false,
+      attachHint: 'Attach the stamped purchase request and the stamped quotation.',
+    },
+    invoice_for_approval: {
+      group: 'invoice',
+      step: 3,
+      when: 'Sends when an invoice is uploaded after goods are received.',
+      who: 'General manager and finance (or the same approvers as quotations).',
+      theyDo: 'Open the approve link, or approve the invoice on the purchase request.',
+      needsUrl: true,
+      attachHint: 'Attach the supplier invoice file.',
+    },
+    invoice_approved: {
+      group: 'invoice',
+      step: 4,
+      when: 'Sends after GM or admin approves and stamps the invoice. The purchase request is then closed.',
+      who: 'Procurement, or accounts who file the invoice.',
+      theyDo: 'No action in email. The stamped invoice can be attached below, and it stays on the purchase request.',
+      needsUrl: false,
+      attachHint: 'Attach the stamped invoice PDF.',
+    },
+  };
+  const GROUPS = [
+    {
+      id: 'quotation',
+      title: 'Quotation',
+      blurb: 'After quotations are uploaded. GM or admin must approve before the request can be marked ordered.',
+    },
+    {
+      id: 'invoice',
+      title: 'Invoice',
+      blurb: 'After goods are received. Every invoice waits for GM or system admin approval. After the stamp, the request is closed.',
+    },
+  ];
+  let mailFocus = null;
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+
+  function hasTo(t) {
+    return /@/.test(t.to_emails || '');
+  }
+
+  function missingUrl(t, meta) {
+    return !!(meta && meta.needsUrl && !String(t.body || '').includes('{approve_url}'));
+  }
+
+  function card(t) {
+    const meta = MAIL_META[t.event_key] || {};
+    const ready = hasTo(t);
+    const urlWarn = missingUrl(t, meta);
+    return `<section class="proc-card proc-mail-card${ready ? '' : ' is-off'}" data-key="${esc(t.event_key)}">
+      <div class="proc-mail-card-top">
+        <span class="proc-mail-num" aria-hidden="true">${esc(meta.step || '')}</span>
+        <div class="proc-mail-card-copy">
+          <p class="proc-mail-when">${esc(meta.when || '')}</p>
+          <h2 class="proc-mail-title">${esc(t.label || t.event_key)}</h2>
+        </div>
+        <span class="proc-mail-flag ${ready ? 'is-on' : 'is-off'}">${ready ? 'Will send' : 'Needs a To address'}</span>
+      </div>
+      <div class="proc-card-body">
+        <div class="proc-mail-who">
+          <p><strong>Put in To</strong> ${esc(meta.who || 'People who should receive this.')}</p>
+          <p><strong>They should</strong> ${esc(meta.theyDo || '')}</p>
+        </div>
+        <p class="proc-mail-banner proc-mail-banner-to"${ready ? ' hidden' : ''}>This email is skipped until you add at least one address and save.</p>
+        <p class="proc-mail-banner proc-mail-banner-url"${urlWarn ? '' : ' hidden'}>Put <code>{approve_url}</code> in the body so the recipient can approve from the email.</p>
+        <div class="proc-mail-fields">
+          <div>
+            <label class="proc-field-label">To</label>
+            <input class="form-control proc-field mail-to" value="${esc(t.to_emails)}" placeholder="gm@company.com, finance@company.com" autocomplete="off">
+          </div>
+          <div>
+            <label class="proc-field-label">CC <span class="proc-mail-opt">optional</span></label>
+            <input class="form-control proc-field mail-cc" value="${esc(t.cc_emails)}" placeholder="ops@company.com" autocomplete="off">
+          </div>
+          <div class="proc-mail-span">
+            <label class="proc-field-label">Subject</label>
+            <input class="form-control proc-field mail-subject" value="${esc(t.subject)}" autocomplete="off">
+          </div>
+          <div class="proc-mail-span">
+            <label class="proc-field-label">Body</label>
+            <textarea class="form-control proc-field mail-body" rows="7" placeholder="Leave empty to use the automatic text">${esc(t.body)}</textarea>
+          </div>
+          <label class="proc-mail-attach proc-mail-span">
+            <input type="checkbox" class="mail-attach"${t.attach_pdf !== false ? ' checked' : ''}>
+            <span class="proc-mail-switch" aria-hidden="true"></span>
+            <span>
+              <strong>Attach PDF</strong>
+              <em>${esc(meta.attachHint || 'Attach the related PDF to this email.')}</em>
+            </span>
+          </label>
+        </div>
+        <div class="proc-pr-actions">
+          <button type="button" class="proc-btn proc-btn-dark mail-save">Save</button>
+          <button type="button" class="proc-btn proc-btn-outline mail-reset">Reset default</button>
+        </div>
+      </div>
+    </section>`;
+  }
+
+  function groupBlock(group, templates) {
+    const cards = templates.filter(t => (MAIL_META[t.event_key] || {}).group === group.id);
+    if (!cards.length) return '';
+    return `<section class="proc-mail-group">
+      <header class="proc-mail-group-head">
+        <h3>${esc(group.title)}</h3>
+        <p>${esc(group.blurb)}</p>
+      </header>
+      <div class="proc-mail-grid">${cards.map(card).join('')}</div>
+    </section>`;
+  }
+
+  function insertToken(token) {
+    const el = mailFocus;
+    if (!el || !el.classList.contains('proc-field')) {
+      procHint({ title: 'Click a field first', message: 'Select a subject or body, then tap a placeholder to insert it.' });
+      return;
+    }
+    const start = el.selectionStart == null ? el.value.length : el.selectionStart;
+    const end = el.selectionEnd == null ? start : el.selectionEnd;
+    el.value = el.value.slice(0, start) + token + el.value.slice(end);
+    const pos = start + token.length;
+    el.focus();
+    if (el.setSelectionRange) el.setSelectionRange(pos, pos);
+    refreshCardState(el.closest('.proc-mail-card'));
+  }
+
+  function refreshCardState(cardEl) {
+    if (!cardEl) return;
+    const key = cardEl.dataset.key;
+    const meta = MAIL_META[key] || {};
+    const toVal = cardEl.querySelector('.mail-to').value;
+    const bodyVal = cardEl.querySelector('.mail-body').value;
+    const ready = /@/.test(toVal);
+    cardEl.classList.toggle('is-off', !ready);
+    const flag = cardEl.querySelector('.proc-mail-flag');
+    if (flag) {
+      flag.textContent = ready ? 'Will send' : 'Needs a To address';
+      flag.classList.toggle('is-on', ready);
+      flag.classList.toggle('is-off', !ready);
+    }
+    const toBanner = cardEl.querySelector('.proc-mail-banner-to');
+    if (toBanner) toBanner.hidden = ready;
+    const urlBanner = cardEl.querySelector('.proc-mail-banner-url');
+    if (urlBanner) urlBanner.hidden = !(meta.needsUrl && !bodyVal.includes('{approve_url}'));
+  }
+
+  async function loadMail() {
+    const res = await fetch('/procurement/api/email-templates', { headers: h });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      document.getElementById('mailBody').innerHTML = `<div class="proc-empty">${esc(data.error || 'Could not load')}</div>`;
+      return;
+    }
+    const tokens = (data.placeholders && data.placeholders.length)
+      ? data.placeholders.map(p => ({ token: p, hint: (PLACEHOLDERS.find(x => x.token === p) || {}).hint || '' }))
+      : PLACEHOLDERS;
+    document.getElementById('mailPlaceholders').innerHTML =
+      `<p>Click a placeholder to insert it into the subject or body you last selected.</p>` +
+      tokens.map(p =>
+        `<button type="button" class="proc-mail-chip" data-token="${esc(p.token)}" title="${esc(p.hint)}"><code>${esc(p.token)}</code>${p.hint ? `<span>${esc(p.hint)}</span>` : ''}</button>`
+      ).join('');
+    document.getElementById('mailPlaceholders').querySelectorAll('.proc-mail-chip').forEach(btn => {
+      btn.addEventListener('click', () => insertToken(btn.dataset.token));
+    });
+    const templates = data.templates || [];
+    document.getElementById('mailBody').innerHTML = GROUPS.map(g => groupBlock(g, templates)).join('');
+    document.querySelectorAll('.mail-save').forEach(btn => {
+      btn.addEventListener('click', () => saveCard(btn.closest('.proc-mail-card')));
+    });
+    document.querySelectorAll('.mail-reset').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const ok = await procPrompt({
+          title: 'Reset this email?',
+          message: 'Subject and body go back to the standard wording. To and CC are cleared. Attach PDF is turned on.',
+          okText: 'Reset default',
+          info: true,
+        });
+        if (!ok) return;
+        saveCard(btn.closest('.proc-mail-card'), true);
+      });
+    });
+    document.querySelectorAll('.proc-mail-card').forEach(cardEl => {
+      cardEl.querySelectorAll('.mail-to, .mail-body').forEach(inp => {
+        inp.addEventListener('input', () => refreshCardState(cardEl));
+      });
+      cardEl.querySelectorAll('.mail-subject, .mail-body').forEach(inp => {
+        inp.addEventListener('focus', () => { mailFocus = inp; });
+      });
+    });
+  }
+
+  async function saveCard(cardEl, reset) {
+    const payload = {
+      event_key: cardEl.dataset.key,
+      to_emails: cardEl.querySelector('.mail-to').value,
+      cc_emails: cardEl.querySelector('.mail-cc').value,
+      subject: cardEl.querySelector('.mail-subject').value,
+      body: cardEl.querySelector('.mail-body').value,
+      attach_pdf: cardEl.querySelector('.mail-attach').checked,
+    };
+    if (reset) payload.reset = true;
+    const res = await fetch('/procurement/api/email-templates', {
+      method: 'PUT', headers: h, body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) { procAlert(data.error || 'Could not save'); return; }
+    procHint({ title: reset ? 'Reset' : 'Saved', message: (MAIL_META[payload.event_key] && MAIL_META[payload.event_key].when) || payload.event_key.replace(/_/g, ' ') });
+    await loadMail();
+  }
+
+  loadMail();
+</script>
+
+{% include 'partials/proc_shell_end.html' %}

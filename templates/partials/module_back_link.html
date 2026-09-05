@@ -1,17 +1,17 @@
-{# Universal “Back to previous” for module pages.
+{# Universal back control for module pages.
    Optional: module_back_url (fallback href), module_back_label, module_back_hide=true,
              module_back_extra_class (e.g. back-btn for hero layouts)
 #}
 {% if not module_back_hide|default(false) %}
 {% set _back_href = module_back_url|default(url_for('dashboard')) %}
-{% set _back_label = module_back_label|default('Back to previous') %}
+{% set _back_label = module_back_label|default('Back') %}
 {% set _back_extra = module_back_extra_class|default('') %}
 <a href="{{ _back_href }}"
    class="module-back-link{% if _back_extra %} {{ _back_extra }}{% endif %}"
    data-module-back
    aria-label="{{ _back_label }}">
-  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+  <svg class="module-back-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M15 18l-6-6 6-6"/>
   </svg>
   <span>{{ _back_label }}</span>
 </a>

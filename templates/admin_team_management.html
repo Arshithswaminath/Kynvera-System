@@ -8,10 +8,10 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
   {% include 'partials/caveat_font.html' %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}?v=3">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-manage-profile-modal.css') }}?v=4">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-manage-profile-modal.css') }}?v=24">
   <style>
   /* ── Design tokens ─────────────────────────────────────────────────────── */
   :root {
@@ -42,13 +42,22 @@
     --tm-blue2:   #1d4ed8;
   }
   *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html {
+    height: 100%;
+    min-height: 100dvh;
+    background: var(--tm-bg, #f5faf7);
+    overflow-x: clip;
+    overflow-y: auto;
+  }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
     background: var(--tm-bg);
     color: var(--tm-ink);
-    min-height: 100vh;
+    min-height: 100dvh !important;
     font-size: 15px;
     line-height: 1.45;
+    overflow: visible !important;
+    position: static !important;
   }
   /* Match dashboard.css --nav-bar-h (not a larger fixed rem) or a gray strip
      shows between the fixed global nav and this shell. */
@@ -181,8 +190,8 @@
       display: block;
       font-size: 0.7rem;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      text-transform: none;
+      letter-spacing: 0.01em;
       color: var(--tm-muted);
       margin-bottom: 0.2rem;
     }
@@ -292,7 +301,7 @@
   .tm-kpi-icon.blue  { background: #dbeafe; }
   .tm-kpi-icon.amber { background: #fef3c7; }
   .tm-kpi-icon.red   { background: #fee2e2; }
-  .tm-kpi-lbl { font-size: .72rem; font-weight: 700; color: var(--tm-muted); text-transform: uppercase; letter-spacing: .04em; }
+  .tm-kpi-lbl { font-size: .72rem; font-weight: 700; color: var(--tm-muted); text-transform: none; letter-spacing: .01em; }
   .tm-kpi-val { font-size: 1.65rem; font-weight: 800; line-height: 1.15; margin-top: .1rem; }
 
   /* ── Tabs ────────────────────────────────────────────────────────────────── */
@@ -345,11 +354,11 @@
   .tm-btn-primary { background: var(--tm-green); color: #fff; }
   .tm-btn-primary:hover { background: var(--tm-green2); color: #fff; }
   .tm-btn-outline { background: var(--tm-card); color: var(--tm-green); border-color: var(--tm-line); }
-  .tm-btn-outline:hover { background: #edf7f2; border-color: #c0ecd4; color: var(--tm-green); }
+  .tm-btn-outline:hover { background: #fff8f5; border-color: rgba(255, 142, 104, 0.45); color: var(--tm-green); }
   .tm-btn-ghost { background: transparent; color: var(--tm-muted); border-color: transparent; }
   .tm-btn-ghost:hover { background: #f1f5f9; color: var(--tm-ink); }
-  .tm-btn-danger { background: #b91c1c; color: #fff; }
-  .tm-btn-danger:hover { background: #991b1b; }
+  .tm-btn-danger { background: #dc2626; color: #fff; border-color: #dc2626; }
+  .tm-btn-danger:hover { background: #b91c1c; color: #fff; border-color: #b91c1c; }
   .tm-btn-sm { padding: .35rem .7rem; font-size: .78rem; min-height: 32px; }
   .tm-btn-blue { background: var(--tm-blue); color: #fff; }
   .tm-btn-blue:hover { background: var(--tm-blue2); }
@@ -434,9 +443,9 @@
   .tm-staff-desig:empty { display: none; }
   .tm-role-badge {
     font-size: .62rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: .04em;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: .01em;
     padding: .24rem .48rem;
     border-radius: 6px;
     flex: 0 1 auto;
@@ -460,9 +469,9 @@
     min-height: 1.75rem;
   }
   .tm-mod-chip {
-    font-size: .62rem; font-weight: 700; padding: .18rem .42rem;
+    font-size: .62rem; font-weight: 600; padding: .18rem .42rem;
     border-radius: 5px; background: #edf7f2; color: var(--tm-green);
-    text-transform: uppercase; letter-spacing: .04em;
+    text-transform: none; letter-spacing: .01em;
   }
   .tm-staff-meta {
     font-size: .78rem;
@@ -475,21 +484,27 @@
   }
   .tm-staff-meta-row {
     display: flex;
-    align-items: flex-start;
-    gap: .4rem;
+    align-items: center;
+    gap: .4rem .65rem;
     flex-wrap: wrap;
     line-height: 1.4;
     word-break: break-word;
   }
+  .tm-staff-status {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
   .tm-staff-email {
     min-width: 0;
-    flex: 1;
+    flex: 1 1 8rem;
   }
   .tm-status-dot {
     width: 8px; height: 8px; border-radius: 99px;
     background: #22c55e; display: inline-block;
     flex-shrink: 0;
-    margin-top: .28rem;
   }
   .tm-status-dot.inactive { background: #9ca3af; }
   .tm-staff-actions {
@@ -506,7 +521,7 @@
   .tm-table { width: 100%; border-collapse: collapse; }
   .tm-table thead th {
     padding: .85rem 1rem; background: #f9fcfa; text-align: left;
-    font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+    font-size: .72rem; font-weight: 700; text-transform: none; letter-spacing: .01em;
     color: var(--tm-muted); border-bottom: 1.5px solid var(--tm-line); white-space: nowrap;
   }
   .tm-table tbody tr { border-bottom: 1px solid var(--tm-line); transition: background .12s; }
@@ -535,9 +550,9 @@
   }
   .tm-tech-login-badge {
     font-size: .62rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: .04em;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: .01em;
     padding: .18rem .42rem;
     border-radius: 6px;
     background: #e0f2fe;
@@ -547,7 +562,7 @@
   }
   .tm-table .td-eid { font-size: .78rem; color: var(--tm-muted); font-weight: 600; font-family: monospace; }
   .tm-status-badge {
-    display: inline-block; font-size: .68rem; font-weight: 800; text-transform: uppercase;
+    display: inline-block; font-size: .68rem; font-weight: 700; text-transform: none;
     letter-spacing: .05em; padding: .22rem .55rem; border-radius: 6px;
   }
   .tm-status-badge.active   { background: #d1fae5; color: #065f46; }
@@ -565,19 +580,37 @@
 
   /* ── Modal ───────────────────────────────────────────────────────────────── */
   .tm-modal-veil {
-    position: fixed; inset: 0; z-index: 600;
-    background: rgba(8,24,15,.45); backdrop-filter: blur(4px);
-    display: flex; align-items: flex-start; justify-content: center;
-    padding: max(1rem, env(safe-area-inset-top)) 1rem 1rem;
-    opacity: 0; pointer-events: none; transition: opacity .2s; overflow-y: auto;
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    background: rgba(8,24,15,.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(var(--tm-nav-h, var(--nav-bar-h, 72px)) + 12px) 1.25rem 1.25rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s;
+    overflow: auto;
+    box-sizing: border-box;
   }
   .tm-modal-veil.open { opacity: 1; pointer-events: all; }
   .tm-modal {
-    background: var(--tm-card); border-radius: 18px;
-    width: 100%; max-width: 640px; margin: auto;
+    background: var(--tm-card);
+    border-radius: 18px;
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
     box-shadow: 0 24px 64px rgba(0,0,0,.18);
-    transform: translateY(12px); transition: transform .22s;
-    display: flex; flex-direction: column; max-height: min(95vh, 900px);
+    transform: translateY(12px);
+    transition: transform .22s;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - var(--tm-nav-h, var(--nav-bar-h, 72px)) - 2.5rem);
+    min-height: 0;
+    overflow: hidden;
   }
   .tm-modal-veil.open .tm-modal { transform: translateY(0); }
   .tm-modal-head {
@@ -591,7 +624,7 @@
     color: var(--tm-muted); flex-shrink: 0;
   }
   .tm-modal-close:hover { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
-  .tm-modal-body { padding: 1.15rem 1.2rem; overflow-y: auto; flex: 1; }
+  .tm-modal-body { padding: 1.15rem 1.2rem; overflow-y: auto; flex: 1 1 auto; min-height: 0; -webkit-overflow-scrolling: touch; }
   .tm-modal-foot {
     padding: .9rem 1.2rem; border-top: 1.5px solid var(--tm-line);
     display: flex; gap: .5rem; justify-content: flex-end; flex-shrink: 0;
@@ -600,6 +633,17 @@
   .tm-modal-head.green-head h3 { color: #fff; }
   .tm-modal-head.green-head .tm-modal-close { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.3); color: #fff; }
   .tm-modal-head.green-head .tm-modal-close:hover { background: rgba(255,255,255,.25); }
+  @media (max-width: 768px) {
+    .tm-modal-veil {
+      padding: calc(var(--tm-nav-h, var(--nav-bar-h, 56px)) + 8px) 0.75rem 0.75rem;
+      align-items: flex-start;
+    }
+    .tm-modal {
+      max-height: calc(100dvh - var(--tm-nav-h, var(--nav-bar-h, 56px)) - 1.25rem);
+      border-radius: 16px;
+    }
+    .tm-modal-foot .tm-btn { min-height: 44px; }
+  }
 
   /* ── Form fields ─────────────────────────────────────────────────────────── */
   .tm-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; }
@@ -607,7 +651,7 @@
   .tm-form-grid .col-span-2 { grid-column: span 2; }
   @media (max-width: 560px) { .tm-form-grid .col-span-2 { grid-column: span 1; } }
   .tm-fld { display: flex; flex-direction: column; gap: .3rem; }
-  .tm-fld label { font-size: .75rem; font-weight: 700; color: var(--tm-muted); text-transform: uppercase; letter-spacing: .04em; }
+  .tm-fld label { font-size: .75rem; font-weight: 700; color: var(--tm-muted); text-transform: none; letter-spacing: .01em; }
   .tm-fld input, .tm-fld select, .tm-fld textarea {
     padding: .6rem .75rem; border: 1.5px solid var(--tm-line);
     border-radius: 10px; font-size: .92rem; font-family: inherit;
@@ -620,7 +664,7 @@
   .tm-fld textarea { min-height: 72px; resize: vertical; }
   .tm-fld.required label::after { content: ' *'; color: #dc2626; }
   .tm-section-label {
-    font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
+    font-size: .7rem; font-weight: 700; text-transform: none; letter-spacing: .01em;
     color: var(--tm-muted); margin: 1rem 0 .5rem; display: flex; align-items: center; gap: .5rem;
   }
   .tm-section-label::after { content: ''; flex: 1; height: 1px; background: var(--tm-line); }
@@ -657,16 +701,76 @@
   .tm-import-zone p { font-size: .82rem; color: var(--tm-muted); }
   #importFileInput { display: none; }
 
-  /* ── Toast ───────────────────────────────────────────────────────────────── */
-  #tmToast {
-    position: fixed; bottom: 1.5rem; right: 1.5rem; max-width: min(360px, calc(100% - 2rem));
-    background: var(--tm-green); color: #fff; padding: .75rem 1rem;
-    border-radius: 12px; font-weight: 600; font-size: .9rem;
-    box-shadow: var(--tm-sh); z-index: 999;
-    transform: translateY(120%); opacity: 0; transition: .3s; pointer-events: none;
+  /* Viewport toast — pinned to the screen, not the page */
+  #tmToast.kyn-hint {
+    position: fixed !important;
+    top: auto !important;
+    left: auto !important;
+    right: 20px !important;
+    bottom: 20px !important;
+    z-index: 2147483646 !important;
+    display: none;
+    align-items: flex-start;
+    gap: 0.75rem;
+    width: min(22rem, calc(100vw - 2.5rem)) !important;
+    margin: 0 !important;
+    padding: 0.95rem 1rem 1.05rem !important;
+    border-radius: 16px !important;
+    background: #fff7f3 !important;
+    color: #191b23 !important;
+    border: 1px solid rgba(255, 142, 104, 0.45) !important;
+    box-shadow: 0 18px 40px rgba(224, 95, 54, 0.18), 0 2px 8px rgba(25, 27, 35, 0.08) !important;
+    transform: none !important;
+    pointer-events: auto !important;
+    overflow: hidden;
   }
-  #tmToast.show { transform: translateY(0); opacity: 1; }
-  #tmToast.error { background: #b91c1c; }
+  #tmToast.kyn-hint.show { display: flex !important; }
+  #tmToast.kyn-hint-ico,
+  #tmToast .kyn-hint-ico {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, #ff8e68, #f97e54);
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(255, 142, 104, 0.35);
+  }
+  #tmToast .kyn-hint-ico svg { width: 16px; height: 16px; display: block; }
+  #tmToast .kyn-hint-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 0.12rem; padding-top: 0.1rem; }
+  #tmToast .kyn-hint-title { font-size: 0.92rem; font-weight: 750; letter-spacing: -0.01em; color: #191b23; }
+  #tmToast .kyn-hint-text { font-size: 0.8rem; font-weight: 500; color: #6b625e; line-height: 1.35; }
+  #tmToast .kyn-hint-close {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #8a7e78;
+    cursor: pointer;
+    font-size: 1.15rem;
+    line-height: 1;
+  }
+  #tmToast .kyn-hint-close:hover { background: rgba(255, 142, 104, 0.12); color: #e05f36; }
+  #tmToast .kyn-hint-bar {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 3px;
+    width: 100%;
+    background: #ff8e68;
+    transform-origin: left center;
+    animation: kynHintDrain 10s linear forwards;
+  }
+  #tmToast.kyn-hint--error {
+    background: #fff5f5 !important;
+    border-color: rgba(220, 38, 38, 0.35) !important;
+  }
+  #tmToast.kyn-hint--error .kyn-hint-ico { background: #dc2626; box-shadow: 0 4px 10px rgba(220, 38, 38, 0.28); }
+  #tmToast.kyn-hint--error .kyn-hint-bar { background: #dc2626; }
+  @keyframes kynHintDrain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
   /* ── Spinner ─────────────────────────────────────────────────────────────── */
   .tm-spinner {
@@ -679,7 +783,7 @@
   /* ── Responsive table scroll ─────────────────────────────────────────────── */
   .tm-table-scroll { overflow-x: auto; }
   </style>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/injz-profile-mgmt-theme.css') }}?v=4">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/injz-profile-mgmt-theme.css') }}?v=31">
 </head>
 <body class="has-main-nav">
   {% include 'partials/main_navbar.html' with context %}
@@ -712,11 +816,11 @@
         </button>
         <button class="sb-nav-item" onclick="openImportModal()">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
-          Import Excel
+          Import excel
         </button>
         <button class="sb-nav-item" onclick="downloadTemplate()">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
-          Excel Template
+          Excel template
         </button>
       </nav>
       {% set files_save_label = 'Team Management — Staff' %}
@@ -743,15 +847,15 @@
         <div class="tm-header-actions">
           <button class="tm-btn tm-btn-outline" onclick="downloadTemplate()">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
-            Excel Template
+            Excel template
           </button>
-          <button class="tm-btn tm-btn-blue" onclick="openImportModal()">
+          <button class="tm-btn tm-btn-outline" onclick="openImportModal()">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
-            Import Excel
+            Import excel
           </button>
-          <button type="button" class="tm-btn tm-btn-outline" onclick="openCreateLoginModal()" title="Add a new user account">
+          <button type="button" class="tm-btn tm-btn-outline" onclick="openCreateLoginModal()" title="Add a new system user">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-            Create login
+            Create system user
           </button>
           <button class="tm-btn tm-btn-primary" onclick="openTechModal()">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
@@ -819,9 +923,9 @@
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
-          <button type="button" class="tm-btn tm-btn-primary tm-btn-sm" onclick="openCreateLoginModal()" title="Add a new user account" style="margin-left:auto;">
+          <button type="button" class="tm-btn tm-btn-primary tm-btn-sm" onclick="openCreateLoginModal()" title="Add a new system user" style="margin-left:auto;">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-            Create login
+            Create system user
           </button>
         </div>
         <div class="tm-staff-grid" id="staffGrid">
@@ -889,7 +993,7 @@
             <p>Add your first staff member manually or import a filled Excel template.</p>
             <div style="margin-top:1rem;display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;">
               <button class="tm-btn tm-btn-primary" onclick="openTechModal()">Add Staff</button>
-              <button class="tm-btn tm-btn-blue" onclick="openImportModal()">Import Excel</button>
+              <button class="tm-btn tm-btn-outline" onclick="openImportModal()">Import excel</button>
             </div>
           </div>
         </div>
@@ -987,7 +1091,7 @@
   <div class="tm-modal-veil" id="createLoginModal" aria-hidden="true" aria-modal="true" role="dialog" aria-labelledby="createLoginModalTitle">
     <div class="tm-modal">
       <div class="tm-modal-head green-head">
-        <h3 id="createLoginModalTitle">Create login</h3>
+        <h3 id="createLoginModalTitle">Create system user</h3>
         <button type="button" class="tm-modal-close" id="createLoginModalClose" aria-label="Close">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
         </button>
@@ -1030,10 +1134,7 @@
       </div>
       <div class="tm-modal-foot">
         <button type="button" class="tm-btn tm-btn-ghost" id="createLoginModalCancel">Cancel</button>
-        <button type="button" class="tm-btn tm-btn-primary" id="createLoginSave">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-          Create account
-        </button>
+        <button type="button" class="tm-btn tm-btn-primary" id="createLoginSave">Create account</button>
       </div>
     </div>
   </div>
@@ -1105,14 +1206,13 @@
 
   {% include 'partials/admin_manage_profile_modals.html' %}
 
-  <div id="tmToast" role="alert" aria-live="assertive"></div>
-
   <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
   <script>window.FILES_SAVE_MODULE = 'technicians'; window.FILES_SAVE_MODULE_LABEL = 'Team Management — Staff';</script>
   <script src="{{ url_for('static', filename='js/files-save.js') }}?v=16"></script>
-  <script src="{{ url_for('static', filename='js/admin-manage-profile-modal.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/admin-edit-otp.js') }}?v=10"></script>
+  <script src="{{ url_for('static', filename='js/admin-manage-profile-modal.js') }}?v=13"></script>
 
   <script>
   /* ═══════════════════════════════════════════════════════════════════════
@@ -1136,13 +1236,181 @@
   }
 
   let _toastTimer = null;
-  function tmToast(msg, type = 'success') {
-    const el = document.getElementById('tmToast');
-    el.textContent = msg;
-    el.className = type === 'error' ? 'error show' : 'show';
+  let _toastUnpin = null;
+  let _toastPaused = false;
+  let _toastRemaining = 10000;
+  let _toastDeadline = 0;
+  const TOAST_MS = 10000;
+
+  function toastBar(el) {
+    return el ? el.querySelector('.kyn-hint-bar') : null;
+  }
+
+  function dismissTmToast(el) {
+    if (!el) return;
+    el.classList.remove('show');
     clearTimeout(_toastTimer);
-    const hold = /password/i.test(msg) ? 8000 : 3800;
-    _toastTimer = setTimeout(() => el.classList.remove('show'), hold);
+    _toastPaused = false;
+    if (_toastUnpin) { _toastUnpin(); _toastUnpin = null; }
+  }
+
+  function armToastTimer(el, ms) {
+    clearTimeout(_toastTimer);
+    _toastRemaining = ms;
+    _toastDeadline = Date.now() + ms;
+    _toastTimer = setTimeout(function () { dismissTmToast(el); }, ms);
+  }
+
+  function pauseToastTimer(el) {
+    if (_toastPaused || !el || !el.classList.contains('show')) return;
+    _toastPaused = true;
+    _toastRemaining = Math.max(0, _toastDeadline - Date.now());
+    clearTimeout(_toastTimer);
+    const bar = toastBar(el);
+    if (bar) bar.style.animationPlayState = 'paused';
+  }
+
+  function resumeToastTimer(el) {
+    if (!_toastPaused || !el || !el.classList.contains('show')) return;
+    _toastPaused = false;
+    const wait = _toastRemaining > 0 ? _toastRemaining : TOAST_MS;
+    armToastTimer(el, wait);
+    const bar = toastBar(el);
+    if (bar) bar.style.animationPlayState = 'running';
+  }
+
+  function bindToastHover(el) {
+    if (!el || el.dataset.hoverBound) return;
+    el.dataset.hoverBound = '1';
+    el.addEventListener('mouseenter', function () { pauseToastTimer(el); });
+    el.addEventListener('mouseleave', function () { resumeToastTimer(el); });
+    el.addEventListener('focusin', function () { pauseToastTimer(el); });
+    el.addEventListener('focusout', function () { resumeToastTimer(el); });
+  }
+
+  function pinToastToScreen(el) {
+    const M = 20;
+    let mode = 'fixed';
+    const place = function () {
+      if (!el.classList.contains('show') || !el.isConnected) return;
+      const vv = window.visualViewport;
+      const vw = vv ? vv.width : window.innerWidth;
+      const vh = vv ? vv.height : window.innerHeight;
+      const ox = vv ? vv.offsetLeft : 0;
+      const oy = vv ? vv.offsetTop : 0;
+      const w = Math.min(352, Math.max(220, vw - M * 2));
+      el.style.setProperty('width', w + 'px', 'important');
+      const h = el.offsetHeight || 88;
+      const viewLeft = Math.round(ox + vw - w - M);
+      const viewTop = Math.round(oy + vh - h - M);
+      el.style.setProperty('right', 'auto', 'important');
+      el.style.setProperty('bottom', 'auto', 'important');
+      el.style.setProperty('margin', '0', 'important');
+      el.style.setProperty('z-index', '2147483646', 'important');
+      if (mode === 'fixed') {
+        el.style.setProperty('position', 'fixed', 'important');
+        el.style.setProperty('left', viewLeft + 'px', 'important');
+        el.style.setProperty('top', viewTop + 'px', 'important');
+        const r = el.getBoundingClientRect();
+        if (Math.abs(r.left - viewLeft) > 2 || Math.abs(r.top - viewTop) > 2) {
+          mode = 'absolute';
+        }
+      }
+      if (mode === 'absolute') {
+        el.style.setProperty('position', 'absolute', 'important');
+        el.style.setProperty('left', Math.round(window.scrollX + viewLeft) + 'px', 'important');
+        el.style.setProperty('top', Math.round(window.scrollY + viewTop) + 'px', 'important');
+      }
+    };
+    place();
+    requestAnimationFrame(place);
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('scroll', place);
+      window.visualViewport.addEventListener('resize', place);
+    }
+    return function () {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('scroll', place);
+        window.visualViewport.removeEventListener('resize', place);
+      }
+    };
+  }
+
+  function tmToast(msg, type = 'success') {
+    const isError = type === 'error';
+    const raw = String(msg || '').trim();
+    let title = 'Saved';
+    if (isError) {
+      if (/one-time code|administrator account is locked/i.test(raw)) title = 'Administrator locked';
+      else if (/cannot delete|could not delete|failed to delete|ticket/i.test(raw)) title = 'Cannot delete user';
+      else title = 'Could not complete';
+    } else if (/deactivat/i.test(raw)) title = 'Account deactivated';
+    else if (/activat/i.test(raw)) title = 'Account activated';
+    else if (/password/i.test(raw)) title = 'Password updated';
+    else if (/deleted/i.test(raw)) title = 'User deleted';
+    else if (/created|imported/i.test(raw)) title = 'Done';
+
+    let el = document.getElementById('tmToast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'tmToast';
+    }
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    document.body.appendChild(el);
+
+    const check = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 9.5 17 19 7"/></svg>';
+    const warn = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5h.01"/></svg>';
+
+    el.className = isError ? 'kyn-hint kyn-hint--error error show' : 'kyn-hint kyn-hint--ok show';
+    el.replaceChildren();
+
+    const ico = document.createElement('span');
+    ico.className = 'kyn-hint-ico';
+    ico.setAttribute('aria-hidden', 'true');
+    ico.innerHTML = isError ? warn : check;
+
+    const copy = document.createElement('span');
+    copy.className = 'kyn-hint-copy';
+    const h = document.createElement('strong');
+    h.className = 'kyn-hint-title';
+    h.textContent = title;
+    const t = document.createElement('span');
+    t.className = 'kyn-hint-text';
+    t.textContent = raw || (isError ? 'Please try again.' : 'Changes were saved.');
+    copy.append(h, t);
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'kyn-hint-close';
+    close.setAttribute('aria-label', 'Dismiss');
+    close.textContent = '×';
+    close.addEventListener('click', function () {
+      dismissTmToast(el);
+    });
+
+    const bar = document.createElement('span');
+    bar.className = 'kyn-hint-bar';
+    bar.setAttribute('aria-hidden', 'true');
+
+    el.append(ico, copy, close, bar);
+
+    if (_toastUnpin) _toastUnpin();
+    _toastUnpin = pinToastToScreen(el);
+    bindToastHover(el);
+    _toastPaused = false;
+    const barEl = toastBar(el);
+    if (barEl) {
+      barEl.style.animation = 'none';
+      void barEl.offsetWidth;
+      barEl.style.animation = '';
+      barEl.style.animationPlayState = 'running';
+    }
+    armToastTimer(el, TOAST_MS);
   }
 
   function initials(name) {
@@ -1188,18 +1456,18 @@
   let _staffData = [];
   const MODULE_LABELS = {
     access_hvac: 'Inspection', access_civil: 'Inspection', access_cleaning: 'Inspection',
-    access_hr: 'HR', access_procurement_module: 'Procurement', access_files: 'Files',
+    access_hr: 'HR', access_hiring: 'Hiring', access_procurement_module: 'Procurement', access_files: 'Files',
     access_business_development: 'BD', access_sales_manager: 'BD mgr', access_quotations: 'Quotes',
     access_report_generation: 'Reports',
     access_submitted_forms: 'Submitted', access_ticketing: 'Ticketing',
   };
   const DESIG_BADGE_LABELS = {
     supervisor: 'Supervisor',
-    operations_manager: 'Ops Manager',
-    business_development: 'Business Dev',
+    operations_manager: 'Ops manager',
+    business_development: 'Business dev',
     procurement: 'Procurement',
-    general_manager: 'Gen. Manager',
-    hr_manager: 'HR Manager',
+    general_manager: 'Gen. manager',
+    hr_manager: 'HR manager',
     employee: 'Employee',
     technician: 'Technician',
     admin: 'Admin',
@@ -1208,7 +1476,7 @@
     if (u.role === 'admin') return 'Admin';
     const d = (u.designation || '').toLowerCase().trim();
     if (DESIG_BADGE_LABELS[d]) return DESIG_BADGE_LABELS[d];
-    if (d) return d.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    if (d) return d.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
     return 'User';
   }
   function staffSubtitle(u) {
@@ -1220,6 +1488,15 @@
 
   function _isStaffRosterRow(_u) {
     return true;
+  }
+
+  function tmSelfUserId() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem('user') || 'null');
+      return parsed && parsed.id != null ? Number(parsed.id) : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   async function loadStaff() {
@@ -1251,7 +1528,7 @@
   function renderStaff(list) {
     const grid = document.getElementById('staffGrid');
     if (!list.length) {
-      grid.innerHTML = `<div class="tm-empty-state" style="grid-column:1/-1;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="48" height="48"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 1 1 5.25 0Z"/></svg><h3>No system users found</h3><p>Try adjusting your search or filters, or create a login.</p></div>`;
+      grid.innerHTML = `<div class="tm-empty-state" style="grid-column:1/-1;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="48" height="48"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 1 1 5.25 0Z"/></svg><h3>No system users found</h3><p>Try adjusting your search or filters, or create a system user.</p></div>`;
       return;
     }
     grid.innerHTML = list.map((u, idx) => {
@@ -1262,7 +1539,7 @@
       return `
         <div class="tm-staff-card tm-staff-card--interactive" role="button" tabindex="0"
              onclick="openUserProfileModal(${u.id})"
-             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openUserProfileModal(${u.id});}"
+             onkeydown="if(event.target.closest('[data-action=delete-user]'))return;if(event.key==='Enter'||event.key===' '){event.preventDefault();openUserProfileModal(${u.id});}"
              aria-label="Manage profile for ${displayName}"
              title="Manage profile">
           <div class="tm-staff-card-top">
@@ -1277,15 +1554,17 @@
           </div>
           <div class="tm-staff-meta">
             <div class="tm-staff-meta-row">
-              <span class="tm-status-dot${statusDot}"></span>
-              <span>${u.is_active ? 'Active' : 'Inactive'}</span>
+              <span class="tm-staff-status">
+                <span class="tm-status-dot${statusDot}"></span>
+                <span>${u.is_active ? 'Active' : 'Inactive'}</span>
+              </span>
               <span class="tm-staff-email">${u.email || u.username || ''}</span>
             </div>
-            ${u.employment_start_date ? `<div class="tm-staff-meta-row" style="padding-left:1.15rem;">Joined: ${fmtDate(u.employment_start_date)}</div>` : ''}
           </div>
           ${mods ? `<div class="tm-staff-modules">${mods}</div>` : ''}
           <div class="tm-staff-actions">
             <span class="tm-btn tm-btn-outline tm-btn-sm" aria-hidden="true">Manage profile</span>
+            ${!u.is_active && Number(u.id) !== tmSelfUserId() ? `<button type="button" class="tm-btn tm-btn-danger tm-btn-sm" data-action="delete-user" onclick="event.preventDefault();event.stopPropagation();openProfileDeleteConfirmModal(${u.id});">Delete user</button>` : ''}
           </div>
         </div>`;
     }).join('');
@@ -1441,7 +1720,7 @@
         <td data-label="Phone">${t.phone ? `<a href="tel:${t.phone}" style="color:var(--tm-green);text-decoration:none;" onclick="event.stopPropagation()">${t.phone}</a>` : '—'}</td>
         <td data-label="Salary">${fmtSalary(t.salary)}</td>
         <td data-label="Joined" style="white-space:nowrap;">${fmtDate(t.joining_date)}</td>
-        <td data-label="Status"><span class="tm-status-badge ${t.status}">${t.status.replace('_', ' ')}</span></td>
+        <td data-label="Status"><span class="tm-status-badge ${t.status}">${(t.status || '').replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())}</span></td>
         <td data-label="Actions">${actions}</td>
       </tr>`;
     }).join('');
@@ -1836,7 +2115,7 @@
     btn.disabled = false;
     btn.innerHTML = prevHtml;
     if (!res.ok) {
-      tmToast(res.data?.message || res.data?.error || 'Failed to create login.', 'error');
+      tmToast(res.data?.message || res.data?.error || 'Failed to create system user.', 'error');
       return;
     }
     const body = res.data.data || res.data;

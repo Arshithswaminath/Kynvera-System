@@ -1,15 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="auth-html-register">
 <head>
     {% set title = 'Sign Up — Kynvera' %}
     {% include 'partials/auth_head.html' %}
+    <meta name="theme-color" content="#ff8e68">
 </head>
 <body class="auth-page-register">
     {% from 'partials/auth_shell.html' import auth_shell %}
     {% call auth_shell(
-        headline='Get Started with Us',
+        headline='All Operations.<br>One Platform.',
+        description='The hub for your teams to run logistics, facilities, and day-to-day operations in one place.',
         form_variant='register',
-        footer='Already have an account? <a href="' ~ url_for('login_page') ~ '" class="auth-link">Sign in</a>',
+        sheet_closed=false,
         steps=[
             {'num': 1, 'label': 'Your details', 'state': 'active'},
             {'num': 2, 'label': 'Your project & role', 'state': ''},
@@ -42,8 +44,14 @@
                     <input class="auth-input" type="tel" id="mobile_number" name="mobile_number" placeholder="eg. +971 50 123 4567" required autocomplete="tel">
                 </div>
                 <div class="auth-btn-row">
-                    <button type="submit" class="auth-submit-btn" id="step1-continue">Continue</button>
+                    <button type="submit" class="auth-submit-btn" id="step1-continue">
+                        <span>Continue</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M5 12h14M13 6l6 6-6 6"/>
+                        </svg>
+                    </button>
                 </div>
+                <p class="auth-form-alt">Already have an account? <a href="{{ url_for('login_page', form=1) }}" class="auth-link">Sign in</a></p>
                 <div id="error-message-step1" class="auth-error auth-error--register" hidden role="alert"></div>
             </form>
         </section>
@@ -70,6 +78,7 @@
                     <button type="button" class="auth-btn-ghost" id="back-to-1">Back</button>
                     <button type="submit" class="auth-submit-btn" id="submit-register">Create account</button>
                 </div>
+                <p class="auth-form-alt">Already have an account? <a href="{{ url_for('login_page', form=1) }}" class="auth-link">Sign in</a></p>
                 <div id="error-message-step2" class="auth-error auth-error--register" hidden role="alert"></div>
             </form>
         </section>
@@ -95,11 +104,101 @@
                     For your security, go to <strong>Profile</strong> after logging in and <strong>reset your password</strong> to something only you know.
                 </p>
 
-                <a href="{{ url_for('login_page') }}" class="auth-submit-btn" style="text-decoration:none;">Go to log in</a>
+                <a href="{{ url_for('login_page', form=1) }}" class="auth-submit-btn" style="text-decoration:none;">Go to log in</a>
             </div>
         </section>
     {% endcall %}
 
+    <script>
+        (function initRegisterSheet() {
+            const shell = document.querySelector('.auth-shell');
+            const panel = document.getElementById('auth-form-panel');
+            const handle = document.getElementById('auth-sheet-handle');
+            const peek = document.getElementById('auth-sheet-peek');
+            if (!shell || !panel || !handle || !peek) return;
+
+            function isMobileSheet() {
+                return window.matchMedia('(max-width: 1023px)').matches;
+            }
+
+            function focusFirstField() {
+                const field = document.querySelector('.auth-wizard-step.active .auth-input');
+                if (field) field.focus({ preventScroll: true });
+            }
+
+            function setSheetOpen(open) {
+                const wasClosed = shell.classList.contains('auth-shell--sheet-closed');
+                if (open === !wasClosed) return;
+
+                handle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                peek.setAttribute('aria-expanded', open ? 'true' : 'false');
+                peek.setAttribute('aria-hidden', open ? 'true' : 'false');
+                panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+
+                if (open) {
+                    if ('inert' in panel) panel.inert = false;
+                    shell.classList.remove('auth-shell--sheet-closed');
+                    window.setTimeout(function () {
+                        if (!shell.classList.contains('auth-shell--sheet-closed')) {
+                            focusFirstField();
+                        }
+                    }, 520);
+                } else {
+                    const active = document.activeElement;
+                    if (active && panel.contains(active)) active.blur();
+                    shell.classList.add('auth-shell--sheet-closed');
+                    if ('inert' in panel) panel.inert = true;
+                    window.setTimeout(function () {
+                        if (shell.classList.contains('auth-shell--sheet-closed')) {
+                            peek.focus({ preventScroll: true });
+                        }
+                    }, 280);
+                }
+            }
+
+            function markSheetReady() {
+                shell.classList.add('auth-shell--ready');
+            }
+
+            function syncDesktopSheet() {
+                if (isMobileSheet()) {
+                    markSheetReady();
+                    return;
+                }
+                handle.setAttribute('aria-expanded', 'true');
+                peek.setAttribute('aria-expanded', 'false');
+                peek.setAttribute('aria-hidden', 'true');
+                panel.setAttribute('aria-hidden', 'false');
+                if ('inert' in panel) panel.inert = false;
+                shell.classList.remove('auth-shell--sheet-closed');
+                markSheetReady();
+            }
+
+            syncDesktopSheet();
+            window.matchMedia('(max-width: 1023px)').addEventListener('change', syncDesktopSheet);
+
+            handle.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!isMobileSheet()) return;
+                setSheetOpen(false);
+            });
+
+            peek.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!isMobileSheet()) return;
+                setSheetOpen(true);
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key !== 'Escape' || !isMobileSheet()) return;
+                if (!shell.classList.contains('auth-shell--sheet-closed')) {
+                    setSheetOpen(false);
+                }
+            });
+        })();
+    </script>
     <script>
         (function () {
             let currentStep = 1;

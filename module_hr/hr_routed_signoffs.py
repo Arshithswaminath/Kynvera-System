@@ -427,46 +427,15 @@ def send_slot_assignment_email(
     form_label: str,
     slot_label: str,
 ) -> None:
-    from flask import request
+    from module_hr.hr_lifecycle_emails import replacement_sign_url, send_action_required
 
-    from common.email_service import is_email_configured, send_email
-
-    if not recipient.email or not is_email_configured(app):
-        return
-
-    try:
-        base = (request.url_root or "").rstrip("/")
-    except RuntimeError:
-        base = (app.config.get("PREFERRED_URL_SCHEME") or "https") + "://" + (
-            app.config.get("SERVER_NAME") or "localhost"
-        )
-
-    link = f"{base}/hr/replacement-sign/{submission.submission_id}"
-    subj = f"Action required: sign HR form ({submission.submission_id})"
-    body = (
-        f"Hello {recipient.full_name or recipient.username},\n\n"
-        f"{submitter_name} submitted {form_label} and listed you to sign as: {slot_label}.\n"
-        f"Please open Injaaz and add your signature:\n{link}\n\n"
-        f"Reference: {submission.submission_id}\n"
+    send_action_required(
+        app,
+        submission,
+        recipient,
+        role_label=slot_label or "Signatory",
+        sign_url=replacement_sign_url(app, submission),
     )
-    html = (
-        f"<p>Hello <strong>{recipient.full_name or recipient.username}</strong>,</p>"
-        f"<p>{submitter_name} submitted <strong>{form_label}</strong> and listed you to sign as "
-        f"<strong>{slot_label}</strong>.</p>"
-        f"<p><a href=\"{link}\">Open form to sign</a></p>"
-        f"<p style=\"color:#64748b;font-size:12px\">Reference: {submission.submission_id}</p>"
-    )
-    try:
-        send_email(
-            recipient.email,
-            subj,
-            body,
-            html_body=html,
-            source='hr',
-            related_id=getattr(submission, 'submission_id', None),
-        )
-    except Exception:
-        app.logger.exception("routed signoff email failed for user %s", recipient.id)
 
 
 def email_all_routed_assignees(app: Flask, submission: Submission, form_label: str) -> None:

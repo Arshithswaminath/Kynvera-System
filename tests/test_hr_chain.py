@@ -5,7 +5,7 @@ Covers:
 
 * Technician lane: supervisor (fixed) -> OM gate -> GM gate -> HR gate
 * Supervisor lane: OM gate -> GM gate -> HR gate
-* Office staff lane: GM gate -> HR gate
+* Office staff lane: GM gate -> HR gate (plus reporting manager when assigned)
 * Technician with no supervisor on profile -> setup_error
 * UI context shape (Box 2 chain descriptor)
 """
@@ -152,8 +152,127 @@ def test_office_staff_lane_is_gm_then_hr(app, chain_users):
         assert [s["signer_mode"] for s in steps] == ["designation", "designation"]
 
 
+def test_gm_without_reporting_manager_skips_self_and_lists_admin_as_hr(app, chain_users):
+    """A GM with no reporting manager must not sign their own form; HR falls back to admin."""
+    from module_hr.hr_management_chain import (
+        _build_chain_for_submitter,
+        _supervisor_for,
+        get_mgmt_chain_ui_context,
+        lane_for_user,
+    )
+
+    with app.app_context():
+        gm = chain_users["gm"]
+        assert lane_for_user(gm) == "office_staff"
+        assert _supervisor_for(gm) is None
+
+        steps, err = _build_chain_for_submitter(gm)
+        assert err is None
+        assert _chain_keys(steps) == ["hr_head_office"]
+
+        ctx = get_mgmt_chain_ui_context(gm)
+        assert [c["key"] for c in ctx["chain"]] == ["hr_head_office"]
+        hr_row = ctx["chain"][0]
+        assert hr_row["who_label"]
+        assert hr_row["key"] == "hr_head_office"
+
+
+def test_canonical_hr_falls_back_to_admin_when_no_hr_manager(app, chain_users):
+    from app.models import db, User
+    from module_hr.hr_management_chain import _canonical_hr_user
+
+    with app.app_context():
+        hr = db.session.get(User, chain_users["hr"].id)
+        previous = hr.designation
+        hr.designation = "employee"
+        db.session.commit()
+        try:
+            canonical = _canonical_hr_user()
+            assert canonical is not None
+            assert canonical.role == "admin"
+        finally:
+            hr.designation = previous
+            db.session.commit()
+
+
+def test_office_staff_with_reporting_manager_lists_them_separately(app, chain_users):
+    """Reporting manager is its own step; they are not also listed under GM."""
+    from app.models import db, User
+    from module_hr.hr_management_chain import (
+        _build_chain_for_submitter,
+        get_mgmt_chain_ui_context,
+        user_allowed_to_sign_step,
+    )
+
+    with app.app_context():
+        emp = db.session.get(User, chain_users["emp"].id)
+        gm = chain_users["gm"]
+        emp.reporting_manager_id = gm.id
+        db.session.commit()
+
+        steps, err = _build_chain_for_submitter(emp)
+        assert err is None
+        assert _chain_keys(steps) == ["reporting_manager", "hr_head_office"]
+        assert steps[0]["signer_id"] == gm.id
+
+        ctx = get_mgmt_chain_ui_context(emp)
+        assert [c["key"] for c in ctx["chain"]] == ["reporting_manager", "hr_head_office"]
+        assert ctx["chain"][0]["who_label"] == (gm.full_name or gm.username)
+        assert ctx["lane_flow"].startswith("Reporting manager")
+
+
+def test_office_staff_reporting_manager_excluded_from_gm_pool(app, chain_users):
+    from app.models import db, User
+    from module_hr.hr_management_chain import (
+        _build_chain_for_submitter,
+        get_mgmt_chain_ui_context,
+        user_allowed_to_sign_step,
+    )
+
+    with app.app_context():
+        tag = uuid.uuid4().hex[:6]
+        other_gm = User(
+            username=f"gm2_{tag}",
+            email=f"gm2_{tag}@example.com",
+            full_name="Other GM",
+            role="user",
+            designation="general_manager",
+            is_active=True,
+            password_changed=True,
+        )
+        other_gm.set_password("TestPass123")
+        db.session.add(other_gm)
+        db.session.flush()
+
+        emp = db.session.get(User, chain_users["emp"].id)
+        rm = chain_users["gm"]
+        emp.reporting_manager_id = rm.id
+        db.session.commit()
+
+        steps, err = _build_chain_for_submitter(emp)
+        assert err is None
+        assert _chain_keys(steps) == [
+            "reporting_manager",
+            "general_manager",
+            "hr_head_office",
+        ]
+        gm_step = steps[1]
+        assert rm.id in (gm_step.get("exclude_signer_ids") or [])
+        assert user_allowed_to_sign_step(rm, gm_step) is False
+        assert user_allowed_to_sign_step(other_gm, gm_step) is True
+
+        ctx = get_mgmt_chain_ui_context(emp)
+        gm_row = next(c for c in ctx["chain"] if c["key"] == "general_manager")
+        assert "Other GM" in gm_row["who_label"]
+        assert (rm.full_name or rm.username) not in gm_row["who_label"]
+        assert "Either may sign" not in (gm_row.get("who_detail") or "")
+
+        db.session.delete(other_gm)
+        db.session.commit()
+
+
 def test_other_designations_use_office_staff_lane(app, chain_users):
-    """An OM/GM submitting their own form goes through GM -> HR (any other GM signs)."""
+    """OM/HR submitting still go through the GM pool; a GM cannot sign their own form."""
     from module_hr.hr_management_chain import (
         _build_chain_for_submitter,
         lane_for_user,
@@ -164,7 +283,10 @@ def test_other_designations_use_office_staff_lane(app, chain_users):
             assert lane_for_user(actor) == "office_staff"
             steps, err = _build_chain_for_submitter(actor)
             assert err is None
-            assert _chain_keys(steps) == ["general_manager", "hr_head_office"]
+            if actor.id == chain_users["gm"].id:
+                assert _chain_keys(steps) == ["hr_head_office"]
+            else:
+                assert _chain_keys(steps) == ["general_manager", "hr_head_office"]
 
 
 def test_technician_missing_supervisor_returns_setup_error(app, chain_users):

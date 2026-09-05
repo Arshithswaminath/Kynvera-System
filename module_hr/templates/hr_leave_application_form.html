@@ -6,11 +6,12 @@
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
 <title>Leave Application Form — Kynvera</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}?v=3">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}?v=6">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
+  <script src="{{ url_for('static', filename='js/hr_form_step_scroll.js') }}?v=1"></script>
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
   <style>
     /* Leave-type checkbox grid — specific to this form only */
@@ -29,12 +30,22 @@
     .leave-opt .other-inp:focus{border-bottom-color:var(--pri)}
     @media(max-width:768px){.leave-grid{grid-template-columns:1fr}}
     .rep-pick-row{display:flex;gap:.55rem;align-items:center;flex-wrap:wrap;margin-bottom:.55rem}
-    .rep-pick-row #repColleagueSelect{flex:1;min-width:200px}
+    .rep-pick-row #repColleagueSelect{flex:1;min-width:200px;width:100%}
     .rep-chip-list{display:flex;flex-wrap:wrap;gap:.42rem;margin:.45rem 0 .15rem}
     .rep-chip{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .62rem;border-radius:99px;background:var(--pri-xs);border:1.5px solid var(--pri-sm);font-size:.82rem;font-weight:600;color:var(--pri-d)}
     .rep-chip button{border:none;background:transparent;cursor:pointer;line-height:1;padding:0 0 0 .25rem;color:#64748b;font-size:1rem}
-    .btn-inline{border-radius:10px;padding:.48rem .92rem;border:1.5px solid var(--bd);background:var(--sf);font-weight:600;cursor:pointer;font-size:.85rem;font-family:inherit;color:var(--ink2)}
-    .btn-inline:hover{border-color:var(--pri-sm)}
+    .cov-callout{
+      margin:0 0 .85rem;
+      padding:.9rem 1rem;
+      border:1.5px solid var(--pri-sm);
+      border-radius:var(--r-sm);
+      background:var(--pri-xs);
+    }
+    .cov-callout.is-missing{border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.2)}
+    .cov-callout-title{display:block;font-size:.85rem;font-weight:700;color:var(--ink2);margin:0 0 .3rem}
+    .cov-callout-lead{margin:0;font-size:.85rem;line-height:1.45;color:var(--ink2);font-weight:500}
+    .cov-callout-hint{margin:.35rem 0 0;font-size:.78rem;color:var(--muted);font-weight:400;line-height:1.4}
+    .cov-callout .yn-row{margin-top:.7rem}
     .sig-row-aligned .fld-lbl{font-size:.8125rem;font-weight:600;letter-spacing:.02em;text-transform:none;color:rgba(60,60,67,.92)}
     .sig-row-aligned .sig-box{min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center}
     /* Colleague column: stack the same dashed .sig-box as employee/manager — no alternate frame */
@@ -98,18 +109,9 @@
   {% set active_page = 'hr' %}
   {% include 'partials/hr_embed_optional_navbar.html' %}
 
-  <div class="success-bg" id="successModal">
-    <div class="success-box">
-      <button type="button" class="success-back-btn" onclick="hrGoToSubmittedRequest()" title="View submitted request">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-      </button>
-      <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
-      <h2>Application Submitted!</h2>
-      <p id="successMsgLead">Your leave request has been sent to HR for review.</p>
-      <div class="sub-id" id="submissionId"></div>
-      <button class="btn-submit" style="width:100%;justify-content:center" onclick="hrGoToSubmittedRequest()">View My Requests</button>
-    </div>
-  </div>
+  {% set success_title = 'Application submitted' %}
+  {% set success_lead = 'Your leave request is in the approval chain. Track progress from My Requests.' %}
+  {% include 'partials/hr_form_success_modal.html' %}
 
   <div class="sig-modal-bg" id="sigBg">
     <div class="sig-modal">
@@ -124,10 +126,9 @@
 
   <div class="page">
     <div class="page-inner">
-      <a href="/hr/" class="back-btn">
-        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-        Back to HR
-      </a>
+      {% set module_back_url = url_for('hr.hr_dashboard') %}
+      {% set module_back_extra_class = 'back-btn' %}
+      {% include 'partials/module_back_link.html' %}
 
       <div id="submissionViewBanner" style="display:none;margin-bottom:1rem;line-height:1.5;color:#e05f36;background:#e8f5ed;border:1.5px solid var(--pri-sm,#c2dece);border-radius:12px;padding:.9rem 1.05rem;">
         <div style="font-size:1.08rem;font-weight:700;line-height:1.45;">
@@ -233,22 +234,23 @@
 
               <section class="sec">
                 <h2 class="sec-hd">Signatures</h2>
-                <label class="leave-opt" style="margin:0 0 .85rem;display:flex;align-items:flex-start;gap:.5rem;cursor:pointer">
-                  <input type="checkbox" id="needCoverageSigChk" style="margin-top:.2rem">
-                  <span class="opt-text" style="font-size:.85rem;line-height:1.45">
-                    A colleague will cover my duties and must sign digitally on their own device
-                    <span style="display:block;font-size:.78rem;color:var(--muted);font-weight:400;margin-top:.2rem">Leave this unchecked if no coverage colleague signature is needed.</span>
-                  </span>
-                </label>
+                <div class="cov-callout" id="covCallout">
+                  <span class="cov-callout-title">Colleague coverage <span class="req">*</span></span>
+                  <p class="cov-callout-lead">A colleague will cover my duties and must sign digitally on their own device.</p>
+                  <div class="yn-row" role="radiogroup" aria-label="Colleague coverage" aria-required="true">
+                    <label><input type="radio" name="need_coverage_signature" value="yes" id="needCoverageYes"> Yes</label>
+                    <label><input type="radio" name="need_coverage_signature" value="no" id="needCoverageNo"> No</label>
+                  </div>
+                  <p class="cov-callout-hint">Choose Yes or No before you submit. If Yes, add a colleague with a Kynvera account.</p>
+                </div>
                 <div id="repCoverageBlock" style="display:none">
                   <p style="font-size:.8rem;color:var(--muted);margin:0 0 .85rem;line-height:1.45">
                     Select teammates with <strong>Kynvera</strong> accounts. Each person listed will be asked to sign digitally on their own device before the management approval chain continues. You cannot capture their signature here.
                   </p>
                   <div class="rep-pick-row">
-                    <select id="repColleagueSelect" class="fld-inp" aria-label="Pick colleague">
+                    <select id="repColleagueSelect" class="fld-inp" aria-label="Pick colleague to add">
                       <option value="">— Choose colleague to add —</option>
                     </select>
-                    <button type="button" class="btn-inline" id="repAddColleague">Add</button>
                   </div>
                   <div id="repChipList" class="rep-chip-list" aria-live="polite"></div>
                   <div class="fld" style="margin-top:.85rem">
@@ -368,7 +370,7 @@
           </div>
 
           <div class="submit-bar" id="submitBar" style="display:none">
-            <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('leaveFrm').reset();replacementSignerIds=[];var c=document.getElementById('needCoverageSigChk');if(c)c.checked=false;syncReplacementUi();renderRepChips();clearAllSigs();window.HrMgmtChainReset&&HrMgmtChainReset();goToStep1()}">Reset</button>
+            <button type="button" class="btn-reset" onclick="resetLeaveForm()">Reset</button>
             <button type="submit" class="btn-submit">Submit Application</button>
           </div>
         </form>
@@ -724,8 +726,6 @@ function unlockEmployeeSectionsForEditing() {
     c.disabled = false;
   });
   syncLeaveTypeUI();
-  const repAdd = document.getElementById('repAddColleague');
-  if (repAdd) repAdd.disabled = false;
   document.querySelectorAll('#repChipList .rep-chip button').forEach((b) => {
     b.style.display = '';
   });
@@ -755,6 +755,8 @@ function collectLeaveEmployeeFormUpdates() {
   }
   const sa = form.querySelector('input[name="salary_advance"]:checked');
   if (sa) out.salary_advance = sa.value;
+  const cov = coverageChoice();
+  if (cov) out.need_coverage_signature = cov;
   const lt = form.querySelector('.leave-type-check:checked');
   if (lt) out.leave_type = lt.value;
   if (replacementSignerIds.length) {
@@ -781,8 +783,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (td && !td.value) td.value = today;
 
   setupLeaveTypeChecks();
-  const covChk = document.getElementById('needCoverageSigChk');
-  if (covChk) covChk.addEventListener('change', syncReplacementUi);
+  document.querySelectorAll('input[name="need_coverage_signature"]').forEach((el) => {
+    el.addEventListener('change', () => {
+      const callout = document.getElementById('covCallout');
+      if (callout) callout.classList.remove('is-missing');
+      syncReplacementUi();
+    });
+  });
   syncReplacementUi();
   void (async () => {
     await loadColleaguePicker();
@@ -822,12 +829,47 @@ function setupLeaveTypeChecks(){
 let replacementSignerIds = [];
 let colleaguePicker = [];
 
+function coverageChoice() {
+  const el = document.querySelector('input[name="need_coverage_signature"]:checked');
+  return el ? el.value : '';
+}
+
+function resetLeaveForm() {
+  if (!confirm('Reset the form?')) return;
+  document.getElementById('leaveFrm').reset();
+  replacementSignerIds = [];
+  document.querySelectorAll('input[name="need_coverage_signature"]').forEach((r) => { r.checked = false; });
+  const callout = document.getElementById('covCallout');
+  if (callout) callout.classList.remove('is-missing');
+  syncReplacementUi();
+  renderRepChips();
+  clearAllSigs();
+  if (window.HrMgmtChainReset) window.HrMgmtChainReset();
+  goToStep1();
+}
+
+function hydrateLeaveCoverage(fd) {
+  const hasCov = (Array.isArray(fd.replacement_signer_ids) && fd.replacement_signer_ids.length)
+    || (Array.isArray(fd.replacement_signers) && fd.replacement_signers.length);
+  if (Array.isArray(fd.replacement_signer_ids) && fd.replacement_signer_ids.length) {
+    replacementSignerIds = fd.replacement_signer_ids.map((x) => parseInt(x, 10)).filter(Number.isFinite);
+  } else if (Array.isArray(fd.replacement_signers) && fd.replacement_signers.length) {
+    replacementSignerIds = fd.replacement_signers
+      .map((s) => parseInt(s && (s.user_id || s.id), 10))
+      .filter(Number.isFinite);
+  }
+  const raw = String(fd.need_coverage_signature || '').trim().toLowerCase();
+  const choice = (raw === 'yes' || raw === 'no') ? raw : (hasCov ? 'yes' : '');
+  if (choice) setRadioGroupValue('need_coverage_signature', choice);
+  syncReplacementUi();
+  renderRepChips();
+}
+
 function syncReplacementUi(){
-  const chk = document.getElementById('needCoverageSigChk');
   const block = document.getElementById('repCoverageBlock');
   const replCol = document.getElementById('replSigCol');
   const sigGrid = document.getElementById('leaveSigGrid');
-  const on = !!(chk && chk.checked);
+  const on = coverageChoice() === 'yes';
   if (block) block.style.display = on ? '' : 'none';
   if (replCol) replCol.style.display = on ? '' : 'none';
   if (sigGrid) sigGrid.className = on ? 'grid-3 sig-row-aligned' : 'grid-2 sig-row-aligned';
@@ -846,7 +888,7 @@ function syncReplacementUi(){
 function renderRepChips(){
   const box = document.getElementById('repChipList');
   if(!box) return;
-  if(!replacementSignerIds.length){ box.innerHTML=''; syncReplSigHint(); if (window.refreshHrSignatureSummary) window.refreshHrSignatureSummary(); return; }
+  if(!replacementSignerIds.length){ box.innerHTML=''; syncColleagueSelectOptions(); syncReplSigHint(); if (window.refreshHrSignatureSummary) window.refreshHrSignatureSummary(); return; }
   const byId = new Map(colleaguePicker.map(u=>[u.id,u]));
   box.innerHTML = replacementSignerIds.map(id=>{
     const u = byId.get(id);
@@ -861,12 +903,34 @@ function renderRepChips(){
       renderRepChips();
     });
   });
+  syncColleagueSelectOptions();
   syncReplSigHint();
   if (window.refreshHrSignatureSummary) window.refreshHrSignatureSummary();
 }
 
 function escapeRep(t){
   const d=document.createElement('div'); d.textContent=t||''; return d.innerHTML;
+}
+
+function syncColleagueSelectOptions(){
+  const sel = document.getElementById('repColleagueSelect');
+  if(!sel) return;
+  [...sel.options].forEach((opt) => {
+    if (!opt.value) return;
+    const id = parseInt(opt.value, 10);
+    opt.disabled = replacementSignerIds.includes(id);
+  });
+}
+
+function addSelectedColleague(){
+  if (submissionViewLocked && !submissionCanEditEmployee) return;
+  const sel = document.getElementById('repColleagueSelect');
+  if(!sel||!sel.value) return;
+  const id = parseInt(sel.value,10);
+  if(!Number.isFinite(id)) return;
+  if(!replacementSignerIds.includes(id)) replacementSignerIds.push(id);
+  sel.value='';
+  renderRepChips();
 }
 
 async function loadColleaguePicker(){
@@ -884,19 +948,11 @@ async function loadColleaguePicker(){
           opt.textContent = (u.full_name || u.username) + ' ('+u.username+')';
           sel.appendChild(opt);
     });
+    syncColleagueSelectOptions();
   }catch(_){ colleaguePicker=[]; }
 }
 
-document.getElementById('repAddColleague')?.addEventListener('click', ()=>{
-  if (submissionViewLocked && !submissionCanEditEmployee) return;
-  const sel = document.getElementById('repColleagueSelect');
-  if(!sel||!sel.value) return;
-  const id = parseInt(sel.value,10);
-  if(!Number.isFinite(id)) return;
-  if(!replacementSignerIds.includes(id)) replacementSignerIds.push(id);
-  sel.value='';
-  renderRepChips();
-});
+document.getElementById('repColleagueSelect')?.addEventListener('change', addSelectedColleague);
 
 function goToStep2(){
   document.getElementById('step1Panel').classList.remove('active');
@@ -911,7 +967,7 @@ function goToStep2(){
   document.getElementById('step2Badge').className='step-item active';
   document.getElementById('step2Badge').classList.remove('locked');
   document.getElementById('connector1').classList.add('done');
-  document.getElementById('step2Panel').scrollIntoView({behavior:'smooth',block:'start'});
+  hrScrollFormToTop();
 }
 function goToStep1(){
   document.getElementById('step2Panel').classList.remove('active');
@@ -921,7 +977,7 @@ function goToStep1(){
   document.getElementById('step1Badge').querySelector('.num').textContent='1';
   document.getElementById('step2Badge').className='step-item locked';
   document.getElementById('connector1').classList.remove('done');
-  document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
+  hrScrollFormToTop();
 }
 
 function calc(){
@@ -1114,8 +1170,6 @@ function lockLeaveFormForReadOnlyView() {
     else el.readOnly = true;
   });
   document.querySelectorAll('#leaveFrm select').forEach((sel) => { sel.disabled = true; });
-  const repAdd = document.getElementById('repAddColleague');
-  if (repAdd) repAdd.disabled = true;
   document.querySelectorAll('#repChipList .rep-chip button').forEach((b) => { b.style.display = 'none'; });
   const mgmt = document.getElementById('hrMgmtChainSec');
   if (mgmt) {
@@ -1230,24 +1284,7 @@ async function hydrateFromSubmissionIfNeeded() {
   setRadioGroupValue('salary_advance', fd.salary_advance);
   setVal('telephone_reachable', fd.telephone_reachable);
   setVal('replacement_name', fd.replacement_name);
-
-  if (Array.isArray(fd.replacement_signer_ids) && fd.replacement_signer_ids.length) {
-    replacementSignerIds = fd.replacement_signer_ids.map((x) => parseInt(x, 10)).filter(Number.isFinite);
-    const covChk = document.getElementById('needCoverageSigChk');
-    if (covChk) covChk.checked = true;
-    syncReplacementUi();
-    renderRepChips();
-  } else if (Array.isArray(fd.replacement_signers) && fd.replacement_signers.length) {
-    replacementSignerIds = fd.replacement_signers
-      .map((s) => parseInt(s && (s.user_id || s.id), 10))
-      .filter(Number.isFinite);
-    const covChk = document.getElementById('needCoverageSigChk');
-    if (covChk && replacementSignerIds.length) {
-      covChk.checked = true;
-      syncReplacementUi();
-      renderRepChips();
-    }
-  }
+  hydrateLeaveCoverage(fd);
 
   applySigPreviewSlot('employee', fd.employee_signature);
   if (sigCfg.gm) applySigPreviewSlot('gm', fd.gm_signature);
@@ -1358,9 +1395,22 @@ document.getElementById('leaveFrm').addEventListener('submit',async e=>{
   const fd=new FormData(e.target),data=Object.fromEntries(fd.entries());
   data.form_type='leave_application';
   if(data.leave_type!=='other')delete data.leave_type_other;
-  const needCov = document.getElementById('needCoverageSigChk')?.checked;
-  if (needCov && !replacementSignerIds.length) {
-    alert('Add at least one coverage colleague with an Kynvera account, or uncheck the coverage signature option.');
+  const needCov = coverageChoice();
+  const callout = document.getElementById('covCallout');
+  if (!needCov) {
+    if (callout) {
+      callout.classList.add('is-missing');
+      callout.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    alert('Choose whether a colleague will cover your duties (Yes or No).');
+    btn.disabled=false;
+    btn.innerHTML='Submit Application';
+    return;
+  }
+  if (callout) callout.classList.remove('is-missing');
+  data.need_coverage_signature = needCov;
+  if (needCov === 'yes' && !replacementSignerIds.length) {
+    alert('Add at least one coverage colleague with a Kynvera account, or choose No.');
     btn.disabled=false;
     btn.innerHTML='Submit Application';
     return;
@@ -1379,10 +1429,10 @@ document.getElementById('leaveFrm').addEventListener('submit',async e=>{
       const lead = document.getElementById('successMsgLead');
       if(lead){
         lead.textContent = r.workflow_status === 'replacement_signoff'
-          ? 'Designated colleague(s) have been notified. The management PDF chain starts after everyone signs.'
-          : 'Your leave request is in the management approval chain (reporting line from your profile, then GM if needed, then HR). Check My Requests for status.';
+          ? 'Colleagues covering your duties have been notified. Approvals start after they sign.'
+          : 'Your leave request is in the approval chain. Track progress from My Requests.';
       }
-      document.getElementById('successModal').classList.add('show');
+      hrShowSuccessModal();
     }
     else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='Submit Application'}
   }catch(err){alert('Unable to submit: '+(err && err.message ? err.message : String(err)));btn.disabled=false;btn.innerHTML='Submit Application'}
@@ -1397,13 +1447,7 @@ document.getElementById('leaveFrm').addEventListener('submit',async e=>{
       privilegedFieldNames: ['gm_signature', 'hr_signature', 'hr_checked', 'hr_comments', 'hr_balance_cf', 'hr_contract_year', 'hr_paid', 'hr_unpaid', 'hr_date'],
       afterPopulate: function (_payload, fd) {
         window.__leaveReplacementSigners = (fd && fd.replacement_signers) || [];
-        const covChk = document.getElementById('needCoverageSigChk');
-        const hasCov = (Array.isArray(fd.replacement_signer_ids) && fd.replacement_signer_ids.length)
-          || (Array.isArray(fd.replacement_signers) && fd.replacement_signers.length);
-        if (covChk) {
-          covChk.checked = !!hasCov;
-          syncReplacementUi();
-        }
+        hydrateLeaveCoverage(fd || {});
         if (window.refreshHrSignatureSummary) window.refreshHrSignatureSummary();
       },
     });

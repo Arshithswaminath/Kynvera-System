@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 import re
-from io import BytesIO, StringIO
+from io import BytesIO
 from typing import Any, Optional
 
 from app.models import (
@@ -56,6 +56,45 @@ DOC_STATUS_TICK = '✓'
 DOC_STATUS_CROSS = '✗'
 DOC_STATUS_LABELS = (DOC_STATUS_CROSS, DOC_STATUS_TICK)
 DOC_STATUS_KEYS = frozenset({'missing', 'uploaded', 'attested', 'verified'})
+
+def _is_template_or_sample_hiring_row(fields: dict) -> bool:
+    """Skip blank-template example rows and [SAMPLE] seed people on import."""
+    comments = (fields.get('comments') or '').lower()
+    ref = str(fields.get('candidate_ref') or '').strip().upper()
+    email = (fields.get('email') or '').strip().lower()
+    if 'example row' in comments:
+        return True
+    if '[sample]' in comments:
+        return True
+    if ref.startswith('HR-CAND-SAMPLE'):
+        return True
+    if email.endswith('@example.local'):
+        return True
+    return False
+
+
+_HIRING_EXAMPLE_ROW = (
+    '',
+    'Sara Ahmed',
+    'Product Designer',
+    'Operations',
+    '+971500000000',
+    'sara.ahmed@example.com',
+    'Ali Hassan',
+    'EMP-01234',
+    HIRING_PIPELINE_LABELS['gathering_documents'],
+    '',
+    DOC_STATUS_TICK,
+    DOC_STATUS_CROSS,
+    DOC_STATUS_TICK,
+    DOC_STATUS_TICK,
+    DOC_STATUS_CROSS,
+    DOC_STATUS_CROSS,
+    DOC_STATUS_CROSS,
+    DOC_STATUS_CROSS,
+    DOC_STATUS_CROSS,
+    'Example row — replace or delete before importing',
+)
 
 # Symbols / glyphs Excel may store for tick / cross
 _TICK_GLYPHS = frozenset({
@@ -231,33 +270,29 @@ def _pipeline_label(key: Optional[str]) -> str:
 def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
     """Blank template (with example row) or prefilled export of candidates."""
     from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.styles import Alignment
     from openpyxl.worksheet.datavalidation import DataValidation
+
+    from common.kynvera_excel_brand import (
+        InstructionSpec,
+        apply_column_widths,
+        style_data_cell,
+        write_header_row,
+        write_instructions_sheet,
+    )
 
     wb = Workbook()
     ws = wb.active
     ws.title = 'Candidates'
 
-    header_font = Font(bold=True, color='FFFFFF')
-    header_fill = PatternFill('solid', fgColor='125435')
-    example_fill = PatternFill('solid', fgColor='F3F4F6')
-
-    for col_idx, header in enumerate(ALL_HEADERS, start=1):
-        cell = ws.cell(1, col_idx, header)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(wrap_text=True, vertical='center')
-
-    ws.freeze_panes = 'A2'
+    write_header_row(ws, ALL_HEADERS, row=1)
     ws.row_dimensions[1].height = 32
 
-    widths = {
+    apply_column_widths(ws, {
         'A': 12, 'B': 22, 'C': 18, 'D': 14, 'E': 14, 'F': 24,
         'G': 18, 'H': 18, 'I': 28, 'J': 12, 'K': 12, 'L': 12,
         'M': 12, 'N': 12, 'O': 18, 'P': 12, 'Q': 12, 'R': 12, 'S': 12, 'T': 28,
-    }
-    for col, width in widths.items():
-        ws.column_dimensions[col].width = width
+    })
 
     if candidates:
         for row_idx, cand in enumerate(candidates, start=2):
@@ -283,46 +318,19 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
             values.append(cand.comments or '')
             for col_idx, val in enumerate(values, start=1):
                 cell = ws.cell(row_idx, col_idx, val)
-                # Center tick/cross in document columns (K–S = 11–19 after Vacancy ID)
+                style_data_cell(cell)
                 if 11 <= col_idx <= 19:
                     cell.alignment = Alignment(horizontal='center', vertical='center')
         data_end_row = 1 + len(candidates)
     else:
-        # Example row so HR sees the shape
-        example = [
-            '',
-            'Sara Ahmed',
-            'Product Designer',
-            'Operations',
-            '+971500000000',
-            'sara.ahmed@example.com',
-            'Ali Hassan',
-            'EMP-01234',
-            HIRING_PIPELINE_LABELS['gathering_documents'],
-            '',  # Vacancy ID
-            DOC_STATUS_TICK,
-            DOC_STATUS_CROSS,
-            DOC_STATUS_TICK,
-            DOC_STATUS_TICK,
-            DOC_STATUS_CROSS,
-            DOC_STATUS_CROSS,
-            DOC_STATUS_CROSS,
-            DOC_STATUS_CROSS,
-            DOC_STATUS_CROSS,
-            'Example row — replace or delete before importing',
-        ]
-        for col_idx, val in enumerate(example, start=1):
+        for col_idx, val in enumerate(_HIRING_EXAMPLE_ROW, start=1):
             cell = ws.cell(2, col_idx, val)
-            cell.fill = example_fill
+            style_data_cell(cell, example=True)
             if 11 <= col_idx <= 19:
                 cell.alignment = Alignment(horizontal='center', vertical='center')
         data_end_row = 2
 
-    # Dropdowns: use inline lists (not a hidden sheet). Hidden-sheet refs often
-    # only work on the first data row in Excel for Mac / some Excel builds.
-    # showDropDown=False is required — Excel treats True as "hide arrow".
     max_dv_row = max(data_end_row + 200, 1000)
-    # Stages first, then process states (on hold / not hired).
     pipe_list = ','.join(HIRING_PIPELINE_LABELS[k] for k in HIRING_PIPELINE_STATUSES)
     status_list = ','.join(DOC_STATUS_LABELS)
 
@@ -347,51 +355,57 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
     )
     status_dv.error = f'Use {DOC_STATUS_CROSS} (missing) or {DOC_STATUS_TICK} (submitted)'
     status_dv.errorTitle = 'Invalid status'
-    # Doc columns J–R (9 docs)
     status_dv.add(f'K2:S{max_dv_row}')
     ws.add_data_validation(status_dv)
 
-    # Instructions
-    ws2 = wb.create_sheet('Instructions')
-    lines = [
-        'Hiring Document Tracker — Excel import',
-        '',
-        'How to use',
-        '1. Download this template (or Export current candidates).',
-        '2. Fill one row per candidate. Use the dropdowns for Pipeline Status and each document column.',
-        '3. Upload the file via Import Excel on the Hiring dashboard.',
-        '',
-        'Matching rules (upsert)',
-        '• Candidate ID may be a number (system id) or any HR reference (letters/numbers).',
-        '• Match order: DB id → HR reference → Email → Full Name + Role → create new.',
-        '• If someone was deleted in the UI but still listed in Excel, import recreates them.',
-        '• Numeric Candidate IDs that are free are restored when possible.',
-        '• Import shows a confirm dialog: update existing rows and/or add new ones.',
-        '• Vacancy ID is optional: if the vacancy is missing on this server, the candidate still imports.',
-        '',
-        'Document statuses',
-        f'• {DOC_STATUS_CROSS} — missing / not submitted (clears any uploaded file for that slot).',
-        f'• {DOC_STATUS_TICK} — submitted / on file (checklist complete; for PCC this marks attested).',
-        '• Blank cell — leave the current status unchanged.',
-        '• Older files that still say Missing / Uploaded / Received / Attested / Verified are still accepted on import.',
-        '',
-        'Pipeline stages (in order)',
-        *[f'• {HIRING_PIPELINE_LABELS[k]}' for k in HIRING_PIPELINE_STEPS],
-        f'• {HIRING_PIPELINE_LABELS["on_hold"]} — pauses the whole process (not a stage)',
-        f'• {HIRING_PIPELINE_LABELS["not_hired"]} — candidate was not hired (not a stage)',
-        '',
-        'Notes',
-        '• Excel does not upload document files — use the candidate detail page for files.',
-        '• Comments max 4000 characters.',
-        '• Bad rows are reported; other rows still import.',
-        '• Dropdowns apply to Pipeline Status and document columns through row '
-        f'{max_dv_row}. Re-download the template if an older file is missing them.',
-    ]
-    for i, line in enumerate(lines, start=1):
-        ws2.cell(i, 1, line)
-        if i == 1:
-            ws2.cell(i, 1).font = Font(bold=True, size=14, color='125435')
-    ws2.column_dimensions['A'].width = 90
+    pipeline_lines = [HIRING_PIPELINE_LABELS[k] for k in HIRING_PIPELINE_STEPS]
+    write_instructions_sheet(wb, InstructionSpec(
+        title='Hiring document tracker template',
+        module_label='HR / Hiring Docs',
+        about=(
+            'Import or update hiring candidates and their document checklist (one row per candidate).',
+            'Excel does not upload document files — use the candidate detail page for files. This sheet only updates checklist status.',
+            'Use the dropdowns for Pipeline Status and each document column.',
+        ),
+        how_to=(
+            'Open the Candidates sheet. Keep the coral header row.',
+            'Fill one row per candidate. Full Name is required for new rows.',
+            'Use Pipeline Status and document dropdowns (✗ missing, ✓ submitted).',
+            'Leave a document cell blank to keep the current status unchanged on update.',
+            'Save as .xlsx and click Import Excel on the Hiring dashboard.',
+        ),
+        columns=(
+            ('Candidate ID', 'Optional. System id or any HR reference. Used to match existing rows.'),
+            ('Full Name', 'Required for new candidates.'),
+            ('Role', 'Job title. Used with Full Name to match when ID/email are missing.'),
+            ('Department', 'Optional.'),
+            ('Phone', 'Optional.'),
+            ('Email', 'Optional. Strong match key when Candidate ID is blank.'),
+            ('Replacement Name', 'Optional. Person this hire replaces.'),
+            ('Replacement Employee ID', 'Optional.'),
+            ('Pipeline Status', 'Pick from the dropdown (stages plus On hold / Not hired).'),
+            ('Vacancy ID', 'Optional Manpower vacancy id. Ignored if that vacancy is missing.'),
+            ('Passport … Contract', f'{DOC_STATUS_CROSS} = missing (clears file). {DOC_STATUS_TICK} = submitted. Blank = unchanged.'),
+            ('Comments', 'Optional. Max 4000 characters.'),
+        ),
+        example_headers=ALL_HEADERS,
+        example_rows=(_HIRING_EXAMPLE_ROW,),
+        import_rules=(
+            'Match order: DB id → HR reference → Email → Full Name + Role → create new.',
+            'If someone was deleted in the UI but still listed in Excel, import recreates them.',
+            'Numeric Candidate IDs that are free are restored when possible.',
+            'Import shows a confirm dialog: update existing rows and/or add new ones.',
+            'Bad rows are reported; other rows still import.',
+            f'Dropdowns apply through row {max_dv_row}. Re-download the template if an older file is missing them.',
+        ),
+        extra_sections=(
+            ('Pipeline stages (in order)', (
+                *pipeline_lines,
+                f'{HIRING_PIPELINE_LABELS["on_hold"]} — pauses the whole process (not a stage).',
+                f'{HIRING_PIPELINE_LABELS["not_hired"]} — candidate was not hired (not a stage).',
+            )),
+        ),
+    ))
 
     buf = BytesIO()
     wb.save(buf)
@@ -410,24 +424,9 @@ def read_hiring_dataframe(file_storage):
     if filename.endswith('.csv'):
         return pd.read_csv(file_storage)
 
-    if filename.endswith('.xlsx'):
-        # Prefer Candidates sheet when present
-        try:
-            return pd.read_excel(file_storage, sheet_name='Candidates')
-        except ValueError:
-            file_storage.stream.seek(0)
-            return pd.read_excel(file_storage)
+    from common.kynvera_excel_brand import read_import_dataframe
 
-    try:
-        file_storage.stream.seek(0)
-        return pd.read_excel(file_storage, engine='xlrd')
-    except Exception:
-        file_storage.stream.seek(0)
-        html_text = file_storage.stream.read().decode('utf-8', errors='ignore')
-        tables = pd.read_html(StringIO(html_text))
-        if not tables:
-            raise ValueError('Could not read any table from the file')
-        return max(tables, key=lambda t: t.shape[0])
+    return read_import_dataframe(file_storage, preferred_sheets=('Candidates',))
 
 
 def parse_hiring_workbook(file_storage) -> list[dict[str, Any]]:
@@ -493,8 +492,7 @@ def parse_hiring_workbook(file_storage) -> list[dict[str, Any]]:
         if not name and not fields.get('candidate_id') and not fields.get('candidate_ref') and not fields.get('email'):
             continue
 
-        comments = (fields.get('comments') or '')
-        if 'example row' in comments.lower() and not fields.get('candidate_id') and not fields.get('candidate_ref'):
+        if _is_template_or_sample_hiring_row(fields):
             continue
 
         rows.append({

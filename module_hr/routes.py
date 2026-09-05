@@ -53,6 +53,10 @@ from module_hr.hr_management_chain import (
     user_mgmt_chain_completed_step,
 )
 
+from module_hr.hr_signoff_activity import (
+    compute_hr_signoff_activity,
+    hr_workflow_status_label,
+)
 from module_hr.hr_commencement_reporting import (
     dual_role_hint_for_user,
     dual_role_notify_message,
@@ -63,6 +67,7 @@ from .print_utils import render_form_for_print
 from .docx_service import generate_hr_docx, get_supported_docx_forms
 from .pdf_service import generate_hr_pdf, get_supported_pdf_forms
 from .hiring_documents import register_hiring_document_routes
+from .hiring_offer_letters import register_hiring_offer_letter_routes
 from .leave_tracker import register_leave_tracker_routes
 from .manpower_tracker import register_manpower_tracker_routes
 from .staffing_link import register_staffing_link_routes
@@ -71,7 +76,9 @@ hr_bp = Blueprint('hr', __name__, template_folder='templates')
 
 # Hiring Document Tracker (standalone checklist under /hr/hiring)
 register_hiring_document_routes(hr_bp)
-# Leave Tracker — Sick + Annual (Aug–Dec 2026) under /hr/leave-tracker
+# Offer Letters / LOI register under /hr/hiring/offer-letters
+register_hiring_offer_letter_routes(hr_bp)
+# Leave Tracker — Sick + Annual (from Jan 2026) under /hr/leave-tracker
 register_leave_tracker_routes(hr_bp)
 # Manpower Tracker — project vacancy fill board under /hr/manpower-tracker
 register_manpower_tracker_routes(hr_bp)
@@ -272,7 +279,7 @@ def get_form_type_display(module_type):
     return type_map.get(module_type, 'HR Form')
 
 
-def _notify_hr_staff_new_submission(submission_id, module_type_full, employee_name, exclude_user_id=None):
+def _notify_hr_staff_new_submission(submission_id, module_type_full, employee_name, exclude_user_id=None, submission=None):
     """Inform HR roster that a submission is ready for HR review."""
     form_type_display = get_form_type_display(module_type_full)
     q = User.query.filter(
@@ -293,6 +300,12 @@ def _notify_hr_staff_new_submission(submission_id, module_type_full, employee_na
             message=f'{employee_name} submitted {form_type_display} ({submission_id}).',
             notification_type='hr_pending_review',
             submission_id=submission_id
+        )
+    if submission is not None:
+        from module_hr.hr_lifecycle_emails import pending_review_url, send_action_required_to_users
+        app = current_app._get_current_object()
+        send_action_required_to_users(
+            app, submission, hr_users, role_label='HR', sign_url=pending_review_url(app)
         )
 
 
@@ -320,6 +333,13 @@ def _advance_hr_after_all_replacements_signed(submission):
         ws = first_management_workflow_status(fd)
         submission.workflow_status = ws or 'hr_review'
         notify_current_management_signers(current_app._get_current_object(), submission)
+        from module_hr.hr_lifecycle_emails import send_submitter_progress
+        send_submitter_progress(
+            current_app._get_current_object(),
+            submission,
+            signed_by_name='Your colleagues',
+            signed_role='Colleague signatures',
+        )
         if submission.user_id:
             create_notification(
                 user_id=submission.user_id,
@@ -335,7 +355,15 @@ def _advance_hr_after_all_replacements_signed(submission):
         submission.workflow_status = 'hr_review'
         exclude_uid = submission.user_id
         _notify_hr_staff_new_submission(
-            submission.submission_id, submission.module_type, employee_name, exclude_user_id=exclude_uid
+            submission.submission_id, submission.module_type, employee_name,
+            exclude_user_id=exclude_uid, submission=submission,
+        )
+        from module_hr.hr_lifecycle_emails import send_submitter_progress
+        send_submitter_progress(
+            current_app._get_current_object(),
+            submission,
+            signed_by_name='Your colleagues',
+            signed_role='Colleague signatures',
         )
         if submission.user_id:
             create_notification(
@@ -512,7 +540,13 @@ def hr_dashboard():
     if not _role_is_admin(user) and not is_hr and not is_gm:
         return redirect('/hr/my-requests')
     
-    return render_template('hr_dashboard.html', user=user, supported_docx_forms=get_supported_docx_forms(), supported_pdf_forms=get_supported_pdf_forms())
+    return render_template(
+        'hr_dashboard.html',
+        user=user,
+        show_hiring=user.has_hiring_submodule(),
+        supported_docx_forms=get_supported_docx_forms(),
+        supported_pdf_forms=get_supported_pdf_forms(),
+    )
 
 
 @hr_bp.route('/pending-review')
@@ -718,6 +752,17 @@ def submit_hr_form():
     
     if not form_type:
         return jsonify({'error': 'Form type is required'}), 400
+
+    if form_type in ('leave_application', 'leave'):
+        cov = str(data.get('need_coverage_signature') or '').strip().lower()
+        ids = data.get('replacement_signer_ids')
+        has_ids = isinstance(ids, list) and any(True for _ in ids)
+        if cov == 'yes' and not has_ids:
+            return jsonify({
+                'error': 'Add at least one coverage colleague, or choose No.',
+            }), 400
+        if cov == 'no':
+            data.pop('replacement_signer_ids', None)
     
     is_gm = _role_is_admin(user) or user.designation == 'general_manager'
     if form_type == 'duty_resumption' and not is_gm:
@@ -790,6 +835,9 @@ def submit_hr_form():
     _discard_hr_resume_draft(user, resume_draft_id, module_type_full)
     db.session.commit()
 
+    from module_hr.hr_lifecycle_emails import send_submitter_confirmation
+    send_submitter_confirmation(current_app._get_current_object(), submission, user)
+
     form_type_display = get_form_type_display(f'hr_{form_type}')
     employee_name = (
         data.get('employee_name')
@@ -858,6 +906,7 @@ def submit_hr_form():
             module_type_full,
             employee_name,
             exclude_user_id=user.id,
+            submission=submission,
         )
         done_msg = (
             'Form submitted. This request was sent to the HR review queue '
@@ -1241,10 +1290,17 @@ def mgmt_signoff_sign(submission_id):
 
     app = current_app._get_current_object()
     finished = submission.workflow_status == 'approved'
+    signed_step = user_mgmt_chain_completed_step(user, submission.form_data)
+    signed_role = (signed_step or {}).get('pdf_label') or 'Approver'
+    signed_name = user.full_name or user.username
     if finished:
         notify_submitter_management_final(app, submission, completed=True)
     else:
         notify_current_management_signers(app, submission)
+        from module_hr.hr_lifecycle_emails import send_submitter_progress
+        send_submitter_progress(
+            app, submission, signed_by_name=signed_name, signed_role=signed_role
+        )
 
     db.session.commit()
 
@@ -1480,6 +1536,18 @@ def hr_approve(submission_id):
             notification_type='gm_approval_pending',
             submission_id=submission_id
         )
+    app = current_app._get_current_object()
+    from module_hr.hr_lifecycle_emails import (
+        pending_review_url,
+        send_action_required_to_users,
+        send_submitter_progress,
+    )
+    send_submitter_progress(
+        app, submission, signed_by_name=user.full_name or user.username, signed_role='HR'
+    )
+    send_action_required_to_users(
+        app, submission, gm_users, role_label='General manager', sign_url=pending_review_url(app)
+    )
     db.session.commit()
     
     return jsonify({
@@ -1533,7 +1601,11 @@ def hr_reject(submission_id):
             notification_type='hr_rejected',
             submission_id=submission_id
         )
-    
+    from module_hr.hr_lifecycle_emails import send_submitter_outcome
+    send_submitter_outcome(
+        current_app._get_current_object(), submission, approved=False, reason=rejection_reason
+    )
+
     db.session.commit()
     
     return jsonify({
@@ -1601,7 +1673,9 @@ def gm_approve(submission_id):
             notification_type='hr_approved',
             submission_id=submission_id
         )
-    
+    from module_hr.hr_lifecycle_emails import send_submitter_outcome
+    send_submitter_outcome(current_app._get_current_object(), submission, approved=True)
+
     db.session.commit()
     
     return jsonify({
@@ -1666,7 +1740,11 @@ def gm_reject(submission_id):
             notification_type='hr_rejected',
             submission_id=submission_id
         )
-    
+    from module_hr.hr_lifecycle_emails import send_submitter_outcome
+    send_submitter_outcome(
+        current_app._get_current_object(), submission, approved=False, reason=rejection_reason
+    )
+
     db.session.commit()
     
     return jsonify({

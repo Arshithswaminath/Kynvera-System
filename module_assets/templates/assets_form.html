@@ -1,14 +1,8 @@
-{% set fm_page_title = ('Edit asset' if mode == 'edit' else 'New asset') %}
+{% set fm_page_title = ('Edit asset' if mode == 'edit' else 'Add asset') %}
 {% set fm_topbar_title = fm_page_title %}
 {% set fm_narrow = true %}
+{% set module_back_url = url_for('assets_bp.assets_detail_page', asset_code=asset.asset_id) if mode == 'edit' and asset else url_for('assets_bp.assets_dashboard') %}
 {% include 'partials/fm_shell_start.html' %}
-
-  <header class="fm-header">
-    <div>
-      <h1>{% if mode == 'edit' %}Edit asset{% else %}New asset{% endif %}</h1>
-      <p><a href="{{ url_for('assets_bp.assets_dashboard') }}">← Dashboard</a></p>
-    </div>
-  </header>
 
   <form id="assetForm" class="fm-form">
     <label>Name *<input class="fm-input" name="name" required value="{{ asset.name if asset else '' }}"></label>
@@ -53,7 +47,7 @@
       <select class="fm-input" name="status">
         {% set st = asset.status if asset else 'active' %}
         {% for s in ['active','critical','inactive','decommissioned'] %}
-        <option value="{{ s }}" {% if st == s %}selected{% endif %}>{{ s }}</option>
+        <option value="{{ s }}" {% if st == s %}selected{% endif %}>{{ s|fm_human }}</option>
         {% endfor %}
       </select>
     </label>

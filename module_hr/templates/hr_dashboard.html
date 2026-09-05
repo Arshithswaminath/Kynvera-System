@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}?v=2">
   {% include 'partials/caveat_font.html' %}
 <title>HR Module - Kynvera</title>
   <meta name="theme-color" content="#ff8e68">
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}?v=22">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=25">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms.css') }}">
   <style>
     :root {
@@ -40,7 +40,11 @@
     .hr-modules-section::before {
       display: none;
     }
-    /* Continuous page wash comes from body / .hr-dashboard-content — no solid section bands */
+    /* Continuous page wash comes from html/body — no solid section bands */
+    html, body.hr-dashboard {
+      width: 100%;
+      min-height: 100%;
+    }
     .hr-dashboard .modules-section {
       background: transparent !important;
     }
@@ -184,6 +188,67 @@
     body.hr-dashboard .hr-modules-section .hr-workflow-cards + .modules-section-label {
       margin-top: 0;
     }
+
+    /* Trial: full-card Pending Review grain on Hiring modules */
+    .modules-grid--grain .module-card {
+      isolation: isolate;
+      border: none;
+      background-color: #ff8e68;
+      background-image: url("{{ url_for('static', filename='images/auth/auth-brand-panel.png') }}");
+      background-size: cover;
+      background-position: center;
+      box-shadow: 0 10px 28px rgba(224, 95, 54, 0.22);
+    }
+    .modules-grid--grain .module-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      border-radius: inherit;
+      background: linear-gradient(125deg, #ff8e68 0%, #f97e54 40%, #e05f36 100%);
+      mix-blend-mode: soft-light;
+      opacity: 0.82;
+    }
+    .modules-grid--grain .module-card .card-body {
+      position: relative;
+      z-index: 1;
+    }
+    .modules-grid--grain .module-card:hover {
+      border: none;
+      box-shadow: 0 14px 36px rgba(224, 95, 54, 0.3);
+    }
+    .modules-grid--grain .module-number {
+      color: #fff;
+      font-weight: 700;
+    }
+    .modules-grid--grain .module-icon {
+      background: rgba(255, 255, 255, 0.22);
+    }
+    .modules-grid--grain .module-icon svg {
+      stroke: #fff;
+    }
+    .modules-grid--grain .module-title,
+    .modules-grid--grain .module-card:hover .module-title {
+      color: #fff;
+      font-weight: 800;
+    }
+    .modules-grid--grain .module-description {
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+    .modules-grid--grain .module-arrow {
+      color: #fff;
+      font-weight: 700;
+    }
+    .modules-grid--grain .module-card:hover .module-icon {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    .modules-grid--grain .module-card:hover .module-icon svg,
+    .modules-grid--grain .module-card:hover .module-arrow {
+      stroke: #fff;
+      color: #fff;
+    }
     
     @media (max-width: 992px) {
       .hr-wf-grid {
@@ -221,6 +286,31 @@
       }
       .hr-dashboard .hr-modules-section .modules-grid {
         gap: 0.85rem !important;
+      }
+      .modules-grid--grain .module-card,
+      .modules-grid--grain .module-card:active {
+        background-color: #ff8e68 !important;
+        background-image: url("{{ url_for('static', filename='images/auth/auth-brand-panel.png') }}") !important;
+        background-size: cover !important;
+        background-position: center !important;
+      }
+      .modules-grid--grain .module-card .module-title {
+        color: #fff !important;
+        font-weight: 800 !important;
+      }
+      .modules-grid--grain .module-card .module-description {
+        color: rgba(255, 255, 255, 0.92) !important;
+        font-weight: 600 !important;
+      }
+      .modules-grid--grain .module-card .module-icon {
+        background: rgba(255, 255, 255, 0.22) !important;
+      }
+      .modules-grid--grain .module-card .module-icon svg {
+        stroke: #fff !important;
+      }
+      .modules-grid--grain .module-card .module-arrow {
+        background: rgba(255, 255, 255, 0.22) !important;
+        color: #fff !important;
       }
       .hr-wf-grid {
         grid-template-columns: 1fr !important;
@@ -529,7 +619,7 @@
       .detail-value { width: 100% !important; font-size: 0.9rem !important; }
     }
   </style>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}?v=2">
 </head>
 <body class="hr-dashboard">
   {% set active_page = 'hr' %}
@@ -608,36 +698,50 @@
           </div>
         </div>
       </div>
+      {% if show_hiring %}
       <h2 class="modules-section-label">Hiring</h2>
-      <div class="modules-grid" style="margin-bottom: 2rem;">
+      <div class="modules-grid modules-grid--grain" style="margin-bottom: 2rem;">
         <a href="/hr/hiring" class="module-card">
           <div class="card-body">
             <span class="module-number">Hiring &mdash; Docs</span>
-            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg></div>
+            <div class="module-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z"/></svg></div>
             <h2 class="module-title">Hiring Documents</h2>
             <p class="module-description">Track identity docs, then offer letter, insurance, e-visa &amp; contract per candidate</p>
             <span class="module-arrow">Open Tracker <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
           </div>
         </a>
+        <a href="/hr/hiring/offer-letters" class="module-card">
+          <div class="card-body">
+            <span class="module-number">Hiring &mdash; Letters</span>
+            <div class="module-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg></div>
+            <h2 class="module-title">Letters of Intent</h2>
+            <p class="module-description">Track unsigned HR letters, then candidate signed or not accepted — then link to hiring</p>
+            <span class="module-arrow">Open Register <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+      </div>
+      <h2 class="modules-section-label">Leave &amp; manpower</h2>
+      <div class="modules-grid modules-grid--grain" style="margin-bottom: 2rem;">
         <a href="/hr/leave-tracker" class="module-card">
           <div class="card-body">
-            <span class="module-number">Hiring &mdash; Leave</span>
-            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg></div>
+            <span class="module-number">Leave &mdash; Tracker</span>
+            <div class="module-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z"/></svg></div>
             <h2 class="module-title">Leave Tracker</h2>
-            <p class="module-description">Sick (15 days) &amp; annual leave planner for Aug–Dec 2026 with auto alerts</p>
+            <p class="module-description">Sick (15 days) &amp; annual leave planner from Jan 2026 with auto alerts</p>
             <span class="module-arrow">Open Tracker <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
           </div>
         </a>
         <a href="/hr/manpower-tracker" class="module-card">
           <div class="card-body">
-            <span class="module-number">Hiring &mdash; Manpower</span>
-            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 0h-7.5A1.125 1.125 0 0112 15.75m9.75-2.625V5.625m0 0A1.125 1.125 0 0019.5 4.5h-7.5A1.125 1.125 0 0010.875 5.625m9.75 0v1.5c0 .621-.504 1.125-1.125 1.125M3.375 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h7.5c.621 0 1.125-.504 1.125-1.125"/></svg></div>
+            <span class="module-number">Manpower &mdash; Board</span>
+            <div class="module-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/></svg></div>
             <h2 class="module-title">Manpower Tracker</h2>
             <p class="module-description">Track project vacancies by trade — open, in progress, and joined</p>
             <span class="module-arrow">Open Board <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
           </div>
         </a>
       </div>
+      {% endif %}
       <h2 class="modules-section-label">HR Module</h2>
       <div class="modules-grid" id="hrFormsGrid">
         <a href="/hr/leave-application-form" class="module-card">
@@ -661,7 +765,7 @@
         <a href="/hr/duty-resumption-form" class="module-card">
           <div class="card-body">
             <span class="module-number">03 &mdash; HR</span>
-            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg></div>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg></div>
             <h2 class="module-title">Duty Resumption</h2>
             <p class="module-description">Resumption of duty after leave</p>
             <span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>

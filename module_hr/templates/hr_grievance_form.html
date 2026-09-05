@@ -9,8 +9,9 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}?v=6">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
+  <script src="{{ url_for('static', filename='js/hr_form_step_scroll.js') }}?v=1"></script>
   <style>
     .hr-form-unified .page { padding-top: 5.5rem; }
     body.hr-embed-mode .hr-form-unified .page { padding-top: 0 !important; }
@@ -42,18 +43,9 @@
   {% set active_page = 'hr' %}
   {% include 'partials/hr_embed_optional_navbar.html' %}
 
-  <div class="success-bg" id="successModal">
-    <div class="success-box">
-      <button type="button" class="success-back-btn" onclick="hrGoToSubmittedRequest()" title="View submitted request">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-      </button>
-      <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
-      <h2>Form Submitted!</h2>
-      <p id="successMsgLead">Grievance form sent. This remains confidential.</p>
-      <div class="sub-id" id="submissionId"></div>
-      <button class="btn-submit" style="width:100%;justify-content:center" onclick="hrGoToSubmittedRequest()">View My Requests</button>
-    </div>
-  </div>
+  {% set success_title = 'Form submitted' %}
+  {% set success_lead = 'Grievance form sent. This remains confidential.' %}
+  {% include 'partials/hr_form_success_modal.html' %}
 
   <div class="sig-modal-bg" id="sigBg">
     <div class="sig-modal">
@@ -68,10 +60,9 @@
 
   <div class="page">
     <div class="page-inner">
-      <a href="/hr/" class="back-btn">
-        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-        Back to HR
-      </a>
+      {% set module_back_url = url_for('hr.hr_dashboard') %}
+      {% set module_back_extra_class = 'back-btn' %}
+      {% include 'partials/module_back_link.html' %}
 
       {% include 'partials/hr_submitted_edit_banners.html' %}
 
@@ -277,7 +268,7 @@
     </div>
   </div>
 
-<script src="{{ url_for('static', filename='js/hr_colleague_slot_picker.js') }}"></script>
+<script src="{{ url_for('static', filename='js/hr_colleague_slot_picker.js') }}?v=2"></script>
 <script>
 const second_party_signer_ids=[], hod_signer_ids=[];
 document.addEventListener('DOMContentLoaded',()=>{
@@ -297,7 +288,7 @@ function goToStep2(){
   document.getElementById('step2Badge').className='step-item active';
   document.getElementById('step2Badge').classList.remove('locked');
   document.getElementById('connector1').classList.add('done');
-  document.getElementById('step2Panel').scrollIntoView({behavior:'smooth',block:'start'});
+  hrScrollFormToTop();
 }
 function goToStep1(){
   document.getElementById('step2Panel').classList.remove('active');
@@ -307,7 +298,7 @@ function goToStep1(){
   document.getElementById('step1Badge').querySelector('.num').textContent='1';
   document.getElementById('step2Badge').className='step-item locked';
   document.getElementById('connector1').classList.remove('done');
-  document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
+  hrScrollFormToTop();
 }
 
 let pad=null,target=null;
@@ -347,7 +338,7 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
     if(lead) lead.textContent = r.workflow_status==='replacement_signoff'
       ? 'Colleague sign-offs are queued. HR receives this once everyone has signed.'
       : 'Grievance form sent. This remains confidential.';
-    window.__hrLastHrSubmissionId=r.submission_id;document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
+    window.__hrLastHrSubmissionId=r.submission_id;document.getElementById('submissionId').textContent=r.submission_id;hrShowSuccessModal()}
   else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='Submit Form'}
   }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='Submit Form'}
 });

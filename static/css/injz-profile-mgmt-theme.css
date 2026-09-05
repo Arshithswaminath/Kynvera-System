@@ -14,33 +14,79 @@
   --injz-pm-shadow: 0 24px 64px rgba(0, 0, 0, 0.14);
 }
 
-/* Viewport-centered overlay — centers on the screen, not the page scroll position */
+/* Full-viewport overlay — paint on the element (not a -z ::before) so the
+   nav and page bottom stay covered. Overflow lock lives on html only;
+   overflow:hidden on body makes position:fixed start below the nav.
+   Do not use 100vw/100dvh: with padding that overflows and gets clipped,
+   leaving un-blurred orange strips at the edges. */
+.modal.injz-mgmt,
 .modal.injz-mgmt.admin-portal-modal,
-#userActivityModal.injz-mgmt.admin-portal-modal {
+#userActivityModal.injz-mgmt {
   position: fixed !important;
   inset: 0 !important;
-  width: 100vw !important;
-  height: 100dvh !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: auto !important;
   max-width: none !important;
+  height: auto !important;
+  min-width: 0 !important;
   min-height: 0 !important;
   margin: 0 !important;
-  padding: max(0.75rem, env(safe-area-inset-top, 0px))
-           max(0.75rem, env(safe-area-inset-right, 0px))
-           max(0.75rem, env(safe-area-inset-bottom, 0px))
-           max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+  padding: calc(var(--nav-bar-h, 72px) + 12px) 1.25rem 1.25rem !important;
   box-sizing: border-box !important;
-  z-index: 12000 !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
+  z-index: 20000 !important;
+  overflow: auto !important;
   overscroll-behavior: contain;
   display: none !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex-direction: row !important;
+  place-items: center !important;
+  align-content: center !important;
+  justify-items: center !important;
+  transform: none !important;
+  background: rgba(25, 27, 35, 0.38) !important;
+  backdrop-filter: blur(8px) saturate(1.05) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(1.05) !important;
 }
+.modal.injz-mgmt.active,
 .modal.injz-mgmt.admin-portal-modal.active,
-#userActivityModal.injz-mgmt.admin-portal-modal.active {
-  display: flex !important;
+#userActivityModal.injz-mgmt.active {
+  display: grid !important;
+}
+
+html.kyn-overlay-open {
+  overflow: hidden !important;
+}
+
+html.kyn-overlay-open body {
+  animation: none !important;
+  transform: none !important;
+  filter: none !important;
+  perspective: none !important;
+}
+
+/* Beat body.admin-dh-page.has-main-nav .nav { z-index: 2147482500 } so the
+   dim/blur covers the header instead of the dialog sliding under it. */
+html.kyn-overlay-open body.admin-dh-page.has-main-nav .nav,
+html.kyn-overlay-open body.admin-dh-page.has-main-nav .nav.scrolled,
+html.kyn-overlay-open .nav,
+html.kyn-overlay-open .footer,
+html.kyn-overlay-open .dh-sidebar-toggle,
+html.kyn-overlay-open .mobile-menu-drawer,
+html.kyn-overlay-open .mobile-overlay,
+body.kyn-overlay-open .nav,
+body.kyn-overlay-open .footer {
+  z-index: 0 !important;
+}
+
+#profileStatusConfirmModal.injz-mgmt,
+#passwordResetConfirmModal.injz-mgmt,
+#emailCredentialsConfirmModal.injz-mgmt,
+#profileAdminOtpModal.injz-mgmt {
+  z-index: 22000 !important;
+  background: rgba(25, 27, 35, 0.45) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
 }
 .modal.injz-mgmt.admin-portal-modal > .modal-content,
 #userActivityModal.injz-mgmt > .modal-content {
@@ -49,7 +95,10 @@
   position: relative !important;
   top: auto !important;
   left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
   transform: none !important;
+  justify-self: center !important;
   align-self: center !important;
 }
 
@@ -63,7 +112,7 @@
   box-shadow: var(--injz-pm-shadow) !important;
   display: flex !important;
   flex-direction: column !important;
-  max-height: min(calc(100dvh - 1.5rem), 900px) !important;
+  max-height: min(calc(100dvh - var(--nav-bar-h, 72px) - 2.5rem), 900px) !important;
   background: #fff !important;
   width: 100% !important;
 }
@@ -118,21 +167,8 @@
   color: #fff !important;
 }
 
-/* Layout toggle + pills on dark header */
-#accessModal.injz-mgmt .admin-profile-layout-toggle {
-  background: rgba(255, 255, 255, 0.12) !important;
-  border-color: rgba(255, 255, 255, 0.35) !important;
-  color: #fff !important;
-}
-
-#accessModal.injz-mgmt .admin-profile-layout-toggle:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-}
-
-#accessModal.injz-mgmt .admin-profile-layout-toggle[aria-pressed="true"] {
-  background: rgba(255, 255, 255, 0.22) !important;
-  border-color: rgba(255, 255, 255, 0.45) !important;
-  color: #fff !important;
+#accessModal.injz-mgmt .admin-profile-header-actions {
+  align-items: center;
 }
 
 #accessModal.injz-mgmt .admin-profile-status-pill--on {
@@ -179,6 +215,41 @@
   overflow: hidden;
 }
 
+#accessModal.injz-mgmt .admin-otp-banner {
+  flex-shrink: 0;
+}
+
+#accessModal.injz-mgmt .admin-otp-hint {
+  flex-shrink: 0;
+  margin: 0.85rem 1.15rem 0.2rem;
+  padding: 0.95rem 1.1rem 1.05rem;
+  background: #fbf8f6;
+  border: 1px solid #ececef;
+  border-radius: 12px;
+  color: var(--injz-pm-muted);
+}
+
+#accessModal.injz-mgmt .admin-otp-hint-btn {
+  background: var(--injz-pm-green) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+#accessModal.injz-mgmt .admin-otp-hint-btn:hover:not(:disabled) {
+  background: var(--injz-pm-green-2) !important;
+}
+
+#accessModal.injz-mgmt .admin-otp-password-fallback {
+  border-top-color: #ececef;
+}
+
+#accessModal.injz-mgmt .admin-otp-password-btn {
+  background: var(--injz-pm-green) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
 #accessModal.injz-mgmt .injz-mgmt-form-scroll {
   overflow-y: auto;
   flex: 1;
@@ -195,8 +266,8 @@
 /* ── Sections: muted caps labels + divider line ───────────────────────────── */
 #accessModal.injz-mgmt .admin-profile-section,
 #createUserModal.injz-mgmt .admin-profile-section {
-  margin: 0 0 0.25rem !important;
-  padding: 0.65rem 1.15rem 1rem !important;
+  margin: 0 !important;
+  padding: 0.35rem 1.15rem 0.7rem !important;
   border: none !important;
   border-bottom: 1px solid var(--injz-pm-line) !important;
   border-radius: 0 !important;
@@ -213,10 +284,10 @@
 #createUserModal.injz-mgmt .admin-profile-section h3 {
   font-size: 0.68rem !important;
   font-weight: 800 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.07em !important;
-  color: var(--injz-pm-muted) !important;
-  margin: 0.85rem 0 0.5rem !important;
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+  color: #e05f36 !important;
+  margin: 0.45rem 0 0.45rem !important;
   padding: 0 !important;
 }
 
@@ -243,12 +314,16 @@
 }
 
 #accessModal.injz-mgmt .admin-profile-section h3::after,
-#accessModal.injz-mgmt.admin-profile-shell.admin-profile-shell--v2 .admin-profile-section h3::after,
+#accessModal.injz-mgmt.admin-profile-shell.admin-profile-shell--v2 .admin-profile-section h3::after {
+  display: none !important;
+  content: none !important;
+}
+
 #createUserModal.injz-mgmt .admin-profile-section h3::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--injz-pm-line);
+  background: linear-gradient(90deg, #ffcdb8 0%, #efe7e2 55%, transparent 100%);
   display: block !important;
 }
 
@@ -285,18 +360,18 @@
 
 #accessModal.injz-mgmt.admin-profile-shell--v2 .admin-profile-section h3 {
   border-bottom: none !important;
-  text-transform: uppercase !important;
+  text-transform: none !important;
   font-weight: 800 !important;
-  color: var(--injz-pm-muted) !important;
+  color: #e05f36 !important;
 }
 
 /* Field labels — inspection form style */
 #accessModal.injz-mgmt .form-label,
 #createUserModal.injz-mgmt .form-label {
-  font-size: 0.73rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.04em !important;
+  font-size: 0.78rem !important;
+  font-weight: 650 !important;
+  text-transform: none !important;
+  letter-spacing: 0.01em !important;
   color: var(--injz-pm-muted) !important;
   margin-bottom: 0.28rem !important;
 }
@@ -361,16 +436,254 @@
   box-sizing: border-box !important;
 }
 
-#accessModal.injz-mgmt .admin-profile-hint,
-#createUserModal.injz-mgmt .admin-profile-hint {
-  font-size: 0.78rem !important;
-  color: #6b8178 !important;
+#accessModal.injz-mgmt .admin-profile-grid {
+  gap: 0.45rem 0.85rem !important;
 }
 
-/* Module checkbox grid softer */
+#accessModal.injz-mgmt .admin-profile-form .form-control,
+#accessModal.injz-mgmt .admin-profile-form select.form-control,
+#createUserModal.injz-mgmt .form-control {
+  min-height: 44px;
+}
+
+#accessModal.injz-mgmt .admin-profile-hint,
+#createUserModal.injz-mgmt .admin-profile-hint {
+  font-size: 0.72rem !important;
+  color: #8a7e78 !important;
+  margin: 0.2rem 0 0 !important;
+  line-height: 1.35 !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-more {
+  margin-top: 0.28rem;
+  font-size: 0.72rem;
+  color: #6b8178;
+}
+
+#accessModal.injz-mgmt .admin-profile-more summary {
+  cursor: pointer;
+  color: #e05f36;
+  font-weight: 700;
+  list-style: none;
+}
+
+#accessModal.injz-mgmt .admin-profile-more summary::-webkit-details-marker {
+  display: none;
+}
+
+#accessModal.injz-mgmt .admin-profile-more summary::after {
+  content: ' ▾';
+  font-weight: 700;
+}
+
+#accessModal.injz-mgmt .admin-profile-more[open] summary::after {
+  content: ' ▴';
+}
+
+#accessModal.injz-mgmt .admin-profile-more p {
+  margin: 0.35rem 0 0;
+  line-height: 1.45;
+  color: #5c616e;
+}
+
+#accessModal.injz-mgmt .admin-profile-password-row .admin-profile-password-btn {
+  border: 1.5px solid #ff8e68 !important;
+  background: #fff8f5 !important;
+  color: #e05f36 !important;
+  box-shadow: none !important;
+  font-weight: 700 !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-password-row .admin-profile-password-btn:hover {
+  background: #ff8e68 !important;
+  color: #fff !important;
+  border-color: #ff8e68 !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-email-creds {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  min-height: 44px !important;
+  margin-top: 8px !important;
+  padding: 0.55rem 1rem !important;
+  border: none !important;
+  border-radius: 11px !important;
+  background: #ff8e68 !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  font-size: 0.8125rem !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-email-creds:hover {
+  background: #f97e54 !important;
+  color: #fff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-defaults-split {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 0.55rem 0.75rem !important;
+  align-items: stretch !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-defaults-split > .form-group {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 0.7rem 0.75rem !important;
+  border: 1px solid #fde4d8 !important;
+  border-radius: 12px !important;
+  background: #fffaf8 !important;
+  box-shadow: none !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-defaults-comment textarea.form-control {
+  flex: 1 1 auto !important;
+  min-height: 8.5rem !important;
+  height: 100% !important;
+  resize: none !important;
+  margin: 0 !important;
+}
+
+@media (max-width: 640px) {
+  #accessModal.injz-mgmt .admin-profile-defaults-split {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+#accessModal.injz-mgmt .admin-profile-defaults-signature .kyn-file-pick {
+  box-shadow: none !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-defaults-signature .admin-profile-sig-toolbar {
+  margin-top: auto !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid {
+  gap: 0.35rem 0.55rem !important;
+}
+
 #accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item {
-  border-color: var(--injz-pm-line) !important;
-  border-radius: 10px !important;
+  padding: 0.42rem 0.55rem !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-sig-toolbar .btn {
+  box-shadow: none !important;
+}
+
+/* Module access tiles — Kynvera coral when checked */
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.55rem !important;
+  cursor: pointer !important;
+  border: 1px solid var(--injz-pm-line) !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+  box-shadow: none !important;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item.bd-access-card {
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item:hover {
+  border-color: #ffcdb8 !important;
+  background: #fffaf8 !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item:has(> input:checked),
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item.bd-access-card:has(input:checked) {
+  border-color: #e05f36 !important;
+  background: linear-gradient(135deg, #ff8e68 0%, #f97e54 55%, #e05f36 100%) !important;
+  box-shadow: 0 8px 18px rgba(224, 95, 54, 0.28) !important;
+  color: #fff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item:has(> input:checked):hover,
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item.bd-access-card:has(input:checked):hover {
+  border-color: #c2440c !important;
+  background: linear-gradient(135deg, #ff9a78 0%, #f97e54 50%, #e05f36 100%) !important;
+  filter: brightness(1.04);
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item:has(> input:checked) span,
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item.bd-access-card:has(input:checked) span,
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item.bd-access-card:has(input:checked) .bd-access-sub {
+  color: #fff !important;
+  font-weight: 650 !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item.bd-access-card:has(input:checked) .bd-access-subs {
+  border-left-color: rgba(255, 255, 255, 0.55) !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item input[type="checkbox"],
+#accessModal.injz-mgmt .admin-profile-module-grid .bd-access-sub input[type="checkbox"] {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  margin: 0 !important;
+  border: 1.5px solid #d4d4d8 !important;
+  border-radius: 5px !important;
+  background: #fff !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  accent-color: #ff8e68 !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 12px 12px !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item input[type="checkbox"]:checked,
+#accessModal.injz-mgmt .admin-profile-module-grid .bd-access-sub input[type="checkbox"]:checked {
+  border-color: #ff8e68 !important;
+  background-color: #ff8e68 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' d='M3.5 8.5l3 3 6-6'/%3E%3C/svg%3E") !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item:has(> input:checked) input[type="checkbox"]:checked,
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item.bd-access-card:has(input:checked) input[type="checkbox"]:checked {
+  border-color: #fff !important;
+  background-color: #fff !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23e05f36' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' d='M3.5 8.5l3 3 6-6'/%3E%3C/svg%3E") !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item.bd-access-card:has(input:checked) input[type="checkbox"]:not(:checked) {
+  background-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item input[type="checkbox"]:focus-visible,
+#accessModal.injz-mgmt .admin-profile-module-grid .bd-access-sub input[type="checkbox"]:focus-visible {
+  outline: 2px solid #ff8e68 !important;
+  outline-offset: 2px !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item:has(> input:checked) input[type="checkbox"]:focus-visible,
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item.bd-access-card:has(input:checked) input[type="checkbox"]:focus-visible {
+  outline-color: #fff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .bd-access-sub:has(input:checked) {
+  color: #c2440c !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item.bd-access-card:has(input:checked) .bd-access-sub:has(input:checked) {
+  color: #fff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .bd-access-subs {
+  border-left-color: #ffcdb8 !important;
 }
 
 /* Defaults split collapses cleanly */
@@ -378,9 +691,87 @@
   border-color: var(--injz-pm-line) !important;
 }
 
-/* Quick actions pills */
+/* Quick actions — Reset/View are outline; Activate stays solid coral; Deactivate stays red */
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-profile-quick {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem !important;
+}
+
 #accessModal.injz-mgmt .admin-profile-section--quick .admin-profile-quick .btn {
-  border-radius: 10px !important;
+  border-radius: 11px !important;
+  box-shadow: none !important;
+  transform: none !important;
+  font-weight: 700 !important;
+  gap: 0 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: none !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-reset,
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-activity {
+  background: #fff !important;
+  border: 1.5px solid #ff8e68 !important;
+  color: #c2440c !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-reset:hover,
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-activity:hover {
+  background: #fff8f5 !important;
+  border-color: #f97e54 !important;
+  color: #9a3412 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-toggle,
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-toggle.is-activate {
+  background: #ff8e68 !important;
+  border: 1.5px solid #ff8e68 !important;
+  color: #fff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-toggle:hover,
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-toggle.is-activate:hover {
+  background: #f97e54 !important;
+  border-color: #f97e54 !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-toggle.is-deactivate {
+  background: #dc2626 !important;
+  border: 1.5px solid #dc2626 !important;
+  color: #fff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-toggle.is-deactivate:hover {
+  background: #b91c1c !important;
+  border-color: #b91c1c !important;
+  color: #fff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-delete {
+  background: #fff !important;
+  border: 1.5px solid #fecaca !important;
+  color: #b91c1c !important;
+}
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-delete:hover {
+  background: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+  color: #991b1b !important;
+}
+
+@media (max-width: 560px) {
+  #accessModal.injz-mgmt .admin-profile-section--quick .admin-profile-quick {
+    grid-template-columns: 1fr;
+  }
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action-icon {
+  display: none !important;
 }
 
 /* ── Footer actions ─────────────────────────────────────────────────────── */
@@ -427,20 +818,170 @@
   cursor: pointer !important;
   background: linear-gradient(135deg, var(--injz-pm-green) 0%, var(--injz-pm-green-2) 100%) !important;
   color: #fff !important;
-  box-shadow: 0 6px 16px rgba(255, 142, 104, 0.25) !important;
+  box-shadow: none !important;
 }
 
 .injz-mgmt-btn-submit:hover {
   filter: brightness(1.06);
 }
 
-/* Password reset dialogs */
+.injz-mgmt-btn-submit.injz-mgmt-btn-danger {
+  background: #dc2626 !important;
+  box-shadow: none !important;
+}
+.injz-mgmt-btn-submit.injz-mgmt-btn-danger:hover {
+  background: #b91c1c !important;
+  filter: none;
+}
+
+/* Compact confirms — title + copy + actions, no banner */
 #passwordResetConfirmModal.injz-mgmt .modal-content,
+#profileStatusConfirmModal.injz-mgmt .modal-content,
+#emailCredentialsConfirmModal.injz-mgmt .modal-content,
+#profileAdminOtpModal.injz-mgmt .modal-content {
+  max-width: 360px !important;
+  width: min(360px, calc(100vw - 2rem)) !important;
+  border-radius: 14px !important;
+  border: 1px solid #ececef !important;
+  box-shadow: 0 10px 32px rgba(25, 27, 35, 0.14) !important;
+  overflow: hidden !important;
+}
+
+#passwordResetConfirmModal.injz-mgmt .modal-header,
+#profileStatusConfirmModal.injz-mgmt .modal-header,
+#emailCredentialsConfirmModal.injz-mgmt .modal-header,
+#profileAdminOtpModal.injz-mgmt .modal-header {
+  margin: 0 !important;
+  padding: 1.15rem 1.2rem 0 !important;
+  border-bottom: none !important;
+  background: transparent !important;
+}
+
+#passwordResetConfirmModal.injz-mgmt .modal-title,
+#profileStatusConfirmModal.injz-mgmt .modal-title,
+#emailCredentialsConfirmModal.injz-mgmt .modal-title,
+#profileAdminOtpModal.injz-mgmt .modal-title {
+  color: #191b23 !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+  letter-spacing: -0.01em !important;
+  text-transform: none !important;
+}
+
+#passwordResetConfirmModal.injz-mgmt #passwordResetConfirmIntro,
+#profileStatusConfirmModal.injz-mgmt #profileStatusConfirmIntro,
+#emailCredentialsConfirmModal.injz-mgmt #emailCredentialsConfirmIntro,
+#profileAdminOtpModal.injz-mgmt #profileAdminOtpModalIntro {
+  padding: 0.4rem 1.2rem 0 !important;
+  margin: 0 !important;
+  font-size: 0.88rem !important;
+  font-weight: 450 !important;
+  line-height: 1.45 !important;
+  color: #5c616e !important;
+}
+
+#passwordResetConfirmModal.injz-mgmt .modal-actions,
+#profileStatusConfirmModal.injz-mgmt .modal-actions,
+#emailCredentialsConfirmModal.injz-mgmt .modal-actions,
+#profileAdminOtpModal.injz-mgmt .modal-actions {
+  margin-top: 0.35rem !important;
+  padding: 0.95rem 1.2rem 1.05rem !important;
+  border-top: none !important;
+  justify-content: flex-end !important;
+  gap: 0.35rem !important;
+}
+
+#passwordResetConfirmModal.injz-mgmt .btn-cancel,
+#profileStatusConfirmModal.injz-mgmt .btn-cancel,
+#emailCredentialsConfirmModal.injz-mgmt .btn-cancel,
+#profileAdminOtpModal.injz-mgmt .btn-cancel {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #5c616e !important;
+  font-weight: 600 !important;
+  font-size: 0.84rem !important;
+  min-height: 36px !important;
+  padding: 0.4rem 0.75rem !important;
+}
+
+#profileStatusConfirmModal.injz-mgmt .injz-mgmt-btn-submit,
+#emailCredentialsConfirmModal.injz-mgmt .injz-mgmt-btn-submit,
+#profileAdminOtpModal.injz-mgmt .injz-mgmt-btn-submit,
+#passwordResetConfirmModal.injz-mgmt .btn-reset {
+  min-height: 36px !important;
+  padding: 0.4rem 0.95rem !important;
+  font-size: 0.84rem !important;
+  font-weight: 650 !important;
+  border-radius: 9px !important;
+}
+
+#passwordResetConfirmModal.injz-mgmt .btn-reset {
+  background: #ff8e68 !important;
+  border: none !important;
+  color: #fff !important;
+}
+
 #passwordResetResultModal.injz-mgmt .modal-content {
   max-width: 440px !important;
 }
 
-#passwordResetConfirmModal.injz-mgmt .modal-header,
+#profileDeleteConfirmModal.injz-mgmt .modal-content {
+  max-width: 360px !important;
+  width: min(360px, calc(100vw - 2rem)) !important;
+  border-radius: 14px !important;
+  border: 1px solid #ececef !important;
+  box-shadow: 0 10px 32px rgba(25, 27, 35, 0.14) !important;
+  overflow: hidden !important;
+}
+#profileDeleteConfirmModal.injz-mgmt .modal-header {
+  margin: 0 !important;
+  padding: 1.15rem 1.2rem 0 !important;
+  border-bottom: none !important;
+  background: transparent !important;
+}
+#profileDeleteConfirmModal.injz-mgmt .modal-title {
+  color: #191b23 !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+  letter-spacing: -0.01em !important;
+  text-transform: none !important;
+}
+#profileDeleteConfirmModal.injz-mgmt #profileDeleteConfirmIntro {
+  padding: 0.4rem 1.2rem 0 !important;
+  margin: 0 !important;
+  font-size: 0.88rem !important;
+  font-weight: 450 !important;
+  line-height: 1.45 !important;
+  color: #5c616e !important;
+}
+#profileDeleteConfirmModal.injz-mgmt .modal-actions {
+  margin-top: 0.35rem !important;
+  padding: 0.95rem 1.2rem 1.05rem !important;
+  border-top: none !important;
+  justify-content: flex-end !important;
+  gap: 0.35rem !important;
+}
+#profileDeleteConfirmModal.injz-mgmt .btn-cancel {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #5c616e !important;
+  font-weight: 600 !important;
+  font-size: 0.84rem !important;
+  min-height: 36px !important;
+  padding: 0.4rem 0.75rem !important;
+}
+#profileDeleteConfirmModal.injz-mgmt .injz-mgmt-btn-submit {
+  min-height: 36px !important;
+  padding: 0.4rem 0.95rem !important;
+  font-size: 0.84rem !important;
+  font-weight: 650 !important;
+  border-radius: 9px !important;
+}
+
 #passwordResetResultModal.injz-mgmt .modal-header {
   margin: 0 !important;
   padding: 1.05rem 1.15rem !important;
@@ -448,14 +989,13 @@
   background: linear-gradient(135deg, var(--injz-pm-green), var(--injz-pm-green-2));
 }
 
-#passwordResetConfirmModal.injz-mgmt .modal-title,
 #passwordResetResultModal.injz-mgmt .modal-title {
   color: #fff !important;
   font-size: 1.06rem !important;
   font-weight: 800 !important;
+  text-transform: none !important;
 }
 
-#passwordResetConfirmModal.injz-mgmt #passwordResetConfirmIntro,
 #passwordResetResultModal.injz-mgmt #passwordResetResultIntro {
   padding: 1rem 1.15rem 0 !important;
   margin: 0 !important;
@@ -470,24 +1010,11 @@
   padding-right: 1.15rem;
 }
 
-#passwordResetConfirmModal.injz-mgmt .modal-actions,
 #passwordResetResultModal.injz-mgmt .modal-actions {
   margin-top: 0 !important;
   padding: 0.95rem 1.15rem !important;
   border-top: 1px solid var(--injz-pm-line) !important;
   justify-content: flex-end !important;
-}
-
-#passwordResetConfirmModal.injz-mgmt .btn-cancel {
-  background: transparent !important;
-  border: none !important;
-  color: var(--injz-pm-muted) !important;
-}
-
-#passwordResetConfirmModal.injz-mgmt .btn-reset {
-  background: linear-gradient(135deg, #fef3c7, #fed7aa) !important;
-  border: 1px solid rgba(234, 88, 12, 0.35) !important;
-  color: #b45309 !important;
 }
 
 #passwordResetResultModal.injz-mgmt .modal-actions .btn-secondary {
@@ -532,3 +1059,160 @@
 #userActivityModal.injz-mgmt .user-info-card {
   background: linear-gradient(135deg, var(--injz-pm-green), var(--injz-pm-green-2)) !important;
 }
+
+/* Signature image — custom Kynvera file picker */
+.kyn-file-pick {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 44px;
+  padding: 0.28rem 0.4rem;
+  border-radius: 12px;
+  border: 1.5px dashed rgba(255, 142, 104, 0.5);
+  background: #fff8f5;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.kyn-file-pick:hover,
+.kyn-file-pick:focus-within {
+  border-style: solid;
+  border-color: #ff8e68;
+  background: #fff;
+  box-shadow: none;
+}
+
+.kyn-file-pick-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.kyn-file-pick-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  background: #ff8e68;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.kyn-file-pick-name {
+  min-width: 0;
+  font-size: 0.84rem;
+  font-weight: 550;
+  color: #191b23;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kyn-file-pick-name.is-empty {
+  color: #8a7e78;
+  font-weight: 500;
+}
+
+#accessModal.injz-mgmt .admin-profile-sig-preview {
+  margin-top: 0.55rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(255, 142, 104, 0.28);
+  border-radius: 12px;
+  background: #fff8f5;
+  mix-blend-mode: multiply;
+}
+
+#accessModal.injz-mgmt .admin-profile-sig-toolbar .btn {
+  margin-top: 0.15rem;
+  min-height: 32px;
+  padding: 0.2rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 142, 104, 0.45);
+  background: #fff;
+  color: #ff8e68;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+#accessModal.injz-mgmt .admin-profile-sig-toolbar .btn:hover {
+  background: #fff8f5;
+  border-color: #ff8e68;
+  color: #e05f36;
+}
+
+/* Viewport-pinned Kynvera toast */
+#tmToast.kyn-hint {
+  position: fixed !important;
+  top: auto !important;
+  left: auto !important;
+  right: max(1.25rem, env(safe-area-inset-right, 0px)) !important;
+  bottom: max(1.35rem, env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 2147483646 !important;
+  display: none;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: min(22rem, calc(100vw - 2.5rem)) !important;
+  margin: 0 !important;
+  padding: 0.95rem 1rem 1.05rem !important;
+  border-radius: 16px !important;
+  background: #fff7f3 !important;
+  color: #191b23 !important;
+  border: 1px solid rgba(255, 142, 104, 0.45) !important;
+  box-shadow: 0 18px 40px rgba(224, 95, 54, 0.18), 0 2px 8px rgba(25, 27, 35, 0.08) !important;
+  transform: none !important;
+  pointer-events: auto !important;
+  overflow: hidden;
+}
+#tmToast.kyn-hint.show { display: flex !important; }
+#tmToast .kyn-hint-ico {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #ff8e68, #f97e54);
+  color: #fff;
+}
+#tmToast .kyn-hint-ico svg { width: 16px; height: 16px; display: block; }
+#tmToast .kyn-hint-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 0.12rem; }
+#tmToast .kyn-hint-title { font-size: 0.92rem; font-weight: 750; color: #191b23; }
+#tmToast .kyn-hint-text { font-size: 0.8rem; font-weight: 500; color: #6b625e; line-height: 1.35; }
+#tmToast .kyn-hint-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #8a7e78;
+  cursor: pointer;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+#tmToast .kyn-hint-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  background: #ff8e68;
+  transform-origin: left center;
+  animation: kynHintDrain 10s linear forwards;
+}
+#tmToast.kyn-hint--error { background: #fff5f5 !important; border-color: rgba(220, 38, 38, 0.35) !important; }
+#tmToast.kyn-hint--error .kyn-hint-ico { background: #dc2626; }
+#tmToast.kyn-hint--error .kyn-hint-bar { background: #dc2626; }
+@keyframes kynHintDrain { from { transform: scaleX(1); } to { transform: scaleX(0); } }

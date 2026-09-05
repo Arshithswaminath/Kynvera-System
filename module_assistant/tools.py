@@ -431,9 +431,10 @@ MODULE_ACCESS_LABELS = {
     'access_civil': 'Civil Works Inspections',
     'access_cleaning': 'Cleaning Inspections',
     'access_hr': 'HR (leave, forms, requests)',
+    'access_hiring': 'HR hiring trackers (docs, leave, manpower)',
     'access_procurement_module': 'Procurement',
     'access_business_development': 'Business Development',
-    'access_report_generation': 'Report Generation (MMR)',
+    'access_report_generation': 'Report Generation',
     'access_submitted_forms': 'Submitted Forms hub',
     'access_ticketing': 'Ticketing / Work Orders',
 }

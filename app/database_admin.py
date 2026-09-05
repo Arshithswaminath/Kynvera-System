@@ -65,7 +65,7 @@ MODULE_GROUPS = [
         'HR',
         'Hiring, leave, and manpower trackers',
         [
-            'hiring_candidates', 'hiring_documents',
+            'hiring_candidates', 'hiring_documents', 'hiring_offer_letters',
             'leave_employees', 'leave_monthly_usage', 'leave_logs', 'leave_plans',
             'manpower_trades', 'manpower_projects', 'manpower_vacancies',
         ],

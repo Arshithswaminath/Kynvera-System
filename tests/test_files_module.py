@@ -90,7 +90,19 @@ class TestFilesHomePage:
     def test_renders_for_admin(self, client, admin_auth_headers):
         response = client.get('/files/', headers=admin_auth_headers)
         assert response.status_code == 200
-        assert b'files' in response.data.lower()
+        html = response.data
+        assert b'files' in html.lower()
+        assert b'data-module-back' in html
+        assert b'files-menu-toggle' in html
+        assert b'filesSearch' in html
+        assert b'filesCrumb' in html
+        assert b'filesBulkDownload' in html
+        assert b'Pending sync' in html
+        assert b'Excel templates' in html
+        assert b'Leave or Manpower' not in html
+        assert b'dh-sidebar-toggle' not in html
+        assert b'filesSyncChip' in html
+        assert b'files-sync-status.js' in html
 
 
 # ── Catalog / tree ────────────────────────────────────────────────────────
@@ -146,6 +158,7 @@ class TestCatalogAndTree:
         assert 'folders' in data and isinstance(data['folders'], list)
         assert 'items' in data and isinstance(data['items'], list)
         assert data['drive']['connected'] is False
+        assert any(f.get('path_key') == 'branding' for f in data['folders'])
 
 
 # ── Save from Leave / Manpower / etc. ───────────────────────────────────
@@ -589,23 +602,59 @@ class TestSyncNow:
         assert response.status_code in (401, 422)
 
     @pytest.mark.parametrize('path', ['/files/api/sync-pending', '/files/api/sync-now'])
+    def test_requires_selected_ids(self, client, admin_auth_headers, path):
+        response = client.post(path, json={}, headers=admin_auth_headers)
+        assert response.status_code == 400
+        assert 'Select files' in (response.get_json() or {}).get('error', '')
+
+    @pytest.mark.parametrize('path', ['/files/api/sync-pending', '/files/api/sync-now'])
     def test_disabled_400(self, client, admin_auth_headers, monkeypatch, path):
         monkeypatch.setattr('module_files.drive_service.drive_enabled', lambda: False)
-        response = client.post(path, headers=admin_auth_headers)
+        response = client.post(path, json={'ids': [1]}, headers=admin_auth_headers)
         assert response.status_code == 400
 
     @pytest.mark.parametrize('path', ['/files/api/sync-pending', '/files/api/sync-now'])
     def test_happy_path_mocked(self, client, admin_auth_headers, monkeypatch, path):
-        monkeypatch.setattr(
-            'module_files.drive_service.sync_now',
-            lambda: {
-                'folders_created': 0, 'synced': [], 'failed': [],
-                'missing_on_drive': {'folders': [], 'files': []}, 'needs_decision': False,
-            },
-        )
-        response = client.post(path, headers=admin_auth_headers)
+        folder = _create_folder(client, admin_auth_headers, name='Sync Now Happy')
+        item = _upload_file(client, admin_auth_headers, folder['id'], filename='sync-now.txt')
+        monkeypatch.setattr('module_files.drive_service.drive_enabled', lambda: True)
+        monkeypatch.setattr('module_files.drive_service.drive_configured', lambda: True)
+        monkeypatch.setattr('module_files.drive_service.get_connection', lambda: _FakeConn())
+        monkeypatch.setattr('module_files.drive_service.ensure_drive_folder_tree', lambda: 'root')
+
+        def _fake_sync(item_id):
+            from app.models import FilesItem, db
+            row = db.session.get(FilesItem, item_id)
+            row.sync_status = 'synced'
+            db.session.commit()
+            return row
+
+        monkeypatch.setattr('module_files.drive_service.sync_item', _fake_sync)
+        response = client.post(path, json={'ids': [item['id']]}, headers=admin_auth_headers)
+        assert response.status_code == 202
+        data = response.get_json()
+        assert data['status'] == 'done'
+        assert item['id'] in data['synced']
+        status = client.get('/files/api/sync-status', headers=admin_auth_headers)
+        assert status.status_code == 200
+        job = status.get_json()['job']
+        assert job['status'] == 'done'
+        assert job['total'] == 1
+
+
+class TestSyncStatus:
+    def test_requires_auth(self, client):
+        response = client.get('/files/api/sync-status')
+        assert response.status_code in (401, 422)
+
+    def test_returns_job_payload(self, client, admin_auth_headers):
+        response = client.get('/files/api/sync-status', headers=admin_auth_headers)
         assert response.status_code == 200
-        assert response.get_json()['needs_decision'] is False
+        data = response.get_json()
+        assert 'job' in data
+        if data['job'] is not None:
+            assert 'status' in data['job']
+            assert 'job_id' in data['job']
 
 
 class TestResolveMissing:
@@ -659,13 +708,205 @@ class TestFolderSync:
 
     def test_happy_path_mocked(self, client, admin_auth_headers, monkeypatch):
         folder = _create_folder(client, admin_auth_headers, name='Folder Sync Happy')
+        item = _upload_file(client, admin_auth_headers, folder['id'], filename='folder-sync.txt')
+        monkeypatch.setattr('module_files.drive_service.drive_enabled', lambda: True)
+        monkeypatch.setattr('module_files.drive_service.drive_configured', lambda: True)
+        monkeypatch.setattr('module_files.drive_service.get_connection', lambda: _FakeConn())
+        monkeypatch.setattr('module_files.drive_service.ensure_drive_folder_tree', lambda: 'root')
+
+        def _fake_sync(item_id):
+            from app.models import FilesItem, db
+            row = db.session.get(FilesItem, item_id)
+            row.sync_status = 'synced'
+            db.session.commit()
+            return row
+
+        monkeypatch.setattr('module_files.drive_service.sync_item', _fake_sync)
+        response = client.post(f"/files/api/folders/{folder['id']}/sync", headers=admin_auth_headers)
+        assert response.status_code == 202
+        data = response.get_json()
+        assert data['status'] == 'done'
+        assert data['folder_id'] == folder['id']
+        assert item['id'] in data['synced']
+
+
+# ── Excel template library ────────────────────────────────────────────────
+
+class TestExcelTemplateLibrary:
+    EXPECTED_ADMIN_IDS = {
+        'manpower', 'leave', 'hiring', 'procurement', 'qhsi',
+        'devices', 'technicians', 'locations',
+    }
+
+    def test_list_requires_auth(self, client):
+        response = client.get('/files/api/templates')
+        assert response.status_code in (401, 422)
+
+    def test_list_admin_returns_all_eight(self, client, admin_auth_headers, monkeypatch):
         monkeypatch.setattr(
-            'module_files.drive_service.sync_folder',
-            lambda folder_id: {
-                'folder_id': folder_id, 'folders_synced': 1, 'synced': [], 'failed': [],
-                'missing_on_drive': {'folders': [], 'files': []}, 'needs_decision': False,
+            'module_files.drive_service.drive_status',
+            lambda: {'enabled': False, 'configured': False, 'connected': False},
+        )
+        response = client.get('/files/api/templates', headers=admin_auth_headers)
+        assert response.status_code == 200, response.get_json()
+        data = response.get_json()
+        assert data['success'] is True
+        ids = {t['id'] for t in data['templates']}
+        assert ids == self.EXPECTED_ADMIN_IDS
+        assert data['count'] == 8
+        assert 'unsynced_count' in data
+
+    def test_list_hr_only_sees_no_hiring_templates(self, client, hr_only_headers, monkeypatch):
+        monkeypatch.setattr(
+            'module_files.drive_service.drive_status',
+            lambda: {'enabled': False, 'configured': False, 'connected': False},
+        )
+        response = client.get('/files/api/templates', headers=hr_only_headers)
+        assert response.status_code == 200, response.get_json()
+        ids = {t['id'] for t in response.get_json()['templates']}
+        assert ids == set()
+        assert 'manpower' not in ids
+        assert 'leave' not in ids
+        assert 'hiring' not in ids
+        assert 'devices' not in ids
+
+    def test_list_hr_hiring_sees_hr_templates(self, client, app, monkeypatch):
+        from tests.factories import make_user
+
+        monkeypatch.setattr(
+            'module_files.drive_service.drive_status',
+            lambda: {'enabled': False, 'configured': False, 'connected': False},
+        )
+        with app.app_context():
+            user, pwd = make_user(access_hr=True, access_hiring=True)
+            username = user.username
+        headers = _login(client, username, pwd)
+        response = client.get('/files/api/templates', headers=headers)
+        assert response.status_code == 200, response.get_json()
+        ids = {t['id'] for t in response.get_json()['templates']}
+        assert ids == {'manpower', 'leave', 'hiring'}
+        assert 'devices' not in ids
+        assert 'technicians' not in ids
+        assert 'qhsi' not in ids
+        assert 'locations' not in ids
+
+    def test_qhsi_module_catalog_no_longer_404(self, client, admin_auth_headers):
+        response = client.get('/files/api/catalog?module=qhsi', headers=admin_auth_headers)
+        assert response.status_code == 200, response.get_json()
+        data = response.get_json()
+        assert data['module'] == 'qhsi'
+        assert any(opt['kind'] == 'template' for opt in data['options'])
+
+    def test_download_single_returns_xlsx(self, client, admin_auth_headers):
+        response = client.get('/files/api/templates/manpower/download', headers=admin_auth_headers)
+        assert response.status_code == 200, response.get_json() if response.is_json else response.status_code
+        assert response.data[:2] == b'PK'
+        disp = response.headers.get('Content-Disposition') or ''
+        assert 'Manpower_Tracker_Template.xlsx' in disp
+
+    def test_download_denied_for_hr_on_devices(self, client, hr_only_headers):
+        response = client.get('/files/api/templates/devices/download', headers=hr_only_headers)
+        assert response.status_code == 403
+
+    def test_download_zip_two_ids(self, client, admin_auth_headers):
+        import zipfile
+        from io import BytesIO as Bio
+
+        response = client.post(
+            '/files/api/templates/download-zip',
+            json={'ids': ['manpower', 'leave']},
+            headers=admin_auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.data[:2] == b'PK'
+        with zipfile.ZipFile(Bio(response.data), 'r') as zf:
+            names = set(zf.namelist())
+        assert 'Manpower_Tracker_Template.xlsx' in names
+        assert 'Leave_Log_Template.xlsx' in names
+
+    def test_download_zip_empty_ids_all_allowed(self, client, app):
+        import zipfile
+        from io import BytesIO as Bio
+        from tests.factories import make_user
+
+        with app.app_context():
+            user, pwd = make_user(access_hr=True, access_hiring=True)
+            username = user.username
+        headers = _login(client, username, pwd)
+
+        response = client.post(
+            '/files/api/templates/download-zip',
+            json={'ids': []},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        with zipfile.ZipFile(Bio(response.data), 'r') as zf:
+            names = set(zf.namelist())
+        assert 'Manpower_Tracker_Template.xlsx' in names
+        assert 'Leave_Log_Template.xlsx' in names
+        assert 'Hiring_Document_Tracker_Template.xlsx' in names
+        assert 'Device_Import_Sample.xlsx' not in names
+
+    def test_download_zip_empty_ids_hr_without_hiring(self, client, hr_only_headers):
+        response = client.post(
+            '/files/api/templates/download-zip',
+            json={'ids': []},
+            headers=hr_only_headers,
+        )
+        assert response.status_code == 400
+
+    def test_push_requires_drive_connected(self, client, admin_auth_headers, monkeypatch):
+        monkeypatch.setattr(
+            'module_files.drive_service.drive_status',
+            lambda: {'enabled': True, 'configured': True, 'connected': False},
+        )
+        response = client.post(
+            '/files/api/templates/push-to-drive',
+            json={'ids': ['devices']},
+            headers=admin_auth_headers,
+        )
+        assert response.status_code == 400
+
+    def test_push_to_drive_mocked(self, client, admin_auth_headers, monkeypatch, app):
+        synced_ids = []
+
+        def _fake_sync(item_id):
+            from app.models import FilesItem, db
+            item = db.session.get(FilesItem, item_id)
+            assert item is not None
+            item.sync_status = 'synced'
+            item.drive_file_id = f'drive-{item_id}'
+            db.session.commit()
+            synced_ids.append(item_id)
+            return item
+
+        monkeypatch.setattr(
+            'module_files.drive_service.drive_status',
+            lambda: {
+                'enabled': True, 'configured': True, 'connected': True,
+                'connected_email': 'drive@example.com', 'root_drive_folder_id': 'root-1',
             },
         )
-        response = client.post(f"/files/api/folders/{folder['id']}/sync", headers=admin_auth_headers)
-        assert response.status_code == 200
-        assert response.get_json()['folder_id'] == folder['id']
+        monkeypatch.setattr('module_files.drive_service.sync_item', _fake_sync)
+
+        response = client.post(
+            '/files/api/templates/push-to-drive',
+            json={'ids': ['devices']},
+            headers=admin_auth_headers,
+        )
+        assert response.status_code == 200, response.get_json()
+        data = response.get_json()
+        assert data['saved'] == 1
+        assert len(data['synced']) == 1
+        assert data['items'][0]['source_kind'] == 'template'
+        assert data['items'][0]['filename'] == 'Device_Import_Sample.xlsx'
+        assert synced_ids == [data['items'][0]['id']]
+
+        # Re-push should upsert same stable filename (still one logical file)
+        response2 = client.post(
+            '/files/api/templates/push-to-drive',
+            json={'ids': ['devices']},
+            headers=admin_auth_headers,
+        )
+        assert response2.status_code == 200, response2.get_json()
+        assert response2.get_json()['items'][0]['id'] == data['items'][0]['id']

@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=5">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=21">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <style>
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
@@ -744,19 +744,14 @@
       background: var(--tkt-accent) !important;
       color: #fff !important;
       border: none !important;
-      box-shadow:
-        0 2px 10px rgba(249, 126, 84, 0.32),
-        0 1px 2px rgba(15, 23, 42, 0.06);
+      box-shadow: none;
     }
     body.tkt-detail-page .tkt-btn-primary:hover:not(:disabled) {
       filter: brightness(1.05);
-      box-shadow:
-        0 4px 18px rgba(249, 126, 84, 0.4),
-        0 2px 6px rgba(15, 23, 42, 0.08);
-      transform: translateY(-1px);
+      box-shadow: none;
     }
     body.tkt-detail-page .tkt-btn-primary:active:not(:disabled) {
-      transform: translateY(0);
+      transform: none;
       filter: brightness(0.97);
     }
     body.tkt-detail-page .tkt-btn-primary:disabled {
@@ -764,26 +759,24 @@
       cursor: not-allowed;
       transform: none !important;
       filter: none !important;
-      box-shadow: 0 1px 4px rgba(249, 126, 84, 0.12);
+      box-shadow: none;
     }
     body.tkt-detail-page .tkt-btn-primary:focus-visible {
-      box-shadow:
-        0 0 0 3px rgba(255, 196, 171, 0.85),
-        0 2px 10px rgba(249, 126, 84, 0.32);
+      box-shadow: 0 0 0 3px rgba(255, 196, 171, 0.85);
     }
 
     body.tkt-detail-page .tkt-btn-outline {
       background: #fff !important;
       color: #475569 !important;
       border: 1.5px solid #e2e8f0 !important;
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      box-shadow: none;
     }
     body.tkt-detail-page .tkt-btn-outline:hover:not(:disabled) {
       border-color: #cbd5e1 !important;
       background: #f8fafc !important;
       color: #1e293b !important;
-      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.07);
-      transform: translateY(-1px);
+      box-shadow: none;
+      transform: none;
     }
     body.tkt-detail-page .tkt-btn-outline:active:not(:disabled) {
       transform: translateY(0);
@@ -918,6 +911,9 @@
     .cat-item .ci-tag { font-size: .68rem; padding: 2px 7px; border-radius: 999px; background: #f1f5f9; color: #64748b; }
     .cat-item .ci-tag.brand { background: #ffe4d6; color: #c2440c; }
     .cat-item .ci-tag.dept  { background: #f3e8ff; color: #7c3aed; }
+    .cat-item .ci-tag.pool-site { background: #ecfdf3; color: #047857; }
+    .cat-item .ci-tag.pool-shared { background: #e0f2fe; color: #0369a1; }
+    .cat-item .ci-stock { margin-top: 4px; font-size: .72rem; color: #64748b; font-weight: 600; }
     .cat-item .ci-price { margin-top: 6px; font-size: .82rem; font-weight: 700; color: #c2440c; }
     .cat-item .ci-qty-wrap { margin-top: 8px; display: none; align-items: center; gap: 6px; }
     .cat-item.selected .ci-qty-wrap { display: flex; }
@@ -1297,17 +1293,9 @@
 {% include 'partials/tkt_sidebar.html' with context %}
 <div class="tkt-dh-main">
 {% set tkt_topbar_title = ticket.ticket_id %}
+{% set module_back_url = url_for('ticketing.ticket_list') %}
 {% include 'partials/tkt_topbar.html' with context %}
 <div class="tkt-content">
-
-    <!-- Breadcrumb -->
-    <div style="display:flex;align-items:center;gap:6px;font-size:.88rem;color:var(--tkt-text-3);margin-bottom:16px;">
-      <a href="{{ url_for('ticketing.dashboard') }}" style="color:var(--tkt-text-3);text-decoration:none;">Service tickets</a>
-      <span>/</span>
-      <a href="{{ url_for('ticketing.ticket_list') }}" style="color:var(--tkt-text-3);text-decoration:none;">All Tickets</a>
-      <span>/</span>
-      <span style="color:var(--tkt-text);font-weight:600;">{{ ticket.ticket_id }}</span>
-    </div>
 
     <!-- ── Header card ── -->
     <div class="tkt-header-card">
@@ -1323,7 +1311,7 @@
             {% if ticket.technician %}<span>Technician: {{ ticket.technician.full_name }}</span>{% endif %}
           </div>
           <div class="tkt-header-badges">
-            <span class="tkt-header-badge hb-priority-{{ ticket.priority }}">{{ ticket.priority }}</span>
+            <span class="tkt-header-badge hb-priority-{{ ticket.priority }}">{{ ticket.priority|capitalize }}</span>
             <span class="tkt-header-badge hb-white" id="headerStatus">{{ ticket.status|tkt_status_label }}</span>
             <span class="tkt-header-badge hb-white">{{ ticket.category }}</span>
             {% if create_triage %}
@@ -2070,13 +2058,18 @@
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
                 Materials
               </h3>
-              {% if cost_entry_allowed and ticket.status not in ('closed', 'pending_verification', 'provider_closed') %}
-              <div style="display:flex;gap:6px;">
+              {% if procurement_catalog_url or (cost_entry_allowed and ticket.status not in ('closed', 'pending_verification', 'provider_closed')) %}
+              <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                {% if procurement_catalog_url %}
+                <a class="tkt-btn tkt-btn-outline tkt-btn-sm" href="{{ procurement_catalog_url }}">View material catalog</a>
+                {% endif %}
+                {% if cost_entry_allowed and ticket.status not in ('closed', 'pending_verification', 'provider_closed') %}
                 <button class="tkt-btn tkt-btn-primary tkt-btn-sm" id="openCatalogBtn" style="gap:5px;">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/></svg>
                   Browse Catalog
                 </button>
                 <button class="tkt-btn tkt-btn-outline tkt-btn-sm" id="toggleMatForm">+ Custom</button>
+                {% endif %}
               </div>
               {% endif %}
             </div>
@@ -2110,9 +2103,14 @@
                 <div class="catalog-inline-header">
                   <div>
                     <div style="font-size:.9rem;font-weight:800;color:#c2440c;">Browse Material Catalog</div>
-                    <div style="font-size:.74rem;color:#64748b;">Select procurement materials, then add to this ticket.</div>
+                    <div style="font-size:.74rem;color:#64748b;" id="catalogBrowseHint">Materials at this property and Shared stock.</div>
                   </div>
-                  <button class="tkt-btn tkt-btn-outline tkt-btn-sm" id="collapseCatalogBtn">Done</button>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    {% if procurement_catalog_url %}
+                    <a class="tkt-btn tkt-btn-outline tkt-btn-sm" href="{{ procurement_catalog_url }}">View material catalog</a>
+                    {% endif %}
+                    <button class="tkt-btn tkt-btn-outline tkt-btn-sm" id="collapseCatalogBtn">Done</button>
+                  </div>
                 </div>
 
                 <div class="catalog-inline-body">
@@ -2145,26 +2143,65 @@
                 </div>
               </div>
               {% endif %}
-              <div style="overflow-x:auto;">
-                <table class="tkt-data-table">
-                  <thead><tr><th>Material</th><th>Qty</th><th>Unit</th><th>Unit Price</th><th>Total</th>{% if ticket.status not in ('closed','pending_verification','provider_closed') %}<th></th>{% endif %}</tr></thead>
+              <div class="tkt-mat-wrap">
+                <table class="tkt-data-table tkt-mat-table">
+                  <thead>
+                    <tr>
+                      <th>Material</th>
+                      <th>Qty</th>
+                      <th class="tkt-num">Unit price</th>
+                      <th class="tkt-num">Total</th>
+                      {% if ticket.status not in ('closed','pending_verification','provider_closed') %}<th class="tkt-mat-actions"><span class="sr-only">Actions</span></th>{% endif %}
+                    </tr>
+                  </thead>
                   <tbody id="matTableBody">
                     {% for m in materials %}
-                    <tr id="mat-row-{{ m.id }}">
-                      <td>
-                        {{ m.material_name }}
-                        {% if m.from_procurement %}<span style="font-size:.68rem;background:#ffe4d6;color:#c2440c;padding:2px 6px;border-radius:3px;margin-left:4px;font-weight:700;">catalog</span>{% endif %}
-                        {% if m.notes %}<div style="font-size:.72rem;color:#94a3b8;">{{ m.notes }}</div>{% endif %}
+                    {% set taken = m.quantity or 0 %}
+                    {% set short = m.qty_short or 0 %}
+                    {% set requested = taken + short %}
+                    <tr id="mat-row-{{ m.id }}"{% if short > 0 %} class="is-short"{% endif %}>
+                      <td class="tkt-mat-primary" data-label="Material">
+                        <div class="tkt-mat">
+                          <div class="tkt-mat-name">{{ m.material_name }}</div>
+                          <div class="tkt-mat-meta">
+                            {% if m.from_procurement %}<span class="tkt-mat-badge">Catalog</span>{% endif %}
+                            {% if m.notes %}<span>{{ m.notes }}</span>{% endif %}
+                            {% if m.created_at %}
+                            <time datetime="{{ m.created_at.isoformat() }}" title="{{ m.created_at|tkt_datetime('%d %b %Y, %H:%M') }}">{{ m.created_at|tkt_datetime('%d %b, %H:%M') }}</time>
+                            {% endif %}
+                          </div>
+                          {% if short > 0 %}
+                          <div class="tkt-mat-alert">{% if taken == taken|int %}{{ taken|int }}{% else %}{{ '%.1f'|format(taken) }}{% endif %} taken · {% if short == short|int %}{{ short|int }}{% else %}{{ '%.1f'|format(short) }}{% endif %} short of {% if requested == requested|int %}{{ requested|int }}{% else %}{{ '%.1f'|format(requested) }}{% endif %} requested</div>
+                          {% endif %}
+                        </div>
                       </td>
-                      <td>{{ m.quantity }}</td>
-                      <td>{{ m.unit or '—' }}</td>
-                      <td>AED {{ '%.2f'|format(m.unit_price) }}</td>
-                      <td style="font-weight:700;">AED {{ '%.2f'|format(m.total_price) }}</td>
-                      {% if ticket.status not in ('closed','pending_verification','provider_closed') %}<td><button class="tkt-btn tkt-btn-danger tkt-btn-sm tkt-btn-icon" onclick="deleteMat({{ m.id }})"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg></button></td>{% endif %}
+                      <td class="tkt-mat-qty" data-label="Qty">
+                        <span>{% if taken == taken|int %}{{ taken|int }}{% else %}{{ '%.1f'|format(taken) }}{% endif %}</span>
+                        <em>{{ m.unit or 'PCS' }}</em>
+                      </td>
+                      <td class="tkt-num" data-label="Unit price">AED {{ '%.2f'|format(m.unit_price or 0) }}</td>
+                      <td class="tkt-num tkt-mat-total" data-label="Total">AED {{ '%.2f'|format(m.total_price or 0) }}</td>
+                      {% if ticket.status not in ('closed','pending_verification','provider_closed') %}
+                      <td class="tkt-mat-actions">
+                        <button class="tkt-btn tkt-btn-danger tkt-btn-sm tkt-btn-icon" type="button" onclick="deleteMat({{ m.id }})" aria-label="Remove {{ m.material_name }}">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                        </button>
+                      </td>
+                      {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr class="tkt-mat-empty">
+                      <td colspan="{% if ticket.status not in ('closed','pending_verification','provider_closed') %}5{% else %}4{% endif %}">No materials logged yet.</td>
                     </tr>
                     {% endfor %}
                   </tbody>
-                  <tfoot><tr><td colspan="3" style="font-weight:700;">Materials Subtotal</td><td></td><td id="matSubtotal" style="font-weight:700;">AED {{ '%.2f'|format(mat_total) }}</td>{% if ticket.status not in ('closed','pending_verification','provider_closed') %}<td></td>{% endif %}</tr></tfoot>
+                  <tfoot>
+                    <tr>
+                      <td colspan="3">Materials Subtotal</td>
+                      <td class="tkt-num" id="matSubtotal">AED {{ '%.2f'|format(mat_total) }}</td>
+                      {% if ticket.status not in ('closed','pending_verification','provider_closed') %}<td></td>{% endif %}
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
@@ -2818,9 +2855,10 @@
 </div></div>{# tkt-dh-page-root / tkt-dh-app-root #}
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="{{ url_for('static', filename='js/ticketing.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ticketing.js') }}?v=2"></script>
 <script>
 const TICKET_ID = '{{ ticket.ticket_id }}';
+const PROCUREMENT_CATALOG_URL = {{ procurement_catalog_url|tojson }};
 window.TICKET_LOCATION_MAP = {{ (location_map or none)|tojson }};
 
 (function initTicketLocationMap() {
@@ -3071,17 +3109,38 @@ window.TICKET_LOCATION_MAP = {{ (location_map or none)|tojson }};
   }
 })();
 const ACTUAL_PRICE = {{ actual_price | tojson }};
-let procMaterials = {{ procurement_materials | tojson }};
 let _selectedMarkup = null;
 
 // ── Tabs ──────────────────────────────────────────────────
+function tktShowTab(name) {
+  const tab = document.querySelector(`.detail-tab[data-tab="${name}"]`);
+  const panel = document.getElementById('tab-' + name);
+  if (!tab || !panel) return;
+  document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  tab.classList.add('active');
+  panel.classList.add('active');
+  if (location.hash !== '#' + name) {
+    history.replaceState(null, '', '#' + name);
+  }
+}
+
+function tktReloadStay(tab) {
+  const name = tab || document.querySelector('.detail-tab.active')?.dataset.tab || 'activity';
+  history.replaceState(null, '', '#' + name);
+  location.reload();
+}
+
 document.querySelectorAll('.detail-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
-  });
+  tab.addEventListener('click', () => tktShowTab(tab.dataset.tab));
+});
+(function restoreTicketTab() {
+  const name = (location.hash || '').replace(/^#/, '');
+  if (name && document.getElementById('tab-' + name)) tktShowTab(name);
+})();
+window.addEventListener('hashchange', () => {
+  const name = (location.hash || '').replace(/^#/, '');
+  if (name && document.getElementById('tab-' + name)) tktShowTab(name);
 });
 
 // ── Status buttons ─────────────────────────────────────────
@@ -3464,13 +3523,30 @@ document.getElementById('saveMpBtn')?.addEventListener('click', async () => {
   const payload = { worker_name: document.getElementById('mpWorker').value.trim(), hours: document.getElementById('mpHours').value, rate_per_hour: document.getElementById('mpRate').value || null, work_date: document.getElementById('mpDate').value || null };
   if (!payload.worker_name) { tktToast('Worker name required.', 'error'); return; }
   const res = await tktFetch(`/tickets/api/tickets/${TICKET_ID}/manpower`, { method: 'POST', body: JSON.stringify(payload) });
-  if (res.ok && res.data.success) { tktToast('Added.', 'success'); location.reload(); }
+  if (res.ok && res.data.success) { tktToast('Added.', 'success'); tktReloadStay('costs'); }
   else tktToast(res.data.error || 'Failed.', 'error');
 });
 async function deleteMp(id) {
-  if (!confirm('Remove entry?')) return;
+  const ok = await tktConfirm({
+    title: 'Remove entry?',
+    message: 'This manpower line will be removed from the ticket.',
+    okText: 'Remove',
+    danger: true,
+  });
+  if (!ok) return;
   const res = await tktFetch(`/tickets/api/tickets/${TICKET_ID}/manpower/${id}`, { method: 'DELETE' });
   if (res.ok) { document.getElementById('mp-row-'+id)?.remove(); tktToast('Removed.','success'); }
+}
+async function deleteMat(id) {
+  const ok = await tktConfirm({
+    title: 'Remove material?',
+    message: 'This material will be removed from the ticket. Catalog stock is returned if it was taken from inventory.',
+    okText: 'Remove',
+    danger: true,
+  });
+  if (!ok) return;
+  const res = await tktFetch(`/tickets/api/tickets/${TICKET_ID}/materials/${id}`, { method: 'DELETE' });
+  if (res.ok) { document.getElementById('mat-row-'+id)?.remove(); tktToast('Removed.','success'); }
 }
 
 // ── Materials — Custom form ────────────────────────────────
@@ -3481,51 +3557,71 @@ document.getElementById('saveMatBtn')?.addEventListener('click', async () => {
   if (!name) { tktToast('Material name required.', 'error'); return; }
   const payload = { material_name: name, quantity: document.getElementById('matQty').value || 1, unit: document.getElementById('matUnit').value.trim(), unit_price: document.getElementById('matUnitPrice').value || 0, notes: document.getElementById('matNotes').value.trim(), from_procurement: false };
   const res = await tktFetch(`/tickets/api/tickets/${TICKET_ID}/materials`, { method: 'POST', body: JSON.stringify(payload) });
-  if (res.ok && res.data.success) { tktToast('Added.', 'success'); location.reload(); }
+  if (res.ok && res.data.success) { tktToast('Added.', 'success'); tktReloadStay('costs'); }
   else tktToast(res.data.error || 'Failed.', 'error');
 });
-async function deleteMat(id) {
-  if (!confirm('Remove material?')) return;
-  const res = await tktFetch(`/tickets/api/tickets/${TICKET_ID}/materials/${id}`, { method: 'DELETE' });
-  if (res.ok) { document.getElementById('mat-row-'+id)?.remove(); tktToast('Removed.','success'); }
-}
 
-// ── Catalog Browser (procurement materials list) ───────────
-const PROCUREMENT_MATERIALS = (procMaterials || []).map((m, idx) => ({
-  id: String(m.id || `PM-${idx + 1}`),
-  name: m.name || '',
-  brand: m.brand || '',
-  uom: m.unit || '',
-  unit_price: Number(m.unit_price || 0),
-  category: m.category || 'General',
-  source: m.source || 'procurement',
-}));
-
+// ── Catalog Browser (site stock + Shared store) ───────────
 let _catalogData = {};       // { dept: [items] }
-let _catalogSelected = {};   // { itemId: {item, qty} }
+let _catalogSelected = {};   // { stockId: {item, qty} }
 let _catalogActiveDept = 'All';
 let _catalogSearch = '';
 let _catalogLoaded = false;
 
 const catalogInlineBox = document.getElementById('catalogInlineBox');
 
+function _setCatalogHint(payload) {
+  const el = document.getElementById('catalogBrowseHint');
+  if (!el) return;
+  const siteName = payload.property && payload.property.name;
+  const hasRows = (payload.materials || []).length > 0;
+  if (siteName && hasRows) {
+    el.textContent = `Materials at ${siteName} and Shared stock.`;
+  } else if (!siteName && hasRows) {
+    el.textContent = 'No site stock for this property. Shared stock is available below. Ask procurement to assign materials, or add a custom material.';
+  } else {
+    el.textContent = 'No stock assigned to this property. Ask procurement to assign materials, or add a custom material.';
+  }
+  if (PROCUREMENT_CATALOG_URL && !hasRows) {
+    el.insertAdjacentHTML(
+      'beforeend',
+      ` <a href="${PROCUREMENT_CATALOG_URL}" style="color:#c2440c;font-weight:700;">View material catalog</a>`
+    );
+  }
+}
+
 async function _loadCatalog() {
   if (_catalogLoaded) return;
   const grid = document.getElementById('catalogItemsGrid');
-  if (!PROCUREMENT_MATERIALS.length) {
-    grid.innerHTML = `<div class="cat-empty"><p style="color:#ef4444;">No materials found in procurement module list.</p></div>`;
+  const res = await tktFetch(`/tickets/api/tickets/${TICKET_ID}/catalog-materials`);
+  if (!res.ok || !res.data || !res.data.success) {
+    grid.innerHTML = `<div class="cat-empty"><p style="color:#ef4444;">Could not load materials for this property.</p></div>`;
+    return;
+  }
+  _setCatalogHint(res.data);
+  const rows = res.data.materials || [];
+  if (!rows.length) {
+    const extra = PROCUREMENT_CATALOG_URL
+      ? ` <a href="${PROCUREMENT_CATALOG_URL}" style="color:#c2440c;font-weight:700;">View material catalog</a>`
+      : '';
+    grid.innerHTML = `<div class="cat-empty"><p style="margin:0;font-size:.88rem;">No stock assigned to this property. Ask procurement to assign materials, or add a custom material.${extra}</p></div>`;
+    _catalogLoaded = true;
     return;
   }
   _catalogData = {};
-  PROCUREMENT_MATERIALS.forEach(item => {
-    const cat = item.category || 'General';
+  rows.forEach(m => {
+    const cat = m.category || 'General';
     if (!_catalogData[cat]) _catalogData[cat] = [];
     _catalogData[cat].push({
-      id: item.id,
-      name: item.name,
-      brand: item.brand,
-      uom: item.uom,
-      unit_price: item.unit_price,
+      id: String(m.stock_id),
+      catalog_id: m.catalog_id,
+      stock_id: m.stock_id,
+      pool: m.pool || 'site',
+      name: m.name || '',
+      brand: m.brand || '',
+      uom: m.uom || '',
+      unit_price: Number(m.unit_price || 0),
+      qty_on_hand: Number(m.qty_on_hand || 0),
     });
   });
   _catalogLoaded = true;
@@ -3579,14 +3675,19 @@ function _renderCatalogItems() {
     const sel = !!_catalogSelected[item.id];
     const qty = _catalogSelected[item.id]?.qty ?? 1;
     const hasPrice = item.unit_price && item.unit_price > 0;
+    const poolLabel = item.pool === 'shared' ? 'Shared' : 'On site';
+    const poolClass = item.pool === 'shared' ? 'pool-shared' : 'pool-site';
+    const onHand = Number(item.qty_on_hand || 0);
     return `<div class="cat-item${sel ? ' selected' : ''}" data-id="${item.id}" onclick="toggleCatItem('${item.id}', event)">
       <div class="ci-check">${sel ? '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="#fff" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>' : ''}</div>
       <div class="ci-name">${_esc(item.name)}</div>
       <div class="ci-meta">
+        <span class="ci-tag ${poolClass}">${poolLabel}</span>
         ${item.brand ? `<span class="ci-tag brand">${_esc(item.brand)}</span>` : ''}
         ${item.uom ? `<span class="ci-tag">${_esc(item.uom)}</span>` : ''}
         <span class="ci-tag dept">${_esc(item.department)}</span>
       </div>
+      <div class="ci-stock">${onHand.toLocaleString()} on hand</div>
       ${hasPrice ? `<div class="ci-price">AED ${parseFloat(item.unit_price).toFixed(2)} / ${item.uom||'unit'}</div>` : ''}
       <div class="ci-qty-wrap" onclick="event.stopPropagation()">
         <label>Qty:</label>
@@ -3665,7 +3766,9 @@ document.getElementById('clearCatalogSelBtn')?.addEventListener('click', () => {
 
 document.getElementById('addCatalogItemsBtn')?.addEventListener('click', async () => {
   const items = Object.values(_catalogSelected).map(({item, qty}) => ({
-    id: item.id,
+    catalog_id: item.catalog_id,
+    stock_id: item.stock_id,
+    pool: item.pool,
     name: item.name,
     brand: item.brand,
     uom: item.uom,
@@ -3679,10 +3782,18 @@ document.getElementById('addCatalogItemsBtn')?.addEventListener('click', async (
     method: 'POST', body: JSON.stringify({ items }),
   });
   if (res.ok && res.data.success) {
-    tktToast(`Added ${res.data.added} material${res.data.added > 1 ? 's' : ''}!`, 'success');
+    const shortRows = (res.data.materials || []).filter(m => Number(m.qty_short) > 0);
+    if (shortRows.length) {
+      const msg = shortRows.map(m =>
+        `${m.material_name}: ${m.quantity} from stock, ${m.qty_short} short`
+      ).join(' · ');
+      tktToast(msg, 'warning');
+    } else {
+      tktToast(`Added ${res.data.added} material${res.data.added > 1 ? 's' : ''}!`, 'success');
+    }
     catalogInlineBox?.classList.remove('open');
     _catalogSelected = {};
-    setTimeout(() => location.reload(), 600);
+    setTimeout(() => tktReloadStay('costs'), 600);
   } else {
     tktToast(res.data.error || 'Failed to add materials.', 'error');
     btn.disabled = false; _updateCatalogFooter();

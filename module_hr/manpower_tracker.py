@@ -47,11 +47,7 @@ def user_can_manage_manpower(user: Optional[User]) -> bool:
     """Same access gate as Hiring Document Tracker / Leave Tracker."""
     if not user:
         return False
-    if _role_is_admin(user):
-        return True
-    if getattr(user, 'access_hr', False):
-        return True
-    return _user_desig_lc(user) == 'hr_manager'
+    return bool(user.has_hiring_submodule())
 
 
 def _get_current_user():

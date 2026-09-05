@@ -1,12 +1,13 @@
 """
-Leave Tracker — Sick + Annual leave for Aug–Dec 2026.
+Leave Tracker — Sick + Annual leave from Jan 2026.
 Routes registered on hr_bp via register_leave_tracker_routes().
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from flask import current_app, jsonify, render_template, request, send_file
@@ -21,6 +22,8 @@ from app.models import (
     LEAVE_TRACKER_MONTH_LABELS,
     LEAVE_TRACKER_MONTHS,
     LEAVE_TRACKER_YEAR,
+    LEAVE_WINDOW_END,
+    LEAVE_WINDOW_START,
     LEAVE_TYPES,
     LeaveEmployee,
     LeaveLog,
@@ -31,6 +34,7 @@ from app.models import (
     leave_company_db_values,
     normalize_leave_company,
     leave_sick_alert_level,
+    leave_months_through,
     migrate_monthly_usage_to_logs,
     months_touched_by_range,
     recompute_monthly_usage,
@@ -54,8 +58,8 @@ STAFF_LIST_BUNDLED = os.path.join(
     'staff_list_july_2026.xlsx',
 )
 
-LEAVE_WINDOW_START = date(LEAVE_TRACKER_YEAR, 8, 1)
-LEAVE_WINDOW_END = date(LEAVE_TRACKER_YEAR, 12, 31)
+PERIODS_MIN_YEAR = LEAVE_TRACKER_YEAR
+PERIODS_MAX_YEAR = 2035
 
 
 def _parse_ymd(raw: Optional[str]) -> Optional[date]:
@@ -80,11 +84,7 @@ def user_can_manage_leave_tracker(user: Optional[User]) -> bool:
     """Same access gate as Hiring Document Tracker."""
     if not user:
         return False
-    if _role_is_admin(user):
-        return True
-    if getattr(user, 'access_hr', False):
-        return True
-    return _user_desig_lc(user) == 'hr_manager'
+    return bool(user.has_hiring_submodule())
 
 
 def _get_current_user():
@@ -127,6 +127,85 @@ def _date_in_tracker_window(d: date) -> bool:
     return LEAVE_WINDOW_START <= d <= LEAVE_WINDOW_END
 
 
+def _window_range_message() -> str:
+    return f'{LEAVE_WINDOW_START.isoformat()} and {LEAVE_WINDOW_END.isoformat()}'
+
+
+def _default_periods() -> dict[str, list[int]]:
+    return {str(LEAVE_TRACKER_YEAR): list(LEAVE_TRACKER_MONTHS)}
+
+
+def _periods_path() -> str:
+    return os.path.join(current_app.instance_path, 'leave_tracker_periods.json')
+
+
+def _normalize_periods(raw) -> dict[str, list[int]]:
+    out = _default_periods()
+    if not isinstance(raw, dict):
+        return out
+    for key, months in raw.items():
+        try:
+            year = int(key)
+        except (TypeError, ValueError):
+            continue
+        if year < PERIODS_MIN_YEAR or year > PERIODS_MAX_YEAR:
+            continue
+        clean: list[int] = []
+        for item in months or []:
+            try:
+                month = int(item)
+            except (TypeError, ValueError):
+                continue
+            if 1 <= month <= 12 and month not in clean:
+                clean.append(month)
+        if year == LEAVE_TRACKER_YEAR:
+            for month in LEAVE_TRACKER_MONTHS:
+                if month not in clean:
+                    clean.append(month)
+        clean.sort()
+        if clean:
+            out[str(year)] = clean
+    return dict(sorted(out.items(), key=lambda kv: int(kv[0])))
+
+
+def _read_periods() -> dict[str, list[int]]:
+    path = _periods_path()
+    try:
+        with open(path, encoding='utf-8') as fh:
+            return _normalize_periods(json.load(fh))
+    except Exception:
+        return _default_periods()
+
+
+def _write_periods(periods: dict[str, list[int]]) -> dict[str, list[int]]:
+    clean = _normalize_periods(periods)
+    os.makedirs(current_app.instance_path, exist_ok=True)
+    path = _periods_path()
+    tmp = path + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as fh:
+        json.dump(clean, fh)
+    os.replace(tmp, path)
+    return clean
+
+
+def _parse_year_arg(raw=None) -> int:
+    text = (raw if raw is not None else request.args.get('year') or '').strip()
+    if text.isdigit():
+        year = int(text)
+        if PERIODS_MIN_YEAR <= year <= PERIODS_MAX_YEAR:
+            return year
+    return LEAVE_TRACKER_YEAR
+
+
+def _parse_month_arg(raw=None) -> Optional[int]:
+    text = (raw if raw is not None else request.args.get('month') or '').strip()
+    if text.isdigit():
+        month = int(text)
+        if 1 <= month <= 12:
+            return month
+    return None
+
+
 def _ensure_migrated() -> None:
     """Ensure leave_logs columns exist; convert legacy monthly usage into logs once."""
     purged: list[tuple] = []
@@ -154,7 +233,7 @@ def _ensure_migrated() -> None:
                         conn.execute(
                             text(
                                 'DELETE FROM leave_monthly_usage '
-                                'WHERE year = :year AND month NOT IN (8, 9, 10, 11, 12)'
+                                'WHERE year = :year AND month NOT IN (7, 8, 9, 10, 11, 12)'
                             ),
                             {'year': LEAVE_TRACKER_YEAR},
                         )
@@ -216,7 +295,7 @@ def _employee_after_recompute(emp: LeaveEmployee) -> dict:
     return emp.to_dict()
 
 def _tracker_focus_month(today: Optional[date] = None) -> tuple[int, int]:
-    """Return (year, month) to use for 'this month' KPIs inside the Aug–Dec window."""
+    """Return (year, month) to use for 'this month' KPIs inside the Jul–Dec window."""
     today = today or date.today()
     year = LEAVE_TRACKER_YEAR
     month = today.month
@@ -239,7 +318,7 @@ def _days_val(raw) -> float:
 
 
 def _fetch_tracker_logs(employee_ids: list[int]) -> list[LeaveLog]:
-    """Leave logs that start inside the Aug–Dec tracker window."""
+    """Leave logs that start inside the Jul–Dec tracker window."""
     if not employee_ids:
         return []
     return (
@@ -281,6 +360,47 @@ def _employee_took_leave_in_month(
         _days_val(emp.month_days('sick', year, month)) > 0
         or _days_val(emp.month_days('annual', year, month)) > 0
     )
+
+
+def _month_bounds(year: int, month: int) -> tuple[date, date]:
+    start = date(year, month, 1)
+    if month == 12:
+        end = date(year, 12, 31)
+    else:
+        end = date(year, month + 1, 1) - timedelta(days=1)
+    return start, end
+
+
+def _employee_used_in_month(
+    emp_id: int,
+    leave_type: str,
+    year: int,
+    month: int,
+    logs_by_emp: dict[int, list[LeaveLog]],
+) -> float:
+    total = 0.0
+    for lg in logs_by_emp.get(emp_id, []):
+        if lg.leave_type != leave_type:
+            continue
+        total += _log_days_in_month(lg, year, month)
+    return round(total, 2)
+
+
+def _employee_used_through_month(
+    emp_id: int,
+    leave_type: str,
+    year: int,
+    month: int,
+    logs_by_emp: dict[int, list[LeaveLog]],
+) -> float:
+    if year == LEAVE_TRACKER_YEAR:
+        months = leave_months_through(month)
+    else:
+        months = tuple(range(1, month + 1))
+    total = 0.0
+    for m in months:
+        total += _employee_used_in_month(emp_id, leave_type, year, m, logs_by_emp)
+    return round(total, 2)
 
 
 def _employee_used_from_logs(
@@ -359,9 +479,15 @@ def _employee_has_repeat_sick(
     return emp.id in _repeat_sick_month_map(logs_by_emp)
 
 
-def _summary_for(employees: list[LeaveEmployee]) -> dict:
+def _summary_for(
+    employees: list[LeaveEmployee],
+    focus_month: Optional[int] = None,
+    year: Optional[int] = None,
+) -> dict:
     total = len(employees)
-    year, focus_month = _tracker_focus_month()
+    cal_year, calendar_month = _tracker_focus_month()
+    year = year if year and PERIODS_MIN_YEAR <= year <= PERIODS_MAX_YEAR else cal_year
+    month = focus_month if focus_month and 1 <= focus_month <= 12 else calendar_month
     emp_ids = [e.id for e in employees]
     logs_by_emp = _logs_by_employee(_fetch_tracker_logs(emp_ids))
     repeat_map = _repeat_sick_month_map(logs_by_emp)
@@ -369,19 +495,31 @@ def _summary_for(employees: list[LeaveEmployee]) -> dict:
     on_leave_month = 0
     sick_days = 0.0
     annual_days = 0.0
+    sick_staff = 0
+    annual_staff = 0
     low_remaining = 0
     approaching = 0
     exhausted = 0
     critical = 0
     rem_sum = 0.0
+    repeat_this_month = 0
+
+    for emp_id, hits in repeat_map.items():
+        if any(h.get('month') == month for h in hits):
+            repeat_this_month += 1
 
     for e in employees:
-        if _employee_took_leave_in_month(e, year, focus_month, logs_by_emp):
+        if _employee_took_leave_in_month(e, year, month, logs_by_emp):
             on_leave_month += 1
-        sick_used = _employee_used_from_logs(e.id, 'sick', logs_by_emp)
-        annual_used = _employee_used_from_logs(e.id, 'annual', logs_by_emp)
-        sick_days += sick_used
-        annual_days += annual_used
+        sick_used = _employee_used_through_month(e.id, 'sick', year, month, logs_by_emp)
+        sick_in_month = _employee_used_in_month(e.id, 'sick', year, month, logs_by_emp)
+        annual_in_month = _employee_used_in_month(e.id, 'annual', year, month, logs_by_emp)
+        sick_days += sick_in_month
+        annual_days += annual_in_month
+        if sick_in_month > 0:
+            sick_staff += 1
+        if annual_in_month > 0:
+            annual_staff += 1
         if _employee_low_remaining(e, year, logs_by_emp):
             low_remaining += 1
         rem_sum += max(0.0, LEAVE_SICK_ENTITLEMENT - sick_used)
@@ -397,12 +535,14 @@ def _summary_for(employees: list[LeaveEmployee]) -> dict:
     return {
         'total_staff': total,
         'on_leave_this_month': on_leave_month,
-        'current_month': focus_month,
-        'current_month_label': LEAVE_TRACKER_MONTH_LABELS.get(focus_month, ''),
+        'current_month': month,
+        'current_month_label': LEAVE_TRACKER_MONTH_LABELS.get(month, ''),
+        'sick_staff_month': sick_staff,
+        'annual_staff_month': annual_staff,
         'sick_days_total': round(sick_days, 1),
         'annual_days_total': round(annual_days, 1),
         'low_remaining': low_remaining,
-        'repeat_sick_month': len(repeat_map),
+        'repeat_sick_month': repeat_this_month,
         # Legacy keys (still returned for older clients)
         'approaching': approaching,
         'critical': critical,
@@ -602,8 +742,8 @@ def register_leave_tracker_routes(hr_bp):
             '1', 'true', 'yes',
         )
         alert_level = (request.args.get('alert_level') or '').strip().lower()
-        month_raw = (request.args.get('month') or '').strip()
-        month = int(month_raw) if month_raw.isdigit() and int(month_raw) in LEAVE_TRACKER_MONTHS else None
+        month = _parse_month_arg()
+        year = _parse_year_arg()
 
         query = LeaveEmployee.query.filter_by(active=True).options(
             joinedload(LeaveEmployee.usage),
@@ -641,21 +781,24 @@ def register_leave_tracker_routes(hr_bp):
             ]
         elif alert_level in ('on_leave_month', 'low_remaining', 'repeat_sick_month'):
             logs_by_emp = _logs_by_employee(_fetch_tracker_logs([e.id for e in employees]))
-            year, focus_month = _tracker_focus_month()
+            cal_year, calendar_month = _tracker_focus_month()
+            focus_year = year if month is not None else cal_year
+            focus = month if month is not None else calendar_month
             if alert_level == 'on_leave_month':
                 employees = [
                     e for e in employees
-                    if _employee_took_leave_in_month(e, year, focus_month, logs_by_emp)
+                    if _employee_took_leave_in_month(e, focus_year, focus, logs_by_emp)
                 ]
             elif alert_level == 'low_remaining':
                 employees = [
                     e for e in employees
-                    if _employee_low_remaining(e, year, logs_by_emp)
+                    if _employee_low_remaining(e, focus_year, logs_by_emp)
                 ]
             else:
+                repeat_map = _repeat_sick_month_map(logs_by_emp)
                 employees = [
                     e for e in employees
-                    if _employee_has_repeat_sick(e, logs_by_emp)
+                    if any(h.get('month') == focus for h in repeat_map.get(e.id, []))
                 ]
         elif alerts_only:
             employees = [
@@ -663,17 +806,9 @@ def register_leave_tracker_routes(hr_bp):
                 if leave_sick_alert_level(e.used_total('sick'))
             ]
 
-        if month is not None:
-            year = LEAVE_TRACKER_YEAR
-            logs_by_emp = _logs_by_employee(_fetch_tracker_logs([e.id for e in employees]))
-            employees = [
-                e for e in employees
-                if _employee_took_leave_in_month(e, year, month, logs_by_emp)
-            ]
-
         return success_response({
-            'employees': [e.to_dict() for e in employees],
-            'summary': _summary_for(summary_emps),
+            'employees': [e.to_dict(year=year) for e in employees],
+            'summary': _summary_for(summary_emps, focus_month=month, year=year),
         })
 
     @hr_bp.route('/api/leave-tracker/employees/<int:emp_pk>/leave-profile', methods=['GET'])
@@ -692,8 +827,8 @@ def register_leave_tracker_routes(hr_bp):
         if not emp:
             return error_response('Employee not found', status_code=404, error_code='NOT_FOUND')
 
-        month_raw = (request.args.get('month') or '').strip()
-        month = int(month_raw) if month_raw.isdigit() and int(month_raw) in LEAVE_TRACKER_MONTHS else None
+        month = _parse_month_arg()
+        year = _parse_year_arg()
 
         logs = (
             LeaveLog.query.filter(
@@ -709,17 +844,17 @@ def register_leave_tracker_routes(hr_bp):
         if month is not None:
             apps = [
                 lg for lg in logs
-                if _log_days_in_month(lg, LEAVE_TRACKER_YEAR, month) > 0
+                if _log_days_in_month(lg, year, month) > 0
             ]
         applications = [lg.to_dict() for lg in apps[:8]]
 
         return success_response({
-            'employee': emp.to_dict(),
+            'employee': emp.to_dict(year=year),
             'latest': latest,
             'applications': applications,
             'month': month,
             'month_label': LEAVE_TRACKER_MONTH_LABELS.get(month, '') if month else '',
-            'year': LEAVE_TRACKER_YEAR,
+            'year': year,
         })
 
     @hr_bp.route('/api/leave-tracker/employees/<int:emp_pk>', methods=['PATCH'])
@@ -776,11 +911,8 @@ def register_leave_tracker_routes(hr_bp):
 
         year = int(data.get('year') or LEAVE_TRACKER_YEAR)
         month = int(data.get('month') or 0)
-        if month not in LEAVE_TRACKER_MONTHS:
-            return error_response(
-                f'Month must be one of {list(LEAVE_TRACKER_MONTHS)} for this tracker',
-                status_code=400,
-            )
+        if month < 1 or month > 12:
+            return error_response('Month must be between 1 and 12', status_code=400)
 
         if 'days' not in data:
             return error_response('days is required (null to clear)', status_code=400)
@@ -836,6 +968,7 @@ def register_leave_tracker_routes(hr_bp):
         company = (request.args.get('company') or 'all').strip()
         leave_type = (request.args.get('leave_type') or 'all').strip().lower()
         month_raw = (request.args.get('month') or '').strip()
+        year = _parse_year_arg()
         emp_id = request.args.get('employee_id')
         leave_from = _parse_ymd(request.args.get('leave_from'))
         leave_to = _parse_ymd(request.args.get('leave_to'))
@@ -868,8 +1001,12 @@ def register_leave_tracker_routes(hr_bp):
             ))
         if leave_type in LEAVE_TYPES:
             query = query.filter(LeaveLog.leave_type == leave_type)
-        if month_raw.isdigit() and int(month_raw) in LEAVE_TRACKER_MONTHS:
-            query = query.filter(db.extract('month', LeaveLog.leave_date) == int(month_raw))
+        if month_raw.isdigit() and 1 <= int(month_raw) <= 12:
+            start, end = _month_bounds(year, int(month_raw))
+            query = query.filter(
+                func.coalesce(LeaveLog.end_date, LeaveLog.leave_date) >= start,
+                LeaveLog.leave_date <= end,
+            )
         if leave_from:
             query = query.filter(func.coalesce(LeaveLog.end_date, LeaveLog.leave_date) >= leave_from)
         if leave_to:
@@ -937,7 +1074,7 @@ def register_leave_tracker_routes(hr_bp):
         if end_date < leave_date:
             return error_response('end_date must be on or after start date', status_code=400)
         if not _date_in_tracker_window(leave_date) or not _date_in_tracker_window(end_date):
-            return error_response('dates must be between 2026-08-01 and 2026-12-31', status_code=400)
+            return error_response(f'dates must be between {_window_range_message()}', status_code=400)
 
         cal_days = (end_date - leave_date).days + 1
         days_raw = data.get('days', cal_days)
@@ -996,7 +1133,7 @@ def register_leave_tracker_routes(hr_bp):
             if not leave_date:
                 return error_response('Invalid leave_date', status_code=400)
             if not _date_in_tracker_window(leave_date):
-                return error_response('leave_date must be between 2026-08-01 and 2026-12-31', status_code=400)
+                return error_response(f'leave_date must be between {_window_range_message()}', status_code=400)
             log.leave_date = leave_date
         if 'end_date' in data:
             end_date = _parse_date(data.get('end_date'))
@@ -1006,7 +1143,7 @@ def register_leave_tracker_routes(hr_bp):
                 return error_response('Invalid end_date', status_code=400)
             else:
                 if not _date_in_tracker_window(end_date):
-                    return error_response('end_date must be between 2026-08-01 and 2026-12-31', status_code=400)
+                    return error_response(f'end_date must be between {_window_range_message()}', status_code=400)
                 log.end_date = end_date
 
         end_eff = log.end_date or log.leave_date
@@ -1125,8 +1262,13 @@ def register_leave_tracker_routes(hr_bp):
                 LeaveEmployee.full_name.ilike(like),
                 LeaveEmployee.emp_id.ilike(like),
             ))
-        window_start = date(LEAVE_TRACKER_YEAR, 8, 1)
-        window_end = date(LEAVE_TRACKER_YEAR, 12, 31)
+        year = _parse_year_arg()
+        month = _parse_month_arg()
+        if month is not None:
+            window_start, window_end = _month_bounds(year, month)
+        else:
+            window_start = LEAVE_WINDOW_START
+            window_end = LEAVE_WINDOW_END
         query = query.filter(
             LeavePlan.start_date <= window_end,
             LeavePlan.end_date >= window_start,
@@ -1224,7 +1366,7 @@ def register_leave_tracker_routes(hr_bp):
         buckets = split_plan_days_by_month(plan.start_date, plan.end_date)
         if not buckets:
             return error_response(
-                'Plan does not overlap Aug–Dec 2026',
+                f'Plan does not overlap the tracker window ({LEAVE_WINDOW_START.isoformat()} – {LEAVE_WINDOW_END.isoformat()})',
                 status_code=400,
             )
         note = f'From plan #{plan.id} ({plan.start_date}–{plan.end_date})'
@@ -1365,7 +1507,22 @@ def register_leave_tracker_routes(hr_bp):
             'companies': list(LEAVE_COMPANIES),
             'employee_count': count,
             'has_bundled_staff_list': os.path.isfile(STAFF_LIST_BUNDLED),
+            'periods': _read_periods(),
+            'window_start': LEAVE_WINDOW_START.isoformat(),
+            'window_end': LEAVE_WINDOW_END.isoformat(),
         })
+
+    @hr_bp.route('/api/leave-tracker/periods', methods=['GET', 'PUT'])
+    @jwt_required()
+    def api_leave_periods():
+        user, err = _require_leave_user()
+        if err:
+            return err
+        if request.method == 'GET':
+            return success_response({'periods': _read_periods()})
+        data = request.get_json(silent=True) or {}
+        periods = _write_periods(data.get('periods') or data)
+        return success_response({'periods': periods})
 
     # ── Analytics section pages ─────────────────────────────────────────────
 

@@ -230,6 +230,93 @@
     );
   }
 
+  function telHref(phone) {
+    const n = String(phone || '').replace(/[^\d+]/g, '');
+    return n ? ('tel:' + n) : '';
+  }
+
+  function waHref(phone) {
+    let n = String(phone || '').replace(/\D/g, '');
+    if (!n) return '';
+    if (n.indexOf('00') === 0) n = n.slice(2);
+    if (n.length === 10 && n.charAt(0) === '0') n = '971' + n.slice(1);
+    else if (n.length === 9 && n.charAt(0) === '5') n = '971' + n;
+    if (n.length < 10) return '';
+    return 'https://wa.me/' + n;
+  }
+
+  function buildReachCard(c) {
+    const phone = (c && c.phone ? String(c.phone) : '').trim();
+    const email = (c && c.email ? String(c.email) : '').trim();
+    const callHref = telHref(phone);
+    const whatsappHref = waHref(phone);
+    const mailHref = email ? ('mailto:' + email) : '';
+    const phoneSvg =
+      '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="14" height="14" aria-hidden="true">' +
+        '<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z"/>' +
+      '</svg>';
+    const whatsappSvg =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">' +
+        '<path fill="currentColor" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>' +
+      '</svg>';
+    const mailSvg =
+      '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="14" height="14" aria-hidden="true">' +
+        '<path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>' +
+      '</svg>';
+
+    function actionButtons() {
+      const actions = [];
+      if (callHref) {
+        actions.push(
+          '<a class="hh-pipe-reach-btn" href="' + escapeHtml(callHref) + '">' +
+            phoneSvg + 'Call</a>'
+        );
+      }
+      if (whatsappHref) {
+        actions.push(
+          '<a class="hh-pipe-reach-btn is-whatsapp" href="' + escapeHtml(whatsappHref) + '"' +
+            ' target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">' +
+            whatsappSvg + 'WhatsApp</a>'
+        );
+      }
+      if (mailHref) {
+        actions.push(
+          '<a class="hh-pipe-reach-btn" href="' + escapeHtml(mailHref) + '">' +
+            mailSvg + 'Email</a>'
+        );
+      }
+      return actions.length
+        ? ('<div class="hh-pipe-reach-actions">' + actions.join('') + '</div>')
+        : '';
+    }
+
+    if (phone) {
+      return (
+        '<div class="hh-pipe-reach">' +
+          '<div class="hh-pipe-reach-kicker">Reach out</div>' +
+          '<div class="hh-pipe-reach-detail" title="' + escapeHtml(phone) + '">' +
+            escapeHtml(phone) +
+          '</div>' +
+          actionButtons() +
+        '</div>'
+      );
+    }
+
+    return (
+      '<div class="hh-pipe-reach is-empty">' +
+        '<div class="hh-pipe-reach-kicker">Reach out</div>' +
+        '<p class="hh-pipe-reach-hint">No phone number added yet</p>' +
+        '<form class="hh-pipe-reach-add" id="hhReachPhoneForm">' +
+          '<label class="hh-visually-hidden" for="hhReachPhone">Phone number</label>' +
+          '<input type="tel" id="hhReachPhone" class="hh-pipe-reach-input" name="phone" ' +
+            'maxlength="40" inputmode="tel" autocomplete="tel" placeholder="Add a number…">' +
+          '<button type="submit" class="hh-pipe-reach-btn">Add</button>' +
+        '</form>' +
+        (mailHref ? actionButtons() : '') +
+      '</div>'
+    );
+  }
+
   function buildStageCoach(c, pipeKey, daysInStage, nextKey, visaUnlocked) {
     const merged = collectCandidateDocs(c);
     const identity = packProgress(merged, IDENTITY_DOC_TYPES);
@@ -337,11 +424,14 @@
 
     return (
       '<div class="hh-pipe-insight is-' + tone + '">' +
-        '<div class="hh-pipe-insight-main">' +
-          '<div class="hh-pipe-insight-label">Next move</div>' +
-          '<p class="hh-pipe-insight-text">' + escapeHtml(title) + '</p>' +
-          (hint ? '<p class="hh-pipe-insight-hint">' + escapeHtml(hint) + '</p>' : '') +
-          actionHtml +
+        '<div class="hh-pipe-insight-head">' +
+          '<div class="hh-pipe-insight-main">' +
+            '<div class="hh-pipe-insight-label">Next move</div>' +
+            '<p class="hh-pipe-insight-text">' + escapeHtml(title) + '</p>' +
+            (hint ? '<p class="hh-pipe-insight-hint">' + escapeHtml(hint) + '</p>' : '') +
+            actionHtml +
+          '</div>' +
+          buildReachCard(c) +
         '</div>' +
         chipsHtml +
       '</div>'
@@ -364,6 +454,7 @@
     const confirmLabel = options.confirmLabel || 'Confirm';
     const cancelLabel = options.cancelLabel || 'Cancel';
     const danger = options.danger !== false;
+    const hideCancel = !!options.hideCancel;
 
     return new Promise(function (resolve) {
       let backdrop = document.getElementById('hhConfirmModal');
@@ -393,6 +484,7 @@
       titleEl.textContent = title;
       msgEl.textContent = message;
       cancelBtn.textContent = cancelLabel;
+      cancelBtn.hidden = hideCancel;
       okBtn.textContent = confirmLabel;
       okBtn.className = 'hh-btn ' + (danger ? 'hh-btn-danger' : 'hh-btn-primary');
       backdrop.setAttribute('aria-labelledby', 'hhConfirmTitle');
@@ -665,6 +757,20 @@
     } catch (e) { /* ignore quota / private mode */ }
   }
 
+  function clearStoredListFilters() {
+    try {
+      sessionStorage.removeItem(LIST_FILTERS_KEY);
+    } catch (e) { /* ignore */ }
+  }
+
+  function hiringListHrefKeepDropdowns() {
+    const stored = readStoredListFilters() || {};
+    stored.q = '';
+    stored.page = 1;
+    writeStoredListFilters(stored);
+    return hiringListHref(stored);
+  }
+
   function listFiltersQuery(filters) {
     const qs = new URLSearchParams();
     if (filters.q) qs.set('q', filters.q);
@@ -699,13 +805,36 @@
     return out;
   }
 
+  function listPageNavigationType() {
+    try {
+      const entries = performance.getEntriesByType && performance.getEntriesByType('navigation');
+      const nav = entries && entries[0];
+      if (nav && nav.type) return nav.type;
+    } catch (e) { /* ignore */ }
+    try {
+      if (performance.navigation) {
+        if (performance.navigation.type === 1) return 'reload';
+        if (performance.navigation.type === 2) return 'back_forward';
+      }
+    } catch (e) { /* ignore */ }
+    return 'navigate';
+  }
+
   /* ── List page ─────────────────────────────────────────── */
   function initList() {
     const root = document.getElementById('hhListRoot');
     if (!root) return;
 
-    const fromUrl = parseListFiltersFromLocation();
-    const fromStore = readStoredListFilters() || {};
+    let fromUrl = parseListFiltersFromLocation();
+    let fromStore = readStoredListFilters() || {};
+    if (listPageNavigationType() === 'reload') {
+      clearStoredListFilters();
+      fromStore = {};
+      fromUrl = {};
+      if (window.history && window.history.replaceState && window.location.search) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
     const initial = Object.assign({
       q: '',
       status: 'all',
@@ -729,7 +858,7 @@
       trade_id: initial.trade_id ? String(initial.trade_id) : 'all',
       project_id: initial.project_id ? String(initial.project_id) : 'all',
       page: initial.page || 1,
-      perPage: 10,
+      perPage: document.documentElement.getAttribute('data-kynvera-snapshot') === '1' ? 50 : 10,
       pages: 1,
       count: 0,
     };
@@ -942,6 +1071,7 @@
           : '';
         const roleLine = [c.role, c.department].filter(Boolean).join(' · ') || '—';
         const isNotHired = pipeKey === 'not_hired' || !!c.is_not_hired;
+        const isOnHold = !isNotHired && (pipeKey === 'on_hold' || !!c.is_on_hold);
         const updatedLabel = formatUpdatedAtDubai(c.updated_at);
         const updatedHtml = updatedLabel
           ? '<time class="hh-row-updated" datetime="' + escapeHtml(c.updated_at || '') + '" title="Last updated (Dubai time)">' +
@@ -949,9 +1079,9 @@
             '</time>'
           : '<span class="hh-row-updated hh-row-updated-empty" aria-hidden="true"></span>';
         return (
-          '<a class="hh-row' + (isNotHired ? ' is-not-hired' : '') + '"' +
-            ' href="/hr/hiring/candidates/' + c.id + '"' +
-            (isNotHired ? ' title="Application has been closed"' : '') + '>' +
+          '<article class="hh-row' + (isNotHired ? ' is-not-hired' : (isOnHold ? ' is-on-hold' : '')) + '"' +
+            (isNotHired ? ' title="Application has been closed"' : (isOnHold ? ' title="Candidate is on hold"' : '')) + '>' +
+            '<a class="hh-row-link" href="/hr/hiring/candidates/' + c.id + '" aria-label="' + escapeHtml(c.full_name) + '"></a>' +
             '<div class="hh-avatar ' + avatarClass(c.full_name) + '">' + escapeHtml(c.initials || '?') + '</div>' +
             '<div class="hh-row-info">' +
               '<div class="hh-row-name">' + escapeHtml(c.full_name) +
@@ -977,7 +1107,7 @@
                 '<path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>' +
               '</svg>' +
             '</button>' +
-          '</a>'
+          '</article>'
         );
       }).join('');
     }
@@ -1183,11 +1313,12 @@
         return;
       }
 
-      const closedRow = e.target.closest('a.hh-row.is-not-hired');
+      const closedRow = e.target.closest('.hh-row.is-not-hired');
       if (!closedRow) return;
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       e.preventDefault();
-      const href = closedRow.getAttribute('href') || '';
+      const link = closedRow.querySelector('a.hh-row-link');
+      const href = (link && link.getAttribute('href')) || '';
       const idMatch = /\/candidates\/(\d+)/.exec(href);
       const id = idMatch ? parseInt(idMatch[1], 10) : 0;
       if (!id) return;
@@ -1800,6 +1931,26 @@
       let toolsHtml = '';
 
       const isOfferLetter = d.doc_type === 'offer_letter';
+      const linkedLetters = (candidateState && candidateState.linked_offer_letters) || [];
+      const offerChipHtml = !isOfferLetter ? '' : linkedLetters.map(function (L) {
+        const label = L.doc_kind_label || (L.doc_kind === 'letter_of_intent' ? 'Letter of intent' : 'Offer letter');
+        let bits = 'From Offer Letters · ' + label;
+        if (L.signed_back) bits += ' · signed back';
+        else if (L.received) bits += ' · received';
+        const viewKind = L.has_signed_file ? 'signed' : (L.has_scan_file ? 'scan' : '');
+        const viewAttr = viewKind
+          ? ' data-ol-file="' + L.id + '" data-kind="' + viewKind + '" data-filename="' +
+            escapeHtml((viewKind === 'signed' ? L.signed_filename : L.filename) || 'document') + '"'
+          : '';
+        return (
+          '<div class="hh-ol-chip-row">' +
+            '<a class="hh-ol-chip" href="/hr/hiring/offer-letters">' + escapeHtml(bits) + '</a>' +
+            (viewKind
+              ? '<button type="button" class="hh-doc-tool" ' + viewAttr + '>View file</button>'
+              : '') +
+          '</div>'
+        );
+      }).join('');
 
       if (!isOfferLetter) {
         if (locked) {
@@ -1899,7 +2050,7 @@
           '<div class="hh-doc-info">' +
             '<div class="hh-doc-label">' + escapeHtml(d.label || d.doc_type) + '</div>' +
             (isOfferLetter
-              ? '<div class="hh-doc-sub">Offer letter note</div>'
+              ? '<div class="hh-doc-sub">Offer letter note</div>' + offerChipHtml
               : (sub ? '<div class="hh-doc-sub">' + sub + '</div>' : '')) +
           '</div>' +
           (isOfferLetter
@@ -1916,10 +2067,39 @@
       );
     }
 
+    async function explainHiredProcessLock() {
+      await confirmDialog({
+        title: 'Already hired',
+        message: 'This person has already been hired, so Put on hold and Not hired are not enabled. Ask for approval if you need to use those options.',
+        confirmLabel: 'Got it',
+        hideCancel: true,
+        danger: false,
+      });
+    }
+
+    function restorePipelineSelect(status) {
+      const current = status || (candidateState && candidateState.pipeline_status) || 'candidate_employee';
+      const inline = document.getElementById('hhPipelineSelectInline');
+      const hidden = document.getElementById('hhPipelineSelect');
+      if (inline) inline.value = current;
+      if (hidden) hidden.value = current;
+    }
+
     async function setPipelineStatus(value) {
       const select = document.getElementById('hhPipelineSelect');
       const body = document.getElementById('hhPipelineBody');
       if (!value || !PIPELINE_LABELS[value]) return;
+
+      const currentStatus = (candidateState && candidateState.pipeline_status) || '';
+      const fileClosed = currentStatus === 'candidate_employee' ||
+        (!!candidateState && !!candidateState.file_closed &&
+          currentStatus !== 'on_hold' && currentStatus !== 'not_hired');
+      if (fileClosed && (value === 'on_hold' || value === 'not_hired')) {
+        restorePipelineSelect(currentStatus);
+        await explainHiredProcessLock();
+        return;
+      }
+
       if (select) select.disabled = true;
       if (body) body.classList.add('is-busy');
 
@@ -2011,7 +2191,6 @@
       const isFileClosed = !isFrozen && (pipeKey === 'candidate_employee' || !!c.file_closed);
       // Process states freeze the pipeline — resume/reopen via Jump to / stepper, no advance.
       const nextKey = isFrozen ? null : nextPipelineStatus(pipeKey);
-      const nextLabel = nextKey ? (PIPELINE_LABELS[nextKey] || nextKey) : null;
       const visaUnlocked = !!c.visa_docs_unlocked;
 
       const daysInStage = (function () {
@@ -2056,27 +2235,26 @@
         };
       })();
 
-      const contactStat = (function () {
-        const phone = (c.phone || '').trim();
-        const email = (c.email || '').trim();
-        if (phone) {
-          return {
-            value: phone,
-            title: email ? (phone + ' · ' + email) : phone,
-            empty: false,
-          };
+      const extraDetailStat = (function () {
+        if (isNotHired) {
+          return { value: 'Not hired', label: 'Status', title: '', cls: '' };
         }
-        if (email) {
+        if (isOnHold) {
+          return { value: 'On hold', label: 'Status', title: '', cls: '' };
+        }
+        if (isFileClosed || !nextKey) {
           return {
-            value: email,
-            title: email,
-            empty: false,
+            value: PIPELINE_LABELS.candidate_employee || 'Candidate employed',
+            label: 'Arrived',
+            title: '',
+            cls: '',
           };
         }
         return {
-          value: '—',
-          title: 'No phone or email on file',
-          empty: true,
+          value: PIPELINE_LABELS[nextKey] || nextKey,
+          label: 'Next step',
+          title: '',
+          cls: ' is-next',
         };
       })();
 
@@ -2089,11 +2267,13 @@
           }).join('') +
         '</optgroup>' +
         '<optgroup label="Process">' +
-          '<option value="on_hold"' + (isOnHold ? ' selected' : '') + '>' +
-            'On hold — pause process' +
+          '<option value="on_hold"' + (isOnHold ? ' selected' : '') +
+            (isFileClosed ? ' disabled' : '') + '>' +
+            (isFileClosed ? 'On hold — not enabled (already hired)' : 'On hold — pause process') +
           '</option>' +
-          '<option value="not_hired"' + (isNotHired ? ' selected' : '') + '>' +
-            'Not hired — did not proceed' +
+          '<option value="not_hired"' + (isNotHired ? ' selected' : '') +
+            (isFileClosed ? ' disabled' : '') + '>' +
+            (isFileClosed ? 'Not hired — not enabled (already hired)' : 'Not hired — did not proceed') +
           '</option>' +
         '</optgroup>';
 
@@ -2132,17 +2312,27 @@
                 : ('Stage ' + (currentIdx + 1) + ' of ' + steps.length)));
       const processBtns = isFrozen
         ? ''
-        : ('<button type="button" class="hh-btn hh-btn-ghost hh-btn-sm hh-pipeline-hold-btn" data-pipeline="on_hold" title="Pause the whole hiring process">' +
+        : ('<button type="button" class="hh-btn hh-btn-ghost hh-btn-sm hh-pipeline-hold-btn' +
+            (isFileClosed ? ' is-locked' : '') + '"' +
+            ' data-pipeline="on_hold"' +
+            (isFileClosed ? ' aria-disabled="true"' : '') +
+            ' title="' + (isFileClosed
+              ? 'Already hired — Put on hold is not enabled'
+              : 'Pause the whole hiring process') + '">' +
             'Put on hold' +
           '</button>' +
-          '<button type="button" class="hh-btn hh-btn-ghost hh-btn-sm hh-pipeline-nothired-btn" data-pipeline="not_hired" title="Mark this candidate as not hired">' +
+          '<button type="button" class="hh-btn hh-btn-ghost hh-btn-sm hh-pipeline-nothired-btn' +
+            (isFileClosed ? ' is-locked' : '') + '"' +
+            ' data-pipeline="not_hired"' +
+            (isFileClosed ? ' aria-disabled="true"' : '') +
+            ' title="' + (isFileClosed
+              ? 'Already hired — Not hired is not enabled'
+              : 'Mark this candidate as not hired') + '">' +
             'Not hired' +
           '</button>');
       const displayTitle = isNotHired ? 'Not hired' : (isOnHold ? 'On hold' : pipeLabel);
-      const advanceHtml = nextKey
-        ? '<button type="button" class="hh-btn hh-btn-primary hh-btn-sm" data-pipeline="' + escapeHtml(nextKey) + '">' +
-            'Advance to ' + escapeHtml(PIPELINE_SHORT[nextKey] || nextLabel) +
-          '</button>'
+      const finalStatusHtml = nextKey
+        ? ''
         : (isNotHired
             ? '<span class="hh-pipeline-final hh-pipeline-final-nothired">Jump to a stage to reopen</span>'
             : (isOnHold
@@ -2172,7 +2362,7 @@
               '</select>' +
             '</label>' +
             processBtns +
-            advanceHtml +
+            finalStatusHtml +
           '</div>' +
         '</div>' +
 
@@ -2210,10 +2400,10 @@
               '<span class="hh-pipe-stat-val">' + escapeHtml(hireTypeStat.value) + '</span>' +
               '<span class="hh-pipe-stat-lbl">Hire type</span>' +
             '</div>' +
-            '<div class="hh-pipe-stat"' +
-              (contactStat.title ? ' title="' + escapeHtml(contactStat.title) + '"' : '') + '>' +
-              '<span class="hh-pipe-stat-val">' + escapeHtml(contactStat.value) + '</span>' +
-              '<span class="hh-pipe-stat-lbl">Contact</span>' +
+            '<div class="hh-pipe-stat' + extraDetailStat.cls + '"' +
+              (extraDetailStat.title ? ' title="' + escapeHtml(extraDetailStat.title) + '"' : '') + '>' +
+              '<span class="hh-pipe-stat-val">' + escapeHtml(extraDetailStat.value) + '</span>' +
+              '<span class="hh-pipe-stat-lbl">' + escapeHtml(extraDetailStat.label) + '</span>' +
             '</div>' +
           '</div>' +
         '</div>';
@@ -2223,6 +2413,7 @@
       body.classList.toggle('is-not-hired', isNotHired);
       bindPipelineBody(body);
       bindCommentsEditors();
+      bindReachCard();
 
       if (select) {
         select.value = pipeKey;
@@ -2343,10 +2534,14 @@
       const comments = (c.comments || '').trim();
       return (
         '<div class="hh-comments' + (comments ? ' has-comment' : '') + '" id="hhCommentsBlock">' +
-          '<textarea class="hh-comments-input" id="hhCommentsInput" rows="1" maxlength="4000" ' +
-            'placeholder="Add a note…" aria-label="Comments">' +
-            escapeHtml(comments) +
-          '</textarea>' +
+          '<div class="hh-comments-row">' +
+            '<textarea class="hh-comments-input" id="hhCommentsInput" rows="1" maxlength="4000" ' +
+              'placeholder="Add a note…" aria-label="Comments">' +
+              escapeHtml(comments) +
+            '</textarea>' +
+            '<button type="button" class="hh-comments-save" id="hhCommentsSave" hidden ' +
+              'title="Save comment" aria-label="Save comment" aria-live="polite">Save</button>' +
+          '</div>' +
         '</div>'
       );
     }
@@ -2478,16 +2673,80 @@
       });
     }
 
+    function bindReachCard() {
+      const form = document.getElementById('hhReachPhoneForm');
+      const input = document.getElementById('hhReachPhone');
+      if (!form || !input) return;
+      const submitBtn = form.querySelector('button[type="submit"]');
+      let saving = false;
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const value = (input.value || '').trim();
+        if (!value) {
+          input.focus();
+          return;
+        }
+        if (saving) return;
+        saving = true;
+        input.disabled = true;
+        if (submitBtn) submitBtn.disabled = true;
+        try {
+          const data = await api('/hr/api/hiring/candidates/' + candidateId, {
+            method: 'PATCH',
+            json: { phone: value },
+          });
+          render(applyCandidate(data.candidate, { phone: value }));
+          toast('Phone number saved');
+        } catch (err) {
+          toast(err.message, true);
+          saving = false;
+          input.disabled = false;
+          if (submitBtn) submitBtn.disabled = false;
+          input.focus();
+        }
+      });
+    }
+
     function bindCommentsEditors() {
       const block = document.getElementById('hhCommentsBlock');
       const input = document.getElementById('hhCommentsInput');
+      const saveBtn = document.getElementById('hhCommentsSave');
       if (!block || !input) return;
 
       let lastSaved = (input.value || '').trim();
       let saving = false;
+      let savedTimer = null;
 
       function syncHasComment(value) {
         block.classList.toggle('has-comment', !!value);
+      }
+
+      function setSaveUi(state) {
+        if (!saveBtn) return;
+        if (savedTimer) {
+          clearTimeout(savedTimer);
+          savedTimer = null;
+        }
+        block.classList.toggle('is-dirty', state === 'dirty');
+        block.classList.toggle('is-saving', state === 'saving');
+        block.classList.toggle('is-saved', state === 'saved');
+        saveBtn.classList.toggle('is-dirty', state === 'dirty');
+        saveBtn.classList.toggle('is-saved', state === 'saved');
+        saveBtn.hidden = state === 'idle';
+        saveBtn.disabled = state === 'saving' || state === 'saved';
+        if (state === 'saving') {
+          saveBtn.textContent = 'Saving…';
+        } else if (state === 'saved') {
+          saveBtn.textContent = 'Saved';
+          savedTimer = setTimeout(function () {
+            savedTimer = null;
+            const dirty = (input.value || '').trim() !== lastSaved;
+            setSaveUi(dirty ? 'dirty' : 'idle');
+          }, 1400);
+        } else {
+          saveBtn.textContent = 'Save';
+        }
       }
 
       function fitSize() {
@@ -2497,10 +2756,10 @@
         const noteSlot = block.closest('.hh-pipeline-note');
         const hostW = (noteSlot || block.parentElement || block).clientWidth || 0;
 
-        // In the pipeline note slot, fill available width and grow with content.
+        // Pipeline note slot: CSS flex sizes the field beside Save.
         // Elsewhere, keep a compact text-sized width.
         if (noteSlot) {
-          input.style.width = '100%';
+          input.style.removeProperty('width');
         } else {
           const padX = (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
           const maxW = Math.min(420, Math.max(160, hostW || 420));
@@ -2534,13 +2793,16 @@
 
       async function saveIfChanged() {
         const value = (input.value || '').trim();
-        if (value === lastSaved || saving) {
+        if (saving) return;
+        if (value === lastSaved) {
           syncHasComment(lastSaved);
           input.value = lastSaved;
+          setSaveUi('idle');
           fitSize();
           return;
         }
         saving = true;
+        setSaveUi('saving');
         input.disabled = true;
         try {
           const data = await api('/hr/api/hiring/candidates/' + candidateId, {
@@ -2550,10 +2812,11 @@
           lastSaved = value;
           syncHasComment(value);
           applyCandidate(data.candidate, { comments: value });
-          toast(value ? 'Comment saved' : 'Comment cleared');
+          setSaveUi('saved');
         } catch (err) {
           input.value = lastSaved;
           syncHasComment(lastSaved);
+          setSaveUi((input.value || '').trim() !== lastSaved ? 'dirty' : 'idle');
           toast(err.message, true);
         } finally {
           saving = false;
@@ -2562,25 +2825,39 @@
         }
       }
 
-      input.addEventListener('blur', function () {
+      if (saveBtn) {
+        saveBtn.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+        });
+        saveBtn.addEventListener('click', function () {
+          saveIfChanged();
+        });
+      }
+
+      block.addEventListener('focusout', function (e) {
+        if (block.contains(e.relatedTarget)) return;
+        if ((input.value || '').trim() === lastSaved) return;
         saveIfChanged();
       });
 
       input.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
-          input.blur();
+          saveIfChanged();
         } else if (e.key === 'Escape') {
           e.preventDefault();
           input.value = lastSaved;
           syncHasComment(lastSaved);
+          setSaveUi('idle');
           fitSize();
           input.blur();
         }
       });
 
       input.addEventListener('input', function () {
-        syncHasComment((input.value || '').trim());
+        const value = (input.value || '').trim();
+        syncHasComment(value);
+        setSaveUi(value !== lastSaved ? 'dirty' : 'idle');
         fitSize();
       });
 
@@ -2592,6 +2869,7 @@
         window.addEventListener('resize', fitSize);
       }
 
+      setSaveUi((input.value || '').trim() !== lastSaved ? 'dirty' : 'idle');
       fitSize();
     }
 
@@ -2790,7 +3068,6 @@
       }
       const contacts = [];
       if (c.email) contacts.push(escapeHtml(c.email));
-      if (c.phone) contacts.push(escapeHtml(c.phone));
       const pencilSvg =
         '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" width="15" height="15" aria-hidden="true">' +
           '<path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13L2 21l1.05-2.935a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Z"/>' +
@@ -2957,6 +3234,36 @@
           toast(err.message, true);
         } finally {
           markReceivedBtn.disabled = false;
+        }
+        return;
+      }
+
+      const olFileBtn = e.target.closest('[data-ol-file]');
+      if (olFileBtn) {
+        const id = olFileBtn.getAttribute('data-ol-file');
+        const kind = olFileBtn.getAttribute('data-kind') || 'scan';
+        const filename = olFileBtn.getAttribute('data-filename') || 'document';
+        olFileBtn.disabled = true;
+        try {
+          const res = await fetch(
+            '/hr/api/hiring/offer-letters/' + id + '/file?kind=' + encodeURIComponent(kind),
+            { headers: { Authorization: 'Bearer ' + token() } }
+          );
+          if (!res.ok) throw new Error('Could not open file');
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          a.target = '_blank';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+        } catch (err) {
+          toast(err.message, true);
+        } finally {
+          olFileBtn.disabled = false;
         }
         return;
       }
@@ -3173,7 +3480,7 @@
       try {
         await api('/hr/api/hiring/candidates/' + candidateId, { method: 'DELETE' });
         toast('Candidate deleted');
-        window.location.href = hiringListHref();
+        window.location.href = hiringListHrefKeepDropdowns();
       } catch (err) {
         toast(err.message, true);
         if (deleteBtn) deleteBtn.disabled = false;
@@ -3182,10 +3489,13 @@
 
     const backLink = document.querySelector('a.hh-back');
     if (backLink) {
-      backLink.setAttribute('href', hiringListHref());
-      // Prefer a real navigation to the list so rows refetch; history.back()
-      // can restore a stale cached dashboard.
+      backLink.setAttribute('href', hiringListHrefKeepDropdowns());
+      // Keep stage / vacancy / trade / project filters. Clear search only.
+      // Avoid history.back() so a typed search (e.g. "sanj") is not restored.
       backLink.setAttribute('data-no-history-back', '1');
+      backLink.addEventListener('click', function () {
+        backLink.setAttribute('href', hiringListHrefKeepDropdowns());
+      });
     }
 
     const initialMarkAll = document.getElementById('hhMarkAllSubmitted');

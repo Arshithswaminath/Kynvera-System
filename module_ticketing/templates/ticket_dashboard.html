@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=21">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <style>
     /* ── Page body ── */
@@ -33,18 +33,18 @@
 {% include 'partials/tkt_sidebar.html' with context %}
 <div class="tkt-dh-main">
 {% set tkt_topbar_title = 'Dashboard' %}
+{% set tkt_hide_module_back = true %}
 {% include 'partials/tkt_topbar.html' with context %}
 <div class="tkt-content">
 
 <div class="tkt-body">
 
-    <!-- ── Page intro ── -->
-    <div class="tkt-page-header">
-      <div>
-        <h1 class="tkt-page-title" style="font-size:1.45rem;">Dashboard</h1>
-        <p class="tkt-page-subtitle">Overview of your facility operations</p>
+    <div class="tkt-dash-head">
+      <div class="tkt-dash-copy">
+        <p class="tkt-dash-kicker">Work orders</p>
+        <p class="tkt-page-subtitle">Live queue — the same totals as the sidebar. Open a card to jump to the list.</p>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="tkt-dash-actions">
         <div class="tkt-date-range" id="tktDateRange">
           <button type="button" class="tkt-date-range-trigger" id="tktDateRangeTrigger"
                   aria-haspopup="true" aria-expanded="false" aria-controls="tktDateRangeMenu">
@@ -59,104 +59,125 @@
             {% endfor %}
           </div>
         </div>
-        <a href="{{ url_for('ticketing.ticket_list') }}" class="tkt-btn tkt-btn-outline">View All Tickets</a>
+        {% include 'partials/tkt_email_template_btn.html' %}
+        <a href="{{ url_for('ticketing.ticket_list') }}" class="tkt-btn tkt-btn-outline">All work orders</a>
         <a href="{{ url_for('ticketing.new_ticket_form') }}" class="tkt-btn tkt-btn-primary">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-          New Work Order
+          New work order
         </a>
       </div>
     </div>
 
-    <!-- ── Stat cards ── -->
-    {% macro tkt_trend(pct, compare_label) %}
-      {% if pct is none %}
-        <div class="tkt-stat-trend">vs {{ compare_label or 'previous period' }}</div>
-      {% elif pct >= 0 %}
-        <div class="tkt-stat-trend up">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941"/></svg>
-          +{{ pct }}% vs {{ compare_label }}
-        </div>
-      {% else %}
-        <div class="tkt-stat-trend down">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6 9 12.75l4.306-4.306a11.95 11.95 0 0 0 5.814 5.518l2.74 1.22m0 0-5.94 2.281m5.94-2.28-2.28-5.941"/></svg>
-          {{ pct }}% vs {{ compare_label }}
-        </div>
-      {% endif %}
-    {% endmacro %}
+    {% if stats.total == 0 %}
+    <div class="tkt-dash-empty" role="status">
+      <div class="tkt-dash-empty-copy">
+        <strong>No work orders yet</strong>
+        <p>Create the first ticket to start tracking jobs.</p>
+      </div>
+      <a href="{{ url_for('ticketing.new_ticket_form') }}" class="tkt-btn tkt-btn-primary">New work order</a>
+    </div>
+    {% endif %}
+
+    <!-- ── Stat cards (live queue, same counts as the sidebar) ── -->
+    {% set tkt_q = stats.total or 0 %}
+    {% set tkt_other_raw = tkt_q - (stats.open or 0) - (stats.in_progress or 0) - (stats.closed or 0) %}
+    {% set tkt_other = tkt_other_raw if tkt_other_raw > 0 else 0 %}
+    {% set tkt_open_pct = ((stats.open * 100 / tkt_q) | round | int) if tkt_q else 0 %}
+    {% set tkt_assigned_pct = ((stats.assigned * 100 / tkt_q) | round | int) if tkt_q else 0 %}
+    {% set tkt_closed_pct = stats.closed_pct if tkt_q else 0 %}
     <div class="tkt-stats-grid">
 
       <a href="{{ url_for('ticketing.ticket_list') }}"
-         class="tkt-stat-card tkt-sb-anim" aria-label="View all tickets">
-        <div class="tkt-stat-head">
-          <span class="tkt-stat-icon tkt-stat-icon--coral" aria-hidden="true">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6.878V6a2.25 2.25 0 0 1 2.25-2.25h7.5A2.25 2.25 0 0 1 18 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 0 0 4.5 8.25v10.5A2.25 2.25 0 0 0 6.75 21h10.5a2.25 2.25 0 0 0 2.25-2.25V8.25a2.25 2.25 0 0 0-1.5-2.122M8.25 9.75h7.5m-7.5 3h7.5m-7.5 3h4.5"/>
-            </svg>
+         class="tkt-stat-card tkt-stat-card--coral" aria-label="View all tickets">
+        <span class="tkt-stat-panel">
+          <span class="tkt-stat-label">All work orders</span>
+          <span class="tkt-stat-num">{{ stats.total }}</span>
+          <span class="tkt-stat-desc">{% if date_range != 'all_time' %}{{ period_stats.total }} opened {{ date_range_label | lower }}{% else %}Every ticket in the live queue{% endif %}</span>
+          <span class="tkt-stat-chips">
+            <span class="tkt-stat-chip">Live queue</span>
+            {% if stats.critical %}<span class="tkt-stat-chip">{{ stats.critical }} critical</span>{% endif %}
           </span>
-          <div>
-            <div class="tkt-stat-num">{{ period_stats.total }}</div>
-            <div class="tkt-stat-label">Total Tickets</div>
-          </div>
-        </div>
-        {{ tkt_trend(period_stats.trend.total, trend_compare_label) }}
+          {% if tkt_q %}
+          <span class="tkt-stat-mix" aria-hidden="true">
+            <span class="tkt-stat-mix-seg tkt-stat-mix-seg--amber" style="flex: {{ stats.open or 0 }}"></span>
+            <span class="tkt-stat-mix-seg tkt-stat-mix-seg--sky" style="flex: {{ stats.in_progress or 0 }}"></span>
+            <span class="tkt-stat-mix-seg tkt-stat-mix-seg--green" style="flex: {{ stats.closed or 0 }}"></span>
+            {% if tkt_other %}<span class="tkt-stat-mix-seg tkt-stat-mix-seg--other" style="flex: {{ tkt_other }}"></span>{% endif %}
+          </span>
+          {% endif %}
+        </span>
+        <span class="tkt-stat-foot">
+          <span class="tkt-stat-explore">Explore</span>
+          <span class="tkt-stat-arrow" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+          </span>
+        </span>
       </a>
 
       <a href="{{ url_for('ticketing.ticket_list', status='open,pending_supervisor') }}"
-         class="tkt-stat-card tkt-sb-anim" style="animation-delay:.05s;"
-         aria-label="View open tickets">
-        <div class="tkt-stat-head">
-          <span class="tkt-stat-icon tkt-stat-icon--amber" aria-hidden="true">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H6.91a2.25 2.25 0 0 0-2.15 1.588L2.35 13.177a2.25 2.25 0 0 0-.1.661Z"/>
-            </svg>
+         class="tkt-stat-card tkt-stat-card--amber" aria-label="View open tickets">
+        <span class="tkt-stat-panel">
+          <span class="tkt-stat-label">Open</span>
+          <span class="tkt-stat-num">{{ stats.open }}</span>
+          <span class="tkt-stat-desc">Unassigned or awaiting action</span>
+          <span class="tkt-stat-chips">
+            <span class="tkt-stat-chip">Waiting</span>
+            {% if tkt_q %}<span class="tkt-stat-chip">{{ tkt_open_pct }}% of queue</span>{% endif %}
           </span>
-          <div>
-            <div class="tkt-stat-num">{{ period_stats.open }}</div>
-            <div class="tkt-stat-label">Open Tickets</div>
-          </div>
-        </div>
-        {{ tkt_trend(period_stats.trend.open, trend_compare_label) }}
+          <span class="tkt-stat-bar" aria-hidden="true"><span class="tkt-stat-bar-fill" style="width: {{ tkt_open_pct }}%"></span></span>
+        </span>
+        <span class="tkt-stat-foot">
+          <span class="tkt-stat-explore">Explore</span>
+          <span class="tkt-stat-arrow" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+          </span>
+        </span>
       </a>
 
-      <a href="{{ url_for('ticketing.ticket_list', status='assigned,site_attended,work_started,in_progress,pending_parts') }}"
-         class="tkt-stat-card tkt-sb-anim" style="animation-delay:.1s;"
-         aria-label="View in-progress tickets">
-        <div class="tkt-stat-head">
-          <span class="tkt-stat-icon tkt-stat-icon--sky" aria-hidden="true">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
-            </svg>
+      <a href="{{ url_for('ticketing.ticket_list', status='assigned') }}"
+         class="tkt-stat-card tkt-stat-card--sky" aria-label="View assigned tickets">
+        <span class="tkt-stat-panel">
+          <span class="tkt-stat-label">Assigned</span>
+          <span class="tkt-stat-num">{{ stats.assigned }}</span>
+          <span class="tkt-stat-desc">With a technician</span>
+          <span class="tkt-stat-chips">
+            <span class="tkt-stat-chip">Active</span>
+            {% if tkt_q %}<span class="tkt-stat-chip">{{ tkt_assigned_pct }}% of queue</span>{% endif %}
           </span>
-          <div>
-            <div class="tkt-stat-num">{{ period_stats.in_progress }}</div>
-            <div class="tkt-stat-label">In Progress</div>
-          </div>
-        </div>
-        {{ tkt_trend(period_stats.trend.in_progress, trend_compare_label) }}
+          <span class="tkt-stat-bar" aria-hidden="true"><span class="tkt-stat-bar-fill" style="width: {{ tkt_assigned_pct }}%"></span></span>
+        </span>
+        <span class="tkt-stat-foot">
+          <span class="tkt-stat-explore">Explore</span>
+          <span class="tkt-stat-arrow" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+          </span>
+        </span>
       </a>
 
-      <a href="{{ url_for('ticketing.ticket_list', status='resolved,closed') }}"
-         class="tkt-stat-card tkt-sb-anim" style="animation-delay:.15s;"
-         aria-label="View resolved tickets">
-        <div class="tkt-stat-head">
-          <span class="tkt-stat-icon tkt-stat-icon--green" aria-hidden="true">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z"/>
-            </svg>
+      <a href="{{ url_for('ticketing.ticket_list', status='closed') }}"
+         class="tkt-stat-card tkt-stat-card--green" aria-label="View closed tickets">
+        <span class="tkt-stat-panel">
+          <span class="tkt-stat-label">Closed</span>
+          <span class="tkt-stat-num">{{ stats.closed }}</span>
+          <span class="tkt-stat-desc">Verified and signed off</span>
+          <span class="tkt-stat-chips">
+            <span class="tkt-stat-chip">Signed off</span>
+            {% if tkt_q %}<span class="tkt-stat-chip">{{ tkt_closed_pct }}% of queue</span>{% endif %}
           </span>
-          <div>
-            <div class="tkt-stat-num">{{ period_stats.resolved }}</div>
-            <div class="tkt-stat-label">Resolved</div>
-          </div>
-        </div>
-        {{ tkt_trend(period_stats.trend.resolved, trend_compare_label) }}
+          <span class="tkt-stat-bar" aria-hidden="true"><span class="tkt-stat-bar-fill" style="width: {{ tkt_closed_pct }}%"></span></span>
+        </span>
+        <span class="tkt-stat-foot">
+          <span class="tkt-stat-explore">Explore</span>
+          <span class="tkt-stat-arrow" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+          </span>
+        </span>
       </a>
 
     </div>
 
-    <!-- ── Modules ── -->
     <div class="tkt-modules-head">
-      <h2>Modules</h2>
+      <h2>Shortcuts</h2>
     </div>
     <div class="tkt-modules-grid">
 
@@ -164,8 +185,8 @@
         <span class="tkt-module-icon tkt-stat-icon--coral" aria-hidden="true">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z"/></svg>
         </span>
-        <div class="tkt-module-title">Tickets</div>
-        <div class="tkt-module-desc">Create, view &amp; manage facility tickets</div>
+        <div class="tkt-module-title">Work orders</div>
+        <div class="tkt-module-desc">Create, view &amp; manage facility work orders</div>
       </a>
 
       <a href="{{ url_for('assets_bp.assets_dashboard') }}" class="tkt-module-card">
@@ -307,5 +328,6 @@
     });
   });
 </script>
+{% include 'partials/tkt_email_template_modal.html' %}
 </body>
 </html>

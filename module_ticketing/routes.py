@@ -13,6 +13,7 @@ import logging
 import tempfile
 import requests
 from email.utils import parseaddr
+from urllib.parse import quote
 from pathlib import Path
 from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal
@@ -138,6 +139,27 @@ _IN_PROGRESS_QUEUE_STATUSES = frozenset({
     # legacy
     'in_progress', 'pending_parts',
 })
+
+# List-page titles for sidebar / dashboard status URLs (exact query string).
+_LIST_TITLE_BY_STATUS = {
+    '': 'All work orders',
+    'open,pending_supervisor': 'Open',
+    'assigned': 'Assigned',
+    'on_hold': 'On Hold',
+    'work_completed,verification,pending_verification': 'Needs Verification',
+    'closed': 'Closed',
+    'cancelled': 'Cancelled',
+    'provider_closed': 'Pending Ops',
+    'assigned,site_attended,work_started,in_progress,pending_parts': 'In progress',
+}
+
+
+def _ticket_list_title(status_filter: str) -> str:
+    if status_filter in _LIST_TITLE_BY_STATUS:
+        return _LIST_TITLE_BY_STATUS[status_filter]
+    if status_filter and ',' not in status_filter:
+        return _STATUS_LABELS.get(status_filter, 'All work orders')
+    return 'All work orders'
 
 # Statuses at or beyond "Work Started" — the cost module (manpower/materials) only
 # unlocks once the technician has actually begun work on site, and locks again once
@@ -412,29 +434,76 @@ def _migrate_ticket_property_columns(app):
 EMAIL_INTAKE_USERNAME = 'email_intake'
 EMAIL_INTAKE_EMAIL = 'email-intake@injaaz.system'
 
+DEFAULT_TICKET_INTAKE_EMAIL = 'support@kynvera.store'
+INTAKE_SUBJECT_TEMPLATE = '[Project Name] Category - Priority - Short title'
+INTAKE_BODY_TEMPLATE = (
+    'Property: Tower A\n'
+    'Zone: Ground Floor\n'
+    'Unit: Shop 4\n'
+    '\n'
+    'Describe the issue here in as much detail as possible. Attach photos to the email if you have any.'
+)
+INTAKE_EXAMPLE_SUBJECT = '[Tower A Residential] Plumbing - High - Leaking pipe under sink'
+INTAKE_EXAMPLE_BODY = (
+    'Property: Tower A\n'
+    'Zone: Ground Floor\n'
+    'Unit: Shop 4\n'
+    '\n'
+    'There is a leaking pipe under the kitchen sink, water pooling on the floor.\n'
+    'Attached two photos.'
+)
 
-def _ensure_email_intake_user(app):
-    """Create the system 'Email Intake' account used as reporter/uploader for draft
-    tickets whose sender email doesn't match any registered User."""
-    with app.app_context():
-        try:
-            if User.query.filter_by(username=EMAIL_INTAKE_USERNAME).first():
-                return
-            u = User(
-                username=EMAIL_INTAKE_USERNAME,
-                email=EMAIL_INTAKE_EMAIL,
-                full_name='Email Intake (System)',
-                role='user',
-                is_active=True,
-                access_ticketing=True,
-            )
-            u.set_password(uuid.uuid4().hex)
-            db.session.add(u)
-            db.session.commit()
-            logger.info('Created system "Email Intake" user for inbound email drafts')
-        except Exception as exc:
-            db.session.rollback()
-            logger.warning('Could not ensure Email Intake system user: %s', exc)
+
+def _ticket_intake_email():
+    """Public mailbox requesters send to. Override with TICKET_INTAKE_EMAIL."""
+    return (
+        (current_app.config.get('TICKET_INTAKE_EMAIL') or '').strip()
+        or (os.environ.get('TICKET_INTAKE_EMAIL') or '').strip()
+        or DEFAULT_TICKET_INTAKE_EMAIL
+    )
+
+
+def _ticket_intake_template_ctx():
+    email = _ticket_intake_email()
+    subject = INTAKE_SUBJECT_TEMPLATE
+    body = INTAKE_BODY_TEMPLATE
+    return {
+        'intake_email': email,
+        'intake_subject_template': subject,
+        'intake_body_template': body,
+        'intake_example_subject': INTAKE_EXAMPLE_SUBJECT,
+        'intake_example_body': INTAKE_EXAMPLE_BODY,
+        'intake_mailto': f'mailto:{email}?subject={quote(subject)}&body={quote(body)}',
+        'intake_copy_text': f'To: {email}\nSubject: {subject}\n\n{body}',
+    }
+
+
+@ticketing_bp.context_processor
+def _inject_ticket_intake_template():
+    return _ticket_intake_template_ctx()
+
+
+def _ensure_email_intake_user():
+    """Create the system Email Intake account only when inbound mail needs a reporter.
+
+    Must not run at app startup — that puts a fake user on System users.
+    """
+    existing = User.query.filter_by(username=EMAIL_INTAKE_USERNAME).first()
+    if existing:
+        return existing
+    u = User(
+        username=EMAIL_INTAKE_USERNAME,
+        email=EMAIL_INTAKE_EMAIL,
+        full_name='Email Intake (System)',
+        role='user',
+        is_active=True,
+        access_ticketing=True,
+    )
+    u.set_password(uuid.uuid4().hex)
+    db.session.add(u)
+    db.session.flush()
+    logger.info('Created system "Email Intake" user for inbound email drafts')
+    return u
 
 
 def _email_intake_user() -> 'User':
@@ -447,7 +516,6 @@ def _on_register(state):
     _migrate_ticket_columns(state.app)
     _migrate_ticket_project_columns(state.app)
     _migrate_ticket_property_columns(state.app)
-    _ensure_email_intake_user(state.app)
     with state.app.app_context():
         try:
             db.create_all()
@@ -1058,14 +1126,14 @@ def _send_ticket_email(subject: str, recipients: list, body_html: str, attachmen
 # Dashboard
 # ---------------------------------------------------------------------------
 
-# Quick-select ranges for the dashboard's date-range control. `this_week` is
-# the default, matching the mockup's "vs last week" trend copy.
+# Quick-select ranges for opened-in-period footnotes on the dashboard.
+# Headline cards always use live (all-time) queue counts, matching the sidebar.
 DATE_RANGE_OPTIONS = [
+    {'key': 'all_time', 'label': 'All Time'},
     {'key': 'this_week', 'label': 'This Week'},
     {'key': 'last_7_days', 'label': 'Last 7 Days'},
     {'key': 'this_month', 'label': 'This Month'},
     {'key': 'last_30_days', 'label': 'Last 30 Days'},
-    {'key': 'all_time', 'label': 'All Time'},
 ]
 _DATE_RANGE_KEYS = {opt['key'] for opt in DATE_RANGE_OPTIONS}
 _DATE_RANGE_COMPARE_LABEL = {
@@ -1144,6 +1212,7 @@ def dashboard():
         'can_view_drafts': can_view_drafts,
         'total': total_ct,
         'open': sum(1 for t in tickets_q if t.status in _OPEN_QUEUE_STATUSES),
+        'assigned': sum(1 for t in tickets_q if t.status == 'assigned'),
         'pending_supervisor': sum(1 for t in tickets_q if t.status == 'pending_supervisor'),
         'in_progress': sum(1 for t in tickets_q if t.status in _IN_PROGRESS_QUEUE_STATUSES),
         'pending_verification': sum(1 for t in tickets_q if t.status == 'pending_verification'),
@@ -1159,9 +1228,9 @@ def dashboard():
     }
 
     # Period-scoped headline stats + week-over-week trend (dashboard stat cards only)
-    date_range = request.args.get('range', 'this_week')
+    date_range = request.args.get('range', 'all_time')
     if date_range not in _DATE_RANGE_KEYS:
-        date_range = 'this_week'
+        date_range = 'all_time'
     period_start_gst, period_end_gst, prev_start_gst, prev_end_gst, date_range_label = \
         _dashboard_period_bounds(date_range)
 
@@ -1210,7 +1279,7 @@ def dashboard():
         'ticket_dashboard.html',
         user=user,
         stats=stats,
-        sidebar_stats=stats,
+        sidebar_stats=_get_sidebar_stats(user),
         period_stats=period_stats,
         date_range=date_range,
         date_range_label=date_range_label,
@@ -1283,6 +1352,7 @@ def ticket_list():
         priority_filter=priority_filter,
         project_filter=project_filter,
         search=search,
+        list_title=_ticket_list_title(status_filter),
         sidebar_stats=_get_sidebar_stats(user),
         active_page='ticketing',
     )
@@ -1725,7 +1795,7 @@ def _resolve_email_intake_reporter(from_email: str):
         u = User.query.filter(db.func.lower(User.email) == from_email.strip().lower()).first()
         if u and u.is_active:
             return u
-    return _email_intake_user()
+    return _ensure_email_intake_user()
 
 
 def _process_inbound_email_intake(intake: dict):
@@ -2181,6 +2251,18 @@ def discard_draft(ticket_id):
     return jsonify({'success': True})
 
 
+def _ticket_procurement_catalog_url(ticket):
+    """Property stock page in procurement for this ticket's site."""
+    from urllib.parse import quote
+    from module_procurement.service import find_property_for_ticket
+
+    row = find_property_for_ticket(ticket)
+    name = (row.name if row else '') or (getattr(ticket, 'property_name', None) or '').strip()
+    if not name:
+        return None
+    return '/procurement/property/' + quote(name, safe='')
+
+
 # ---------------------------------------------------------------------------
 # Detail view
 # ---------------------------------------------------------------------------
@@ -2203,11 +2285,14 @@ def ticket_detail(ticket_id):
 
     notes = ticket.notes.order_by(TicketNote.created_at.asc()).all()
     images = ticket.images.all()
-    materials = ticket.materials.all()
+    materials = sorted(
+        ticket.materials.all(),
+        key=lambda m: (m.created_at or datetime.min, m.id),
+        reverse=True,
+    )
     manpower_entries = ticket.manpower.all()
     sees_all = _ticketing_sees_all_tickets(user)
     supervisor_assignees = _supervisor_assignees_for_dropdown(ticket.assigned_to) if sees_all else []
-    procurement_materials = _get_procurement_materials()
 
     mat_total = sum(m.total_price or 0 for m in materials)
     mp_total  = sum(e.total_cost or 0 for e in manpower_entries)
@@ -2263,7 +2348,6 @@ def ticket_detail(ticket_id):
         mp_total=mp_total,
         supervisor_assignees=supervisor_assignees,
         ticketing_sees_all=sees_all,
-        procurement_materials=procurement_materials,
         user_is_supervisor=user_is_supervisor,
         worker_pick_list=worker_pick_list,
         supervisor_own_team=supervisor_own_team,
@@ -2280,6 +2364,7 @@ def ticket_detail(ticket_id):
         triage_parts=triage_parts,
         triage_tech_name=triage_tech_name,
         location_map=_ticket_location_map_payload(ticket),
+        procurement_catalog_url=_ticket_procurement_catalog_url(ticket),
     )
 
 
@@ -2846,18 +2931,39 @@ def add_material(ticket_id):
     except (TypeError, ValueError):
         return jsonify({'success': False, 'error': 'Invalid quantity or unit price'}), 400
 
-    mat = TicketMaterial(
-        ticket_id=ticket.id,
-        material_name=name,
-        quantity=qty,
-        unit=(data.get('unit') or '').strip() or None,
-        unit_price=unit_price,
-        total_price=round(qty * unit_price, 2),
-        from_procurement=bool(data.get('from_procurement', False)),
-        procurement_ref=(data.get('procurement_ref') or '').strip() or None,
-        notes=(data.get('notes') or '').strip() or None,
-    )
-    db.session.add(mat)
+    procurement_ref = (data.get('procurement_ref') or '').strip() or None
+    from_proc = bool(data.get('from_procurement', False)) or bool(procurement_ref)
+    if from_proc and procurement_ref:
+        from module_procurement import service as proc_svc
+        try:
+            mat = proc_svc.consume_on_ticket(
+                user=user,
+                ticket=ticket,
+                catalog_public_id=procurement_ref,
+                qty=qty,
+                unit_price=unit_price,
+                notes=(data.get('notes') or '').strip() or None,
+                uom=(data.get('unit') or '').strip() or None,
+                material_name=name,
+                stock_id=(data.get('stock_id') or '').strip() or None,
+                pool=(data.get('pool') or '').strip() or None,
+            )
+        except ValueError as exc:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(exc)}), 400
+    else:
+        mat = TicketMaterial(
+            ticket_id=ticket.id,
+            material_name=name,
+            quantity=qty,
+            unit=(data.get('unit') or '').strip() or None,
+            unit_price=unit_price,
+            total_price=round(qty * unit_price, 2),
+            from_procurement=False,
+            procurement_ref=None,
+            notes=(data.get('notes') or '').strip() or None,
+        )
+        db.session.add(mat)
     _recalc_total_cost(ticket)
     db.session.commit()
 
@@ -2892,29 +2998,49 @@ def add_materials_bulk(ticket_id):
         return jsonify({'success': False, 'error': 'items array required'}), 400
 
     added = []
-    for item in items:
-        name = (item.get('name') or '').strip()
-        if not name:
-            continue
-        try:
-            qty = float(item.get('quantity', 1))
-            unit_price = float(item.get('unit_price', 0))
-        except (TypeError, ValueError):
-            qty, unit_price = 1.0, 0.0
+    from module_procurement import service as proc_svc
+    try:
+        for item in items:
+            name = (item.get('name') or '').strip()
+            if not name:
+                continue
+            try:
+                qty = float(item.get('quantity', 1))
+                unit_price = float(item.get('unit_price', 0))
+            except (TypeError, ValueError):
+                qty, unit_price = 1.0, 0.0
 
-        mat = TicketMaterial(
-            ticket_id=ticket.id,
-            material_name=name,
-            quantity=qty,
-            unit=(item.get('uom') or item.get('unit') or '').strip() or None,
-            unit_price=unit_price,
-            total_price=round(qty * unit_price, 2),
-            from_procurement=True,
-            procurement_ref=(item.get('id') or '').strip() or None,
-            notes=(item.get('brand') or '').strip() or None,
-        )
-        db.session.add(mat)
-        added.append(mat)
+            catalog_id = (item.get('catalog_id') or item.get('id') or '').strip()
+            if catalog_id:
+                mat = proc_svc.consume_on_ticket(
+                    user=user,
+                    ticket=ticket,
+                    catalog_public_id=catalog_id,
+                    qty=qty,
+                    unit_price=unit_price,
+                    notes=(item.get('brand') or '').strip() or None,
+                    uom=(item.get('uom') or item.get('unit') or '').strip() or None,
+                    material_name=name,
+                    stock_id=(item.get('stock_id') or '').strip() or None,
+                    pool=(item.get('pool') or '').strip() or None,
+                )
+            else:
+                mat = TicketMaterial(
+                    ticket_id=ticket.id,
+                    material_name=name,
+                    quantity=qty,
+                    unit=(item.get('uom') or item.get('unit') or '').strip() or None,
+                    unit_price=unit_price,
+                    total_price=round(qty * unit_price, 2),
+                    from_procurement=True,
+                    procurement_ref=None,
+                    notes=(item.get('brand') or '').strip() or None,
+                )
+                db.session.add(mat)
+            added.append(mat)
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(exc)}), 400
 
     _recalc_total_cost(ticket)
     db.session.commit()
@@ -2947,7 +3073,8 @@ def delete_material(ticket_id, mat_id):
     if not mat or mat.ticket_id != ticket.id:
         abort(404)
 
-    db.session.delete(mat)
+    from module_procurement import service as proc_svc
+    proc_svc.restore_ticket_material(user=user, ticket_material=mat)
     _recalc_total_cost(ticket)
     db.session.commit()
     return jsonify({'success': True, 'total_cost': ticket.total_cost})
@@ -3852,6 +3979,23 @@ def download_invoice(ticket_id):
 # Procurement materials API (for autocomplete in forms)
 # ---------------------------------------------------------------------------
 
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/catalog-materials', methods=['GET'])
+@jwt_required()
+def ticket_catalog_materials_api(ticket_id):
+    """Site stock plus Shared store for the ticket Costs catalog picker."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    deny = _api_forbid_unless_ticket_visible(user, ticket)
+    if deny:
+        return deny
+    from module_procurement import service as proc_svc
+    payload = proc_svc.ticket_catalog_materials(ticket)
+    db.session.commit()
+    return jsonify({'success': True, **payload})
+
+
 @ticketing_bp.route('/api/procurement-materials', methods=['GET'])
 @jwt_required()
 def procurement_materials_api():
@@ -3890,13 +4034,27 @@ def _procurement_unit_price(v) -> float:
 
 
 def _get_procurement_materials() -> list:
-    """Fetch materials from both procurement_material and catalog_material submissions."""
+    """Fetch materials from the procurement catalog (rate cards) plus any leftover submissions."""
     try:
         from app.models import Submission
+        from module_procurement.models import ProcCatalogItem
         result = []
         seen_names = set()
 
-        # 1. Procurement department's material list
+        for item in ProcCatalogItem.query.order_by(ProcCatalogItem.name.asc()).all():
+            name = _procurement_text_field(item.name, '')
+            if name and name not in seen_names:
+                seen_names.add(name)
+                result.append({
+                    'id': _procurement_text_field(item.public_id, ''),
+                    'name': name,
+                    'unit': _procurement_text_field(item.uom or 'PCS'),
+                    'unit_price': _procurement_unit_price(item.unit_price or 0),
+                    'category': _procurement_text_field(item.department or 'General', 'General'),
+                    'brand': _procurement_text_field(item.brand or ''),
+                    'source': 'catalog' if item.is_rate_card else 'procurement',
+                })
+
         rows = Submission.query.filter_by(module_type='procurement_material').all()
         for r in rows:
             fd = r.form_data or {}
@@ -3914,7 +4072,6 @@ def _get_procurement_materials() -> list:
                     'source': 'procurement',
                 })
 
-        # 2. Catalog materials (HVAC, Cleaning, Electrical, Plumbing departments)
         catalog_rows = Submission.query.filter_by(module_type='catalog_material').all()
         for r in catalog_rows:
             fd = r.form_data or {}
@@ -4048,17 +4205,11 @@ def settings_page():
     user = _current_user()
     if not _has_access(user):
         abort(403)
-    intake_email = (
-        current_app.config.get('TICKET_INTAKE_EMAIL')
-        or os.environ.get('TICKET_INTAKE_EMAIL')
-        or 'tickets@intake.injaaz.com'
-    )
     return render_template(
         'ticket_settings.html',
         user=user,
         ticketing_can_manage_fault_catalog=_is_admin(user),
         ticketing_can_manage_locations=_is_admin(user),
-        intake_email=intake_email,
         sidebar_stats=_get_sidebar_stats(user),
         active_page='ticketing',
     )
@@ -4358,7 +4509,7 @@ def settings_list_projects():
     projects = (
         TicketProject.query.options(joinedload(TicketProject.bd_project))
         .filter_by(is_active=True)
-        .order_by(TicketProject.sort_order, TicketProject.name)
+        .order_by(TicketProject.name)
         .all()
     )
     standalone_count = TicketProperty.query.filter_by(project_id=None, is_active=True).count()

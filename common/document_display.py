@@ -74,8 +74,15 @@ def format_visit_date_label(visit_date: date | datetime | str | None) -> str | N
 
 INSPECTION_MODULE_TYPES = ("inspection", "hvac_mep", "civil", "cleaning")
 
-# QHSI / QHSE stays off pending queues and dashboard stats. Submitted Forms still lists them.
+    # QHSI / QHSE stays off pending queues and dashboard stats. Submitted Forms still lists them.
 HIDDEN_QHSI_MODULE_TYPES = frozenset({"qhsi_inspection", "qhsi_staff_compliance"})
+
+# Store-keeping rows live in dedicated procurement tables; they are not workflow documents.
+STOREKEEPING_MODULE_TYPES = frozenset({
+    "procurement_material",
+    "procurement_property",
+    "catalog_material",
+})
 
 
 def is_hidden_qhsi_module(module_type: str | None) -> bool:

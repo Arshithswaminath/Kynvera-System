@@ -1,11 +1,10 @@
-{% set fm_page_title = 'Scan asset QR' %}
+{% set fm_page_title = 'QR scan' %}
 {% set fm_topbar_title = 'QR scan' %}
 {% set fm_narrow = true %}
 {% include 'partials/fm_shell_start.html' %}
 
   <header class="fm-header">
     <div>
-      <h1>QR / asset lookup</h1>
       <p>Scan the asset QR — details appear on the camera</p>
     </div>
   </header>
@@ -87,11 +86,11 @@ function showOverlay(asset) {
   document.getElementById('scanAssetName').textContent = asset.name || 'Asset';
   const loc = locationLine(asset);
   document.getElementById('scanAssetSub').textContent =
-    [asset.asset_type || 'Equipment', loc].filter(Boolean).join(' · ');
+    [fmHumanLabel(asset.asset_type, 'Equipment'), loc].filter(Boolean).join(' · ');
   const status = asset.status || 'active';
   const health = asset.health_score != null ? ' · health ' + asset.health_score + '/100' : '';
   document.getElementById('scanAssetStatus').innerHTML =
-    '<span class="fm-status fm-status-' + esc(status) + '">' + esc(status) + '</span>' + esc(health);
+    '<span class="fm-status fm-status-' + esc(status) + '">' + esc(fmHumanLabel(status, 'Active')) + '</span>' + esc(health);
   const rows = [
     ['Manufacturer', asset.manufacturer],
     ['Model', asset.model],

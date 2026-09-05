@@ -6,7 +6,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/files-page.css') }}?v=22">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/files-page.css') }}?v=31">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
 </head>
 <body class="has-main-nav files-page dochub-page-v2">
@@ -14,7 +14,6 @@
   {% include 'partials/main_navbar.html' with context %}
 
   <div class="dh-overlay" id="filesOverlay" onclick="filesCloseSidebar()" aria-hidden="true"></div>
-  <button type="button" class="dh-sidebar-toggle" id="filesSidebarToggle" onclick="filesToggleSidebar()" aria-label="Open Files menu" title="Menu">☰</button>
 
   <div class="dh-page-root files-root">
     <aside class="dh-sidebar" id="filesSidebar">
@@ -40,6 +39,26 @@
         <div class="dh-sb-section">
           <div class="sb-section-label">Folders</div>
           <div id="filesFolderTree" class="files-folder-tree" role="tree"></div>
+        </div>
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Templates</div>
+          <div id="filesLocalNavTemplates" class="files-local-nav" role="navigation" aria-label="Excel templates">
+            <button type="button" class="files-local-nav-item" id="filesNavTemplates" data-view="templates">
+              <svg class="files-folder-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+              <span class="files-folder-label">Excel templates</span>
+              <span class="files-folder-count" id="filesTemplatesCount">—</span>
+            </button>
+          </div>
+        </div>
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Pending sync</div>
+          <div id="filesLocalNavUnsynced" class="files-local-nav" role="navigation" aria-label="Files not synced to Drive">
+            <button type="button" class="files-local-nav-item" id="filesNavUnsynced" data-view="unsynced">
+              <svg class="files-folder-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span class="files-folder-label">Not synced yet</span>
+              <span class="files-folder-count" id="filesUnsyncedCount">—</span>
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -67,20 +86,55 @@
     </aside>
 
     <main class="dh-main files-main">
-      <header class="files-toolbar">
+      <header class="files-toolbar" id="filesToolbar" data-mode="folder">
         <div class="files-toolbar-left">
-          <h1 class="files-heading" id="filesHeading">All files</h1>
-          <p class="files-sub" id="filesSub">Save exports from modules, then sync to Google Drive when ready.</p>
+          <button type="button" class="files-menu-toggle" id="filesSidebarToggle" onclick="filesToggleSidebar()" aria-label="Open Files menu" aria-expanded="false">
+            <span aria-hidden="true">&#9776;</span>
+            <span class="files-menu-toggle-label">Menu</span>
+          </button>
+          <div class="files-toolbar-titles">
+            {% set module_back_url = url_for('dashboard') %}
+            {% include 'partials/module_back_link.html' %}
+            <nav class="files-crumb" id="filesCrumb" aria-label="Folder path" hidden></nav>
+            <h1 class="files-heading" id="filesHeading">All files</h1>
+            <p class="files-sub" id="filesSub">Save exports from modules, then sync to Google Drive when ready.</p>
+          </div>
         </div>
-        <div class="files-toolbar-right">
-          <button type="button" class="files-btn files-btn-ghost" id="filesSyncNowBtn">Sync now</button>
-          <button type="button" class="files-btn files-btn-primary" id="filesSyncFolderBtn" disabled>Sync folder</button>
+        <div class="files-search" id="filesSearchWrap">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+          </svg>
+          <input type="search" id="filesSearch" placeholder="Search files…" autocomplete="off" aria-label="Search files">
+        </div>
+        <div class="files-toolbar-actions" id="filesToolbarActions" role="toolbar" aria-label="File actions">
+          <div class="files-toolbar-group" data-view="folder">
+            <div class="files-bulk" id="filesBulkActions" hidden>
+              <button type="button" class="files-btn files-btn-ghost" id="filesBulkDownload">Download</button>
+              <button type="button" class="files-btn files-btn-ghost" id="filesBulkSync">Sync</button>
+              <button type="button" class="files-btn files-btn-danger" id="filesBulkDelete">Delete</button>
+            </div>
+            <button type="button" class="files-btn files-btn-primary" id="filesSyncNowBtn" title="Tick files on the left, then sync those to Drive">Sync now</button>
+            <button type="button" class="files-btn files-btn-ghost" id="filesSyncFolderBtn" hidden>Sync folder</button>
+          </div>
+          <div class="files-toolbar-group" data-view="templates">
+            <button type="button" class="files-btn files-btn-ghost" id="filesTplDownloadSelected" disabled>Download selected</button>
+            <button type="button" class="files-btn files-btn-ghost" id="filesTplDownloadAll">Download all</button>
+            <button type="button" class="files-btn files-btn-primary" id="filesTplPushDrive" disabled>Add to Drive</button>
+          </div>
+          <div class="files-toolbar-group" data-view="unsynced">
+            <div class="files-bulk" id="filesUnsyncedBulk" hidden>
+              <button type="button" class="files-btn files-btn-ghost" id="filesUnsyncedDownload">Download</button>
+              <button type="button" class="files-btn files-btn-ghost" id="filesUnsyncedSync">Sync</button>
+              <button type="button" class="files-btn files-btn-danger" id="filesUnsyncedDelete">Delete</button>
+            </div>
+            <button type="button" class="files-btn files-btn-primary" id="filesUnsyncedSyncBtn">Sync now</button>
+          </div>
         </div>
       </header>
 
-      <div class="files-table-wrap table-scroll">
+      <div class="files-table-wrap table-scroll" id="filesTableWrap">
         <table class="files-table" id="filesTable">
-          <thead>
+          <thead id="filesTableHead">
             <tr>
               <th class="files-col-check"><input type="checkbox" id="filesSelectAll" aria-label="Select all"></th>
               <th>Name</th>
@@ -154,6 +208,6 @@
 
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/files-page.js') }}?v=15"></script>
+  <script src="{{ url_for('static', filename='js/files-page.js') }}?v=25"></script>
 </body>
 </html>

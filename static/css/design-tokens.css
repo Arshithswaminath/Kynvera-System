@@ -528,33 +528,59 @@ input[type="checkbox"].kv-checkbox:disabled {
   opacity: 1;
 }
 
-/* Universal module “Back to previous” (above page titles) */
+/* Universal module back link (above page titles) */
 .module-back-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  color: var(--color-brand, #ff8e68);
+  justify-content: flex-start;
+  gap: 0.28em;
+  min-height: 44px;
+  color: var(--color-primary-800, #c2440c);
   text-decoration: none;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1.3;
-  margin: 0 0 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+  text-align: left;
   transition: color 0.15s ease;
 }
-.module-back-link svg {
+.module-back-link svg,
+.module-back-link .module-back-icon {
+  display: block;
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
+  width: 1em;
+  height: 1em;
+  overflow: visible;
+  transform: translateY(-0.06em);
+}
+.module-back-link span {
+  display: block;
+  line-height: 1;
 }
 .module-back-link:hover {
-  color: var(--color-brand-light, #f97e54);
+  color: var(--color-primary-700, #e05f36);
+}
+.module-back-link:focus-visible {
+  outline: 2px solid var(--color-primary-500, #ff8e68);
+  outline-offset: 3px;
+  border-radius: 6px;
 }
 .module-back-bar {
-  padding: 0.65rem 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0.35rem 0;
+  text-align: left;
 }
 .tkt-module-back-bar {
-  padding: 0.75rem 1.75rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-shrink: 0;
+  padding: 0.25rem 1.75rem;
   background: transparent;
+  text-align: left;
 }
 .tkt-content > .module-back-link:first-child,
 .fm-wrap > .module-back-link:first-child,
@@ -577,7 +603,7 @@ input[type="checkbox"].kv-checkbox:disabled {
 }
 .hero-left .module-back-link + .hero-title,
 .proc-hero-inner .module-back-link + .hero-title {
-  padding-left: calc(var(--hero-back-icon, 16px) + var(--hero-back-gap, 0.35rem));
+  padding-left: calc(var(--hero-back-icon, 14px) + var(--hero-back-gap, 0.2rem));
   box-sizing: border-box;
 }
 body.inspection-dashboard .hero-left .module-back-link + .hero-title,

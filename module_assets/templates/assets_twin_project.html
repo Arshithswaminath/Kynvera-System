@@ -1,12 +1,7 @@
-{% set fm_page_title = project.name ~ ' — Digital Twin' %}
+{% set fm_page_title = project.name ~ ' — Digital twin' %}
 {% set fm_topbar_title = 'Digital twin' %}
+{% set module_back_url = url_for('assets_bp.assets_twin_page') %}
 {% include 'partials/fm_shell_start.html' %}
-
-  <nav class="twin-crumb" aria-label="Breadcrumb">
-    <a href="{{ url_for('assets_bp.assets_twin_page') }}">Digital twin</a>
-    <span aria-hidden="true">/</span>
-    <span>{{ project.name }}</span>
-  </nav>
 
   <header class="fm-header twin-header">
     <div>
@@ -226,7 +221,7 @@ window.FM_TWIN_PLANS = {{ floors|tojson }};
         : (a.url || ('/assets/' + a.asset_id));
       const on = pinned ? 'On drawing' : (destId ? 'Pin on drawing' : 'No drawing');
       const chip = pinned ? 'ok' : 'warn';
-      const where = [a.room, a.asset_type].filter(Boolean).join(' · ');
+      const where = [a.room, fmHumanLabel(a.asset_type, '')].filter(Boolean).join(' · ');
       return '<li><a class="twin-feed-row" href="' + esc(href) + '">'
         + '<strong>' + esc(a.asset_id) + '</strong>'
         + '<span>' + esc(a.name || '') + (where ? ' · ' + esc(where) : '') + '</span>'

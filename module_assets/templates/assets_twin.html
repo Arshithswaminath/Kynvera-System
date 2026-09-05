@@ -1,30 +1,16 @@
-{% set fm_page_title = 'Digital Twin' %}
+{% set fm_page_title = 'Digital twin' %}
 {% set fm_topbar_title = 'Digital twin' %}
 {% if current_plan is not defined %}
   {% set current_plan = plans[0] if plans else none %}
 {% endif %}
+{% set module_back_url = url_for('assets_bp.assets_twin_project_page', project_id=project.id) if project else url_for('assets_bp.assets_twin_page') %}
 {% include 'partials/fm_shell_start.html' %}
 
   <header class="fm-header twin-header">
     <div>
-      <nav class="twin-crumb" aria-label="Breadcrumb">
-        <a href="{{ url_for('assets_bp.assets_twin_page') }}">Digital twin</a>
-        {% if project %}
-        <span aria-hidden="true">/</span>
-        <a href="{{ url_for('assets_bp.assets_twin_project_page', project_id=project.id) }}">{{ project.name }}</a>
-        {% elif current_plan %}
-        <span aria-hidden="true">/</span>
-        <span>Unassigned</span>
-        {% endif %}
-        {% if current_plan %}
-        <span aria-hidden="true">/</span>
-        <span>{{ current_plan.name }}</span>
-        {% elif draft_floor or draft_building %}
-        <span aria-hidden="true">/</span>
-        <span>{{ draft_floor or draft_building }}</span>
-        {% endif %}
-      </nav>
-      <h1>{% if current_plan %}{{ current_plan.name }}{% elif draft_floor %}{{ draft_floor }}{% else %}2D Digital Twin{% endif %}</h1>
+      {% if current_plan or draft_floor or draft_building %}
+      <h1>{% if current_plan %}{{ current_plan.name }}{% elif draft_floor %}{{ draft_floor }}{% else %}{{ draft_building }}{% endif %}</h1>
+      {% endif %}
       <p>{% if current_plan %}Live room status from work orders and assets.{% else %}Add a drawing for this floor.{% endif %}</p>
     </div>
   </header>
@@ -59,6 +45,8 @@
       {% if can_write %}
       <button type="button" class="fm-btn fm-btn-outline" id="editBtn" disabled aria-pressed="false">Place pins</button>
       <button type="button" class="fm-btn fm-btn-outline" id="savePinsBtn" disabled hidden>Save pins</button>
+      <button type="button" class="fm-btn fm-btn-outline" id="replaceImageBtn" disabled>Replace drawing</button>
+      <input type="file" id="replaceImageInput" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" hidden>
       <button type="button" class="fm-btn fm-btn-outline twin-btn-danger" id="deletePlanBtn" disabled>Delete plan</button>
       {% endif %}
     </div>
@@ -140,6 +128,6 @@ window.FM_TWIN_PLANS = {{ (plans_payload or [])|tojson }};
 window.FM_TWIN_CATALOG = {{ (catalog_buildings or [])|tojson }};
 window.FM_TWIN_DRAFT = {% if not current_plan %}{{ {'building': draft_building or '', 'floor': draft_floor or ''}|tojson }}{% else %}null{% endif %};
 </script>
-<script src="{{ url_for('static', filename='js/fm-twin.js') }}?v=25"></script>
+<script src="{{ url_for('static', filename='js/fm-twin.js') }}?v=27"></script>
 {% endset %}
 {% include 'partials/fm_shell_end.html' %}

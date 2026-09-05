@@ -40,7 +40,8 @@ class User(db.Model):
     access_hvac = db.Column(db.Boolean, default=False)  # HVAC&MEP form access
     access_civil = db.Column(db.Boolean, default=False)  # Civil works form access
     access_cleaning = db.Column(db.Boolean, default=False)  # Cleaning form access
-    access_hr = db.Column(db.Boolean, default=False)  # HR module access
+    access_hr = db.Column(db.Boolean, default=False)  # HR module access (forms)
+    access_hiring = db.Column(db.Boolean, default=False)  # HR submodule: hiring docs, leave tracker, manpower
     access_procurement_module = db.Column(db.Boolean, default=False)  # Procurement module access
     access_business_development = db.Column(db.Boolean, default=False)  # BD pipeline + email + inspection BD reviewer (when no conflicting designation)
     access_sales_manager = db.Column(db.Boolean, default=False)  # BD: view all salespeople's pipelines
@@ -112,6 +113,7 @@ class User(db.Model):
             'civil': self.access_civil,
             'cleaning': self.access_cleaning,
             'hr': getattr(self, 'access_hr', False),
+            'hiring': self.has_hiring_submodule(),
             'procurement_module': getattr(self, 'access_procurement_module', False),
             'business_development': self.is_bd_inspection_reviewer(),
             'mmr': bool(getattr(self, 'access_report_generation', False)),
@@ -121,6 +123,12 @@ class User(db.Model):
             'files': bool(getattr(self, 'access_files', False)),
         }
         return module_map.get(module, False)
+
+    def has_hiring_submodule(self):
+        """Hiring docs / leave tracker / manpower — nested under HR in admin Module access."""
+        if self.role == 'admin':
+            return True
+        return bool(getattr(self, 'access_hiring', False))
 
     def is_bd_inspection_reviewer(self):
         """BD reviewer lanes on inspection forms and BD email (designation BD, or access flag if not a conflicting primary role)."""
@@ -150,6 +158,7 @@ class User(db.Model):
             'access_civil': self.access_civil if self.role != 'admin' else True,
             'access_cleaning': self.access_cleaning if self.role != 'admin' else True,
             'access_hr': getattr(self, 'access_hr', False) if self.role != 'admin' else True,
+            'access_hiring': self.has_hiring_submodule() if self.role != 'admin' else True,
             'access_procurement_module': getattr(self, 'access_procurement_module', False) if self.role != 'admin' else True,
             'access_business_development': getattr(self, 'access_business_development', False) if self.role != 'admin' else True,
             'access_sales_manager': getattr(self, 'access_sales_manager', False) if self.role != 'admin' else True,
@@ -222,7 +231,7 @@ class Submission(db.Model):
     submission_id = db.Column(db.String(50), unique=True, nullable=False, index=True)
     doc_number = db.Column(db.String(20), nullable=True, index=True)  # Human-facing series number, e.g. 'HR-0001', 'INSP-0042'
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    module_type = db.Column(db.String(20), nullable=False, index=True)  # 'hvac_mep', 'civil', 'cleaning'
+    module_type = db.Column(db.String(50), nullable=False, index=True)  # 'hvac_mep', 'civil', 'cleaning'
     site_name = db.Column(db.String(255))
     visit_date = db.Column(db.Date)
     status = db.Column(db.String(20), default='draft', index=True)  # 'draft', 'submitted', 'processing', 'completed'
@@ -428,6 +437,30 @@ class AuditLog(db.Model):
     
     def __repr__(self):
         return f'<AuditLog {self.action} - User {self.user_id}>'
+
+
+class AdminEditOtp(db.Model):
+    """Hashed email OTP + short-lived grant to edit an administrator profile."""
+    __tablename__ = 'admin_edit_otp'
+
+    id = db.Column(db.Integer, primary_key=True)
+    actor_user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    target_user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    code_hash = db.Column(db.String(64), nullable=True)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    attempt_count = db.Column(db.Integer, default=0, nullable=False)
+    grant_expires_at = db.Column(db.DateTime, nullable=True)
+    request_count = db.Column(db.Integer, default=0, nullable=False)
+    window_started_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('actor_user_id', 'target_user_id', name='uq_admin_edit_otp_actor_target'),
+    )
+
+    def __repr__(self):
+        return f'<AdminEditOtp actor={self.actor_user_id} target={self.target_user_id}>'
 
 
 class Session(db.Model):
@@ -1064,7 +1097,16 @@ class DocHubAccess(db.Model):
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow, index=True)
 
-    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('dochub_access_entry', uselist=False))
+    user = db.relationship(
+        'User',
+        foreign_keys=[user_id],
+        backref=db.backref(
+            'dochub_access_entry',
+            uselist=False,
+            cascade='all, delete-orphan',
+            single_parent=True,
+        ),
+    )
 
     def to_dict(self):
         return {
@@ -2522,10 +2564,16 @@ class TicketMaterial(db.Model):
     unit_price = db.Column(db.Float, default=0.0)
     total_price = db.Column(db.Float, default=0.0)
     from_procurement = db.Column(db.Boolean, default=False)  # sourced from procurement catalog
-    procurement_ref = db.Column(db.String(80), nullable=True)  # submission_id of catalog item
+    procurement_ref = db.Column(db.String(80), nullable=True)  # submission_id / catalog public_id
+    catalog_item_id = db.Column(db.Integer, nullable=True, index=True)
     notes = db.Column(db.Text, nullable=True)
+    qty_short = db.Column(db.Float, default=0.0)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
 
     def to_dict(self):
+        short = float(getattr(self, 'qty_short', 0) or 0)
+        qty = float(self.quantity or 0)
+        created = getattr(self, 'created_at', None)
         return {
             'id': self.id,
             'material_name': self.material_name,
@@ -2535,6 +2583,9 @@ class TicketMaterial(db.Model):
             'total_price': self.total_price,
             'from_procurement': self.from_procurement,
             'notes': self.notes,
+            'qty_short': short,
+            'qty_requested': round(qty + short, 2),
+            'created_at': created.isoformat() if created else None,
         }
 
     def __repr__(self):
@@ -3140,6 +3191,16 @@ class HiringCandidate(db.Model):
             d['documents'] = docs
             d['phase1_documents'] = [x for x in docs if x.get('phase') == 1]
             d['phase2_documents'] = [x for x in docs if x.get('phase') == 2]
+        letters = []
+        if include_documents and self.id:
+            try:
+                letters = [
+                    x.to_dict(include_candidate=False)
+                    for x in (self.linked_offer_letters or [])
+                ]
+            except Exception:
+                letters = []
+        d['linked_offer_letters'] = letters
         return d
 
     def __repr__(self):
@@ -3212,17 +3273,219 @@ class HiringDocument(db.Model):
         return f'<HiringDocument {self.id} {self.doc_type} cand={self.candidate_id}>'
 
 
-# ── Leave Tracker (Sick + Annual, Aug–Dec 2026) ─────────────────────────────
+# ── Offer Letters / Letter of Intent register (Hiring Docs sub-module) ──────
+
+HIRING_OFFER_LETTER_KINDS = ('offer_letter', 'letter_of_intent')
+
+HIRING_OFFER_LETTER_KIND_LABELS = {
+    'offer_letter': 'Offer Letter',
+    'letter_of_intent': 'Letter of Intent',
+}
+
+HIRING_OFFER_LETTER_LINK_STATUSES = ('unlinked', 'linked', 'manual')
+
+HIRING_OFFER_LETTER_ALLOWED_EXT = {'pdf', 'jpg', 'jpeg', 'png'}
+
+
+class HiringOfferLetter(db.Model):
+    """Inbox for scanned offer letters / letters of intent, optionally linked to hiring."""
+    __tablename__ = 'hiring_offer_letters'
+
+    id = db.Column(db.Integer, primary_key=True)
+    doc_kind = db.Column(db.String(40), nullable=False, default='letter_of_intent', index=True)
+    full_name = db.Column(db.String(200), nullable=False, index=True)
+    role = db.Column(db.String(120))
+    department = db.Column(db.String(120))
+    phone = db.Column(db.String(40))
+    email = db.Column(db.String(120))
+    comments = db.Column(db.Text)
+
+    received = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    signed_back = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    # Step 2 outcome after HR scan: False = awaiting signature; True = offer declined
+    not_accepted = db.Column(db.Boolean, default=False, nullable=False, index=True)
+
+    filename = db.Column(db.String(255))
+    file_path = db.Column(db.String(500))
+    cloud_url = db.Column(db.String(500))
+    mime_type = db.Column(db.String(100))
+    file_size = db.Column(db.Integer)
+
+    signed_filename = db.Column(db.String(255))
+    signed_file_path = db.Column(db.String(500))
+    signed_cloud_url = db.Column(db.String(500))
+    signed_mime_type = db.Column(db.String(100))
+    signed_file_size = db.Column(db.Integer)
+
+    hiring_candidate_id = db.Column(
+        db.Integer,
+        db.ForeignKey('hiring_candidates.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+    )
+    link_status = db.Column(db.String(20), default='unlinked', nullable=False, index=True)
+
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow, index=True)
+
+    hiring_candidate = db.relationship(
+        'HiringCandidate',
+        backref=db.backref('linked_offer_letters', lazy='select'),
+        foreign_keys=[hiring_candidate_id],
+    )
+    creator = db.relationship(
+        'User',
+        foreign_keys=[created_by],
+        backref=db.backref('hiring_offer_letters_created', lazy='dynamic'),
+    )
+
+    def normalized_kind(self) -> str:
+        kind = (self.doc_kind or 'letter_of_intent').strip()
+        if kind not in HIRING_OFFER_LETTER_KINDS:
+            return 'letter_of_intent'
+        return kind
+
+    def normalized_link_status(self) -> str:
+        status = (self.link_status or 'unlinked').strip()
+        if self.hiring_candidate_id and status != 'linked':
+            return 'linked'
+        if status not in HIRING_OFFER_LETTER_LINK_STATUSES:
+            return 'unlinked'
+        return status
+
+    def initials(self) -> str:
+        parts = (self.full_name or '').strip().split()
+        if not parts:
+            return '?'
+        if len(parts) == 1:
+            return parts[0][:2].upper()
+        return (parts[0][0] + parts[-1][0]).upper()
+
+    def has_scan_file(self) -> bool:
+        return bool(self.cloud_url or self.file_path)
+
+    def has_signed_file(self) -> bool:
+        return bool(self.signed_cloud_url or self.signed_file_path)
+
+    def scan_file_url(self):
+        if self.id and self.has_scan_file():
+            return f'/hr/api/hiring/offer-letters/{self.id}/file?kind=scan'
+        return None
+
+    def signed_file_url(self):
+        if self.id and self.has_signed_file():
+            return f'/hr/api/hiring/offer-letters/{self.id}/file?kind=signed'
+        return None
+
+    def best_file_kind(self):
+        if self.has_signed_file():
+            return 'signed'
+        if self.has_scan_file():
+            return 'scan'
+        return None
+
+    def prompt_connect(self) -> bool:
+        return bool(self.received) and self.normalized_link_status() == 'unlinked'
+
+    def candidate_outcome(self) -> str:
+        """Step-2 status after the unsigned HR letter is on file."""
+        if not self.received:
+            return 'pending_hr'
+        if self.not_accepted:
+            return 'not_accepted'
+        if self.signed_back:
+            return 'signed'
+        return 'awaiting_signature'
+
+    def to_dict(self, include_candidate=True):
+        kind = self.normalized_kind()
+        link = self.normalized_link_status()
+        outcome = self.candidate_outcome()
+        d = {
+            'id': self.id,
+            'doc_kind': kind,
+            'doc_kind_label': HIRING_OFFER_LETTER_KIND_LABELS.get(kind, kind),
+            'full_name': self.full_name,
+            'role': self.role or '',
+            'department': self.department or '',
+            'phone': self.phone or '',
+            'email': self.email or '',
+            'comments': self.comments or '',
+            'initials': self.initials(),
+            'received': bool(self.received),
+            'signed_back': bool(self.signed_back),
+            'not_accepted': bool(self.not_accepted),
+            'candidate_outcome': outcome,
+            'has_scan_file': self.has_scan_file(),
+            'has_signed_file': self.has_signed_file(),
+            'filename': self.filename,
+            'signed_filename': self.signed_filename,
+            'mime_type': self.mime_type,
+            'signed_mime_type': self.signed_mime_type,
+            'file_size': self.file_size,
+            'signed_file_size': self.signed_file_size,
+            'scan_file_url': self.scan_file_url(),
+            'signed_file_url': self.signed_file_url(),
+            'hiring_candidate_id': self.hiring_candidate_id,
+            'link_status': link,
+            'prompt_connect': self.prompt_connect(),
+            'allowed_extensions': sorted(HIRING_OFFER_LETTER_ALLOWED_EXT),
+            'created_by': self.created_by,
+            'created_at': naive_utc_isoformat_z(self.created_at) if self.created_at else None,
+            'updated_at': naive_utc_isoformat_z(self.updated_at) if self.updated_at else None,
+            'hiring_candidate': None,
+        }
+        if include_candidate and self.hiring_candidate is not None:
+            cand = self.hiring_candidate
+            d['hiring_candidate'] = {
+                'id': cand.id,
+                'full_name': cand.full_name,
+                'role': cand.role or '',
+                'pipeline_status': cand.normalized_pipeline_status(),
+                'pipeline_label': HIRING_PIPELINE_LABELS.get(
+                    cand.normalized_pipeline_status(), cand.normalized_pipeline_status()
+                ),
+            }
+        return d
+
+    def __repr__(self):
+        return f'<HiringOfferLetter {self.id} {self.doc_kind} {self.full_name}>'
+
+
+# ── Leave Tracker (Sick + Annual from Jan 2026) ─────────────────────────────
 
 LEAVE_TRACKER_YEAR = 2026
-LEAVE_TRACKER_MONTHS = (8, 9, 10, 11, 12)  # Aug–Dec
+LEAVE_TRACKER_MONTHS = (7, 8, 9, 10, 11, 12)  # default month cards
+LEAVE_ALL_MONTHS = tuple(range(1, 13))
+LEAVE_WINDOW_START = date(LEAVE_TRACKER_YEAR, 1, 1)
+LEAVE_WINDOW_END = date(2035, 12, 31)
 LEAVE_TRACKER_MONTH_LABELS = {
+    1: 'Jan',
+    2: 'Feb',
+    3: 'Mar',
+    4: 'Apr',
+    5: 'May',
+    6: 'Jun',
+    7: 'Jul',
     8: 'Aug',
     9: 'Sep',
     10: 'Oct',
     11: 'Nov',
     12: 'Dec',
 }
+
+
+def leave_months_through(month: int) -> tuple:
+    """Calendar months from January through ``month`` (inclusive)."""
+    return tuple(m for m in LEAVE_ALL_MONTHS if m <= month)
+
+
+def leave_months_before(month: int) -> tuple:
+    """Calendar months before ``month`` (empty for January)."""
+    return tuple(m for m in LEAVE_ALL_MONTHS if m < month)
+
+
 LEAVE_SICK_ENTITLEMENT = 15
 LEAVE_TYPES = ('sick', 'annual')
 LEAVE_COMPANIES = ('Kynvera', 'Tourism', 'L&P')
@@ -3315,7 +3578,7 @@ class LeaveEmployee(db.Model):
         return None
 
     def used_total(self, leave_type: str, year: int = LEAVE_TRACKER_YEAR, months=None) -> float:
-        months = months if months is not None else LEAVE_TRACKER_MONTHS
+        months = months if months is not None else LEAVE_ALL_MONTHS
         total = 0.0
         for m in months:
             d = self.month_days(leave_type, year, m)
@@ -3326,9 +3589,10 @@ class LeaveEmployee(db.Model):
                     pass
         return total
 
-    def usage_map(self, leave_type: str, year: int = LEAVE_TRACKER_YEAR):
-        """Dict month -> days (None if empty) for tracker months."""
-        return {m: self.month_days(leave_type, year, m) for m in LEAVE_TRACKER_MONTHS}
+    def usage_map(self, leave_type: str, year: int = LEAVE_TRACKER_YEAR, months=None):
+        """Dict month -> days (None if empty) for the requested months."""
+        months = months if months is not None else tuple(range(1, 13))
+        return {m: self.month_days(leave_type, year, m) for m in months}
 
     def to_dict(self, year: int = LEAVE_TRACKER_YEAR):
         sick_map = self.usage_map('sick', year)
@@ -4031,6 +4295,7 @@ class AutomationJob(db.Model):
     save_to_files = db.Column(db.Boolean, default=True, nullable=False)
     send_email = db.Column(db.Boolean, default=True, nullable=False)
     sync_drive = db.Column(db.Boolean, default=True, nullable=False)
+    export_modules = db.Column(db.Text, nullable=True)
     last_run_at = db.Column(db.DateTime, nullable=True)
     last_success_at = db.Column(db.DateTime, nullable=True)
     last_error = db.Column(db.String(500), nullable=True)
@@ -4057,6 +4322,7 @@ class AutomationJob(db.Model):
             'save_to_files': bool(self.save_to_files),
             'send_email': bool(self.send_email),
             'sync_drive': bool(self.sync_drive),
+            'export_modules': (self.export_modules or '').strip(),
             'last_run_at': self.last_run_at.isoformat() if self.last_run_at else None,
             'last_success_at': self.last_success_at.isoformat() if self.last_success_at else None,
             'last_error': self.last_error or '',
@@ -4098,3 +4364,13 @@ class AutomationRun(db.Model):
 
     def __repr__(self):
         return f'<AutomationRun {self.id} job={self.job_id} {self.status}>'
+
+
+# Procurement store-keeping tables (must import after db is defined).
+from module_procurement.models import (  # noqa: E402
+    ProcSupplier, ProcCatalogItem, ProcProperty, ProcStock,
+    ProcPurchaseRequest, ProcPurchaseLine, ProcGoodsReceipt,
+    ProcGoodsReceiptLine, ProcMovement, ProcPurchaseDocument,
+    ProcEmailTemplate,
+)
+

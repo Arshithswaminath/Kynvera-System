@@ -5,8 +5,9 @@ from flask import Blueprint, request, jsonify, render_template, current_app, sen
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.orm import joinedload
 from sqlalchemy import or_, func
+from sqlalchemy.exc import IntegrityError
 from app.models import (
-    db, User, AuditLog, Device, BDProject, BDFollowUp, BDContact, BDActivity,
+    db, User, AuditLog, AdminEditOtp, Device, BDProject, BDFollowUp, BDContact, BDActivity,
     DocHubAccess, MmrChargeableConfig, NotificationConfig, EmailLog, AdminPersonalProject, AdminPersonalProgressStep,
     Technician, KnowledgeBaseEntry, DatabaseBackup,
     Quotation, QuotationItem, TicketProject,
@@ -20,16 +21,26 @@ from app.middleware import (
 )
 from common.error_responses import error_response, success_response
 from common.form_data_utils import shallow_copy_form_data
-from common.document_display import build_document_labels, get_module_display_name
+from common.document_display import (
+    STOREKEEPING_MODULE_TYPES,
+    build_document_labels,
+    get_module_display_name,
+)
 from common.datetime_utils import utc_now_naive, parse_employment_start_date
 from datetime import datetime, timedelta, date
 from io import BytesIO, StringIO
+import hashlib
+import hmac
 import json
 import os
+import secrets
 import threading
 import uuid
 
 admin_bp = Blueprint('admin_bp', __name__, url_prefix='/api/admin')
+
+# Internal logins that must not appear on Users & Teams (created only for ticket email).
+DIRECTORY_HIDDEN_USERNAMES = frozenset({'email_intake'})
 
 
 def _ensure_sales_ops_columns():
@@ -39,12 +50,16 @@ def _ensure_sales_ops_columns():
         insp = inspect(db.engine)
         tables = set(insp.get_table_names())
         alters = []
+        hiring_was_missing = False
         if 'users' in tables:
             cols = {c['name'] for c in insp.get_columns('users')}
             if 'access_sales_manager' not in cols:
                 alters.append('ALTER TABLE users ADD COLUMN access_sales_manager BOOLEAN DEFAULT 0')
             if 'access_quotations' not in cols:
                 alters.append('ALTER TABLE users ADD COLUMN access_quotations BOOLEAN DEFAULT 0')
+            hiring_was_missing = 'access_hiring' not in cols
+            if hiring_was_missing:
+                alters.append('ALTER TABLE users ADD COLUMN access_hiring BOOLEAN DEFAULT 0')
         if 'bd_projects' in tables:
             cols = {c['name'] for c in insp.get_columns('bd_projects')}
             if 'owner_user_id' not in cols:
@@ -53,6 +68,11 @@ def _ensure_sales_ops_columns():
             for sql in alters:
                 try:
                     conn.execute(text(sql))
+                except Exception:
+                    pass
+            if hiring_was_missing:
+                try:
+                    conn.execute(text('UPDATE users SET access_hiring = access_hr'))
                 except Exception:
                     pass
         db.create_all()
@@ -120,6 +140,201 @@ def _can_access_bd_project(user, project):
 def _admin_user_dict(user):
     """User payload for admin management APIs (includes admin-visible password)."""
     return user.to_dict(include_sensitive=True)
+
+
+OTP_EDIT_REQUIRED_MSG = (
+    'This administrator account is locked to prevent unconfirmed profile, password, '
+    'or access changes. Verify the one-time code sent to the account email before editing.'
+)
+OTP_CODE_TTL = timedelta(minutes=10)
+OTP_GRANT_TTL = timedelta(minutes=10)
+OTP_RESEND_COOLDOWN = timedelta(minutes=1)
+OTP_REQUEST_WINDOW = timedelta(minutes=10)
+OTP_MAX_REQUESTS = 3
+OTP_MAX_ATTEMPTS = 5
+
+
+def _int_actor_id():
+    try:
+        return int(get_jwt_identity())
+    except (TypeError, ValueError):
+        return None
+
+
+def _generate_otp_code():
+    return f'{secrets.randbelow(1_000_000):06d}'
+
+
+def _otp_hmac_key():
+    return str(current_app.config.get('SECRET_KEY') or 'kynvera-otp').encode('utf-8')
+
+
+def _hash_otp_code(code):
+    return hmac.new(_otp_hmac_key(), str(code).encode('utf-8'), hashlib.sha256).hexdigest()
+
+
+def _otp_code_matches(code, stored_hash):
+    if not stored_hash or not code:
+        return False
+    return hmac.compare_digest(_hash_otp_code(code), stored_hash)
+
+
+def _mask_email(email):
+    raw = (email or '').strip()
+    if '@' not in raw:
+        return '***'
+    local, _, domain = raw.partition('@')
+    keep = local[:1] if local else ''
+    return f'{keep}***@{domain}'
+
+
+def _admin_edit_grant_ok(actor_id, grant_target_id):
+    if actor_id is None or grant_target_id is None:
+        return False
+    row = AdminEditOtp.query.filter_by(
+        actor_user_id=actor_id,
+        target_user_id=grant_target_id,
+    ).first()
+    if not row or not row.grant_expires_at:
+        return False
+    return row.grant_expires_at > utc_now_naive()
+
+
+def _otp_required_response():
+    return jsonify({
+        'success': False,
+        'error': OTP_EDIT_REQUIRED_MSG,
+        'otp_required': True,
+    }), 403
+
+
+def _reject_unless_admin_edit_granted(target, *, promoting_to_admin=False):
+    actor_id = _int_actor_id()
+    if getattr(target, 'role', None) == 'admin':
+        if not _admin_edit_grant_ok(actor_id, target.id):
+            return _otp_required_response()
+        return None
+    if promoting_to_admin:
+        if not _admin_edit_grant_ok(actor_id, actor_id):
+            return _otp_required_response()
+    return None
+
+
+def _admin_for_reassigned_records(exclude_user_id, preferred_id=None):
+    """Another administrator who can keep tickets/notes when an account is deleted."""
+    if preferred_id and preferred_id != exclude_user_id:
+        pref = db.session.get(User, preferred_id)
+        if pref and pref.role == 'admin':
+            return pref
+    return (
+        User.query.filter(User.role == 'admin', User.id != exclude_user_id)
+        .order_by(User.id.asc())
+        .first()
+    )
+
+
+def _detach_user_for_delete(user_id, fallback_admin_id):
+    """Move or clear NOT NULL references so deleting the user cannot fail on FKs."""
+    from app.models import (
+        AssistantPendingAction, Ticket, TicketImage, TicketNote, TicketSupervisorTeam,
+    )
+
+    ticket_count = Ticket.query.filter_by(reporter_id=user_id).count()
+    note_count = TicketNote.query.filter_by(user_id=user_id).count()
+    image_count = TicketImage.query.filter_by(uploaded_by=user_id).count()
+    needs_fallback = ticket_count + note_count + image_count
+    if needs_fallback and not fallback_admin_id:
+        raise ValueError(
+            f'This account reported {ticket_count} ticket(s). Keep another administrator '
+            'so those tickets can stay in the system, then try again.'
+        )
+    if ticket_count:
+        Ticket.query.filter_by(reporter_id=user_id).update(
+            {'reporter_id': fallback_admin_id}, synchronize_session=False
+        )
+    Ticket.query.filter_by(assigned_to_id=user_id).update(
+        {'assigned_to_id': None}, synchronize_session=False
+    )
+    Ticket.query.filter_by(supervisor_id=user_id).update(
+        {'supervisor_id': None}, synchronize_session=False
+    )
+    Ticket.query.filter_by(technician_id=user_id).update(
+        {'technician_id': None}, synchronize_session=False
+    )
+    if note_count:
+        TicketNote.query.filter_by(user_id=user_id).update(
+            {'user_id': fallback_admin_id}, synchronize_session=False
+        )
+    if image_count:
+        TicketImage.query.filter_by(uploaded_by=user_id).update(
+            {'uploaded_by': fallback_admin_id}, synchronize_session=False
+        )
+    TicketSupervisorTeam.query.filter(
+        or_(
+            TicketSupervisorTeam.supervisor_id == user_id,
+            TicketSupervisorTeam.technician_id == user_id,
+        )
+    ).delete(synchronize_session=False)
+    for proj in AdminPersonalProject.query.filter_by(user_id=user_id).all():
+        db.session.delete(proj)
+    AssistantPendingAction.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+    return ticket_count
+
+
+def _otp_row_for(actor_id, target_id):
+    row = AdminEditOtp.query.filter_by(
+        actor_user_id=actor_id,
+        target_user_id=target_id,
+    ).first()
+    if row:
+        return row
+    row = AdminEditOtp(actor_user_id=actor_id, target_user_id=target_id, attempt_count=0, request_count=0)
+    db.session.add(row)
+    db.session.flush()
+    return row
+
+
+def _otp_iso(dt):
+    from common.datetime_utils import naive_utc_isoformat_z
+    return naive_utc_isoformat_z(dt) if dt else None
+
+
+def _otp_has_pending_code(row, now):
+    return bool(row and row.code_hash and row.expires_at and row.expires_at > now)
+
+
+def _otp_sent_at(row):
+    if not row or not row.expires_at:
+        return None
+    return row.expires_at - OTP_CODE_TTL
+
+
+def _otp_resend_at(row):
+    sent = _otp_sent_at(row)
+    if not sent:
+        return None
+    return sent + OTP_RESEND_COOLDOWN
+
+
+def _otp_timing_fields(row, now):
+    pending = _otp_has_pending_code(row, now)
+    resend_at = _otp_resend_at(row) if pending else now
+    after = 0
+    if pending and resend_at and resend_at > now:
+        after = int((resend_at - now).total_seconds())
+    return {
+        'has_pending_code': pending,
+        'code_expires_at': _otp_iso(row.expires_at) if pending else None,
+        'resend_available_at': _otp_iso(resend_at) if pending else _otp_iso(now),
+        'resend_after_seconds': max(0, after),
+    }
+
+
+def _issue_edit_grant(row, now):
+    row.code_hash = None
+    row.attempt_count = 0
+    row.grant_expires_at = now + OTP_GRANT_TTL
+    return row.grant_expires_at
 
 
 def _ensure_technicians_supervisor_column():
@@ -611,6 +826,8 @@ def list_users():
         users = User.query.options(
             joinedload(User.reporting_manager),
             joinedload(User.operations_manager),
+        ).filter(
+            ~User.username.in_(DIRECTORY_HIDDEN_USERNAMES),
         ).order_by(User.created_at.desc()).all()
         access_map = {row.user_id: row.can_access for row in DocHubAccess.query.all()}
         users_data = []
@@ -707,6 +924,7 @@ def create_user_admin():
             user.access_civil = bool(data.get('access_civil', False))
             user.access_cleaning = bool(data.get('access_cleaning', False))
             user.access_hr = bool(data.get('access_hr', False))
+            user.access_hiring = bool(data.get('access_hiring', False))
             user.access_procurement_module = bool(data.get('access_procurement_module', False))
             user.access_business_development = bool(data.get('access_business_development', False))
             user.access_sales_manager = bool(data.get('access_sales_manager', False))
@@ -719,6 +937,10 @@ def create_user_admin():
             user.is_ticket_reporter = bool(data.get('is_ticket_reporter', False))
             if bool(user.access_sales_manager):
                 user.access_business_development = True
+            if bool(user.access_hiring):
+                user.access_hr = True
+            if not bool(user.access_hr):
+                user.access_hiring = False
             if (user.designation or '') == 'business_development':
                 user.access_business_development = True
                 if data.get('access_quotations') is None:
@@ -738,10 +960,25 @@ def create_user_admin():
 
         log_audit(admin_id, 'create_user', 'user', str(user.id), {'username': username, 'email': email})
 
-        out = {'user': _admin_user_dict(user)}
+        email_sent = False
+        try:
+            from common.email_service import send_account_created_email
+            email_sent = send_account_created_email(
+                user_email=user.email,
+                username=user.username,
+                full_name=user.full_name,
+                temp_password=(temp_password if not raw_pw else None),
+            )
+        except Exception as email_error:
+            current_app.logger.warning('Account created email failed: %s', email_error)
+
+        out = {'user': _admin_user_dict(user), 'email_sent': email_sent}
         if not raw_pw:
             out['temp_password'] = temp_password
-        return success_response(out, message='User created successfully')
+        message = 'User created successfully'
+        if email_sent:
+            message += '. A welcome email with the username was sent.'
+        return success_response(out, message=message)
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error creating user: {str(e)}", exc_info=True)
@@ -769,6 +1006,237 @@ def get_user(user_id):
         return jsonify({'error': 'User not found'}), 404
 
 
+@admin_bp.route('/users/<int:user_id>/edit-otp/status', methods=['GET'])
+@jwt_required()
+@admin_required
+def admin_edit_otp_status(user_id):
+    target = User.query.get_or_404(user_id)
+    actor_id = _int_actor_id()
+    required = (target.role == 'admin')
+    now = utc_now_naive()
+    row = None
+    if required and actor_id is not None:
+        row = AdminEditOtp.query.filter_by(
+            actor_user_id=actor_id, target_user_id=target.id
+        ).first()
+    unlocked = required and _admin_edit_grant_ok(actor_id, target.id)
+    grant_until = None
+    if unlocked and row and row.grant_expires_at:
+        grant_until = _otp_iso(row.grant_expires_at)
+    timing = _otp_timing_fields(row, now) if row else {
+        'has_pending_code': False,
+        'code_expires_at': None,
+        'resend_available_at': _otp_iso(now),
+        'resend_after_seconds': 0,
+    }
+    return jsonify({
+        'success': True,
+        'otp_required': required,
+        'unlocked': unlocked,
+        'grant_expires_at': grant_until,
+        'email_masked': _mask_email(target.email) if required else None,
+        'has_email': bool((target.email or '').strip()) if required else False,
+        **timing,
+    }), 200
+
+
+@admin_bp.route('/users/<int:user_id>/edit-otp/request', methods=['POST'])
+@jwt_required()
+@admin_required
+def admin_edit_otp_request(user_id):
+    target = User.query.get_or_404(user_id)
+    if target.role != 'admin':
+        return jsonify({'error': 'A verification code is only required for administrator accounts.'}), 400
+    email = (target.email or '').strip()
+    if not email:
+        return jsonify({'error': 'This administrator account has no email address.'}), 400
+
+    actor_id = _int_actor_id()
+    if actor_id is None:
+        return jsonify({'error': 'Invalid session'}), 401
+
+    now = utc_now_naive()
+    row = _otp_row_for(actor_id, target.id)
+    if _otp_has_pending_code(row, now):
+        resend_at = _otp_resend_at(row)
+        if resend_at and now < resend_at:
+            secs = max(1, int((resend_at - now).total_seconds()))
+            return jsonify({
+                'error': 'Wait before sending another code.',
+                'retry_after': secs,
+                'resend_after_seconds': secs,
+                'resend_available_at': _otp_iso(resend_at),
+                'code_expires_at': _otp_iso(row.expires_at),
+                'has_pending_code': True,
+            }), 429
+    if row.window_started_at and (now - row.window_started_at) > OTP_REQUEST_WINDOW:
+        row.request_count = 0
+        row.window_started_at = now
+    if not row.window_started_at:
+        row.window_started_at = now
+    if (row.request_count or 0) >= OTP_MAX_REQUESTS:
+        return jsonify({
+            'error': 'Too many verification codes. Wait a few minutes and try again.',
+        }), 429
+
+    code = _generate_otp_code()
+    row.code_hash = _hash_otp_code(code)
+    row.expires_at = now + OTP_CODE_TTL
+    row.attempt_count = 0
+    row.grant_expires_at = None
+    row.request_count = (row.request_count or 0) + 1
+    db.session.commit()
+
+    from common.email_service import send_admin_edit_otp_email
+    try:
+        sent = send_admin_edit_otp_email(email, code, full_name=target.full_name)
+    except Exception as email_error:
+        current_app.logger.warning('Admin edit OTP email failed: %s', email_error)
+        sent = False
+    if not sent:
+        row.code_hash = None
+        db.session.commit()
+        return jsonify({
+            'error': 'Could not send the verification email. Check mail settings and try again.',
+            'password_unlock_allowed': True,
+        }), 502
+
+    log_audit(actor_id, 'admin_edit_otp_requested', 'user', str(user_id), {
+        'target_user': target.username,
+        'sent_to': _mask_email(email),
+    })
+    timing = _otp_timing_fields(row, now)
+    return jsonify({
+        'success': True,
+        'sent_to': _mask_email(email),
+        'message': f'A verification code was sent to {_mask_email(email)}.',
+        **timing,
+    }), 200
+
+
+@admin_bp.route('/users/<int:user_id>/edit-otp/verify', methods=['POST'])
+@jwt_required()
+@admin_required
+def admin_edit_otp_verify(user_id):
+    target = User.query.get_or_404(user_id)
+    if target.role != 'admin':
+        return jsonify({'error': 'A verification code is only required for administrator accounts.'}), 400
+    actor_id = _int_actor_id()
+    if actor_id is None:
+        return jsonify({'error': 'Invalid session'}), 401
+    data = request.get_json(silent=True) or {}
+    code = ''.join(ch for ch in str(data.get('code') or '') if ch.isdigit())
+    if len(code) != 6:
+        return jsonify({'error': 'Enter the 6-digit code from the email.'}), 400
+
+    now = utc_now_naive()
+    row = AdminEditOtp.query.filter_by(
+        actor_user_id=actor_id, target_user_id=target.id
+    ).first()
+    if not row or not row.code_hash or not row.expires_at or row.expires_at < now:
+        return jsonify({'error': 'That code has expired. Send a new one.'}), 400
+    if (row.attempt_count or 0) >= OTP_MAX_ATTEMPTS:
+        row.code_hash = None
+        db.session.commit()
+        return jsonify({'error': 'Too many attempts. Send a new verification code.'}), 400
+    if not _otp_code_matches(code, row.code_hash):
+        row.attempt_count = (row.attempt_count or 0) + 1
+        if row.attempt_count >= OTP_MAX_ATTEMPTS:
+            row.code_hash = None
+            db.session.commit()
+            return jsonify({'error': 'Too many attempts. Send a new verification code.'}), 400
+        db.session.commit()
+        left = OTP_MAX_ATTEMPTS - row.attempt_count
+        return jsonify({'error': f'Incorrect code. {left} attempt(s) remaining.'}), 400
+
+    grant_until = _issue_edit_grant(row, now)
+    db.session.commit()
+    log_audit(actor_id, 'admin_edit_otp_verified', 'user', str(user_id), {
+        'target_user': target.username,
+    })
+    return jsonify({
+        'success': True,
+        'unlocked': True,
+        'grant_expires_at': _otp_iso(grant_until),
+        'message': 'Editing unlocked for 10 minutes.',
+    }), 200
+
+
+@admin_bp.route('/users/<int:user_id>/edit-otp/lock', methods=['POST'])
+@jwt_required()
+@admin_required
+def admin_edit_otp_lock(user_id):
+    target = User.query.get_or_404(user_id)
+    if target.role != 'admin':
+        return jsonify({'error': 'A verification code is only required for administrator accounts.'}), 400
+    actor_id = _int_actor_id()
+    if actor_id is None:
+        return jsonify({'error': 'Invalid session'}), 401
+    row = AdminEditOtp.query.filter_by(
+        actor_user_id=actor_id, target_user_id=target.id
+    ).first()
+    if row:
+        row.grant_expires_at = None
+        row.code_hash = None
+        row.attempt_count = 0
+        db.session.commit()
+    log_audit(actor_id, 'admin_edit_otp_locked', 'user', str(user_id), {
+        'target_user': target.username,
+    })
+    now = utc_now_naive()
+    return jsonify({
+        'success': True,
+        'unlocked': False,
+        'otp_required': True,
+        'email_masked': _mask_email(target.email),
+        'has_email': bool((target.email or '').strip()),
+        **_otp_timing_fields(row, now),
+    }), 200
+
+
+@admin_bp.route('/users/<int:user_id>/edit-otp/unlock-with-password', methods=['POST'])
+@jwt_required()
+@admin_required
+def admin_edit_otp_unlock_with_password(user_id):
+    target = User.query.get_or_404(user_id)
+    if target.role != 'admin':
+        return jsonify({'error': 'A verification code is only required for administrator accounts.'}), 400
+    actor_id = _int_actor_id()
+    if actor_id is None:
+        return jsonify({'error': 'Invalid session'}), 401
+    actor = db.session.get(User, actor_id)
+    if not actor:
+        return jsonify({'error': 'Invalid session'}), 401
+    data = request.get_json(silent=True) or {}
+    password = data.get('password')
+    if not isinstance(password, str) or not password.strip():
+        return jsonify({'error': 'Enter your admin password.'}), 400
+
+    now = utc_now_naive()
+    row = _otp_row_for(actor_id, target.id)
+    if (row.attempt_count or 0) >= OTP_MAX_ATTEMPTS:
+        return jsonify({'error': 'Too many attempts. Wait a few minutes and try again.'}), 400
+    if not actor.check_password(password):
+        row.attempt_count = (row.attempt_count or 0) + 1
+        db.session.commit()
+        if row.attempt_count >= OTP_MAX_ATTEMPTS:
+            return jsonify({'error': 'Too many attempts. Wait a few minutes and try again.'}), 400
+        left = OTP_MAX_ATTEMPTS - row.attempt_count
+        return jsonify({'error': f'Incorrect password. {left} attempt(s) remaining.'}), 400
+
+    grant_until = _issue_edit_grant(row, now)
+    db.session.commit()
+    log_audit(actor_id, 'admin_edit_otp_password_unlock', 'user', str(user_id), {
+        'target_user': target.username,
+    })
+    return jsonify({
+        'success': True,
+        'unlocked': True,
+        'grant_expires_at': _otp_iso(grant_until),
+        'message': 'Editing unlocked for 10 minutes.',
+    }), 200
+
+
 @admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
 @jwt_required()
 @admin_required
@@ -777,6 +1245,9 @@ def reset_user_password(user_id):
     try:
         admin_id = get_jwt_identity()
         user = User.query.get_or_404(user_id)
+        denied = _reject_unless_admin_edit_granted(user)
+        if denied:
+            return denied
         
         raw_reset = (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip()
         temp_password = raw_reset or DEFAULT_ADMIN_RESET_PASSWORD
@@ -830,6 +1301,60 @@ def reset_user_password(user_id):
         return error_response('Failed to reset password', status_code=500, error_code='DATABASE_ERROR')
 
 
+@admin_bp.route('/users/<int:user_id>/email-login-details', methods=['POST'])
+@jwt_required()
+@admin_required
+def email_user_login_details(user_id):
+    """Email the stored username and password to the user's address."""
+    try:
+        admin_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        if not user:
+            return error_response('User not found.', status_code=404, error_code='NOT_FOUND')
+        denied = _reject_unless_admin_edit_granted(user)
+        if denied:
+            return denied
+        email = (user.email or '').strip()
+        if not email:
+            return error_response('This account has no email address.', status_code=400, error_code='VALIDATION_ERROR')
+        password = (getattr(user, 'admin_visible_password', None) or '').strip()
+        if not password:
+            return error_response(
+                'No password on file for admin view. Reset password or save a new password first.',
+                status_code=400,
+                error_code='VALIDATION_ERROR',
+            )
+
+        from common.email_service import send_login_details_email
+        try:
+            email_sent = send_login_details_email(
+                user_email=email,
+                username=user.username,
+                password=password,
+                full_name=user.full_name,
+            )
+        except Exception as email_error:
+            current_app.logger.warning('Login details email failed: %s', email_error)
+            email_sent = False
+        log_audit(admin_id, 'email_login_details', 'user', str(user_id), {
+            'target_user': user.username,
+            'email_sent': bool(email_sent),
+        })
+        if not email_sent:
+            return error_response(
+                'Could not send the email. Check mail settings and try again.',
+                status_code=502,
+                error_code='EMAIL_FAILED',
+            )
+        return success_response(
+            {'email': email},
+            message=f'Login details were emailed to {email}.',
+        )
+    except Exception as e:
+        current_app.logger.error('Error emailing login details: %s', e, exc_info=True)
+        return error_response('Failed to email login details', status_code=500, error_code='DATABASE_ERROR')
+
+
 @admin_bp.route('/users/<int:user_id>/toggle-active', methods=['POST'])
 @jwt_required()
 @admin_required
@@ -838,6 +1363,9 @@ def toggle_user_active(user_id):
     try:
         admin_id = get_jwt_identity()
         user = User.query.get_or_404(user_id)
+        denied = _reject_unless_admin_edit_granted(user)
+        if denied:
+            return denied
         
         # Prevent deactivating yourself
         if user_id == admin_id:
@@ -852,10 +1380,31 @@ def toggle_user_active(user_id):
             'new_status': 'active' if user.is_active else 'inactive',
             'changed_by': User.query.get(admin_id).username if admin_id else 'system'
         })
+
+        email_sent = False
+        if user.email:
+            try:
+                from common.email_service import send_account_status_email
+                email_sent = send_account_status_email(
+                    user.email,
+                    user.username,
+                    is_active=bool(user.is_active),
+                    full_name=user.full_name,
+                )
+            except Exception as email_error:
+                current_app.logger.warning('Account status email failed: %s', email_error)
+
+        status_word = 'activated' if user.is_active else 'deactivated'
+        message = f'User {status_word} successfully'
+        if email_sent:
+            message += f'. An email was sent to {user.email}.'
+        elif user.email:
+            message += '. The status email could not be sent.'
         
         return jsonify({
             'success': True,
-            'message': f'User {"activated" if user.is_active else "deactivated"} successfully',
+            'message': message,
+            'email_sent': email_sent,
             'user': _admin_user_dict(user)
         }), 200
     except Exception as e:
@@ -872,6 +1421,9 @@ def update_user_access(user_id):
     try:
         admin_id = get_jwt_identity()
         user = User.query.get_or_404(user_id)
+        denied = _reject_unless_admin_edit_granted(user)
+        if denied:
+            return denied
         
         # Parse JSON with better error handling
         current_app.logger.info(f"Update access request for user {user_id}, Content-Type: {request.content_type}")
@@ -938,12 +1490,24 @@ def delete_user(user_id):
     """Delete a user account"""
     try:
         admin_id = get_jwt_identity()
-        
-        # Prevent deleting yourself
-        if user_id == admin_id:
+        try:
+            admin_id_int = int(admin_id)
+        except (TypeError, ValueError):
+            admin_id_int = None
+
+        # Prevent deleting yourself (JWT identity is stored as a string)
+        if admin_id_int is not None and user_id == admin_id_int:
             return jsonify({'error': 'Cannot delete your own account'}), 400
         
         user = User.query.get_or_404(user_id)
+        denied = _reject_unless_admin_edit_granted(user)
+        if denied:
+            return denied
+
+        if user.is_active:
+            return jsonify({
+                'error': 'Deactivate this account before deleting it.',
+            }), 400
         
         # Prevent deleting the last admin
         if user.role == 'admin':
@@ -952,6 +1516,18 @@ def delete_user(user_id):
                 return jsonify({'error': 'Cannot delete the last active admin user'}), 400
         
         username = user.username
+        display_name = (user.full_name or username or 'this user').strip()
+
+        fallback_admin = _admin_for_reassigned_records(user_id, preferred_id=admin_id_int)
+        fallback_id = fallback_admin.id if fallback_admin else None
+        fallback_name = (
+            (fallback_admin.full_name or fallback_admin.username).strip()
+            if fallback_admin else 'another administrator'
+        )
+        try:
+            ticket_count = _detach_user_for_delete(user_id, fallback_id)
+        except ValueError as blocked:
+            return jsonify({'error': str(blocked)}), 409
 
         User.query.filter_by(reporting_manager_id=user_id).update(
             {'reporting_manager_id': None},
@@ -961,6 +1537,22 @@ def delete_user(user_id):
             {'operations_manager_id': None},
             synchronize_session=False,
         )
+        DocHubAccess.query.filter_by(updated_by=user_id).update(
+            {'updated_by': None},
+            synchronize_session=False,
+        )
+        access_row = user.dochub_access_entry
+        if access_row is not None:
+            db.session.delete(access_row)
+        AdminEditOtp.query.filter(
+            or_(
+                AdminEditOtp.actor_user_id == user_id,
+                AdminEditOtp.target_user_id == user_id,
+            )
+        ).delete(synchronize_session=False)
+
+        db.session.flush()
+        db.session.expire(user)
 
         # Delete user (cascade will handle related records)
         db.session.delete(user)
@@ -969,17 +1561,42 @@ def delete_user(user_id):
         # Log the action
         log_audit(admin_id, 'delete_user', 'user', str(user_id), {
             'deleted_user': username,
-            'deleted_by': User.query.get(admin_id).username if admin_id else 'system'
+            'deleted_by': User.query.get(admin_id).username if admin_id else 'system',
+            'tickets_reassigned': ticket_count,
+            'tickets_reassigned_to': fallback_id,
         })
+
+        message = f'User {username} deleted successfully'
+        if ticket_count:
+            noun = 'ticket' if ticket_count == 1 else 'tickets'
+            message = (
+                f'{display_name} was deleted. {ticket_count} {noun} stayed in the system '
+                f'and the reporter was set to {fallback_name}.'
+            )
         
         return jsonify({
             'success': True,
-            'message': f'User {username} deleted successfully'
+            'message': message,
+            'tickets_reassigned': ticket_count,
         }), 200
+    except IntegrityError as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting user: {str(e)}", exc_info=True)
+        detail = str(getattr(e, 'orig', None) or e)
+        if 'reporter_id' in detail:
+            return jsonify({
+                'error': 'Cannot delete this account because it is still the reporter on one or more tickets.',
+            }), 409
+        return jsonify({
+            'error': 'Cannot delete this account because other records still reference it.',
+        }), 409
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error deleting user: {str(e)}", exc_info=True)
-        return jsonify({'error': 'Failed to delete user'}), 500
+        reason = str(e).split('\n')[0].strip()[:240]
+        return jsonify({
+            'error': f'Cannot delete this account. {reason}' if reason else 'Cannot delete this account.',
+        }), 500
 
 
 @admin_bp.route('/users/<int:user_id>/activity', methods=['GET'])
@@ -1072,7 +1689,11 @@ def update_user(user_id):
         admin_id = get_jwt_identity()
         user = User.query.get_or_404(user_id)
         
-        data = request.get_json()
+        data = request.get_json() or {}
+        promoting = (data.get('role') == 'admin' and user.role != 'admin')
+        denied = _reject_unless_admin_edit_granted(user, promoting_to_admin=promoting)
+        if denied:
+            return denied
         
         # Update allowed fields
         if 'full_name' in data:
@@ -1161,6 +1782,7 @@ def update_user(user_id):
                 ('access_civil', 'access_civil'),
                 ('access_cleaning', 'access_cleaning'),
                 ('access_hr', 'access_hr'),
+                ('access_hiring', 'access_hiring'),
                 ('access_procurement_module', 'access_procurement_module'),
                 ('access_business_development', 'access_business_development'),
                 ('access_sales_manager', 'access_sales_manager'),
@@ -1176,11 +1798,16 @@ def update_user(user_id):
                     setattr(user, col, bool(data[key]))
             if bool(getattr(user, 'access_sales_manager', False)):
                 user.access_business_development = True
+            if bool(getattr(user, 'access_hiring', False)):
+                user.access_hr = True
+            if not bool(getattr(user, 'access_hr', False)):
+                user.access_hiring = False
             if (user.designation or '') == 'business_development':
                 user.access_business_development = True
                 if 'access_quotations' not in data:
                     user.access_quotations = True
 
+        password_updated = False
         if 'password' in data:
             from app.auth.routes import validate_password
             raw_pw = (data.get('password') or '').strip()
@@ -1190,6 +1817,7 @@ def update_user(user_id):
                     return jsonify({'error': msg}), 400
                 user.set_password(raw_pw)
                 user.password_changed = True
+                password_updated = True
         
         db.session.commit()
         
@@ -1198,10 +1826,25 @@ def update_user(user_id):
             'target_user': user.username,
             'changed_by': User.query.get(admin_id).username if admin_id else 'system'
         })
+
+        email_sent = False
+        if password_updated and user.email:
+            try:
+                from common.email_service import send_password_updated_email
+                email_sent = send_password_updated_email(
+                    user.email, user.username, by_admin=True, full_name=user.full_name
+                )
+            except Exception as email_error:
+                current_app.logger.warning('Password updated email failed: %s', email_error)
+
+        message = 'User updated successfully'
+        if password_updated and email_sent:
+            message += '. A password-updated email was sent.'
         
         return jsonify({
             'success': True,
-            'message': 'User updated successfully',
+            'message': message,
+            'email_sent': email_sent,
             'user': _admin_user_dict(user)
         }), 200
     except Exception as e:
@@ -1286,6 +1929,9 @@ def list_documents():
         
         documents = []
         for submission in submissions:
+            mt = submission.module_type or ''
+            if mt in STOREKEEPING_MODULE_TYPES:
+                continue
             # Get user info
             user = User.query.get(submission.user_id) if submission.user_id else None
             
@@ -1320,7 +1966,6 @@ def list_documents():
                         pdf_url = file.cloud_url
             
             # Format module type for display (HR uses same labels as HR module)
-            mt = submission.module_type or ''
             module_display = get_module_display_name(mt)
 
             doc_labels = build_document_labels(submission, module_display)
@@ -1721,8 +2366,9 @@ def dashboard_overview():
         from sqlalchemy import func, or_, and_
 
         # --- Users ---
-        user_total = User.query.count()
-        user_active = User.query.filter_by(is_active=True).count()
+        vis = ~User.username.in_(DIRECTORY_HIDDEN_USERNAMES)
+        user_total = User.query.filter(vis).count()
+        user_active = User.query.filter(vis, User.is_active.is_(True)).count()
         user_inactive = max(0, user_total - user_active)
         role_rows = db.session.query(User.role, func.count(User.id)).group_by(User.role).all()
         by_role = {str(r or 'unknown'): c for r, c in role_rows}
@@ -2244,18 +2890,9 @@ def import_devices_excel():
 
         # Read file robustly (.xlsx, .xls, or HTML-based .xls)
         try:
-            if filename.endswith('.xlsx'):
-                df = pd.read_excel(file)
-            else:
-                try:
-                    df = pd.read_excel(file, engine='xlrd')
-                except Exception:
-                    file.stream.seek(0)
-                    html_text = file.stream.read().decode('utf-8', errors='ignore')
-                    tables = pd.read_html(StringIO(html_text))
-                    if not tables:
-                        return error_response('Could not read any table from uploaded Excel file', status_code=400, error_code='VALIDATION_ERROR')
-                    df = max(tables, key=lambda t: t.shape[0])
+            from common.kynvera_excel_brand import read_import_dataframe
+
+            df = read_import_dataframe(file, preferred_sheets=('Devices',))
         except Exception as read_error:
             current_app.logger.error(f"Device Excel import read error: {read_error}", exc_info=True)
             return error_response(f'Could not parse Excel file: {read_error}', status_code=400, error_code='VALIDATION_ERROR')
@@ -2420,27 +3057,9 @@ def import_devices_excel():
 def download_devices_sample_excel():
     """Download a sample Excel file with multiple device rows."""
     try:
-        import pandas as pd
+        from app.admin.excel_templates import build_devices_sample_bytes
 
-        rows = [
-            {'Device Name': 'LAPTOP-HQ-001', 'Device Type': 'Laptop', 'OS': 'Windows 11 Pro', 'Status': 'online', 'Health': 96, 'Assigned User Email': 'admin@injaaz.ae', 'Serial / Asset Tag': 'AST-10001'},
-            {'Device Name': 'DESKTOP-FIN-014', 'Device Type': 'Desktop', 'OS': 'Windows 10', 'Status': 'idle', 'Health': 88, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10002'},
-            {'Device Name': 'MOBILE-OPS-022', 'Device Type': 'Mobile', 'OS': 'Android 15', 'Status': 'online', 'Health': 93, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10003'},
-            {'Device Name': 'TABLET-QA-005', 'Device Type': 'Tablet', 'OS': 'iOS 18', 'Status': 'update', 'Health': 72, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10004'},
-            {'Device Name': 'SERVER-DC-002', 'Device Type': 'Server', 'OS': 'Ubuntu 24.04', 'Status': 'online', 'Health': 91, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10005'},
-            {'Device Name': 'LAPTOP-BD-011', 'Device Type': 'Laptop', 'OS': 'macOS Sequoia', 'Status': 'offline', 'Health': 54, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10006'},
-            {'Device Name': 'DESKTOP-HR-018', 'Device Type': 'Desktop', 'OS': 'Windows 11', 'Status': 'idle', 'Health': 84, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10007'},
-            {'Device Name': 'LAPTOP-ENG-031', 'Device Type': 'Laptop', 'OS': 'Windows 11', 'Status': 'online', 'Health': 97, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10008'},
-            {'Device Name': 'MOBILE-FIELD-040', 'Device Type': 'Mobile', 'OS': 'Android 14', 'Status': 'update', 'Health': 67, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10009'},
-            {'Device Name': 'TABLET-MEET-003', 'Device Type': 'Tablet', 'OS': 'iPadOS 18', 'Status': 'online', 'Health': 89, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10010'},
-        ]
-
-        df = pd.DataFrame(rows)
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Devices')
-        output.seek(0)
-
+        output = BytesIO(build_devices_sample_bytes())
         filename = f"device_import_sample_{utc_now_naive().strftime('%Y%m%d')}.xlsx"
         return send_file(
             output,
@@ -4462,9 +5081,23 @@ def create_technician():
         payload = {'technician': t.to_dict(), 'login_created': bool(login_user)}
         if login_user:
             payload['user'] = _admin_user_dict(login_user)
+            try:
+                from common.email_service import send_account_created_email
+                payload['email_sent'] = send_account_created_email(
+                    user_email=login_user.email,
+                    username=login_user.username,
+                    full_name=login_user.full_name,
+                    temp_password=temp_password,
+                )
+            except Exception as email_error:
+                current_app.logger.warning('Account created email failed: %s', email_error)
+                payload['email_sent'] = False
         if temp_password:
             payload['temp_password'] = temp_password
-        return success_response(payload, message='Technician created', status_code=201)
+        message = 'Technician created'
+        if login_user and payload.get('email_sent'):
+            message += '. A welcome email with the username was sent.'
+        return success_response(payload, message=message, status_code=201)
     except ValueError as e:
         db.session.rollback()
         return error_response(str(e), status_code=400, error_code='VALIDATION_ERROR')
@@ -4578,7 +5211,21 @@ def convert_technician_to_system_user(tech_id):
         }
         if temp_password:
             payload['temp_password'] = temp_password
-        return success_response(payload, message='Staff converted to a system user')
+        try:
+            from common.email_service import send_account_created_email
+            payload['email_sent'] = send_account_created_email(
+                user_email=login_user.email,
+                username=login_user.username,
+                full_name=login_user.full_name,
+                temp_password=temp_password,
+            )
+        except Exception as email_error:
+            current_app.logger.warning('Account created email failed: %s', email_error)
+            payload['email_sent'] = False
+        message = 'Staff converted to a system user'
+        if payload.get('email_sent'):
+            message += '. A welcome email with the username was sent.'
+        return success_response(payload, message=message)
     except ValueError as e:
         db.session.rollback()
         return error_response(str(e), status_code=400, error_code='VALIDATION_ERROR')
@@ -4621,7 +5268,10 @@ def import_technicians_excel():
 
     try:
         wb = openpyxl.load_workbook(BytesIO(f.read()), read_only=True, data_only=True)
-        ws = wb.active
+        from common.kynvera_excel_brand import resolve_import_sheet_name
+
+        sheet_name = resolve_import_sheet_name(wb.sheetnames, ('Technicians',))
+        ws = wb[sheet_name] if sheet_name else wb.active
         rows = list(ws.iter_rows(values_only=True))
     except Exception as e:
         return error_response(f'Could not read Excel file: {e}', status_code=400, error_code='PARSE_ERROR')
@@ -4705,78 +5355,11 @@ def import_technicians_excel():
 def export_technicians_template():
     """Return a blank Excel template for technician bulk import."""
     try:
-        import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from app.admin.excel_templates import build_technicians_template_bytes
     except ImportError:
         return error_response('openpyxl is required (pip install openpyxl)', status_code=500, error_code='DEPENDENCY_ERROR')
 
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = 'Technicians'
-
-    headers = [
-        'Employee ID', 'Full Name', 'Designation', 'Department',
-        'Specialization', 'Phone', 'Email', 'Salary', 'Joining Date',
-        'Status', 'Supervisor User ID', 'Notes',
-    ]
-    header_fill = PatternFill('solid', fgColor='125435')
-    header_font = Font(bold=True, color='FFFFFF', size=11)
-    header_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
-    thin = Side(style='thin', color='AAAAAA')
-    border = Border(left=thin, right=thin, top=thin, bottom=thin)
-
-    for col_idx, h in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col_idx, value=h)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = header_align
-        cell.border = border
-
-    col_widths = [16, 28, 24, 22, 22, 16, 28, 12, 16, 12, 18, 30]
-    for i, w in enumerate(col_widths, start=1):
-        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
-    ws.row_dimensions[1].height = 28
-
-    # Example row
-    example = ['EMP-001', 'John Smith', 'HVAC Technician', 'MEP', 'Air Conditioning',
-                '+971-50-000-0000', 'john@example.com', '5000', '2024-01-15', 'active',
-                '(see Users list)', '']
-    note_fill = PatternFill('solid', fgColor='F0FBF5')
-    note_font = Font(color='334433', size=10, italic=True)
-    for col_idx, v in enumerate(example, start=1):
-        cell = ws.cell(row=2, column=col_idx, value=v)
-        cell.fill = note_fill
-        cell.font = note_font
-        cell.alignment = Alignment(vertical='center')
-        cell.border = border
-
-    # Instructions sheet
-    ws2 = wb.create_sheet('Instructions')
-    ws2['A1'] = 'Technician Import — Instructions'
-    ws2['A1'].font = Font(bold=True, size=13, color='125435')
-    notes = [
-        ('Employee ID', 'Required. Unique identifier (e.g. EMP-001). Duplicates are skipped.'),
-        ('Full Name', 'Required. Full name of the technician.'),
-        ('Designation', 'Job title (e.g. HVAC Technician, Plumber, Electrician).'),
-        ('Department', 'Team/department (e.g. MEP, Civil, Cleaning).'),
-        ('Specialization', 'Area of expertise (e.g. Air Conditioning, Electrical, Plumbing).'),
-        ('Phone', 'Contact phone number.'),
-        ('Email', 'Email address (optional).'),
-        ('Salary', 'Monthly salary — numbers only, no currency symbol.'),
-        ('Joining Date', 'Format: YYYY-MM-DD or DD/MM/YYYY.'),
-        ('Status', 'One of: active, inactive, on_leave. Defaults to "active" if blank.'),
-        ('Supervisor User ID', 'Numeric user.id of an active Supervisor / Ops Manager / GM (from Staff list). Blank if unknown.'),
-        ('Notes', 'Any additional notes.'),
-    ]
-    for row_i, (col, desc) in enumerate(notes, start=3):
-        ws2.cell(row=row_i, column=1, value=col).font = Font(bold=True)
-        ws2.cell(row=row_i, column=2, value=desc)
-    ws2.column_dimensions['A'].width = 20
-    ws2.column_dimensions['B'].width = 60
-
-    buf = BytesIO()
-    wb.save(buf)
-    buf.seek(0)
+    buf = BytesIO(build_technicians_template_bytes())
     return send_file(
         buf,
         as_attachment=True,

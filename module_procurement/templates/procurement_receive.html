@@ -1,0 +1,54 @@
+{% set proc_page_title = 'Receive goods — Procurement' %}
+{% set proc_topbar_title = 'Receive goods' %}
+{% set proc_head_extra %}
+<style>
+
+    body.procurement-page { min-height: 100vh; background: #f4f6f5; }
+    body.procurement-page .nav { border-bottom: none !important; }
+    .wrap { max-width: 700px; margin: 0 auto; padding: 7.5rem 1.5rem 3rem; }
+    .panel { background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:1.5rem; }
+    .btn-add { background:#16a34a; color:#fff; border:none; border-radius:10px; padding:.6rem 1.2rem; font-weight:700; }
+  
+</style>
+{% endset %}
+{% include 'partials/proc_shell_start.html' %}
+<div class="wrap">
+    <a id="back" href="/procurement/purchase-requests" style="color:#ff8e68;text-decoration:none;font-size:.85rem;font-weight:600;">← Request</a>
+    <div class="panel mt-3">
+      <h1 style="font-size:1.4rem;font-weight:800">Goods received</h1>
+      <p id="meta"></p>
+      <div id="lines"></div>
+      <label class="form-label mt-2">Notes</label>
+      <textarea class="form-control mb-3" id="notes"></textarea>
+      <button class="btn-add" onclick="receive()">Post goods received</button>
+    </div>
+  </div>
+  <script>
+    const token = localStorage.getItem('access_token');
+    const id = {{ request_id | tojson }};
+    const h = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
+    document.getElementById('back').href = '/procurement/purchase-requests/' + id;
+    function esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+    async function load() {
+      const res = await fetch('/procurement/api/purchase-requests/' + id, { headers: h });
+      const data = await res.json();
+      const r = data.request;
+      document.getElementById('meta').textContent = r.property + ' · ' + r.status;
+      document.getElementById('lines').innerHTML = (r.lines||[]).map(l => `
+        <div class="mb-2"><label class="form-label">${esc(l.name)} (ordered ${l.qty})</label>
+        <input class="form-control qty" data-id="${esc(l.catalog_id)}" type="number" value="${l.qty}" min="0"></div>`).join('');
+    }
+    async function receive() {
+      const quantities = {};
+      document.querySelectorAll('.qty').forEach(el => { quantities[el.dataset.id] = el.value; });
+      const res = await fetch('/procurement/api/purchase-requests/' + id + '/receive', {
+        method:'POST', headers:h, body: JSON.stringify({ quantities, notes: document.getElementById('notes').value })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) { alert(data.error || 'Failed'); return; }
+      location.href = '/procurement/purchase-requests/' + id;
+    }
+    load();
+  </script>
+  
+{% include 'partials/proc_shell_end.html' %}

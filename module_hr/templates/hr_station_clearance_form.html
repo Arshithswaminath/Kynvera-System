@@ -9,8 +9,9 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}?v=6">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
+  <script src="{{ url_for('static', filename='js/hr_form_step_scroll.js') }}?v=1"></script>
   <style>
     .hr-form-unified .page { padding-top: 5.5rem; }
     body.hr-embed-mode .hr-form-unified .page { padding-top: 0 !important; }
@@ -42,18 +43,9 @@
   {% set active_page = 'hr' %}
   {% include 'partials/hr_embed_optional_navbar.html' %}
 
-  <div class="success-bg" id="successModal">
-    <div class="success-box">
-      <button type="button" class="success-back-btn" onclick="hrGoToSubmittedRequest()" title="View submitted request">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-      </button>
-      <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
-      <h2>Form Submitted!</h2>
-      <p>Station clearance form sent to HR.</p>
-      <div class="sub-id" id="submissionId"></div>
-      <button class="btn-submit" style="width:100%;justify-content:center" onclick="hrGoToSubmittedRequest()">View My Requests</button>
-    </div>
-  </div>
+  {% set success_title = 'Form submitted' %}
+  {% set success_lead = 'Station clearance form sent to HR.' %}
+  {% include 'partials/hr_form_success_modal.html' %}
 
   <div class="sig-modal-bg" id="sigBg">
     <div class="sig-modal">
@@ -68,10 +60,9 @@
 
   <div class="page">
     <div class="page-inner">
-      <a href="/hr/" class="back-btn">
-        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-        Back to HR
-      </a>
+      {% set module_back_url = url_for('hr.hr_dashboard') %}
+      {% set module_back_extra_class = 'back-btn' %}
+      {% include 'partials/module_back_link.html' %}
 
       {% include 'partials/hr_submitted_edit_banners.html' %}
 
@@ -241,7 +232,7 @@ function goToStep2(){
   document.getElementById('step2Badge').className='step-item active';
   document.getElementById('step2Badge').classList.remove('locked');
   document.getElementById('connector1').classList.add('done');
-  document.getElementById('step2Panel').scrollIntoView({behavior:'smooth',block:'start'});
+  hrScrollFormToTop();
 }
 function goToStep1(){
   document.getElementById('step2Panel').classList.remove('active');
@@ -251,7 +242,7 @@ function goToStep1(){
   document.getElementById('step1Badge').querySelector('.num').textContent='1';
   document.getElementById('step2Badge').className='step-item locked';
   document.getElementById('connector1').classList.remove('done');
-  document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
+  hrScrollFormToTop();
 }
 
 let pad=null,target=null;
@@ -276,7 +267,7 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
   const btn=e.target.querySelector('.btn-submit');
   btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…';
   try{const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});const r=await res.json();
-  if(r.success){window.__hrLastHrSubmissionId=r.submission_id;document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
+  if(r.success){window.__hrLastHrSubmissionId=r.submission_id;document.getElementById('submissionId').textContent=r.submission_id;hrShowSuccessModal()}
   else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='Submit Form'}
   }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='Submit Form'}
 });

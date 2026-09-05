@@ -7,7 +7,6 @@ The wordmark image is the logo text; body copy uses Helvetica.
 from __future__ import annotations
 
 import logging
-import os
 from datetime import datetime
 
 from reportlab.lib import colors
@@ -18,26 +17,36 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT
 from reportlab.lib.utils import ImageReader
 
+from common.kynvera_brand import (
+    COMPANY_NAME,
+    COMPANY_NAME_UPPER,
+    DEFAULT_REPORT_TITLE,
+    FOOTER_CONFIDENTIAL,
+    MARK_PATH,
+    MARK_PATH_FALLBACK,
+    PDF_AUTHOR,
+    TAGLINE,
+    WORDMARK_PATH,
+    resolve_logo_path,
+    BRAND,
+    BRAND_DARK,
+    BRAND_HOVER,
+    BRAND_WASH,
+    CHROME,
+)
+
 logger = logging.getLogger(__name__)
 
-# ── Identity ─────────────────────────────────────────────────────────────────
-COMPANY_NAME = "Kynvera"
-COMPANY_NAME_UPPER = "KYNVERA"
-TAGLINE = "All Operations. One Platform."
-FOOTER_CONFIDENTIAL = "Kynvera — Confidential"
-DEFAULT_REPORT_TITLE = "Kynvera Report"
-PDF_AUTHOR = "Kynvera"
-
-# ── Colors (coral + neutrals) ────────────────────────────────────────────────
-PRIMARY = colors.HexColor("#ff8e68")
-PRIMARY_DARK = colors.HexColor("#e05f36")
-PRIMARY_LIGHT = colors.HexColor("#f97e54")
-SOFT_WASH = colors.HexColor("#fff4ef")
-TEXT_DARK = colors.HexColor("#191b23")
-TEXT_MID = colors.HexColor("#5c616e")
-TEXT_MUTED = colors.HexColor("#9498a3")
-HAIRLINE = colors.HexColor("#e9eaee")
-SURFACE_ALT = colors.HexColor("#fafafb")
+# ── Colors (coral + neutrals) — common.kynvera_brand ─────────────────────────
+PRIMARY = colors.HexColor(BRAND)
+PRIMARY_DARK = colors.HexColor(BRAND_DARK)
+PRIMARY_LIGHT = colors.HexColor(BRAND_HOVER)
+SOFT_WASH = colors.HexColor(BRAND_WASH)
+TEXT_DARK = colors.HexColor(CHROME["text"])
+TEXT_MID = colors.HexColor(CHROME["text_mid"])
+TEXT_MUTED = colors.HexColor(CHROME["text_muted"])
+HAIRLINE = colors.HexColor(CHROME["hairline"])
+SURFACE_ALT = colors.HexColor(CHROME["well"])
 WHITE = colors.white
 BLACK = colors.black
 
@@ -51,28 +60,8 @@ TABLE_ALT_ROW = SURFACE_ALT
 BORDER_COLOR = HAIRLINE
 LIGHT_BG = SURFACE_ALT
 
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-WORDMARK_PATH = os.path.join(_ROOT, "static", "images", "kynvera", "kynvera-wordmark.png")
-MARK_PATH = os.path.join(_ROOT, "static", "images", "kynvera", "kynvera-mark-96.png")
-MARK_PATH_FALLBACK = os.path.join(_ROOT, "static", "images", "kynvera", "kynvera-mark.png")
-
 # Prefer wordmark for headers; mark for compact canvas slots
-LOGO_PATH = WORDMARK_PATH if os.path.exists(WORDMARK_PATH) else (
-    MARK_PATH if os.path.exists(MARK_PATH) else MARK_PATH_FALLBACK
-)
-
-
-def resolve_logo_path(prefer_wordmark: bool = True) -> str | None:
-    """Return first existing logo path, or None."""
-    order = (
-        [WORDMARK_PATH, MARK_PATH, MARK_PATH_FALLBACK]
-        if prefer_wordmark
-        else [MARK_PATH, MARK_PATH_FALLBACK, WORDMARK_PATH]
-    )
-    for path in order:
-        if path and os.path.exists(path):
-            return path
-    return None
+LOGO_PATH = resolve_logo_path(prefer_wordmark=True) or MARK_PATH_FALLBACK
 
 
 def wordmark_flowable(max_width=1.55 * inch, max_height=0.38 * inch):

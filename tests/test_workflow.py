@@ -110,6 +110,85 @@ class TestGetMyTrail:
                 db.session.delete(pending_row)
                 db.session.commit()
 
+    def test_gm_reporting_manager_sign_appears_in_signed_off(self, client, app):
+        """GM who signs the RM chain step must land in Signed off, not vanish."""
+        import uuid
+        from app.models import db, User
+
+        sig = (
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+            "AAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        )
+        tag = uuid.uuid4().hex[:6]
+        created_ids = []
+        sid = None
+
+        def _mk(username, designation, **kw):
+            u = User(
+                username=username,
+                email=f"{username}@example.com",
+                full_name=username.replace("_", " ").title(),
+                role="user",
+                designation=designation,
+                is_active=True,
+                password_changed=True,
+                **kw,
+            )
+            u.set_password("TestPass123")
+            db.session.add(u)
+            db.session.flush()
+            created_ids.append(u.id)
+            return u
+
+        with app.app_context():
+            gm = _mk(f"gm_rm_{tag}", "general_manager")
+            emp = _mk(f"emp_rm_{tag}", "employee", reporting_manager_id=gm.id)
+            db.session.commit()
+            emp_name, gm_name = emp.username, gm.username
+
+        def _login(username):
+            r = client.post("/api/auth/login", json={"username": username, "password": "TestPass123"})
+            assert r.status_code == 200, r.get_json()
+            return {"Authorization": f"Bearer {r.get_json()['access_token']}"}
+
+        try:
+            sub_r = client.post(
+                "/hr/api/submit",
+                json={
+                    "form_type": "visa_renewal",
+                    "employee_name": "Trail Tester",
+                    "employee_signature": sig,
+                },
+                headers=_login(emp_name),
+            )
+            assert sub_r.status_code == 200, sub_r.get_json()
+            sid = sub_r.get_json()["submission_id"]
+
+            sign_r = client.post(
+                f"/hr/api/mgmt-signoff/{sid}/sign",
+                json={"signature": sig},
+                headers=_login(gm_name),
+            )
+            assert sign_r.status_code == 200, sign_r.get_json()
+
+            trail = client.get("/api/workflow/submissions/my-trail", headers=_login(gm_name))
+            assert trail.status_code == 200, trail.get_json()
+            data = trail.get_json()
+            pending_ids = {s["submission_id"] for s in data.get("pending") or []}
+            reviewed_ids = {s["submission_id"] for s in data.get("reviewed") or []}
+            assert sid not in pending_ids
+            assert sid in reviewed_ids
+        finally:
+            with app.app_context():
+                from app.models import Submission
+                if sid:
+                    Submission.query.filter_by(submission_id=sid).delete()
+                for uid in created_ids:
+                    obj = db.session.get(User, uid)
+                    if obj is not None:
+                        db.session.delete(obj)
+                db.session.commit()
+
 
 class TestGetHistorySubmissions:
     """Test history submissions endpoint"""

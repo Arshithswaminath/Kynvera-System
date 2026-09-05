@@ -1,7 +1,6 @@
 """2D digital-twin helpers: live pin status from assets + open work orders."""
 import json
 import os
-import uuid
 
 from flask import current_app
 from werkzeug.utils import secure_filename
@@ -10,6 +9,7 @@ from app.models import (
     db, Asset, Ticket, TicketAsset, FloorPlan, TicketProject,
     TicketProperty, TicketZone, TicketSubZone, TicketBaseUnit,
 )
+from common.utils import save_uploaded_file_cloud
 
 CLOSED_TICKET_STATUSES = frozenset({
     'closed', 'cancelled', 'draft', 'resolved',
@@ -138,10 +138,47 @@ def resolve_hotspot_assets(plan, hotspot):
     return assets
 
 
+def _uploads_dir():
+    return current_app.config.get('UPLOADS_DIR') or os.path.join(
+        current_app.root_path, 'generated', 'uploads'
+    )
+
+
+def local_plan_image_path(plan):
+    """Absolute path if this plan still has a file on disk, else None."""
+    url = (getattr(plan, 'image_url', None) or '').strip()
+    if url.startswith('/static/uploads/floor-plans/'):
+        path = os.path.join(current_app.root_path, url.lstrip('/'))
+        return path if os.path.isfile(path) else None
+    if url.startswith('/generated/uploads/'):
+        name = os.path.basename(url)
+        uploads = _uploads_dir()
+        for path in (
+            os.path.join(uploads, name),
+            os.path.join(uploads, 'floor-plans', name),
+        ):
+            if os.path.isfile(path):
+                return path
+    return None
+
+
 def plan_display_url(plan):
-    url = plan.image_url or ''
-    if url.startswith(('data:', 'http://', 'https://', '/static/', '/assets/')):
+    url = (plan.image_url or '').strip()
+    if url.startswith(('data:', 'http://', 'https://')):
         return url
+    if url.startswith('/assets/'):
+        return url
+    # Bundled drawings under static/img stay as public static URLs.
+    if url.startswith('/static/') and not url.startswith('/static/uploads/'):
+        return url
+    if local_plan_image_path(plan):
+        # Production blocks /generated/; serve those through the plan file route.
+        if url.startswith('/generated/'):
+            return f'/assets/api/floor-plans/{plan.id}/file'
+        return url
+    # DB still points at a file that vanished (typical after a redeploy).
+    if url.startswith(('/static/uploads/floor-plans/', '/generated/')):
+        return DEFAULT_PLAN_SVG
     if url:
         return f'/assets/api/floor-plans/{plan.id}/file'
     return DEFAULT_PLAN_SVG
@@ -404,19 +441,20 @@ def recommend_fallback(enriched):
     }
 
 
-def _upload_dir():
-    dest = os.path.join(current_app.root_path, 'static', 'uploads', 'floor-plans')
-    os.makedirs(dest, exist_ok=True)
-    return dest
-
-
 def save_plan_image(plan, file_storage):
     filename = secure_filename(file_storage.filename or '') or 'plan.png'
     ext = os.path.splitext(filename)[1].lower() or '.png'
     if ext not in _ALLOWED_IMAGE_EXT:
         return None, 'Use a PNG, JPG, WEBP, GIF, or SVG image'
-    name = f'plan-{plan.id}-{uuid.uuid4().hex[:10]}{ext}'
-    path = os.path.join(_upload_dir(), name)
-    file_storage.save(path)
-    plan.image_url = f'/static/uploads/floor-plans/{name}'
+    try:
+        result = save_uploaded_file_cloud(
+            file_storage, _uploads_dir(), folder='floor-plans'
+        )
+    except Exception:
+        current_app.logger.exception('Floor plan image upload failed')
+        return None, 'Could not save the floor plan image'
+    url = (result or {}).get('url') or ''
+    if not url:
+        return None, 'Could not save the floor plan image'
+    plan.image_url = url
     return plan.image_url, None

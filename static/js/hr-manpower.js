@@ -17,6 +17,7 @@
     linkCandidates: [],
     colOrder: null,
     dragColKey: null,
+    editVacancyId: null,
   };
 
   var COL_ORDER_KEY = 'mpBoardColOrder.v1';
@@ -46,6 +47,11 @@
     requirement_type: true,
     status: true,
   };
+
+  var COL_FILTER_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">' +
+    '<path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z"/>' +
+    '</svg>';
 
   /** Canonical status list — used when meta is missing or stale (server not restarted). */
   var DEFAULT_STATUSES = [
@@ -286,6 +292,7 @@
     if (!modal) return;
     modal.hidden = true;
     modal.setAttribute('aria-hidden', 'true');
+    if (modal.id === 'mpAddModal') resetVacancyFormMode();
   }
 
   function filterQuery() {
@@ -344,6 +351,7 @@
       if (key === 'requirement_type') active = ($('mpFilterReqType') && $('mpFilterReqType').value !== 'all');
       if (key === 'status') active = !!(state.status && state.status !== 'all');
       btn.classList.toggle('is-active', !!active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
 
     var badge = $('mpFiltersBadge');
@@ -384,6 +392,7 @@
     state.colFilterKey = null;
     document.querySelectorAll('.mp-col-filter-btn.is-open').forEach(function (b) {
       b.classList.remove('is-open');
+      b.setAttribute('aria-expanded', 'false');
     });
   }
 
@@ -396,8 +405,10 @@
 
     document.querySelectorAll('.mp-col-filter-btn.is-open').forEach(function (b) {
       b.classList.remove('is-open');
+      b.setAttribute('aria-expanded', 'false');
     });
     btn.classList.add('is-open');
+    btn.setAttribute('aria-expanded', 'true');
     state.colFilterKey = key;
     if (label) label.textContent = 'Filter ' + (COL_LABELS[key] || key);
 
@@ -518,6 +529,59 @@
     if ($('mpStatOpen')) $('mpStatOpen').textContent = s.still_open != null ? s.still_open : '—';
   }
 
+  function matrixNum(v) {
+    var n = parseInt(v, 10);
+    return isNaN(n) || n < 0 ? 0 : n;
+  }
+
+  function renderMatrixFoot(projects, rows) {
+    var foot = $('mpMatrixFoot');
+    if (!foot) return;
+    if (!projects.length || !rows.length) {
+      foot.innerHTML = '';
+      return;
+    }
+
+    var projSums = {};
+    projects.forEach(function (p) { projSums[String(p.id)] = 0; });
+    var required = 0;
+    var joined = 0;
+    var open = 0;
+    var inputs = document.querySelectorAll('#mpMatrixBody .mp-matrix-input');
+
+    if (inputs.length) {
+      inputs.forEach(function (inp) {
+        var pid = String(inp.getAttribute('data-project-id') || '');
+        var n = matrixNum(inp.value);
+        if (Object.prototype.hasOwnProperty.call(projSums, pid)) projSums[pid] += n;
+        required += n;
+      });
+      rows.forEach(function (row) {
+        joined += matrixNum(row.joined);
+        open += matrixNum(row.open);
+      });
+    } else {
+      rows.forEach(function (row) {
+        projects.forEach(function (p) {
+          projSums[String(p.id)] += matrixNum(row.cells && row.cells[String(p.id)]);
+        });
+        required += matrixNum(row.required);
+        joined += matrixNum(row.joined);
+        open += matrixNum(row.open);
+      });
+    }
+
+    var html = '<tr class="mp-matrix-sum">';
+    html += '<th scope="row" class="mp-matrix-trade">Total</th>';
+    projects.forEach(function (p) {
+      html += '<td class="mp-matrix-num">' + (projSums[String(p.id)] || 0) + '</td>';
+    });
+    html += '<td class="mp-matrix-num mp-matrix-total">' + required + '</td>';
+    html += '<td class="mp-matrix-num mp-matrix-total">' + joined + '</td>';
+    html += '<td class="mp-matrix-num mp-matrix-total">' + open + '</td></tr>';
+    foot.innerHTML = html;
+  }
+
   function renderMatrix() {
     var s = state.summary || {};
     var head = $('mpMatrixHead');
@@ -530,6 +594,7 @@
     if (!projects.length || !rows.length) {
       head.innerHTML = '';
       body.innerHTML = '<tr><td class="mp-empty">Add trades and projects in Settings, then enter headcounts here.</td></tr>';
+      renderMatrixFoot([], []);
       return;
     }
 
@@ -560,6 +625,7 @@
       html += '<td class="mp-matrix-num mp-matrix-total">' + (row.open || 0) + '</td></tr>';
     });
     body.innerHTML = html;
+    renderMatrixFoot(projects, rows);
   }
 
   function scheduleMatrixSave(input) {
@@ -667,6 +733,8 @@
     var td = t.closest('td');
     var n = parseInt(t.value, 10);
     if (td) td.classList.toggle('mp-matrix-zero', !(n > 0));
+    var s = state.summary || {};
+    renderMatrixFoot(s.matrix_projects || [], s.matrix || []);
     scheduleMatrixSave(t);
   }
 
@@ -846,7 +914,8 @@
       if (filterable) {
         html += '<span class="mp-th-label">' + esc(label) + '</span>';
         html += '<button type="button" class="mp-col-filter-btn" data-col-filter="' + key + '"' +
-          ' aria-label="Filter ' + esc(label) + '" title="Filter ' + esc(label) + '">▾</button>';
+          ' aria-label="Filter ' + esc(label) + '" title="Filter ' + esc(label) + '"' +
+          ' aria-haspopup="dialog" aria-expanded="false">' + COL_FILTER_ICON + '</button>';
       } else {
         html += '<span class="mp-th-label">' + esc(label) + '</span>';
       }
@@ -926,8 +995,8 @@
     }
     if (key === 'actions') {
       var html = '<td class="mp-td-actions"><div class="mp-row-actions">';
-      html += '<button type="button" class="mp-icon-btn" data-action="duplicate" title="Duplicate" aria-label="Duplicate">';
-      html += '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75m9.75 10.5V7.875c0-.621-.504-1.125-1.125-1.125H9.375c-.621 0-1.125.504-1.125 1.125v10.5m9.75 0h2.625c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a.75.75 0 00-.75.75v.375"/></svg>';
+      html += '<button type="button" class="mp-icon-btn" data-action="edit" title="Edit" aria-label="Edit">';
+      html += '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z"/></svg>';
       html += '</button>';
       html += '<button type="button" class="mp-icon-btn mp-danger" data-action="delete" title="Delete" aria-label="Delete">';
       html += '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>';
@@ -1155,10 +1224,8 @@
       });
       return;
     }
-    if (action === 'duplicate') {
-      apiJson('/hr/api/manpower/vacancies/' + id + '/duplicate', 'POST', {})
-        .then(function () { return Promise.all([loadSummary(), loadVacancies()]); })
-        .catch(function (err) { showImportResult(err.message, true); });
+    if (action === 'edit') {
+      openEditVacancy(parseInt(id, 10));
       return;
     }
     if (action === 'unlink') {
@@ -1339,8 +1406,7 @@
   }
 
   function isRestrictedCandidate(c) {
-    var stateKey = effectiveLinkState(c);
-    return stateKey === 'assigned' || stateKey === 'employee';
+    return hasAssignedVacancy(c);
   }
 
   function fromProjectLabel(c) {
@@ -1563,17 +1629,21 @@
       var score = candidateMatchScore(c, vac);
       var stateKey = effectiveLinkState(c);
       var available = stateKey === 'available';
+      var onHold = isOnHoldCandidate(c);
+      var greyed = isRestrictedCandidate(c) || onHold;
       var roleScore = roleTradeMatchScore(candidateRoleName(c), vacancyTradeName(vac));
       return Object.assign({}, c, {
         _matchScore: score,
-        _suggested: available && roleScore >= 30,
+        _suggested: available && !greyed && roleScore >= 30,
         _linkState: stateKey,
+        _greyed: greyed,
       });
     });
 
     rows.sort(function (a, b) {
+      if (a._greyed !== b._greyed) return a._greyed ? 1 : -1;
       if (a._suggested !== b._suggested) return a._suggested ? -1 : 1;
-      var rank = { available: 0, assigned: 1, employee: 2 };
+      var rank = { available: 0, employee: 1, assigned: 2 };
       var ra = rank[a._linkState] != null ? rank[a._linkState] : 9;
       var rb = rank[b._linkState] != null ? rank[b._linkState] : 9;
       if (ra !== rb) return ra - rb;
@@ -1606,9 +1676,11 @@
     listEl.innerHTML = rows.map(function (c) {
       var selected = Number(c.id) === Number(state.linkCandidateId);
       var restricted = isRestrictedCandidate(c);
+      var onHold = isOnHoldCandidate(c);
       var classes = 'mp-link-option' +
         (selected ? ' is-selected' : '') +
         (restricted ? ' is-restricted' : '') +
+        (onHold ? ' is-on-hold' : '') +
         (c._suggested ? ' is-suggested' : '');
       return (
         '<button type="button" class="' + classes + '"' +
@@ -1790,6 +1862,61 @@
     } catch (e) { /* ignore */ }
   }
 
+  function vacancyFormPayload() {
+    return {
+      trade_id: parseInt($('mpAddTrade').value, 10),
+      project_id: parseInt($('mpAddProject').value, 10),
+      requirement_type: $('mpAddReqType').value,
+      status: $('mpAddStatus').value,
+      replacement_name: $('mpAddReplName').value,
+      replacement_employee_id: $('mpAddReplId').value,
+      candidate_name: $('mpAddCandidate').value,
+      contact_number: $('mpAddContact').value,
+      remarks: $('mpAddRemarks').value,
+    };
+  }
+
+  function ensureSelectOption(sel, value, label) {
+    if (!sel || value == null || value === '') return;
+    var str = String(value);
+    var found = Array.prototype.some.call(sel.options, function (opt) {
+      return opt.value === str;
+    });
+    if (!found) {
+      var opt = document.createElement('option');
+      opt.value = str;
+      opt.textContent = (label || str) + ' (inactive)';
+      sel.appendChild(opt);
+    }
+    sel.value = str;
+  }
+
+  function setVacancyFormChrome(editing) {
+    var title = $('mpAddTitle');
+    var submit = $('mpAddSubmit');
+    if (title) title.textContent = editing ? 'Edit vacancy' : 'Add vacancy';
+    if (submit) submit.textContent = editing ? 'Save' : 'Create';
+  }
+
+  function resetVacancyFormMode() {
+    state.editVacancyId = null;
+    setVacancyFormChrome(false);
+    if ($('mpAddForm')) $('mpAddForm').reset();
+  }
+
+  function fillVacancyForm(v) {
+    if (!v) return;
+    ensureSelectOption($('mpAddTrade'), v.trade_id, v.trade_name);
+    ensureSelectOption($('mpAddProject'), v.project_id, v.project_name);
+    if ($('mpAddReqType')) $('mpAddReqType').value = v.requirement_type || 'new';
+    if ($('mpAddStatus')) $('mpAddStatus').value = v.status || 'open';
+    if ($('mpAddReplName')) $('mpAddReplName').value = v.replacement_name || '';
+    if ($('mpAddReplId')) $('mpAddReplId').value = v.replacement_employee_id || '';
+    if ($('mpAddCandidate')) $('mpAddCandidate').value = v.candidate_name || '';
+    if ($('mpAddContact')) $('mpAddContact').value = v.contact_number || '';
+    if ($('mpAddRemarks')) $('mpAddRemarks').value = v.remarks || '';
+  }
+
   function openAddVacancy() {
     if (!state.meta || !(state.meta.trades || []).some(function (t) { return t.active !== false; }) ||
         !(state.meta.projects || []).some(function (p) { return p.active !== false; })) {
@@ -1797,6 +1924,25 @@
       openSettingsModal();
       return;
     }
+    resetVacancyFormMode();
+    openModal('mpAddModal');
+  }
+
+  function openEditVacancy(vacancyId) {
+    var v = (state.vacancies || []).find(function (row) {
+      return Number(row.id) === Number(vacancyId);
+    });
+    if (!v) {
+      showImportResult('Vacancy not found.', true);
+      return;
+    }
+    if (!state.meta) {
+      showImportResult('Still loading trades and projects. Try again in a moment.', true);
+      return;
+    }
+    state.editVacancyId = Number(v.id);
+    setVacancyFormChrome(true);
+    fillVacancyForm(v);
     openModal('mpAddModal');
   }
 
@@ -1875,6 +2021,9 @@
 
     var board = $('mpBoard');
     if (board) {
+      board.addEventListener('mousedown', function (e) {
+        if (e.target.closest('[data-col-filter]')) e.stopPropagation();
+      }, true);
       board.addEventListener('click', function (e) {
         var filterBtn = e.target.closest('[data-col-filter]');
         if (!filterBtn) return;
@@ -1961,21 +2110,15 @@
     if ($('mpAddForm')) {
       $('mpAddForm').addEventListener('submit', function (e) {
         e.preventDefault();
-        var payload = {
-          trade_id: parseInt($('mpAddTrade').value, 10),
-          project_id: parseInt($('mpAddProject').value, 10),
-          requirement_type: $('mpAddReqType').value,
-          status: $('mpAddStatus').value,
-          replacement_name: $('mpAddReplName').value,
-          replacement_employee_id: $('mpAddReplId').value,
-          candidate_name: $('mpAddCandidate').value,
-          contact_number: $('mpAddContact').value,
-          remarks: $('mpAddRemarks').value,
-        };
-        apiJson('/hr/api/manpower/vacancies', 'POST', payload)
+        var payload = vacancyFormPayload();
+        var editId = state.editVacancyId;
+        var url = editId
+          ? '/hr/api/manpower/vacancies/' + editId
+          : '/hr/api/manpower/vacancies';
+        var method = editId ? 'PATCH' : 'POST';
+        apiJson(url, method, payload)
           .then(function () {
             closeModal($('mpAddModal'));
-            $('mpAddForm').reset();
             return Promise.all([loadSummary(), loadVacancies()]);
           })
           .catch(function (err) { alert(err.message); });

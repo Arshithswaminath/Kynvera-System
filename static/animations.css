@@ -23,6 +23,17 @@ body {
   animation: pageFade 0.28s var(--ease-out) forwards;
 }
 
+/* pageFade's transform makes position:fixed descendants attach to <body>. */
+html:has(.sig-modal-bg.open) body,
+html:has(.success-bg.show) body,
+html:has(.success-overlay.show) body,
+html:has(#profileAdminOtpModal.active) body {
+  animation: none !important;
+  transform: none !important;
+  filter: none !important;
+  perspective: none !important;
+}
+
 /* Links & buttons – subtle lift on hover */
 .btn,
 button,

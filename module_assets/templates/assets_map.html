@@ -1,4 +1,4 @@
-{% set fm_page_title = 'Asset map' %}
+{% set fm_page_title = 'Map' %}
 {% set fm_topbar_title = 'Map' %}
 {% set fm_head_extra %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
@@ -7,7 +7,6 @@
 
   <header class="fm-header">
     <div>
-      <h1>GIS — Asset map</h1>
       <p>Pins colored by health / status. Assets need latitude &amp; longitude.</p>
     </div>
     <div class="fm-header-actions">
@@ -128,10 +127,10 @@ function pinChip(a) {
       marker.bindPopup(
         '<strong>' + esc(a.asset_id) + '</strong> — ' + esc(a.name) + '<br>' +
         'Health: ' + (a.health_score != null ? esc(a.health_score) : '—') +
-        ' · Status: ' + esc(a.status) + '<br>' +
+        ' · Status: ' + esc(fmHumanLabel(a.status, 'Active')) + '<br>' +
         'Open tickets: ' + (a.open_tickets || 0) + '<br>' +
         '<a href="/assets/' + encodeURIComponent(a.asset_id) + '">Open asset</a> · ' +
-        '<a href="/tickets/new">New ticket</a>'
+        '<a href="/tickets/new">New work order</a>'
       );
       marker.on('click', () => highlight(a.asset_id, true));
       markers[a.asset_id] = marker;

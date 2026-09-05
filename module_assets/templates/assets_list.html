@@ -1,10 +1,9 @@
-{% set fm_page_title = 'Asset list' %}
+{% set fm_page_title = 'All assets' %}
 {% set fm_topbar_title = 'All assets' %}
 {% include 'partials/fm_shell_start.html' %}
 
   <header class="fm-header">
     <div>
-      <h1>All assets</h1>
       <p>Search and filter the equipment registry</p>
     </div>
     <div class="fm-header-actions">
@@ -76,11 +75,11 @@ async function loadAssets() {
     <tr onclick="location.href='/assets/${encodeURIComponent(a.asset_id)}'">
       <td data-label="ID">${a.asset_id}</td>
       <td data-label="Name">${a.name || ''}</td>
-      <td data-label="Type">${a.asset_type || '—'}</td>
+      <td data-label="Type">${fmHumanLabel(a.asset_type)}</td>
       <td data-label="Building">${a.building || '—'}</td>
       <td data-label="Health">${a.health_score != null ? a.health_score : '—'}</td>
       <td data-label="Warranty">${a.warranty_expiry || '—'}</td>
-      <td data-label="Status"><span class="fm-status fm-status-${a.status || 'active'}">${a.status || 'active'}</span></td>
+      <td data-label="Status"><span class="fm-status fm-status-${a.status || 'active'}">${fmHumanLabel(a.status, 'Active')}</span></td>
     </tr>`).join('');
 }
 document.getElementById('reloadBtn').addEventListener('click', loadAssets);
@@ -100,6 +99,12 @@ if (qrBtn) {
     location.href = '/assets/api/qr-labels.pdf' + (qs ? '?' + qs : '');
   });
 }
+(function seedListQuery() {
+  const params = new URLSearchParams(location.search);
+  const q = params.get('q');
+  const qEl = document.getElementById('q');
+  if (q && qEl) qEl.value = q;
+})();
 loadAssets();
 </script>
 {% endset %}

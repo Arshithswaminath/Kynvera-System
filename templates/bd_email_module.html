@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/bd-email-module.css') }}?v=14">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bd-email-module.css') }}?v=19">
 </head>
 <body class="has-main-nav bde-page">
   {% set active_page = 'bd-email' %}
@@ -22,7 +22,7 @@
       <div class="sb-brand">
         <div class="sb-brand-text">
           <span class="name">Email Automation</span>
-          <span class="tagline">BD · BizFlow</span>
+          <span class="tagline">BD · BizFlow mail-outs</span>
         </div>
       </div>
 
@@ -94,7 +94,11 @@
           <div class="bde-list-pane__hd">
             <div class="bde-list-pane__title">
               <h2 id="autoListSub">Personal</h2>
-              <span class="bde-list-pane__count" id="autoListCount">0</span>
+              <p class="bde-list-pane__meta">
+                <span class="bde-list-pane__count" id="autoListCount">0 automations</span>
+                <span aria-hidden="true">·</span>
+                <span id="autoListHint">Private to you</span>
+              </p>
             </div>
             <button type="button" class="bde-list-new" id="newAutoBtn" title="New automation">New</button>
           </div>
@@ -102,20 +106,20 @@
         </aside>
 
         <section class="bde-compose" aria-label="Automation composer">
-          <div class="bde-compose-card">
-            <header class="bde-compose-toolbar">
-              <div class="bde-compose-toolbar__text">
-                <h2 id="builderTitle">New automation</h2>
-                <p>Personal stays private. Public can be run by the BD team.</p>
-              </div>
-              <div class="builder-actions">
-                <button type="button" class="btn btn-secondary" id="deleteAutoBtn" style="display:none">Delete</button>
-                <button type="button" class="btn btn-secondary" id="runAutoBtn" style="display:none">Run now</button>
-                <button type="button" class="btn" id="saveAutoBtn">Save</button>
-              </div>
-            </header>
-            <div id="autoAlert"></div>
+          <header class="bde-compose-toolbar">
+            <div class="bde-compose-toolbar__text">
+              <h2 id="builderTitle">New automation</h2>
+              <p id="builderScopeHint">Private to you. Only you and admins can see, edit, or run this.</p>
+            </div>
+            <div class="builder-actions">
+              <button type="button" class="btn btn-secondary" id="deleteAutoBtn" style="display:none">Delete</button>
+              <button type="button" class="btn btn-secondary" id="runAutoBtn" style="display:none">Run now</button>
+              <button type="button" class="btn" id="saveAutoBtn">Save</button>
+            </div>
+          </header>
+          <div id="autoAlert"></div>
 
+          <div class="bde-compose-split">
             <div class="bde-compose-body">
               <div class="bde-builder-row">
                 <div class="field">
@@ -124,9 +128,9 @@
                 </div>
                 <div class="field">
                   <label>Visibility</label>
-                  <div class="scope-toggle" title="Personal is private to you. Public can be viewed and run by every BD user.">
-                    <button type="button" id="scopePersonalBtn" class="active">Personal</button>
-                    <button type="button" id="scopePublicBtn">Public</button>
+                  <div class="scope-toggle" role="group" aria-label="Automation visibility">
+                    <button type="button" id="scopePersonalBtn" class="active" aria-pressed="true">Personal</button>
+                    <button type="button" id="scopePublicBtn" aria-pressed="false">Public</button>
                   </div>
                 </div>
               </div>
@@ -134,32 +138,28 @@
               <div class="bde-section-label">Recipients</div>
               <div class="field bde-mail-row">
                 <label for="autoTo">To</label>
-                <div class="bde-mail-field">
-                  <input id="autoTo" type="text" placeholder="name@example.com">
-                  <div class="recipient-actions" role="group" aria-label="Add To recipients">
-                    <button type="button" class="btn btn-secondary" id="autoAddGmBtn" title="Add all General Managers">GM</button>
-                    <button type="button" class="btn btn-secondary" id="autoAddBdBtn" title="Add all BD users">BD</button>
-                    <button type="button" class="btn btn-secondary" id="autoAddPoBtn" title="Add all Project Officers">PO</button>
-                    <button type="button" class="btn btn-secondary" id="autoAddOmBtn" title="Add all Operations Managers">OM</button>
-                    <button type="button" class="btn btn-secondary" id="autoAddSupervisorBtn" title="Add all Supervisors">Supervisors</button>
-                    <button type="button" class="btn btn-secondary" id="autoAddGroupBtn" title="Add a saved group">Group</button>
-                  </div>
+                <input id="autoTo" type="text" placeholder="name@example.com">
+                <div class="recipient-actions" role="group" aria-label="Add To recipients">
+                  <button type="button" class="btn btn-secondary" id="autoAddGmBtn" title="Add all General Managers">GM</button>
+                  <button type="button" class="btn btn-secondary" id="autoAddBdBtn" title="Add all BD users">BD</button>
+                  <button type="button" class="btn btn-secondary" id="autoAddPoBtn" title="Add all Project Officers">PO</button>
+                  <button type="button" class="btn btn-secondary" id="autoAddOmBtn" title="Add all Operations Managers">OM</button>
+                  <button type="button" class="btn btn-secondary" id="autoAddSupervisorBtn" title="Add all Supervisors">Supervisors</button>
+                  <button type="button" class="btn btn-secondary" id="autoAddGroupBtn" title="Add a saved group">Group</button>
                 </div>
                 <div class="recipient-list" id="autoToList"></div>
                 <div class="group-buttons" id="autoToGroupButtons"></div>
               </div>
               <div class="field bde-mail-row">
                 <label for="autoCc">CC</label>
-                <div class="bde-mail-field">
-                  <input id="autoCc" type="text" placeholder="cc@example.com">
-                  <div class="recipient-actions" role="group" aria-label="Add CC recipients">
-                    <button type="button" class="btn btn-secondary" id="autoCcGmBtn" title="Add all General Managers">GM</button>
-                    <button type="button" class="btn btn-secondary" id="autoCcBdBtn" title="Add all BD users">BD</button>
-                    <button type="button" class="btn btn-secondary" id="autoCcPoBtn" title="Add all Project Officers">PO</button>
-                    <button type="button" class="btn btn-secondary" id="autoCcOmBtn" title="Add all Operations Managers">OM</button>
-                    <button type="button" class="btn btn-secondary" id="autoCcSupervisorBtn" title="Add all Supervisors">Supervisors</button>
-                    <button type="button" class="btn btn-secondary" id="autoCcGroupBtn" title="Add a saved group">Group</button>
-                  </div>
+                <input id="autoCc" type="text" placeholder="cc@example.com">
+                <div class="recipient-actions" role="group" aria-label="Add CC recipients">
+                  <button type="button" class="btn btn-secondary" id="autoCcGmBtn" title="Add all General Managers">GM</button>
+                  <button type="button" class="btn btn-secondary" id="autoCcBdBtn" title="Add all BD users">BD</button>
+                  <button type="button" class="btn btn-secondary" id="autoCcPoBtn" title="Add all Project Officers">PO</button>
+                  <button type="button" class="btn btn-secondary" id="autoCcOmBtn" title="Add all Operations Managers">OM</button>
+                  <button type="button" class="btn btn-secondary" id="autoCcSupervisorBtn" title="Add all Supervisors">Supervisors</button>
+                  <button type="button" class="btn btn-secondary" id="autoCcGroupBtn" title="Add a saved group">Group</button>
                 </div>
                 <div class="recipient-list" id="autoCcList"></div>
                 <div class="group-buttons" id="autoCcGroupButtons"></div>
@@ -175,41 +175,52 @@
                 <textarea id="autoMessage" placeholder="Type your message here..."></textarea>
               </div>
             </div>
-          </div>
 
-          <aside class="bde-compose-side" aria-label="Files and schedule">
-            <header class="bde-compose-toolbar">
-              <div class="bde-compose-toolbar__text">
-                <h2>Files &amp; schedule</h2>
-              </div>
-            </header>
-            <div class="bde-compose-body">
+            <aside class="bde-compose-side" aria-label="Files and schedule">
               <div class="bde-section-label" style="margin-top:0">Cloud files</div>
-              <div class="attachments-toolbar">
-                <button type="button" class="btn btn-secondary" id="attachAutoFilesBtn">Pick from Files</button>
-                <button type="button" class="btn btn-secondary" id="attachAutoFolderBtn">Latest in folder</button>
-                <label class="btn btn-secondary bde-upload-label">
-                  Upload
-                  <input type="file" id="uploadAutoFile" style="display:none">
+              <div class="bde-file-actions">
+                <button type="button" class="bde-file-action" id="attachAutoFilesBtn" title="Pick from Files">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/></svg>
+                  <span>Files</span>
+                </button>
+                <button type="button" class="bde-file-action" id="attachAutoFolderBtn" title="Latest in folder">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span>Latest</span>
+                </button>
+                <label class="bde-file-action bde-upload-label">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+                  <span>Upload</span>
+                  <input type="file" id="uploadAutoFile" hidden>
                 </label>
               </div>
               <div class="slot-list" id="autoSlots"></div>
-              <span class="helper">Each run fetches the current file, not a snapshot.</span>
+              <p class="helper bde-file-hint">Each run fetches the live file.</p>
 
               <div class="bde-section-label">Schedule</div>
-              <div class="schedule-row">
-                <label class="check-inline"><input type="checkbox" id="autoScheduleEnabled"> Daily at</label>
-                <input id="autoScheduleTime" type="time" value="10:00">
-                <label class="check-inline"><input type="checkbox" id="autoSchedulePaused"> Pause</label>
-                <label class="check-inline"><input type="checkbox" id="autoEnabled" checked> Enabled</label>
+              <div class="bde-schedule">
+                <div class="bde-schedule-row">
+                  <label class="bde-schedule-check" for="autoScheduleEnabled">
+                    <input type="checkbox" id="autoScheduleEnabled">
+                    <span>Daily at</span>
+                  </label>
+                  <input id="autoScheduleTime" type="time" value="10:00">
+                </div>
+                <label class="bde-schedule-row" for="autoSchedulePaused">
+                  <input type="checkbox" id="autoSchedulePaused">
+                  <span>Pause</span>
+                </label>
+                <label class="bde-schedule-row" for="autoEnabled">
+                  <input type="checkbox" id="autoEnabled" checked>
+                  <span>Enabled</span>
+                </label>
               </div>
 
               <div id="autoHistoryWrap">
                 <div class="bde-section-label">Run history</div>
-                <div id="autoHistory"><p class="helper">Save and run an automation to see send history here.</p></div>
+                <div id="autoHistory"><p class="helper">No runs yet.</p></div>
               </div>
-            </div>
-          </aside>
+            </aside>
+          </div>
         </section>
       </div>
 
@@ -437,6 +448,6 @@
   </script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
   <script src="{{ url_for('static', filename='js/files-save.js') }}?v=16"></script>
-  <script src="{{ url_for('static', filename='js/bd-email-module.js') }}?v=12"></script>
+  <script src="{{ url_for('static', filename='js/bd-email-module.js') }}?v=15"></script>
 </body>
 </html>

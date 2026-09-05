@@ -1,5 +1,5 @@
 {# HR trackers sidebar (Hiring + Leave + Manpower)
-   Expects: user, hiring_active ('documents' | 'dashboard' | 'leave_tracker' | 'leave_repeat_sick' | 'leave_sick_trends' | 'manpower')
+   Expects: user, hiring_active ('documents' | 'offer_letters' | 'dashboard' | 'leave_tracker' | 'leave_repeat_sick' | 'leave_sick_trends' | 'manpower')
    Shared order: HR Module → Hiring Docs → Manpower Tracker → Leave Tracker
 #}
 {% set _parts = (user.full_name or user.username or '')|trim %}
@@ -25,7 +25,12 @@
   {% set brand_href = '/hr/hiring' %}
 {% endif %}
 
-<aside class="hh-sidebar" aria-label="{{ brand_name }} menu">
+<div class="hh-overlay" id="hhSidebarOverlay" onclick="hhCloseSidebar()" aria-hidden="true"></div>
+<button type="button" class="hh-sidebar-toggle" id="hhSidebarToggle" onclick="hhToggleSidebar()" aria-label="Open HR menu" title="Menu">
+  <span aria-hidden="true">&#9776;</span>
+  <span class="hh-sidebar-toggle-label">Menu</span>
+</button>
+<aside class="hh-sidebar" id="hhSidebar" aria-label="{{ brand_name }} menu">
   <a href="{{ brand_href }}" class="hh-brand" aria-label="{{ brand_name }} home">
     <div class="hh-brand-text">
       <span class="name">{{ brand_name }}</span>
@@ -42,12 +47,30 @@
     </a>
 
     {# 1) Hiring Docs #}
-    <a href="/hr/hiring" class="hh-nav-item{% if hiring_section and active == 'documents' %} active{% endif %}">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
-      </svg>
-      Hiring Docs
-    </a>
+    <div class="hh-nav-group{% if hiring_section %} is-open{% endif %}">
+      <a href="/hr/hiring" class="hh-nav-item{% if hiring_section %} active{% endif %}" id="hhSidebarHiring">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+        </svg>
+        Hiring Docs
+      </a>
+      {% if hiring_section %}
+      <div class="hh-nav-sub" role="group" aria-label="Hiring Docs">
+        <a href="/hr/hiring" class="hh-nav-item hh-nav-subitem{% if active == 'documents' %} active{% endif %}">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 8.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 016 20.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25A2.25 2.25 0 0113.5 8.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/>
+          </svg>
+          Documents
+        </a>
+        <a href="/hr/hiring/offer-letters" class="hh-nav-item hh-nav-subitem{% if active == 'offer_letters' %} active{% endif %}">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+          </svg>
+          Letters of Intent
+        </a>
+      </div>
+      {% endif %}
+    </div>
 
     {# 2) Manpower Tracker (+ Settings when in section) #}
     <div class="hh-nav-group{% if manpower_section %} is-open{% endif %}">
@@ -123,3 +146,55 @@
     </div>
   </div>
 </aside>
+<script>
+(function () {
+  var sb = document.getElementById('hhSidebar');
+  var ov = document.getElementById('hhSidebarOverlay');
+  var btn = document.getElementById('hhSidebarToggle');
+  if (!sb) return;
+  if (ov && ov.parentElement !== document.body) document.body.appendChild(ov);
+  function placeToggle() {
+    var topbar = document.querySelector('.hh-topbar');
+    if (btn && topbar && btn.parentElement !== topbar) {
+      topbar.insertBefore(btn, topbar.firstChild);
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', placeToggle);
+  } else {
+    placeToggle();
+  }
+
+  window.hhOpenSidebar = function () {
+    sb.classList.add('open');
+    if (ov) {
+      ov.classList.add('active');
+      ov.setAttribute('aria-hidden', 'false');
+    }
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+  };
+  window.hhCloseSidebar = function () {
+    sb.classList.remove('open');
+    if (ov) {
+      ov.classList.remove('active');
+      ov.setAttribute('aria-hidden', 'true');
+    }
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  };
+  window.hhToggleSidebar = function () {
+    if (sb.classList.contains('open')) hhCloseSidebar();
+    else hhOpenSidebar();
+  };
+
+  sb.querySelectorAll('.hh-nav-item').forEach(function (el) {
+    el.addEventListener('click', function () {
+      if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
+        hhCloseSidebar();
+      }
+    });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') hhCloseSidebar();
+  });
+})();
+</script>

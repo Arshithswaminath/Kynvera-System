@@ -541,6 +541,27 @@ def _load_cycle_log() -> dict:
     return dict(default)
 
 
+def recent_sent_cycles(limit: int = 12) -> list[dict]:
+    """Sent Report Generation cycles, newest first (for the Automations hub)."""
+    cap = max(0, int(limit or 0))
+    if cap == 0:
+        return []
+    log = _load_cycle_log()
+    history = log.get('history') or []
+    sent: list[dict] = []
+    for cycle in history:
+        if not isinstance(cycle, dict):
+            continue
+        if (cycle.get('status') or '').strip().lower() != 'sent':
+            continue
+        if not (cycle.get('sent_at') or '').strip():
+            continue
+        sent.append(cycle)
+        if len(sent) >= cap:
+            break
+    return sent
+
+
 def _save_cycle_log(log: dict):
     try:
         with open(_cycle_log_path(), 'w') as f:

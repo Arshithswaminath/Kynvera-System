@@ -8,7 +8,7 @@ import re
 from datetime import date
 from typing import Any, Optional
 
-from flask import redirect, request
+from flask import render_template, request
 from flask_jwt_extended import jwt_required
 from sqlalchemy import inspect, or_, text
 from sqlalchemy.orm import joinedload
@@ -320,8 +320,8 @@ def unassign_vacancy(vacancy_id: int) -> tuple[Optional[ManpowerVacancy], Option
     vac = db.session.get(ManpowerVacancy, vacancy_id)
     if not vac:
         return None, 'Vacancy not found'
-    # Explicit Unlink keeps typed name/contact (board shows them as plain text)
-    _clear_vacancy_candidate_slot(vac, clear_identity=False)
+    # Explicit Unlink also clears the typed name/contact so the board cell is empty.
+    _clear_vacancy_candidate_slot(vac, clear_identity=True)
     return vac, None
 
 
@@ -332,7 +332,7 @@ def unassign_candidate(candidate_id: int) -> tuple[Optional[HiringCandidate], Op
         return None, 'Candidate not found'
     vac = ManpowerVacancy.query.filter_by(hiring_candidate_id=candidate.id).first()
     if vac:
-        _clear_vacancy_candidate_slot(vac, clear_identity=False)
+        _clear_vacancy_candidate_slot(vac, clear_identity=True)
     candidate.updated_at = utc_now_naive()
     return candidate, None
 
@@ -507,7 +507,15 @@ def link_picker_candidates(*, q: str = '') -> list[dict[str, Any]]:
 
     for key in ('available', 'assigned', 'employee'):
         grouped[key].sort(key=lambda item: item.get('updated_at') or '', reverse=True)
-    return grouped['available'] + grouped['assigned'] + grouped['employee']
+
+    open_pool: list[dict[str, Any]] = []
+    greyed_pool: list[dict[str, Any]] = []
+    for item in grouped['available'] + grouped['employee'] + grouped['assigned']:
+        if item.get('assigned_vacancy') or item.get('is_on_hold'):
+            greyed_pool.append(item)
+        else:
+            open_pool.append(item)
+    return open_pool + greyed_pool
 
 
 def unassigned_candidates(*, q: str = '') -> list[dict[str, Any]]:
@@ -641,8 +649,17 @@ def register_staffing_link_routes(hr_bp):
     @hr_bp.route('/staffing-assignments')
     @jwt_required()
     def staffing_assignments_page():
-        # Staffing Assignments UI is hidden; linking lives in Manpower / Hiring.
-        return redirect('/hr/manpower-tracker')
+        user = _get_current_user()
+        if not user:
+            return error_response('User not found', status_code=404, error_code='NOT_FOUND')
+        if not user_can_manage_staffing(user):
+            return error_response('Access denied', status_code=403, error_code='FORBIDDEN')
+        ensure_staffing_link_schema()
+        return render_template(
+            'hr_staffing_assignments.html',
+            user=user,
+            hiring_active='manpower',
+        )
 
     @hr_bp.route('/api/staffing/open-vacancies', methods=['GET'])
     @jwt_required()

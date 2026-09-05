@@ -11,7 +11,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-signoff-activity.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}?v=6">
+  <script src="{{ url_for('static', filename='js/hr_form_step_scroll.js') }}?v=1"></script>
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -274,17 +275,6 @@
       transform:translateY(-50%);
     }
 
-    .success-bg{position:fixed;inset:0;background:transparent;z-index:9999;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
-    .success-bg.show{opacity:1;visibility:visible;pointer-events:auto}
-    .success-box{position:relative;background:#fff;border-radius:var(--r-lg);padding:2.5rem;text-align:center;max-width:420px;width:90%;box-shadow:0 32px 64px rgba(0,0,0,.22);transform:scale(.94);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
-    .success-back-btn{position:absolute;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1.5px solid var(--bd);background:var(--sf);color:var(--pri);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--t);font-family:inherit}
-    .success-back-btn:hover{background:var(--pri-xs);border-color:var(--pri-sm);color:var(--pri-d)}
-    .success-bg.show .success-box{transform:scale(1)}
-    .success-icon{width:64px;height:64px;background:linear-gradient(135deg,var(--pri),#2ecc7a);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem}
-    .success-box h2{font-size:1.3rem;font-weight:800;color:var(--ink);margin:0 0 .4rem}
-    .success-box p{font-size:.9rem;color:var(--ink3);margin:0 0 1rem}
-    .sub-id{background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:.5rem 1rem;font-family:monospace;font-size:.85rem;margin-bottom:1.25rem}
-
     @keyframes spin{to{transform:rotate(360deg)}}.spin{animation:spin .7s linear infinite}
 
     /* Main column + ticketing-style approval sidebar */
@@ -533,25 +523,15 @@
   {% set active_page = 'hr' %}
   {% include 'partials/hr_embed_optional_navbar.html' %}
 
-  <div class="success-bg" id="successModal">
-    <div class="success-box">
-      <button type="button" class="success-back-btn" onclick="hrGoToSubmittedRequest()" title="View submitted request">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-      </button>
-      <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
-      <h2>Form Submitted!</h2>
-      <p>Your duty resumption form has been sent to HR for review.</p>
-      <div class="sub-id" id="submissionId"></div>
-      <button class="btn-submit" style="width:100%;justify-content:center" onclick="hrGoToSubmittedRequest()">View My Requests</button>
-    </div>
-  </div>
+  {% set success_title = 'Form submitted' %}
+  {% set success_lead = 'Your duty resumption form has been sent to HR for review.' %}
+  {% include 'partials/hr_form_success_modal.html' %}
 
   <div class="page">
     <div class="page-inner">
-      <a href="/hr/" class="back-btn">
-        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-        Back to HR
-      </a>
+      {% set module_back_url = url_for('hr.hr_dashboard') %}
+      {% set module_back_extra_class = 'back-btn' %}
+      {% include 'partials/module_back_link.html' %}
 
       {% include 'partials/hr_submitted_edit_banners.html' %}
 
@@ -868,7 +848,7 @@ function goToStep2(){
   document.getElementById('step2Badge').className='step-item active';
   document.getElementById('step2Badge').classList.remove('locked');
   document.getElementById('connector1').classList.add('done');
-  document.getElementById('step2Panel').scrollIntoView({behavior:'smooth',block:'start'});
+  hrScrollFormToTop();
   refreshDutySignatureSummary();
 }
 function goToStep1(){
@@ -880,7 +860,7 @@ function goToStep1(){
   document.getElementById('step1Badge').querySelector('.num').textContent='1';
   document.getElementById('step2Badge').className='step-item locked';
   document.getElementById('connector1').classList.remove('done');
-  document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
+  hrScrollFormToTop();
   refreshDutySignatureSummary();
 }
 
@@ -990,7 +970,7 @@ document.getElementById('dutyFrm').addEventListener('submit',async e=>{
   const btn=document.querySelector('#submitBar .btn-submit');
   if(btn){btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…'}
   try{const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});const r=await res.json();
-  if(r.success){window.__hrLastHrSubmissionId=r.submission_id;document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
+  if(r.success){window.__hrLastHrSubmissionId=r.submission_id;document.getElementById('submissionId').textContent=r.submission_id;hrShowSuccessModal()}
   else{alert('Error: '+(r.error||'Unknown'));if(btn){btn.disabled=false;btn.innerHTML='Submit Form'}}
   }catch(err){alert('Network error: '+err.message);if(btn){btn.disabled=false;btn.innerHTML='Submit Form'}}
 });

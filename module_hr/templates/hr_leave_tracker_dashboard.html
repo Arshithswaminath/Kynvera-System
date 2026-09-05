@@ -10,8 +10,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=111">
-          <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-leave-tracker.css') }}?v=30">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=139">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-leave-tracker.css') }}?v=54">
   {% set active_page = 'hr' %}
 </head>
 <body class="hh-page lt-page">
@@ -26,7 +26,7 @@
           {% set module_back_url = module_back_url|default(url_for('hr.hr_dashboard')) %}
           {% include 'partials/module_back_link.html' %}
           <h1 class="hh-title">Leave Tracker</h1>
-          <p class="hh-subtitle">Sick &amp; annual leave · Aug–Dec 2026</p>
+          <p class="hh-subtitle">Sick &amp; annual leave · month cards by year</p>
         </div>
       </div>
 
@@ -37,8 +37,8 @@
         <button type="button" class="lt-stat lt-stat-btn lt-stat-warn" data-card-filter="on_leave_month" title="Staff who took leave this month">
           <span class="lt-stat-val" id="ltStatOnLeave">—</span><span class="lt-stat-label" id="ltStatOnLeaveLabel">On leave this month</span>
         </button>
-        <a href="/hr/leave-tracker/sick-trends" class="lt-stat lt-stat-btn lt-stat-info" title="Open sick leave trends analyst board">
-          <span class="lt-stat-val" id="ltStatLeaveDays">—</span><span class="lt-stat-label">Sick / Annual days</span>
+        <a href="/hr/leave-tracker/sick-trends" class="lt-stat lt-stat-btn lt-stat-info" title="Staff who applied for sick or annual leave this month">
+          <span class="lt-stat-val" id="ltStatLeaveDays">—</span><span class="lt-stat-label">Applied this month</span>
         </a>
         <button type="button" class="lt-stat lt-stat-btn lt-stat-danger" data-card-filter="low_remaining" title="Staff with low remaining leave">
           <span class="lt-stat-val" id="ltStatLow">—</span><span class="lt-stat-label">Low leave remaining</span>
@@ -62,19 +62,14 @@
           <option value="Tourism">Tourism</option>
           <option value="L&P">L&amp;P</option>
         </select>
-        <select id="ltMonth" class="hh-select lt-filter-compact" aria-label="Month filter">
-          <option value="">All months</option>
-          <option value="8">August</option>
-          <option value="9">September</option>
-          <option value="10">October</option>
-          <option value="11">November</option>
-          <option value="12">December</option>
-        </select>
         <label class="lt-check" for="ltAlertsOnly" title="Show only staff with leave alerts">
           <input type="checkbox" id="ltAlertsOnly" class="kv-checkbox">
           <span>Alerts only</span>
         </label>
         <button type="button" class="hh-btn hh-btn-primary hh-btn-sm" id="ltLogLeaveBtn">Log leave</button>
+        <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="ltAddEmpBtn" title="Add a person to the main staff list">
+          Add employee
+        </button>
         <div class="hh-excel-actions">
           <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="ltSeedBtn" title="Load staff from July 2026 list">
             Seed Staff
@@ -93,94 +88,40 @@
         </div>
       </div>
 
-      <div class="lt-tabs" role="tablist" aria-label="Leave views">
-        <button type="button" class="lt-tab active" role="tab" data-tab="sick" aria-selected="true">Sick Leave</button>
-        <button type="button" class="lt-tab" role="tab" data-tab="annual" aria-selected="false">Annual Leave</button>
-        <button type="button" class="lt-tab" role="tab" data-tab="logs" aria-selected="false">Leave Logs</button>
-        <button type="button" class="lt-tab" role="tab" data-tab="planner" aria-selected="false">Planner</button>
-      </div>
-
       <div id="ltImportResult" class="hh-import-result" hidden></div>
 
-      <div class="lt-panel" id="ltPanelSick" role="tabpanel">
-        <p class="lt-hint">Month totals roll up from Leave Logs. Use <strong>Log leave</strong> to add days.</p>
-        <div class="lt-table-wrap">
-          <table class="lt-table" id="ltSickTable">
-            <thead>
-              <tr>
-                <th class="lt-th-filterable" data-col="emp_id">
-                  <span class="lt-th-label">Emp ID</span>
-                  <button type="button" class="lt-col-filter-btn" data-col-filter="emp_id" aria-label="Filter Emp ID" title="Filter Emp ID">▾</button>
-                </th>
-                <th class="lt-th-filterable" data-col="full_name">
-                  <span class="lt-th-label">Name</span>
-                  <button type="button" class="lt-col-filter-btn" data-col-filter="full_name" aria-label="Filter Name" title="Filter Name">▾</button>
-                </th>
-                <th class="lt-th-filterable" data-col="designation">
-                  <span class="lt-th-label">Designation</span>
-                  <button type="button" class="lt-col-filter-btn" data-col-filter="designation" aria-label="Filter Designation" title="Filter Designation">▾</button>
-                </th>
-                <th class="lt-th-filterable" data-col="company">
-                  <span class="lt-th-label">Company</span>
-                  <button type="button" class="lt-col-filter-btn" data-col-filter="company" aria-label="Filter Company" title="Filter Company">▾</button>
-                </th>
-                <th>Aug</th>
-                <th>Sep</th>
-                <th>Oct</th>
-                <th>Nov</th>
-                <th>Dec</th>
-                <th>Used</th>
-                <th>Remaining</th>
-                <th>Alert</th>
-              </tr>
-            </thead>
-            <tbody id="ltSickBody">
-              <tr><td colspan="12" class="lt-empty">Loading…</td></tr>
-            </tbody>
-          </table>
+      <div id="ltRosterBanner" class="lt-roster-banner" hidden role="status">
+        <div class="lt-roster-banner-body">
+          <strong>Staff list updated.</strong>
+          <span id="ltRosterBannerText">New people are on the main roster and appear in every month with 0 used. Set annual entitlement where needed.</span>
         </div>
+        <button type="button" class="hh-btn hh-btn-ghost hh-btn-sm" id="ltRosterBannerDismiss">Dismiss</button>
       </div>
 
-      <div class="lt-panel" id="ltPanelAnnual" role="tabpanel" hidden>
-        <p class="lt-hint">Month totals roll up from Leave Logs. Set entitlement per employee; log annual leave via <strong>Log leave</strong>.</p>
-        <div class="lt-table-wrap">
-          <table class="lt-table" id="ltAnnualTable">
-            <thead>
-              <tr>
-                <th class="lt-th-filterable" data-col="emp_id">
-                  <span class="lt-th-label">Emp ID</span>
-                  <button type="button" class="lt-col-filter-btn" data-col-filter="emp_id" aria-label="Filter Emp ID" title="Filter Emp ID">▾</button>
-                </th>
-                <th class="lt-th-filterable" data-col="full_name">
-                  <span class="lt-th-label">Name</span>
-                  <button type="button" class="lt-col-filter-btn" data-col-filter="full_name" aria-label="Filter Name" title="Filter Name">▾</button>
-                </th>
-                <th class="lt-th-filterable" data-col="designation">
-                  <span class="lt-th-label">Designation</span>
-                  <button type="button" class="lt-col-filter-btn" data-col-filter="designation" aria-label="Filter Designation" title="Filter Designation">▾</button>
-                </th>
-                <th class="lt-th-filterable" data-col="company">
-                  <span class="lt-th-label">Company</span>
-                  <button type="button" class="lt-col-filter-btn" data-col-filter="company" aria-label="Filter Company" title="Filter Company">▾</button>
-                </th>
-                <th>Entitlement</th>
-                <th>Aug</th>
-                <th>Sep</th>
-                <th>Oct</th>
-                <th>Nov</th>
-                <th>Dec</th>
-                <th>Used</th>
-                <th>Remaining</th>
-              </tr>
-            </thead>
-            <tbody id="ltAnnualBody">
-              <tr><td colspan="12" class="lt-empty">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <div class="lt-month-board" id="ltMonthBoard"></div>
 
-      <div class="lt-panel" id="ltPanelLogs" role="tabpanel" hidden>
+      <div class="lt-month-detail" id="ltMonthDetail" hidden>
+        <div class="lt-month-detail-bar">
+          <div>
+            <button type="button" class="hh-btn hh-btn-ghost hh-btn-sm" id="ltBackMonths">All months</button>
+            <p class="lt-month-detail-kicker">Month data</p>
+            <div class="lt-month-nav">
+              <button type="button" class="lt-month-nav-btn" id="ltPrevMonth" aria-label="Previous month">Previous</button>
+              <h2 class="lt-month-detail-title" id="ltMonthDetailTitle" aria-current="page">August 2026</h2>
+              <button type="button" class="lt-month-nav-btn" id="ltNextMonth" aria-label="Next month">Next</button>
+            </div>
+          </div>
+        </div>
+      <div id="ltMonthWorkspace" class="lt-month-workspace">
+        <div class="lt-tabs" role="tablist" aria-label="Leave views for the open month">
+          <button type="button" class="lt-tab active" role="tab" data-tab="logs" aria-selected="true">Leave Logs</button>
+          <button type="button" class="lt-tab" role="tab" data-tab="sick" aria-selected="false">Sick</button>
+          <button type="button" class="lt-tab" role="tab" data-tab="annual" aria-selected="false">Annual</button>
+          <button type="button" class="lt-tab" role="tab" data-tab="planner" aria-selected="false">Planner</button>
+        </div>
+
+        <div class="lt-panel" id="ltPanelLogs" role="tabpanel">
+          <p class="lt-hint">Logs are the source of truth for this month. Spanning leave also appears here with a continues chip.</p>
         <div class="lt-logs-toolbar">
           <div class="lt-logs-toolbar-left">
             <div class="hh-search lt-logs-search">
@@ -206,9 +147,9 @@
             <label class="lt-date-field">
               <span class="lt-date-field-label">Leave dates</span>
               <span class="lt-date-pair">
-                <input type="date" id="ltLogLeaveFrom" class="hh-select lt-filter-date" lang="en-GB" min="2026-08-01" max="2026-12-31" aria-label="Leave from">
+                <input type="date" id="ltLogLeaveFrom" class="hh-select lt-filter-date" lang="en-GB" min="2026-01-01" max="2035-12-31" aria-label="Leave from">
                 <span class="lt-filter-range-sep">to</span>
-                <input type="date" id="ltLogLeaveTo" class="hh-select lt-filter-date" lang="en-GB" min="2026-08-01" max="2026-12-31" aria-label="Leave to">
+                <input type="date" id="ltLogLeaveTo" class="hh-select lt-filter-date" lang="en-GB" min="2026-01-01" max="2035-12-31" aria-label="Leave to">
               </span>
             </label>
             <label class="lt-date-field">
@@ -284,31 +225,93 @@
         </div>
       </div>
 
+        <div class="lt-panel" id="ltPanelSick" role="tabpanel" hidden>
+          <p class="lt-hint">This month starts at zero used. Remaining is 15 days minus sick taken from January through this month. Use <strong>Log leave</strong> to add days.</p>
+          <div class="lt-table-wrap">
+            <table class="lt-table lt-sheet" id="ltSickTable">
+              <thead>
+                <tr>
+                  <th class="lt-th-filterable" data-col="emp_id">
+                    <span class="lt-th-label">Emp ID</span>
+                    <button type="button" class="lt-col-filter-btn" data-col-filter="emp_id" aria-label="Filter Emp ID" title="Filter Emp ID">▾</button>
+                  </th>
+                  <th class="lt-th-filterable" data-col="full_name">
+                    <span class="lt-th-label">Name</span>
+                    <button type="button" class="lt-col-filter-btn" data-col-filter="full_name" aria-label="Filter Name" title="Filter Name">▾</button>
+                  </th>
+                  <th class="lt-th-filterable" data-col="designation">
+                    <span class="lt-th-label">Designation</span>
+                    <button type="button" class="lt-col-filter-btn" data-col-filter="designation" aria-label="Filter Designation" title="Filter Designation">▾</button>
+                  </th>
+                  <th class="lt-th-filterable" data-col="company">
+                    <span class="lt-th-label">Company</span>
+                    <button type="button" class="lt-col-filter-btn" data-col-filter="company" aria-label="Filter Company" title="Filter Company">▾</button>
+                  </th>
+                  <th class="lt-col-num">This month</th>
+                  <th class="lt-col-num">Used YTD</th>
+                  <th class="lt-col-num">Remaining</th>
+                  <th class="lt-col-alert">Alert</th>
+                </tr>
+              </thead>
+              <tbody id="ltSickBody">
+                <tr><td colspan="8" class="lt-empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="lt-panel" id="ltPanelAnnual" role="tabpanel" hidden>
+          <p class="lt-hint">Brought forward is leftover annual from prior months. This month starts fresh; remaining is carry minus days taken here.</p>
+          <div class="lt-table-wrap">
+            <table class="lt-table lt-sheet" id="ltAnnualTable">
+              <thead>
+                <tr>
+                  <th class="lt-th-filterable" data-col="emp_id">
+                    <span class="lt-th-label">Emp ID</span>
+                    <button type="button" class="lt-col-filter-btn" data-col-filter="emp_id" aria-label="Filter Emp ID" title="Filter Emp ID">▾</button>
+                  </th>
+                  <th class="lt-th-filterable" data-col="full_name">
+                    <span class="lt-th-label">Name</span>
+                    <button type="button" class="lt-col-filter-btn" data-col-filter="full_name" aria-label="Filter Name" title="Filter Name">▾</button>
+                  </th>
+                  <th class="lt-th-filterable" data-col="designation">
+                    <span class="lt-th-label">Designation</span>
+                    <button type="button" class="lt-col-filter-btn" data-col-filter="designation" aria-label="Filter Designation" title="Filter Designation">▾</button>
+                  </th>
+                  <th class="lt-th-filterable" data-col="company">
+                    <span class="lt-th-label">Company</span>
+                    <button type="button" class="lt-col-filter-btn" data-col-filter="company" aria-label="Filter Company" title="Filter Company">▾</button>
+                  </th>
+                  <th class="lt-col-num">Entitlement</th>
+                  <th class="lt-col-num">Brought forward</th>
+                  <th class="lt-col-num">This month</th>
+                  <th class="lt-col-num">Remaining</th>
+                </tr>
+              </thead>
+              <tbody id="ltAnnualBody">
+                <tr><td colspan="8" class="lt-empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       <div class="lt-panel" id="ltPanelPlanner" role="tabpanel" hidden>
         <div class="lt-planner-toolbar">
           <button type="button" class="hh-btn hh-btn-primary hh-btn-sm" id="ltAddPlanBtn">Add leave plan</button>
+          <div class="lt-cal-legend" aria-hidden="true">
+            <span class="lt-cal-legend-item"><span class="lt-cal-chip is-annual">Name - Annual leave</span> Annual</span>
+            <span class="lt-cal-legend-item"><span class="lt-cal-chip is-sick">Name - Sick leave</span> Sick</span>
+            <span class="lt-cal-legend-item"><span class="lt-cal-chip is-planned">Name - Planned</span> Planned</span>
+          </div>
         </div>
-        <div class="lt-table-wrap">
-          <table class="lt-table" id="ltPlansTable">
-            <thead>
-              <tr>
-                <th>Emp ID</th>
-                <th>Name</th>
-                <th>Company</th>
-                <th>From</th>
-                <th>To</th>
-                <th>Days</th>
-                <th>Notes</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="ltPlansBody">
-              <tr><td colspan="8" class="lt-empty">Loading…</td></tr>
-            </tbody>
-          </table>
+        <div class="lt-cal" id="ltPlannerCal" role="grid" aria-label="Leave calendar"></div>
+        <div class="lt-cal-pop" id="ltPlannerPop" hidden role="dialog" aria-label="People on leave"></div>
+        <div class="lt-upcoming" id="ltUpcomingPlans" hidden>
+          <h3 class="lt-section-title">Upcoming plans</h3>
+          <ul class="lt-upcoming-list" id="ltUpcomingPlansList"></ul>
         </div>
-        <h3 class="lt-section-title">Who’s out (Aug–Dec 2026)</h3>
-        <div class="lt-timeline" id="ltTimeline"></div>
+      </div>
+      </div>
       </div>
     </main>
   </div>
@@ -384,11 +387,11 @@
         <div class="lt-field-row">
           <label class="lt-field">
             <span>Start date</span>
-            <input type="date" id="ltLogDate" required min="2026-08-01" max="2026-12-31">
+            <input type="date" id="ltLogDate" required min="2026-01-01" max="2035-12-31">
           </label>
           <label class="lt-field">
             <span>End date</span>
-            <input type="date" id="ltLogEndDate" required min="2026-08-01" max="2026-12-31">
+            <input type="date" id="ltLogEndDate" required min="2026-01-01" max="2035-12-31">
           </label>
           <label class="lt-field">
             <span>Days</span>
@@ -402,6 +405,48 @@
         <div class="lt-modal-actions">
           <button type="button" class="hh-btn hh-btn-secondary" data-close-log-modal>Cancel</button>
           <button type="submit" class="hh-btn hh-btn-primary">Save log</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="lt-modal" id="ltEmpModal" hidden>
+    <div class="lt-modal-backdrop" data-close-emp-modal></div>
+    <div class="lt-modal-card" role="dialog" aria-labelledby="ltEmpModalTitle">
+      <h2 id="ltEmpModalTitle">Add employee</h2>
+      <p class="lt-hint">Adds this person to the main staff list. They appear in every month with 0 used until leave is logged.</p>
+      <form id="ltEmpForm">
+        <div class="lt-field-row">
+          <label class="lt-field">
+            <span>Emp ID</span>
+            <input type="text" id="ltEmpIdInput" required maxlength="40" placeholder="INJ-0042" autocomplete="off">
+          </label>
+          <label class="lt-field">
+            <span>Company</span>
+            <select id="ltEmpCompany" required>
+              <option value="Kynvera">Kynvera</option>
+              <option value="Tourism">Tourism</option>
+              <option value="L&P">L&amp;P</option>
+            </select>
+          </label>
+        </div>
+        <label class="lt-field">
+          <span>Full name</span>
+          <input type="text" id="ltEmpName" required maxlength="200" placeholder="Full name" autocomplete="name">
+        </label>
+        <div class="lt-field-row">
+          <label class="lt-field">
+            <span>Designation</span>
+            <input type="text" id="ltEmpDesig" maxlength="160" placeholder="Optional">
+          </label>
+          <label class="lt-field">
+            <span>Annual entitlement</span>
+            <input type="number" id="ltEmpEntitlement" min="0" step="1" placeholder="e.g. 30">
+          </label>
+        </div>
+        <div class="lt-modal-actions">
+          <button type="button" class="hh-btn hh-btn-secondary" data-close-emp-modal>Cancel</button>
+          <button type="submit" class="hh-btn hh-btn-primary">Save to main list</button>
         </div>
       </form>
     </div>
@@ -433,11 +478,11 @@
         <div class="lt-field-row">
           <label class="lt-field">
             <span>From</span>
-            <input type="date" id="ltPlanStart" required min="2026-08-01" max="2026-12-31">
+            <input type="date" id="ltPlanStart" required min="2026-01-01" max="2035-12-31">
           </label>
           <label class="lt-field">
             <span>To</span>
-            <input type="date" id="ltPlanEnd" required min="2026-08-01" max="2026-12-31">
+            <input type="date" id="ltPlanEnd" required min="2026-01-01" max="2035-12-31">
           </label>
         </div>
         <label class="lt-field">
@@ -452,11 +497,43 @@
     </div>
   </div>
 
+  <div class="lt-modal" id="ltAddCardModal" hidden>
+    <div class="lt-modal-backdrop" data-close-add-card></div>
+    <div class="lt-modal-card" role="dialog" aria-labelledby="ltAddCardTitle" aria-modal="true">
+      <h2 id="ltAddCardTitle">Add month card</h2>
+      <p class="lt-hint">Pick a year and month. A new year (for example 2027) is added as a new row below the current year.</p>
+      <form id="ltAddCardForm">
+        <div class="lt-field-row">
+          <label class="lt-field">
+            <span>Year</span>
+            <input type="number" id="ltAddCardYear" required min="2026" max="2035" step="1" value="2027">
+          </label>
+          <label class="lt-field">
+            <span>What to add</span>
+            <select id="ltAddCardMode">
+              <option value="year">Whole year (Jan–Dec)</option>
+              <option value="month">One month</option>
+            </select>
+          </label>
+        </div>
+        <label class="lt-field" id="ltAddCardMonthWrap" hidden>
+          <span>Month</span>
+          <select id="ltAddCardMonth"></select>
+        </label>
+        <p class="lt-hint" id="ltAddCardNote"></p>
+        <div class="lt-modal-actions">
+          <button type="button" class="hh-btn hh-btn-secondary" data-close-add-card>Cancel</button>
+          <button type="submit" class="hh-btn hh-btn-primary">Add card</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
   <script>window.FILES_SAVE_MODULE = 'leave'; window.FILES_SAVE_MODULE_LABEL = 'Leave Tracker';</script>
   <script src="{{ url_for('static', filename='js/files-save.js') }}?v=16"></script>
-  <script src="{{ url_for('static', filename='js/hr-leave-tracker.js') }}?v=20"></script>
+  <script src="{{ url_for('static', filename='js/hr-leave-tracker.js') }}?v=40"></script>
 </body>
 </html>

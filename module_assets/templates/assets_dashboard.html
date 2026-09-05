@@ -1,87 +1,552 @@
 {% set fm_page_title = 'FM Assets' %}
 {% set fm_topbar_title = 'Dashboard' %}
+{% set fm_hide_module_back = true %}
+{% set fm_wide = true %}
+{% set fm_dash = true %}
+{% set fm_head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endset %}
 {% include 'partials/fm_shell_start.html' %}
 
-  <header class="fm-header">
-    <div>
-      <h1>FM Assets</h1>
-      <p>Equipment registry, health, warranty, and budget overview</p>
+  <header class="fm-dash-hero">
+    <div class="fm-dash-hero-copy">
+      <p class="fm-dash-kicker">Equipment registry</p>
+      <h1>Welcome back{% if user %}, {{ user.full_name or user.username }}{% endif %}</h1>
+      <p class="fm-dash-updated">{% if last_updated %}Last updated {{ last_updated }}{% else %}No assets yet{% endif %}</p>
     </div>
-    <div class="fm-header-actions">
+    <div class="fm-dash-hero-actions">
+      <a class="fm-btn fm-btn-outline" href="{{ url_for('assets_bp.api_assets_xlsx') }}">Export</a>
       {% if can_write %}
       <a class="fm-btn fm-btn-primary" href="{{ url_for('assets_bp.assets_new_page') }}">Add asset</a>
       {% endif %}
     </div>
   </header>
 
-  <section class="fm-kpi-grid">
-    <div class="fm-kpi">
-      <span class="fm-kpi-label">Building health</span>
-      <span class="fm-kpi-value">{% if kpis.building_health_pct is not none %}{{ kpis.building_health_pct }}%{% else %}—{% endif %}</span>
-      <span class="fm-kpi-hint">Avg health score across scored assets</span>
-    </div>
-    <div class="fm-kpi">
-      <span class="fm-kpi-label">Warranty status</span>
-      <span class="fm-kpi-value">{{ kpis.warranty.active }} active</span>
-      <span class="fm-kpi-hint">{{ kpis.warranty.expiring_30d }} expiring · {{ kpis.warranty.expired }} expired · {{ kpis.warranty.unknown }} unknown</span>
-    </div>
-    <div class="fm-kpi">
-      <span class="fm-kpi-label">Budget utilization</span>
-      <span class="fm-kpi-value">{% if kpis.budget.utilization_pct is not none %}{{ kpis.budget.utilization_pct }}%{% else %}—{% endif %}</span>
-      <span class="fm-kpi-hint">Maint {{ '{:,.0f}'.format(kpis.budget.maintenance_total) }} / Purchase {{ '{:,.0f}'.format(kpis.budget.purchase_total) }}</span>
-    </div>
-    <div class="fm-kpi fm-kpi-warn">
-      <span class="fm-kpi-label">Critical assets</span>
-      <span class="fm-kpi-value">{{ kpis.critical_count }}</span>
-      <span class="fm-kpi-hint">Status critical or health &lt; 40 · {{ kpis.total_assets }} total</span>
-    </div>
+  <section class="fm-dash-kpis" aria-label="Portfolio totals">
+    <article class="fm-dash-kpi">
+      <div>
+        <span class="fm-dash-kpi-label">Building health</span>
+        <span class="fm-dash-kpi-value">{% if kpis.building_health_pct is not none %}{{ kpis.building_health_pct }}%{% else %}—{% endif %}</span>
+        <span class="fm-dash-kpi-hint">Avg health score across scored assets</span>
+      </div>
+      <svg class="fm-dash-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg>
+    </article>
+    <article class="fm-dash-kpi">
+      <div>
+        <span class="fm-dash-kpi-label">Warranties in date</span>
+        <span class="fm-dash-kpi-value">{{ kpis.warranty.active }}</span>
+        <span class="fm-dash-kpi-hint">{{ kpis.warranty.expiring_30d }} expiring · {{ kpis.warranty.expired }} expired · {{ kpis.warranty.unknown }} unknown</span>
+      </div>
+      <svg class="fm-dash-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3 4.5 6.5v5.2c0 4.2 2.9 8.1 7.5 9.3 4.6-1.2 7.5-5.1 7.5-9.3V6.5L12 3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4"/></svg>
+    </article>
+    <article class="fm-dash-kpi">
+      <div>
+        <span class="fm-dash-kpi-label">Budget utilization</span>
+        <span class="fm-dash-kpi-value">{% if kpis.budget.utilization_pct is not none %}{{ kpis.budget.utilization_pct }}%{% else %}—{% endif %}</span>
+        <span class="fm-dash-kpi-hint">Maint {{ '{:,.0f}'.format(kpis.budget.maintenance_total) }} / Purchase {{ '{:,.0f}'.format(kpis.budget.purchase_total) }}</span>
+      </div>
+      <svg class="fm-dash-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 17.5 9 11l4 3.5 8-9"/><path stroke-linecap="round" stroke-linejoin="round" d="M14 5.5h7v7"/></svg>
+    </article>
+    <article class="fm-dash-kpi{% if kpis.critical_count %} is-warn{% endif %}">
+      <div>
+        <span class="fm-dash-kpi-label">Critical assets</span>
+        <span class="fm-dash-kpi-value">{{ kpis.critical_count }}</span>
+        <span class="fm-dash-kpi-hint">Status critical or health &lt; 40 · {{ kpis.total_assets }} total</span>
+      </div>
+      <svg class="fm-dash-kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.3 4.7 2.6 18.2A2 2 0 0 0 4.3 21h15.4a2 2 0 0 0 1.7-2.8L13.7 4.7a2 2 0 0 0-3.4 0Z"/></svg>
+    </article>
   </section>
 
-  <section class="fm-panel">
-    <div class="fm-panel-head">
+  <article class="fm-dash-card fm-dash-chart">
+    <div class="fm-dash-card-head">
+      <div>
+        <h2>Performance</h2>
+        <p class="fm-dash-card-sub" id="fmChartSub"></p>
+      </div>
+      <div class="fm-dash-pills">
+        <label class="fm-dash-range fm-dash-pill">
+          <span class="fm-sr">Range</span>
+          <select id="fmChartRange" aria-label="Range">
+            <option value="7">Last 7 days</option>
+            <option value="14">Last 14 days</option>
+            <option value="30" selected>Last 30 days</option>
+          </select>
+        </label>
+        <label class="fm-dash-range fm-dash-pill">
+          <span class="fm-sr">Metric</span>
+          <select id="fmChartMetric" aria-label="Metric">
+            <option value="work" selected>Work order</option>
+            <option value="assets">Asset</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div class="fm-dash-chart-body">
+      <canvas id="fmDashChart" aria-label="Daily work orders and assets"></canvas>
+      <div class="fm-dash-tip" id="fmDashTip" hidden>
+        <strong></strong>
+        <span></span>
+      </div>
+    </div>
+  </article>
+
+  <section class="fm-dash-viz" aria-label="Portfolio mix">
+    <article class="fm-dash-card fm-dash-donut-card">
+      <div class="fm-dash-card-head">
+        <div>
+          <h2>Asset status</h2>
+          <p class="fm-dash-card-sub">{{ kpis.total_assets }} assets</p>
+        </div>
+      </div>
+      <div class="fm-dash-donut-wrap">
+        <canvas id="fmStatusChart" aria-label="Asset status mix"></canvas>
+        <div class="fm-dash-donut-center">
+          <strong>{{ kpis.total_assets }}</strong>
+          <span>assets</span>
+        </div>
+      </div>
+      <ul class="fm-dash-legend-list" id="fmStatusLegend"></ul>
+    </article>
+
+    <article class="fm-dash-card">
+      <div class="fm-dash-card-head">
+        <div>
+          <h2>Assets by building</h2>
+          <p class="fm-dash-card-sub">Share of the registry</p>
+        </div>
+      </div>
+      {% if kpis.by_building %}
+      {% set bldg_max = kpis.by_building[0].count or 1 %}
+      <ul class="fm-dash-topics">
+        {% for b in kpis.by_building %}
+        {% set pct = ((b.count / kpis.total_assets) * 100) if kpis.total_assets else 0 %}
+        {% set filled = (((b.count / bldg_max) * 20)|round|int) %}
+        <li>
+          <div class="fm-dash-topic-meta">
+            <span>{{ b.building }}</span>
+            <b>{{ '%d'|format(pct) }}%</b>
+          </div>
+          <div class="fm-dash-topic-track" aria-hidden="true">
+            {% for i in range(20) %}
+            <i{% if i < filled %} class="is-on"{% endif %}></i>
+            {% endfor %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="fm-empty">No building mix yet.</p>
+      {% endif %}
+    </article>
+
+    <article class="fm-dash-card fm-dash-donut-card">
+      <div class="fm-dash-card-head">
+        <div>
+          <h2>Warranty mix</h2>
+          <p class="fm-dash-card-sub">Coverage across the registry</p>
+        </div>
+      </div>
+      <div class="fm-dash-donut-wrap">
+        <canvas id="fmWarrantyChart" aria-label="Warranty mix"></canvas>
+        <div class="fm-dash-donut-center">
+          <strong>{{ kpis.warranty.active }}</strong>
+          <span>in date</span>
+        </div>
+      </div>
+      <ul class="fm-dash-legend-list" id="fmWarrantyLegend"></ul>
+    </article>
+  </section>
+
+  <hr class="fm-dash-rule" aria-hidden="true">
+
+  <article class="fm-dash-card fm-dash-recent">
+    <div class="fm-dash-card-head">
       <h2>Recent assets</h2>
-      <a href="{{ url_for('assets_bp.assets_list_page') }}">View all</a>
+      <label class="fm-dash-search">
+        <span class="fm-sr">Search recent assets</span>
+        <input type="search" id="fmRecentSearch" placeholder="Search" autocomplete="off">
+      </label>
     </div>
     {% if assets %}
-    <div class="fm-table-wrap">
-      <table class="fm-table">
-        <thead>
-          <tr>
-            <th>ID</th><th>Name</th><th>Type</th><th>Building</th><th>Health</th><th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for a in assets %}
-          <tr onclick="location.href='/assets/{{ a.asset_id }}'">
-            <td data-label="ID">{{ a.asset_id }}</td>
-            <td data-label="Name">{{ a.name }}</td>
-            <td data-label="Type">{{ a.asset_type or '—' }}</td>
-            <td data-label="Building">{{ a.building or '—' }}</td>
-            <td data-label="Health">{% if a.health_score is not none %}{{ a.health_score }}{% else %}—{% endif %}</td>
-            <td data-label="Status"><span class="fm-status fm-status-{{ a.status or 'active' }}">{{ a.status or 'active' }}</span></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    <ul class="fm-dash-recent-list" id="fmRecentList">
+      {% for a in assets %}
+      <li>
+        <a class="fm-dash-recent-row" href="{{ url_for('assets_bp.assets_detail_page', asset_code=a.asset_id) }}"
+           data-search="{{ ((a.asset_id or '') ~ ' ' ~ (a.name or '') ~ ' ' ~ (a.building or '') ~ ' ' ~ (a.asset_type|fm_human))|lower }}">
+          <span class="fm-dash-recent-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M7 3.75h7.5L19.5 9v11.25A1.5 1.5 0 0 1 18 21.75H7A1.5 1.5 0 0 1 5.5 20.25V5.25A1.5 1.5 0 0 1 7 3.75Z"/><path stroke-linecap="round" d="M14.5 3.75V9h5"/></svg>
+          </span>
+          <span class="fm-dash-recent-copy">
+            <strong>{{ a.name }}</strong>
+            <span>{{ a.asset_id }} · {{ a.asset_type|fm_human }} · {{ a.building or 'No building' }}</span>
+          </span>
+          <span class="fm-status fm-status-{{ a.status or 'active' }}">{{ a.status|fm_human('Active') }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="fm-dash-recent-empty" id="fmRecentEmpty" hidden>No matching assets in this list.</p>
+    <a class="fm-dash-more" href="{{ url_for('assets_bp.assets_list_page') }}">View all</a>
     {% else %}
-    <p class="fm-empty">No assets yet. {% if can_write %}<a href="{{ url_for('assets_bp.assets_new_page') }}">Create the first one</a>.{% endif %}</p>
+    <p class="fm-empty">No assets yet.{% if can_write %} <a href="{{ url_for('assets_bp.assets_new_page') }}">Create the first one</a>.{% endif %}</p>
+    {% endif %}
+  </article>
+
+  <hr class="fm-dash-rule" aria-hidden="true">
+
+  <section class="fm-dash-buildings" aria-label="Buildings">
+    <div class="fm-dash-card-head fm-dash-buildings-head">
+      <h2>Buildings</h2>
+      <div class="fm-dash-buildings-tools">
+        <label class="fm-dash-search">
+          <span class="fm-sr">Search buildings</span>
+          <input type="search" id="fmBldgSearch" placeholder="Search" autocomplete="off">
+        </label>
+        <div class="fm-dash-chips" role="group" aria-label="Building health">
+          <button type="button" class="fm-dash-chip is-on" data-band="all">All</button>
+          <button type="button" class="fm-dash-chip" data-band="watch">Watch</button>
+          <button type="button" class="fm-dash-chip" data-band="healthy">Healthy</button>
+        </div>
+      </div>
+    </div>
+    {% if kpis.by_building %}
+    <div class="fm-dash-bldg-grid" id="fmBldgGrid">
+      {% for b in kpis.by_building %}
+      <article class="fm-dash-bldg-card" data-band="{{ b.band }}" data-search="{{ b.building|lower }}">
+        <div class="fm-dash-bldg-top">
+          <span class="fm-dash-bldg-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5"/></svg>
+          </span>
+          <span class="fm-dash-dots" aria-label="{{ b.critical }} critical, {{ b.watch }} watch, {{ b.healthy }} healthy">
+            {% if b.critical %}<i class="crit"></i>{% endif %}
+            {% if b.watch %}<i class="warn"></i>{% endif %}
+            {% if b.healthy %}<i class="ok"></i>{% endif %}
+            <span>{{ b.critical }} critical</span>
+          </span>
+        </div>
+        <h3>{{ b.building }}</h3>
+        <p>{{ b.count }} asset{{ '' if b.count == 1 else 's' }} · Health {% if b.avg_health is not none %}{{ b.avg_health }}%{% else %}—{% endif %}</p>
+        <div class="fm-dash-bldg-actions">
+          <a class="fm-btn fm-btn-primary" href="{{ url_for('assets_bp.assets_list_page', q=b.building) }}">View assets</a>
+          <a class="fm-btn fm-btn-outline" href="{{ url_for('assets_bp.assets_map_page') }}">Map</a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    <p class="fm-dash-recent-empty" id="fmBldgEmpty" hidden>No buildings match this filter.</p>
+    {% else %}
+    <p class="fm-empty">Buildings appear here once assets have a location.</p>
     {% endif %}
   </section>
 
-  {% if kpis.by_building %}
-  <section class="fm-panel">
-    <div class="fm-panel-head"><h2>By building</h2></div>
-    <div class="fm-building-grid">
-      {% for b in kpis.by_building %}
-      <div class="fm-building-card">
-        <strong>{{ b.building }}</strong>
-        <span>{{ b.count }} assets</span>
-        <span>Health {% if b.avg_health is not none %}{{ b.avg_health }}%{% else %}—{% endif %}</span>
-      </div>
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
+{% set fm_scripts %}
+<script>
+const FM_CHART = {{ (chart or {})|tojson }};
+const FM_MIX = {
+  status: {{ (kpis.status or {})|tojson }},
+  warranty: {{ (kpis.warranty or {})|tojson }},
+  total: {{ (kpis.total_assets or 0)|tojson }},
+};
 
+const fmHoverLine = {
+  id: 'fmHoverLine',
+  afterDraw(chart) {
+    const active = chart.getActiveElements();
+    if (!active.length) return;
+    const x = active[0].element.x;
+    const { top, bottom } = chart.chartArea;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.setLineDash([3, 5]);
+    ctx.strokeStyle = 'rgba(25, 27, 35, 0.45)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
+(function () {
+  const canvas = document.getElementById('fmDashChart');
+  const tip = document.getElementById('fmDashTip');
+  const sub = document.getElementById('fmChartSub');
+  const range = document.getElementById('fmChartRange');
+  const metricEl = document.getElementById('fmChartMetric');
+  if (!canvas || typeof Chart === 'undefined') return;
+  const labels = FM_CHART.labels || [];
+  const iso = FM_CHART.iso || [];
+  const work = FM_CHART.work_orders || [];
+  const assets = FM_CHART.assets || [];
+  let chart;
+  let pack = { labels: [], iso: [], values: [], noun: 'work order' };
+
+  function sliceN(n) {
+    const take = Math.min(n, labels.length);
+    return {
+      labels: labels.slice(-take),
+      iso: iso.slice(-take),
+      work: work.slice(-take),
+      assets: assets.slice(-take),
+    };
+  }
+
+  function areaFill() {
+    const ctx = canvas.getContext('2d');
+    const area = canvas.parentElement;
+    const h = (area && area.clientHeight) || 320;
+    const g = ctx.createLinearGradient(0, 8, 0, h);
+    g.addColorStop(0, 'rgba(255, 142, 104, 0.28)');
+    g.addColorStop(0.55, 'rgba(255, 142, 104, 0.08)');
+    g.addColorStop(1, 'rgba(255, 142, 104, 0)');
+    return g;
+  }
+
+  function hideTip() {
+    if (tip) tip.hidden = true;
+  }
+
+  function dayTitle(i) {
+    const raw = pack.iso[i];
+    if (!raw) return pack.labels[i] || '';
+    const d = new Date(raw + 'T12:00:00');
+    return d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  function placeTip(chartModel) {
+    if (!tip) return;
+    const tooltip = chartModel.tooltip;
+    if (!tooltip || !tooltip.opacity || !tooltip.dataPoints.length) {
+      hideTip();
+      return;
+    }
+    const i = tooltip.dataPoints[0].dataIndex;
+    const n = pack.values[i] || 0;
+    const noun = n === 1 ? pack.noun : pack.noun + 's';
+    tip.querySelector('strong').textContent = dayTitle(i);
+    tip.querySelector('span').innerHTML = 'Total this day <b>' + n + ' ' + noun + '</b>';
+    tip.hidden = false;
+    const body = canvas.parentElement;
+    const maxL = Math.max(12, body.clientWidth - tip.offsetWidth - 12);
+    const left = Math.min(maxL, Math.max(12, tooltip.caretX - tip.offsetWidth / 2));
+    const top = Math.max(8, tooltip.caretY - tip.offsetHeight - 14);
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  }
+
+  function activeIndex(chartModel) {
+    const active = chartModel.getActiveElements();
+    return active.length ? active[0].index : -1;
+  }
+
+  function draw() {
+    const n = Number((range && range.value) || 30);
+    const metric = (metricEl && metricEl.value) || 'work';
+    const sliced = sliceN(n);
+    const isWork = metric !== 'assets';
+    pack = {
+      labels: sliced.labels,
+      iso: sliced.iso,
+      values: isWork ? sliced.work : sliced.assets,
+      noun: isWork ? 'work order' : 'asset',
+    };
+    hideTip();
+    if (sub) {
+      const total = pack.values.reduce((a, b) => a + b, 0);
+      sub.textContent = isWork
+        ? total + ' work orders'
+        : total + ' assets registered';
+    }
+    if (chart) chart.destroy();
+    chart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: pack.labels,
+        datasets: [{
+          label: isWork ? 'Work orders' : 'Assets',
+          data: pack.values,
+          borderColor: '#ff8e68',
+          backgroundColor: areaFill(),
+          fill: 'origin',
+          tension: 0,
+          borderWidth: 1.75,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHitRadius: 16,
+          pointBackgroundColor: '#191b23',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointHoverBackgroundColor: '#191b23',
+          pointHoverBorderColor: '#fff',
+          clip: false,
+        }],
+      },
+      plugins: [fmHoverLine],
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        layout: { padding: { top: 20, right: 16, bottom: 4, left: 4 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            enabled: false,
+            external: (ctx) => placeTip(ctx.chart),
+          },
+        },
+        scales: {
+          x: {
+            offset: false,
+            grid: { display: false },
+            border: { display: false },
+            ticks: {
+              autoSkip: true,
+              maxTicksLimit: 13,
+              maxRotation: 0,
+              minRotation: 0,
+              color: (ctx) => (ctx.index === activeIndex(ctx.chart) ? '#191b23' : '#8b90a0'),
+              font: (ctx) => ({
+                size: 11,
+                weight: ctx.index === activeIndex(ctx.chart) ? '700' : '500',
+              }),
+              padding: 10,
+            },
+          },
+          y: {
+            beginAtZero: true,
+            grace: '12%',
+            grid: {
+              color: 'rgba(25, 27, 35, 0.1)',
+              borderDash: [4, 5],
+              drawTicks: false,
+            },
+            border: { display: false },
+            ticks: { color: '#8b90a0', font: { size: 11 }, precision: 0, padding: 14 },
+          },
+        },
+        onHover: (event, els) => {
+          if (event.native && event.native.target) {
+            event.native.target.style.cursor = els.length ? 'pointer' : 'default';
+          }
+        },
+      },
+    });
+  }
+
+  canvas.addEventListener('mouseleave', hideTip);
+  draw();
+  if (range) range.addEventListener('change', draw);
+  if (metricEl) metricEl.addEventListener('change', draw);
+})();
+
+function fmDonut(canvasId, legendId, slices, colors) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || typeof Chart === 'undefined') return;
+  const labels = slices.map((s) => s.label);
+  const data = slices.map((s) => s.value);
+  const total = data.reduce((a, b) => a + b, 0);
+  new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors,
+        borderWidth: 0,
+        hoverOffset: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '72%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#191b23',
+          padding: 10,
+          cornerRadius: 8,
+          displayColors: false,
+          callbacks: {
+            title: () => '',
+            label: (item) => item.label + ': ' + item.formattedValue,
+          },
+        },
+      },
+    },
+  });
+  const legend = document.getElementById(legendId);
+  if (!legend) return;
+  legend.innerHTML = slices.map((s, i) => {
+    const pct = total ? Math.round((s.value / total) * 100) : 0;
+    return '<li><i style="background:' + colors[i] + '"></i>' + s.label + ' <b>' + pct + '%</b></li>';
+  }).join('');
+}
+
+(function () {
+  const st = FM_MIX.status || {};
+  fmDonut('fmStatusChart', 'fmStatusLegend', [
+    { label: 'Active', value: Number(st.active || 0) },
+    { label: 'Critical', value: Number(st.critical || 0) },
+    { label: 'Inactive', value: Number(st.inactive || 0) },
+    { label: 'Decommissioned', value: Number(st.decommissioned || 0) },
+  ].filter((s) => s.value > 0 || FM_MIX.total === 0), ['#ff8e68', '#191b23', '#9aa0ad', '#d9dce3']);
+
+  const w = FM_MIX.warranty || {};
+  fmDonut('fmWarrantyChart', 'fmWarrantyLegend', [
+    { label: 'In date', value: Number(w.active || 0) },
+    { label: 'Expiring', value: Number(w.expiring_30d || 0) },
+    { label: 'Expired', value: Number(w.expired || 0) },
+    { label: 'Unknown', value: Number(w.unknown || 0) },
+  ].filter((s) => s.value > 0 || FM_MIX.total === 0), ['#191b23', '#ff8e68', '#9aa0ad', '#d9dce3']);
+})();
+
+(function () {
+  const input = document.getElementById('fmRecentSearch');
+  const empty = document.getElementById('fmRecentEmpty');
+  const rows = [...document.querySelectorAll('#fmRecentList .fm-dash-recent-row')];
+  if (!input) return;
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    let shown = 0;
+    rows.forEach((row) => {
+      const on = !q || (row.dataset.search || '').includes(q);
+      row.parentElement.hidden = !on;
+      if (on) shown += 1;
+    });
+    if (empty) empty.hidden = shown > 0;
+  });
+})();
+
+(function () {
+  const grid = document.getElementById('fmBldgGrid');
+  if (!grid) return;
+  const search = document.getElementById('fmBldgSearch');
+  const empty = document.getElementById('fmBldgEmpty');
+  const chips = [...document.querySelectorAll('.fm-dash-chip')];
+  let band = 'all';
+  function apply() {
+    const q = (search && search.value.trim().toLowerCase()) || '';
+    let shown = 0;
+    grid.querySelectorAll('.fm-dash-bldg-card').forEach((card) => {
+      const bandOk = band === 'all' || card.dataset.band === band;
+      const qOk = !q || (card.dataset.search || '').includes(q);
+      const on = bandOk && qOk;
+      card.hidden = !on;
+      if (on) shown += 1;
+    });
+    if (empty) empty.hidden = shown > 0;
+  }
+  chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      band = chip.dataset.band || 'all';
+      chips.forEach((c) => c.classList.toggle('is-on', c === chip));
+      apply();
+    });
+  });
+  if (search) search.addEventListener('input', apply);
+})();
+</script>
+{% endset %}
 {% include 'partials/fm_shell_end.html' %}

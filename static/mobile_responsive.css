@@ -30,6 +30,12 @@
     background: #f8faf8 !important;
     padding-bottom: env(safe-area-inset-bottom, 0px) !important;
   }
+  body.page-dashboard .footer,
+  body.hr-dashboard .footer,
+  body.inspection-dashboard .footer,
+  body.qhsi-dashboard .footer {
+    background: transparent !important;
+  }
   
   /* Content area - add bottom padding for home indicator */
   .hero-content,
@@ -53,6 +59,13 @@
   .footer a {
     min-height: 44px !important;
     min-width: 44px !important;
+  }
+
+  /* Document Workflow title is a text button inside a tight table cell */
+  #section-documents .documents-table .doc-title-btn {
+    min-height: 0 !important;
+    min-width: 0 !important;
+    height: auto !important;
   }
   
   .module-card {
@@ -112,25 +125,29 @@
 
   /* Keep continuous wash from dashboard.css — flat fill re-creates the hero/modules hairline */
   body.page-dashboard,
-  body.hr-dashboard {
-    background:
-      radial-gradient(ellipse 70% 55% at 0% 14%, rgba(255, 142, 104, 0.1) 0%, transparent 70%),
-      radial-gradient(ellipse 40% 35% at 100% 6%, rgba(255, 142, 104, 0.05) 0%, transparent 60%),
-      linear-gradient(180deg, #fff8f5 0%, #fafbfa 22%, #f7f7f9 48%, #f7f7f9 100%) !important;
+  body.hr-dashboard,
+  body.hr-kynvera-queue,
+  body.inspection-dashboard,
+  body.qhsi-dashboard,
+  body.review-dashboard {
+    background: var(--kynvera-page-linear,
+      radial-gradient(ellipse 80% 52% at 0% 0%, rgba(255, 142, 104, 0.18) 0%, transparent 64%),
+      radial-gradient(ellipse 55% 42% at 100% 0%, rgba(255, 142, 104, 0.09) 0%, transparent 58%),
+      linear-gradient(180deg, #fff4ef 0%, #fff8f5 36%, #faf8f6 68%, #f7f7f9 100%)) !important;
   }
 
+  html:has(body.page-dashboard),
   html:has(body.hr-dashboard),
+  html:has(body.hr-kynvera-queue),
   html:has(body.inspection-dashboard),
   html:has(body.qhsi-dashboard),
   html:has(body.qhse-hub-page),
   html:has(body.review-dashboard),
   html:has(body.procurement-page) {
-    background-color: #f7f7f9 !important;
-  }
-
-  html:has(body.page-dashboard),
-  html:has(body.hr-dashboard) {
-    background-color: #f7f7f9 !important;
+    background: var(--kynvera-page-linear,
+      radial-gradient(ellipse 80% 52% at 0% 0%, rgba(255, 142, 104, 0.18) 0%, transparent 64%),
+      radial-gradient(ellipse 55% 42% at 100% 0%, rgba(255, 142, 104, 0.09) 0%, transparent 58%),
+      linear-gradient(180deg, #fff4ef 0%, #fff8f5 36%, #faf8f6 68%, #f7f7f9 100%)) !important;
   }
   
   /* Dashboard Header */
@@ -444,6 +461,12 @@
   /* Footer - subtle mobile */
   .footer {
     background: #f8faf8 !important;
+  }
+  body.page-dashboard .footer,
+  body.hr-dashboard .footer,
+  body.inspection-dashboard .footer,
+  body.qhsi-dashboard .footer {
+    background: transparent !important;
   }
 }
 

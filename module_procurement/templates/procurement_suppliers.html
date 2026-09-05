@@ -1,0 +1,96 @@
+{% set proc_page_title = 'Suppliers — Procurement' %}
+{% set proc_topbar_title = 'Suppliers' %}
+{% set module_back_url = url_for('procurement_module.procurement_dashboard') %}
+{% include 'partials/proc_shell_start.html' %}
+
+<div class="proc-dash-head">
+  <div>
+    <p class="proc-kicker">Purchasing</p>
+    <h1>Material suppliers</h1>
+    <p class="proc-sub">Vendors used on purchase requests, by trade.</p>
+  </div>
+  <div class="proc-dash-actions">
+    <button type="button" class="proc-btn proc-btn-dark" onclick="openAdd()">Add supplier</button>
+  </div>
+</div>
+
+<section class="proc-card">
+  <div class="proc-card-head">
+    <div>
+      <h2>Suppliers</h2>
+      <p id="supCount">Loading…</p>
+    </div>
+  </div>
+  <div class="proc-card-body">
+    <div class="proc-sup-list" id="list">Loading…</div>
+  </div>
+</section>
+
+<div class="modal fade proc-modal" id="addModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add supplier</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label" for="sName">Name</label>
+        <input class="form-control mb-2" id="sName">
+        <label class="form-label" for="sContact">Contact</label>
+        <input class="form-control mb-2" id="sContact">
+        <label class="form-label" for="sEmail">Email</label>
+        <input class="form-control mb-2" id="sEmail">
+        <label class="form-label" for="sPhone">Phone</label>
+        <input class="form-control mb-2" id="sPhone">
+        <label class="form-label" for="sTrades">Trades</label>
+        <input class="form-control" id="sTrades" placeholder="HVAC, Electrical">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="proc-btn proc-btn-outline" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="proc-btn proc-btn-dark" onclick="saveSup()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const token = localStorage.getItem('access_token');
+  const h = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
+  function esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+  async function load() {
+    const res = await fetch('/procurement/api/suppliers', { headers: h });
+    const data = await res.json();
+    const rows = data.suppliers || [];
+    const count = document.getElementById('supCount');
+    count.textContent = rows.length
+      ? rows.length + ' supplier' + (rows.length === 1 ? '' : 's')
+      : 'No suppliers yet';
+    document.getElementById('list').innerHTML = rows.length ? rows.map(s => `
+      <div class="proc-sup-card">
+        <strong>${esc(s.name)}</strong>
+        <div class="proc-sup-meta">${esc(s.contact_name || '—')} · ${esc(s.contact_phone || '—')} · ${esc(s.trades || '—')}</div>
+      </div>`).join('') : '<p class="proc-empty">No suppliers yet.</p>';
+  }
+  function openAdd(){ bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).show(); }
+  async function saveSup(){
+    const res = await fetch('/procurement/api/suppliers', { method:'POST', headers:h, body: JSON.stringify({
+      name: document.getElementById('sName').value, contact_name: document.getElementById('sContact').value,
+      contact_email: document.getElementById('sEmail').value, contact_phone: document.getElementById('sPhone').value,
+      trades: document.getElementById('sTrades').value,
+    })});
+    const data = await res.json();
+    if (!data.success) {
+      if (typeof procAlert === 'function') procAlert(data.error || 'Failed');
+      else alert(data.error || 'Failed');
+      return;
+    }
+    bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
+    ['sName','sContact','sEmail','sPhone','sTrades'].forEach(function (id) {
+      document.getElementById(id).value = '';
+    });
+    load();
+  }
+  load();
+</script>
+
+{% include 'partials/proc_shell_end.html' %}

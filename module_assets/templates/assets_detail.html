@@ -1,12 +1,12 @@
 {% set fm_page_title = asset.asset_id ~ ' — ' ~ asset.name %}
 {% set fm_topbar_title = asset.asset_id %}
+{% set module_back_url = url_for('assets_bp.assets_list_page') %}
 {% include 'partials/fm_shell_start.html' %}
 
   <header class="fm-header">
     <div>
-      <p class="fm-eyebrow"><a href="{{ url_for('assets_bp.assets_dashboard') }}">Assets</a> · {{ asset.asset_id }}</p>
       <h1>{{ asset.name }}</h1>
-      <p>{{ asset.asset_type or 'Equipment' }}{% if asset.project %} · {{ asset.project.name }}{% endif %}{% if asset.building %} · {{ asset.building }}{% endif %}{% if asset.floor %} / {{ asset.floor }}{% endif %}{% if asset.room %} / {{ asset.room }}{% endif %}</p>
+      <p>{{ asset.asset_type|fm_human('Equipment') }}{% if asset.project %} · {{ asset.project.name }}{% endif %}{% if asset.building %} · {{ asset.building }}{% endif %}{% if asset.floor %} / {{ asset.floor }}{% endif %}{% if asset.room %} / {{ asset.room }}{% endif %}</p>
     </div>
     <div class="fm-header-actions">
       {% if can_write %}
@@ -33,7 +33,7 @@
     <div class="fm-panel">
       <h2>Details</h2>
       <dl class="fm-dl">
-        <dt>Status</dt><dd><span class="fm-status fm-status-{{ asset.status or 'active' }}">{{ asset.status or 'active' }}</span></dd>
+        <dt>Status</dt><dd><span class="fm-status fm-status-{{ asset.status or 'active' }}">{{ asset.status|fm_human('Active') }}</span></dd>
         <dt>Health</dt><dd>{% if asset.health_score is not none %}{{ asset.health_score }} / 100{% else %}—{% endif %}</dd>
         <dt>Manufacturer</dt><dd>{{ asset.manufacturer or '—' }}</dd>
         <dt>Model</dt><dd>{{ asset.model or '—' }}</dd>
@@ -106,8 +106,8 @@
           <tr onclick="location.href='/tickets/{{ t.ticket_id }}'">
             <td data-label="Ticket">{{ t.ticket_id }}</td>
             <td data-label="Title">{{ t.title }}</td>
-            <td data-label="Priority">{{ t.priority }}</td>
-            <td data-label="Status">{{ t.status }}</td>
+            <td data-label="Priority">{{ t.priority|fm_human }}</td>
+            <td data-label="Status">{{ t.status|fm_human }}</td>
             <td data-label="Created">{{ t.created_at.strftime('%d %b %Y') if t.created_at else '—' }}</td>
           </tr>
           {% endfor %}

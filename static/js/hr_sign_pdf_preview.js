@@ -70,11 +70,42 @@
 
   function applyIframeFallbackZoom(zoomWrap) {
     if (!zoomWrap) return;
-    if (typeof global.matchMedia === 'function' && global.matchMedia('(max-width: 960px)').matches) {
-      zoomWrap.style.zoom = '1.08';
-    } else {
-      zoomWrap.style.zoom = '1.2';
+    zoomWrap.style.zoom = '1';
+  }
+
+  function waitUntilPreviewReady(isStale) {
+    var scrollEl = document.getElementById('rspPreviewScroll');
+    var modal = scrollEl && scrollEl.closest ? scrollEl.closest('.modal') : null;
+    if (!modal) {
+      modal = document.getElementById('reviewModal') || document.getElementById('approvalModal');
     }
+
+    var shown = !modal || modal.classList.contains('show');
+    var waitShown = shown
+      ? Promise.resolve()
+      : new Promise(function (resolve) {
+          var settled = false;
+          function done() {
+            if (settled) return;
+            settled = true;
+            modal.removeEventListener('shown.bs.modal', done);
+            resolve();
+          }
+          modal.addEventListener('shown.bs.modal', done);
+          setTimeout(done, 500);
+        });
+
+    return waitShown.then(function () {
+      return new Promise(function (resolve) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            resolve();
+          });
+        });
+      });
+    }).then(function () {
+      if (isStale && isStale()) return;
+    });
   }
 
   async function fetchPdfBuffer(submissionId, token) {
@@ -115,9 +146,11 @@
     var pdf = await global.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     if (isStale()) return null;
 
-    /* Fit PDF page width to fraction of preview column (slightly roomy vs compact) */
-    var FIT_FRAC = 0.9;
-    var availW = Math.max(248, scrollEl.clientWidth - 16) * FIT_FRAC;
+    /* Native A4 width (210mm @ 96dpi). Never stretch larger; shrink only if the column is narrower. */
+    var A4_CSS_W = 794;
+    var availW = Math.max(240, scrollEl.clientWidth - 40);
+    var cssW = Math.min(A4_CSS_W, availW);
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
     host.innerHTML = '';
     var root = document.createElement('div');
     root.className = 'rsp-pdf-pages';
@@ -126,13 +159,15 @@
       if (isStale()) return null;
       var page = await pdf.getPage(p);
       var base = page.getViewport({ scale: 1 });
-      var scale = Math.min(3.45, availW / base.width);
+      var scale = (cssW * dpr) / base.width;
       var viewport = page.getViewport({ scale: scale });
       var canvas = document.createElement('canvas');
       var ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Canvas unsupported');
       canvas.width = viewport.width;
       canvas.height = viewport.height;
+      canvas.style.width = cssW + 'px';
+      canvas.style.height = Math.round(viewport.height / dpr) + 'px';
 
       await page.render({ canvasContext: ctx, viewport: viewport }).promise;
 
@@ -239,6 +274,9 @@
 
       try {
         var buf = await fetchPdfBuffer(submissionId, token);
+        if (isStale()) return;
+
+        await waitUntilPreviewReady(isStale);
         if (isStale()) return;
 
         var rendered = false;

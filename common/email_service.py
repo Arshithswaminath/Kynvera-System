@@ -12,9 +12,11 @@ import ssl
 import socket
 import logging
 import os
+import re
 import mimetypes
 from email.message import EmailMessage
 from email.utils import formataddr
+from urllib.parse import urlparse
 from flask import current_app
 
 import requests
@@ -23,6 +25,25 @@ logger = logging.getLogger(__name__)
 
 BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email"
 MAILJET_SEND_URL = "https://api.mailjet.com/v3.1/send"
+
+# Gmail/Yahoo/Outlook DMARC rejects third-party API sends that claim these From addresses.
+# Brevo/Mailjet often return HTTP 201, then mark the message Error in the dashboard.
+_CONSUMER_SENDER_DOMAINS = frozenset({
+    'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.uk',
+    'hotmail.com', 'outlook.com', 'live.com', 'icloud.com', 'me.com',
+})
+
+
+def _api_sender_blocked_reason(mail_sender, provider):
+    email = str(mail_sender or '').strip()
+    domain = email.rsplit('@', 1)[-1].lower() if '@' in email else ''
+    if domain not in _CONSUMER_SENDER_DOMAINS:
+        return None
+    return (
+        f'{provider} cannot send From {email}. Set MAIL_DEFAULT_SENDER to an address '
+        f'verified in {provider} on a domain you control (e.g. noreply@injaaz.ae). '
+        'Gmail as From is accepted by the API, then fails as Error in the provider dashboard.'
+    )
 
 
 def _normalize_secret_env(value):
@@ -154,8 +175,8 @@ class SMTP_SSL_IPv4(SMTPIPv4, smtplib.SMTP_SSL):
     pass
 
 
-def _collect_attachment_bytes(attachments):
-    """Yield (filename, content_bytes, content_type) from path or dict attachments."""
+def _iter_attachment_items(attachments):
+    """Yield dicts: filename, data, content_type, inline, cid."""
     for item in attachments or []:
         try:
             if isinstance(item, str):
@@ -165,18 +186,26 @@ def _collect_attachment_bytes(attachments):
                     continue
                 with open(path, "rb") as fh:
                     data = fh.read()
-                filename = os.path.basename(path)
                 ctype, _enc = mimetypes.guess_type(path)
-                content_type = ctype or "application/octet-stream"
+                yield {
+                    'filename': os.path.basename(path),
+                    'data': data,
+                    'content_type': ctype or 'application/octet-stream',
+                    'inline': False,
+                    'cid': None,
+                }
             elif isinstance(item, dict):
-                data = item.get("content")
-                filename = item.get("filename")
-                content_type = item.get("mime_type") or "application/octet-stream"
+                data = item.get('content')
+                filename = item.get('filename')
                 if not data or not filename:
                     continue
-            else:
-                continue
-            yield filename, data, content_type
+                yield {
+                    'filename': filename,
+                    'data': data,
+                    'content_type': item.get('mime_type') or 'application/octet-stream',
+                    'inline': bool(item.get('inline')),
+                    'cid': item.get('cid'),
+                }
         except Exception:
             logger.error("Failed to read attachment", exc_info=True)
 
@@ -186,6 +215,10 @@ def _send_email_brevo_http(app, recipient, subject, body, html_body, cc, attachm
     mail_sender = app.config.get("MAIL_DEFAULT_SENDER") or app.config.get("MAIL_USERNAME")
     if not mail_sender:
         logger.error("Brevo: set MAIL_DEFAULT_SENDER to a verified sender in Brevo")
+        return False
+    blocked = _api_sender_blocked_reason(mail_sender, "Brevo")
+    if blocked:
+        logger.error("%s", blocked)
         return False
 
     to_list = recipient if isinstance(recipient, (list, tuple)) else [recipient]
@@ -200,20 +233,27 @@ def _send_email_brevo_http(app, recipient, subject, body, html_body, cc, attachm
         "subject": subject,
         "textContent": (body or "").rstrip() or " ",
     }
-    if html_body:
-        payload["htmlContent"] = html_body
+    html = html_body or ''
+    att_out = []
+    for item in _iter_attachment_items(attachments):
+        if item.get('inline') and item.get('cid'):
+            # Gmail strips data: URIs; Brevo transactional API does not keep CID
+            # Content-ID headers. Hosted HTTPS (or the HTML wordmark) is required.
+            continue
+        encoded = base64.b64encode(item['data']).decode('ascii')
+        att_out.append({'name': item['filename'], 'content': encoded})
+    if 'cid:' in html:
+        html = re.sub(
+            r'<img\b[^>]*src=["\']cid:[^"\']+["\'][^>]*>',
+            _html_wordmark(),
+            html,
+            flags=re.I,
+        )
+    if html:
+        payload["htmlContent"] = html
     if cc:
         cc_list = cc if isinstance(cc, (list, tuple)) else [cc]
         payload["cc"] = [{"email": str(e).strip()} for e in cc_list if e and str(e).strip()]
-
-    att_out = []
-    for filename, data, _content_type in _collect_attachment_bytes(attachments):
-        att_out.append(
-            {
-                "name": filename,
-                "content": base64.b64encode(data).decode("ascii"),
-            }
-        )
     if att_out:
         payload["attachment"] = att_out
 
@@ -229,7 +269,16 @@ def _send_email_brevo_http(app, recipient, subject, body, html_body, cc, attachm
             timeout=120,
         )
         if r.status_code in (200, 201, 202):
-            logger.info("Email sent via Brevo API to %s", recipient)
+            message_id = ""
+            try:
+                message_id = (r.json() or {}).get("messageId") or ""
+            except Exception:
+                message_id = ""
+            logger.info(
+                "Email accepted by Brevo API to %s messageId=%s",
+                recipient,
+                message_id or "(none)",
+            )
             return True
         logger.error("Brevo API HTTP %s: %s", r.status_code, r.text[:4000])
         return False
@@ -270,16 +319,26 @@ def _send_email_mailjet_http(
             if e and str(e).strip()
         ]
     att_out = []
-    for filename, data, content_type in _collect_attachment_bytes(attachments):
-        att_out.append(
-            {
-                "ContentType": content_type,
-                "Filename": filename,
-                "Base64Content": base64.b64encode(data).decode("ascii"),
-            }
-        )
+    inline_out = []
+    for item in _iter_attachment_items(attachments):
+        encoded = base64.b64encode(item['data']).decode('ascii')
+        if item.get('inline') and item.get('cid'):
+            inline_out.append({
+                'ContentType': item['content_type'],
+                'Filename': item['filename'],
+                'ContentID': item['cid'],
+                'Base64Content': encoded,
+            })
+        else:
+            att_out.append({
+                'ContentType': item['content_type'],
+                'Filename': item['filename'],
+                'Base64Content': encoded,
+            })
     if att_out:
-        msg["Attachments"] = att_out
+        msg['Attachments'] = att_out
+    if inline_out:
+        msg['InlinedAttachments'] = inline_out
     payload = {"Messages": [msg]}
     try:
         r = requests.post(
@@ -326,6 +385,24 @@ def _normalize_source(source):
 
 def _body_preview(body, source):
     if source == 'auth':
+        text = (body or '').lower()
+        if 'system user has been created' in text or 'account is ready' in text:
+            return 'Account created notification'
+        if 'login details, sent by an administrator' in text or 'here are your kynvera login details' in text:
+            return 'Login details notification'
+        if 'account has been activated' in text:
+            return 'Account activated notification'
+        if 'account has been deactivated' in text:
+            return 'Account deactivated notification'
+        if 'password has been reset' in text or 'temporary password is:' in text:
+            return 'Password reset notification'
+        if (
+            'updated the password' in text
+            or 'password was updated' in text
+            or 'password was changed' in text
+            or 'account was changed' in text
+        ):
+            return 'Password updated notification'
         return 'Password reset notification'
     text = ' '.join((body or '').split())
     if len(text) > _BODY_PREVIEW_MAX:
@@ -486,29 +563,34 @@ def _deliver_email(recipient, subject, body, html_body=None, cc=None, attachment
         else:
             msg.set_content(body)
 
-        attachments = attachments or []
-        for item in attachments:
+        html_part = None
+        if html_body:
             try:
-                if isinstance(item, str):
-                    path = item
-                    if not os.path.exists(path):
-                        logger.warning("Attachment not found: %s", path)
-                        continue
-                    ctype, encoding = mimetypes.guess_type(path)
-                    if ctype is None:
-                        ctype = "application/octet-stream"
-                    maintype, subtype = ctype.split("/", 1)
-                    with open(path, "rb") as fh:
-                        data = fh.read()
-                    msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=os.path.basename(path))
-                elif isinstance(item, dict):
-                    data = item.get("content")
-                    filename = item.get("filename")
-                    mime_type = item.get("mime_type") or "application/octet-stream"
-                    if not data or not filename:
-                        continue
-                    maintype, subtype = mime_type.split("/", 1)
-                    msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=filename)
+                for part in msg.walk():
+                    if part.get_content_type() == 'text/html':
+                        html_part = part
+                        break
+            except Exception:
+                html_part = None
+
+        for item in _iter_attachment_items(attachments):
+            try:
+                mime_type = item['content_type']
+                maintype, subtype = mime_type.split('/', 1)
+                if item.get('inline') and item.get('cid') and html_part is not None:
+                    html_part.add_related(
+                        item['data'],
+                        maintype=maintype,
+                        subtype=subtype,
+                        cid=item['cid'],
+                    )
+                else:
+                    msg.add_attachment(
+                        item['data'],
+                        maintype=maintype,
+                        subtype=subtype,
+                        filename=item['filename'],
+                    )
             except Exception:
                 logger.error("Failed to attach file", exc_info=True)
 
@@ -534,12 +616,349 @@ def _deliver_email(recipient, subject, body, html_body=None, cc=None, attachment
         return False
 
 
+def _app_base_url():
+    try:
+        return (current_app.config.get('APP_BASE_URL') or '').rstrip('/')
+    except Exception:
+        return ''
+
+
+def _login_url():
+    base = _app_base_url()
+    return f'{base}/login' if base else '/login'
+
+
+_WORDMARK_CID = 'kynvera-wordmark'
+_WORDMARK_STATIC = '/static/images/kynvera/kynvera-wordmark.png'
+_cloudinary_wordmark_url_cache = None
+
+
+def _wordmark_path():
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    path = os.path.join(root, 'static', 'images', 'kynvera', 'kynvera-wordmark.png')
+    return path if os.path.isfile(path) else ''
+
+
+def _is_public_asset_base(url):
+    """True when inbox clients (Gmail, Outlook) can fetch this host."""
+    try:
+        parsed = urlparse((url or '').strip())
+    except Exception:
+        return False
+    if parsed.scheme not in ('http', 'https'):
+        return False
+    host = (parsed.hostname or '').lower()
+    if not host or host in ('localhost', '127.0.0.1', '::1') or host.endswith('.local'):
+        return False
+    return True
+
+
+def _html_wordmark():
+    return (
+        '<span style="font-family:Arial,Helvetica,sans-serif;font-size:18px;'
+        'font-weight:800;color:#ff8e68;letter-spacing:-0.4px;line-height:1;">Kynvera</span>'
+    )
+
+
+def _img_wordmark(src):
+    return (
+        f'<img src="{_esc(src)}" alt="Kynvera" width="120" '
+        'style="display:block;border:0;outline:none;text-decoration:none;'
+        'width:120px;max-width:140px;height:auto;">'
+    )
+
+
+def _cloudinary_wordmark_url():
+    """Upload the wordmark once and reuse the HTTPS URL (Gmail can fetch this)."""
+    global _cloudinary_wordmark_url_cache
+    if _cloudinary_wordmark_url_cache is not None:
+        return _cloudinary_wordmark_url_cache
+    path = _wordmark_path()
+    if not path:
+        _cloudinary_wordmark_url_cache = ''
+        return ''
+    try:
+        if current_app.config.get('TESTING'):
+            _cloudinary_wordmark_url_cache = ''
+            return ''
+    except Exception:
+        pass
+    try:
+        from app.services.cloudinary_service import init_cloudinary
+        import cloudinary.uploader
+        if not init_cloudinary():
+            _cloudinary_wordmark_url_cache = ''
+            return ''
+        res = cloudinary.uploader.upload(
+            path,
+            folder='kynvera',
+            public_id='email-wordmark',
+            overwrite=True,
+            resource_type='image',
+            unique_filename=False,
+            use_filename=False,
+        )
+        url = str((res or {}).get('secure_url') or '')
+        _cloudinary_wordmark_url_cache = url
+        if url:
+            logger.info('Hosted email wordmark at %s', url)
+        return url
+    except Exception:
+        logger.warning('Could not host email wordmark on Cloudinary', exc_info=True)
+        _cloudinary_wordmark_url_cache = ''
+        return ''
+
+
+def _hosted_wordmark_url():
+    try:
+        explicit = (current_app.config.get('EMAIL_WORDMARK_URL') or '').strip()
+    except Exception:
+        explicit = ''
+    if _is_public_asset_base(explicit):
+        return explicit.rstrip('/')
+    base = _app_base_url()
+    if _is_public_asset_base(base):
+        return f'{base}{_WORDMARK_STATIC}'
+    return _cloudinary_wordmark_url()
+
+
+def _wordmark_inline_attachment():
+    path = _wordmark_path()
+    if not path:
+        return None
+    with open(path, 'rb') as fh:
+        data = fh.read()
+    if not data:
+        return None
+    return {
+        'filename': 'kynvera-wordmark.png',
+        'content': data,
+        'mime_type': 'image/png',
+        'cid': _WORDMARK_CID,
+        'inline': True,
+    }
+
+
+def _send_auth_email(user_email, subject, body, html_body):
+    attachments = []
+    if html_body and f'cid:{_WORDMARK_CID}' in html_body:
+        wm = _wordmark_inline_attachment()
+        if wm:
+            attachments.append(wm)
+    return send_email(user_email, subject, body, html_body, source='auth', attachments=attachments)
+
+
+def _esc(value):
+    import html as html_lib
+    return html_lib.escape(str(value or ''), quote=True)
+
+
+def _logo_html():
+    hosted = _hosted_wordmark_url()
+    if hosted:
+        return _img_wordmark(hosted)
+    try:
+        if brevo_api_key():
+            # Brevo transactional API drops CID images; Gmail also strips data: URIs.
+            return _html_wordmark()
+    except Exception:
+        pass
+    if _wordmark_path():
+        return _img_wordmark(f'cid:{_WORDMARK_CID}')
+    return _html_wordmark()
+
+
+def branded_kynvera_html(*, greeting, paragraphs, extra_html='', cta_url='', cta_label='Open in Kynvera'):
+    """Public wrapper for the Outlook-safe Kynvera transactional card."""
+    return _branded_auth_html(
+        title='',
+        greeting=greeting,
+        paragraphs=paragraphs,
+        extra_html=extra_html,
+        cta_url=cta_url,
+        cta_label=cta_label,
+    )
+
+
+def _branded_auth_html(*, title, greeting, paragraphs, extra_html='', cta_url='', cta_label='Sign in'):
+    """Outlook-safe Kynvera card with the coral wordmark (no header bar)."""
+    del title
+    logo_html = _logo_html()
+
+    paras = ''.join(
+        f'<p style="margin:0 0 12px 0;font-family:Arial,Helvetica,sans-serif;'
+        f'font-size:15px;line-height:1.55;color:#1c1917;">{p}</p>'
+        for p in paragraphs
+    )
+    cta_html = ''
+    if cta_url:
+        cta_html = f'''
+<tr>
+  <td style="padding:8px 32px 0 32px;">
+    <table cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td bgcolor="#ff8e68" style="background-color:#ff8e68;border-radius:8px;">
+          <a href="{_esc(cta_url)}"
+             style="display:inline-block;padding:11px 22px;font-family:Arial,Helvetica,sans-serif;
+                    font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">{_esc(cta_label)}</a>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>'''
+
+    return f'''<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background-color:#f4f1ee;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f1ee" style="background-color:#f4f1ee;">
+  <tr>
+    <td align="center" style="padding:28px 16px;">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff"
+             style="width:600px;max-width:600px;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #efe7e2;">
+        <tr>
+          <td style="padding:28px 32px 8px 32px;">
+            {logo_html}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:8px 32px 8px 32px;">
+            <p style="margin:0 0 16px 0;font-family:Arial,Helvetica,sans-serif;font-size:22px;
+                      font-weight:800;color:#191b23;">{greeting}</p>
+            {paras}
+            {extra_html}
+          </td>
+        </tr>
+        {cta_html}
+        <tr>
+          <td style="padding:20px 32px 28px 32px;">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#8a7e78;">
+              Kynvera · All operations. One platform.<br>Do not reply to this email.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>'''
+
+
+def send_account_created_email(user_email, username, full_name=None, temp_password=None):
+    """Welcome email after an admin creates a system user. Includes username; temp password only if generated."""
+    display = (full_name or '').strip() or username
+    login_url = _login_url()
+    subject = 'Your Kynvera account is ready'
+
+    lines = [
+        f'Hello {display},',
+        'A Kynvera system user has been created for you.',
+        f'Your username is: {username}',
+    ]
+    if temp_password:
+        lines.append(f'Your temporary password is: {temp_password}')
+        lines.append('Sign in and change this password the first time you log in.')
+    else:
+        lines.append('Sign in with the password your administrator set for this account.')
+    lines.extend(['If you were not expecting this account, contact your administrator.', 'Kynvera'])
+    body = '\n\n'.join(lines)
+
+    extra = (
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%" '
+        'style="margin:4px 0 16px 0;background-color:#fff8f5;border:1px solid #fde4d8;border-radius:10px;">'
+        '<tr><td style="padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#191b23;">'
+        f'<strong>Username</strong><br><span style="font-size:16px;">{_esc(username)}</span>'
+    )
+    if temp_password:
+        extra += (
+            f'<br><br><strong>Temporary password</strong><br>'
+            f'<code style="font-size:15px;">{_esc(temp_password)}</code>'
+        )
+    extra += '</td></tr></table>'
+
+    html_body = _branded_auth_html(
+        title='Account created',
+        greeting=f'Welcome, {_esc(display)}',
+        paragraphs=[
+            'A Kynvera system user has been created for you. Use the username below to sign in.',
+            'If you were not expecting this account, contact your administrator.',
+        ],
+        extra_html=extra,
+        cta_url=login_url,
+        cta_label='Sign in to Kynvera',
+    )
+    return _send_auth_email(user_email, subject, body, html_body)
+
+
+def send_password_updated_email(user_email, username, *, by_admin=False, full_name=None):
+    """Notify the user that their password was changed. Never includes the new password."""
+    display = (full_name or '').strip() or username
+    subject = 'Your Kynvera password was updated'
+    if by_admin:
+        intro = 'An administrator updated the password on your Kynvera account.'
+        next_step = 'Sign in with the password they shared with you, then change it if you were asked to. If you did not expect this, contact your administrator immediately.'
+    else:
+        intro = 'The password on your Kynvera account was changed.'
+        next_step = 'If you did not make this change, contact your administrator immediately.'
+
+    body = f"""Hello {display},
+
+{intro}
+
+{next_step}
+
+Kynvera
+"""
+    html_body = _branded_auth_html(
+        title='Password updated',
+        greeting=f'Hello {_esc(display)}',
+        paragraphs=[intro, next_step],
+        cta_url=_login_url(),
+        cta_label='Sign in to Kynvera',
+    )
+    return _send_auth_email(user_email, subject, body, html_body)
+
+
+def send_account_status_email(user_email, username, *, is_active, full_name=None):
+    """Notify the user that an admin activated or deactivated their account."""
+    display = (full_name or '').strip() or username
+    if is_active:
+        subject = 'Your Kynvera account has been activated'
+        intro = 'Your Kynvera account has been activated. You can sign in again.'
+        next_step = 'If you did not expect this, contact your administrator.'
+        title = 'Account activated'
+        cta_url = _login_url()
+        cta_label = 'Sign in to Kynvera'
+    else:
+        subject = 'Your Kynvera account has been deactivated'
+        intro = 'Your Kynvera account has been deactivated. You will not be able to sign in until an administrator turns it back on.'
+        next_step = 'If you think this was a mistake, contact your administrator.'
+        title = 'Account deactivated'
+        cta_url = ''
+        cta_label = ''
+
+    body = f"""Hello {display},
+
+{intro}
+
+{next_step}
+
+Kynvera
+"""
+    html_body = _branded_auth_html(
+        title=title,
+        greeting=f'Hello {_esc(display)}',
+        paragraphs=[intro, next_step],
+        cta_url=cta_url,
+        cta_label=cta_label,
+    )
+    return _send_auth_email(user_email, subject, body, html_body)
+
+
 def send_password_reset_email(user_email, username, temp_password):
     """Send password reset email with temporary password."""
-    subject = "Your Kynvera Account Password Has Been Reset"
-
-    body = f"""
-Hello {username},
+    subject = 'Your Kynvera account password has been reset'
+    body = f"""Hello {username},
 
 Your password has been reset by an administrator.
 
@@ -549,22 +968,101 @@ Please log in and change your password immediately for security.
 
 If you did not request this password reset, please contact support immediately.
 
-Best regards,
-Kynvera Team
+Kynvera
 """
+    extra = (
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%" '
+        'style="margin:4px 0 16px 0;background-color:#fff8f5;border:1px solid #fde4d8;border-radius:10px;">'
+        '<tr><td style="padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#191b23;">'
+        f'<strong>Username</strong><br>{_esc(username)}<br><br>'
+        f'<strong>Temporary password</strong><br><code style="font-size:15px;">{_esc(temp_password)}</code>'
+        '</td></tr></table>'
+    )
+    html_body = _branded_auth_html(
+        title='Password reset',
+        greeting=f'Hello {_esc(username)}',
+        paragraphs=[
+            'Your password has been reset by an administrator.',
+            'Sign in with the temporary password below and change it immediately.',
+            'If you did not request this reset, contact support immediately.',
+        ],
+        extra_html=extra,
+        cta_url=_login_url(),
+        cta_label='Sign in to Kynvera',
+    )
+    return _send_auth_email(user_email, subject, body, html_body)
 
-    html_body = f"""
-<html>
-<body>
-<h2>Password Reset</h2>
-<p>Hello {username},</p>
-<p>Your password has been reset by an administrator.</p>
-<p><strong>Your temporary password is: <code>{temp_password}</code></strong></p>
-<p>Please log in and change your password immediately for security.</p>
-<p>If you did not request this password reset, please contact support immediately.</p>
-<p>Best regards,<br>Kynvera Team</p>
-</body>
-</html>
+
+def send_login_details_email(user_email, username, password, full_name=None):
+    """Admin-triggered email with username and the stored password. Redacted in email logs."""
+    display = (full_name or '').strip() or username
+    login_url = _login_url()
+    subject = 'Your Kynvera login details'
+    body = f"""Hello {display},
+
+Here are your Kynvera login details, sent by an administrator.
+
+Your username is: {username}
+Your password is: {password}
+
+Sign in with these details. If you did not expect this email, contact your administrator.
+
+Kynvera
 """
+    extra = (
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%" '
+        'style="margin:4px 0 16px 0;background-color:#fff8f5;border:1px solid #fde4d8;border-radius:10px;">'
+        '<tr><td style="padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#191b23;">'
+        f'<strong>Username</strong><br><span style="font-size:16px;">{_esc(username)}</span>'
+        f'<br><br><strong>Password</strong><br>'
+        f'<code style="font-size:15px;">{_esc(password)}</code>'
+        '</td></tr></table>'
+    )
+    html_body = _branded_auth_html(
+        title='Login details',
+        greeting=f'Hello {_esc(display)}',
+        paragraphs=[
+            'Here are your Kynvera login details, sent by an administrator.',
+            'Sign in with the username and password below. If you did not expect this email, contact your administrator.',
+        ],
+        extra_html=extra,
+        cta_url=login_url,
+        cta_label='Sign in to Kynvera',
+    )
+    return _send_auth_email(user_email, subject, body, html_body)
 
-    return send_email(user_email, subject, body, html_body, source='auth')
+
+def send_admin_edit_otp_email(user_email, code, full_name=None):
+    """6-digit code to authorize editing an administrator profile. Do not log the code."""
+    display = (full_name or '').strip() or 'Administrator'
+    subject = 'Kynvera administrator verification code'
+    body = f"""Hello {display},
+
+A verification code was requested to edit this administrator account in Kynvera.
+
+Your code is: {code}
+
+It expires in 10 minutes. If you did not request this, contact your administrator.
+
+Kynvera
+"""
+    extra = (
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%" '
+        'style="margin:4px 0 16px 0;background-color:#fff8f5;border:1px solid #fde4d8;border-radius:10px;">'
+        '<tr><td style="padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#191b23;">'
+        '<strong>Verification code</strong><br>'
+        f'<code style="font-size:22px;letter-spacing:0.12em;font-weight:700;">{_esc(code)}</code>'
+        '</td></tr></table>'
+    )
+    html_body = _branded_auth_html(
+        title='Administrator verification',
+        greeting=f'Hello {_esc(display)}',
+        paragraphs=[
+            'A verification code was requested to edit this administrator account in Kynvera.',
+            'Enter the code below in Manage profile. It expires in 10 minutes. If you did not request this, contact your administrator.',
+        ],
+        extra_html=extra,
+        cta_url='',
+        cta_label='',
+    )
+    return _send_auth_email(user_email, subject, body, html_body)

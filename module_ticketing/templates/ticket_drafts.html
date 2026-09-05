@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  <title>Draft Tickets — Kynvera</title>
+  <title>Email drafts — Kynvera</title>
   {% include 'partials/caveat_font.html' ignore missing %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=21">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <style>
     .tkt-container { max-width: 1400px; padding-left: 28px; padding-right: 28px; }
@@ -36,24 +36,21 @@
 <div class="dh-page-root tkt-dh-page-root">
 {% include 'partials/tkt_sidebar.html' with context %}
 <div class="tkt-dh-main">
-{% set tkt_topbar_title = 'Draft Tickets' %}
+{% set tkt_topbar_title = 'Email drafts' %}
 {% include 'partials/tkt_topbar.html' with context %}
 <div class="tkt-content">
 
-  <div class="tkt-page-header">
-    <h1 class="tkt-page-title">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="26" height="26"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
-      Draft Tickets
-    </h1>
-    <a href="{{ url_for('ticketing.ticket_list') }}" class="tkt-btn tkt-btn-outline">
-      Back to All Tickets
-    </a>
+  <div class="tkt-page-header tkt-page-header--actions">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      {% include 'partials/tkt_email_template_btn.html' %}
+    </div>
   </div>
 
   <div class="draft-intro">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
     <div>
-      These tickets were created automatically from emails sent to the ticket intake address.
+      These tickets were created automatically from emails sent to
+      <strong>{{ intake_email }}</strong>.
       Nothing here has entered the active workflow yet — open <strong>Review &amp; Convert</strong> to check
       the details, fill in anything the sender left out, and turn it into a real work order.
     </div>
@@ -101,7 +98,7 @@
       {% else %}
       <div class="tkt-empty">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="56" height="56"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
-        <p>No draft tickets right now. New emails to the ticket intake address will appear here.</p>
+        <p>No draft tickets right now. New emails to {{ intake_email }} will appear here.</p>
       </div>
       {% endif %}
     </div>
@@ -114,6 +111,7 @@
 <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
 <script>window.FILES_SAVE_MODULE = 'ticketing'; window.FILES_SAVE_MODULE_LABEL = 'Service Tickets';</script>
 <script src="{{ url_for('static', filename='js/files-save.js') }}?v=18"></script>
+{% include 'partials/tkt_email_template_modal.html' %}
 <script>
   function tktOpenMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(s)s.classList.add('open');}
   function tktCloseMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(s)s.classList.remove('open');}

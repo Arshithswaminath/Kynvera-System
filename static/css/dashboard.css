@@ -83,6 +83,7 @@ html {
    which beats this file's :root and sets --bg-body to ~black — modules/footer then read "black block". */
 html:not([data-theme="dark"]) body.page-dashboard,
 html:not([data-theme="dark"]) body.hr-dashboard,
+html:not([data-theme="dark"]) body.hr-kynvera-queue,
 html:not([data-theme="dark"]) body.inspection-dashboard,
 html:not([data-theme="dark"]) body.qhsi-dashboard,
 html:not([data-theme="dark"]) body.qhse-hub-page,
@@ -99,14 +100,31 @@ html:not([data-theme="dark"]) body.admin-dh-page {
   --text-muted: #9498a3;
   --white: #ffffff;
   --border-color: #e9eaee;
+  --kynvera-page-linear:
+    radial-gradient(ellipse 80% 52% at 0% 0%, rgba(255, 142, 104, 0.18) 0%, transparent 64%),
+    radial-gradient(ellipse 55% 42% at 100% 0%, rgba(255, 142, 104, 0.09) 0%, transparent 58%),
+    linear-gradient(180deg, #fff4ef 0%, #fff8f5 36%, #faf8f6 68%, #f7f7f9 100%);
 }
 
 html:not([data-theme="dark"]) body.admin-dh-page {
   --bg-body: #f7f7f9;
 }
 
+html:has(body.page-dashboard),
+html:has(body.hr-dashboard),
+html:has(body.hr-kynvera-queue),
+html:has(body.inspection-dashboard),
+html:has(body.qhsi-dashboard),
+html:has(body.review-dashboard) {
+  --kynvera-page-linear:
+    radial-gradient(ellipse 80% 52% at 0% 0%, rgba(255, 142, 104, 0.18) 0%, transparent 64%),
+    radial-gradient(ellipse 55% 42% at 100% 0%, rgba(255, 142, 104, 0.09) 0%, transparent 58%),
+    linear-gradient(180deg, #fff4ef 0%, #fff8f5 36%, #faf8f6 68%, #f7f7f9 100%);
+}
+
 body.page-dashboard,
 body.hr-dashboard,
+body.hr-kynvera-queue,
 body.inspection-dashboard,
 body.qhsi-dashboard,
 body.qhse-hub-page,
@@ -118,22 +136,44 @@ body.admin-dh-page {
   background: var(--bg-body, #f7f7f9) !important;
 }
 
-/* Main dashboard + HR hub: paint wash on the page so hero/modules never meet as a hard seam */
+/* Main dashboard + HR + Inspection hubs: paint wash on the page so hero/modules/footer never meet as a hard seam */
+html:has(body.page-dashboard),
+html:has(body.hr-dashboard),
+html:has(body.hr-kynvera-queue),
+html:has(body.inspection-dashboard),
+html:has(body.qhsi-dashboard),
+html:has(body.review-dashboard),
 body.page-dashboard,
-body.hr-dashboard {
-  background:
-    radial-gradient(ellipse 70% 55% at 0% 14%, rgba(255, 142, 104, 0.1) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 35% at 100% 6%, rgba(255, 142, 104, 0.05) 0%, transparent 60%),
-    linear-gradient(180deg, #fff8f5 0%, #fafbfa 22%, #f7f7f9 48%, #f7f7f9 100%) !important;
+body.hr-dashboard,
+body.hr-kynvera-queue,
+body.inspection-dashboard,
+body.qhsi-dashboard,
+body.review-dashboard {
+  background: var(--kynvera-page-linear,
+    radial-gradient(ellipse 80% 52% at 0% 0%, rgba(255, 142, 104, 0.18) 0%, transparent 64%),
+    radial-gradient(ellipse 55% 42% at 100% 0%, rgba(255, 142, 104, 0.09) 0%, transparent 58%),
+    linear-gradient(180deg, #fff4ef 0%, #fff8f5 36%, #faf8f6 68%, #f7f7f9 100%)) !important;
+}
+
+body.hr-dashboard,
+body.hr-kynvera-queue {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 body.page-dashboard .hero,
-body.hr-dashboard .hero.hr-hero {
+body.hr-dashboard .hero.hr-hero,
+body.hr-kynvera-queue .hero.hr-hero,
+body.inspection-dashboard .hero.inspection-hero,
+body.qhsi-dashboard .hero.qhsi-hero {
   background: transparent;
 }
 
-body.hr-dashboard .modules-section {
-  background: transparent;
+body.hr-dashboard .modules-section,
+body.inspection-dashboard .modules-section,
+body.qhsi-dashboard .modules-section {
+  background: transparent !important;
 }
 
 /* ===========================================
@@ -616,11 +656,9 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
 .hr-dashboard-content {
   position: relative;
   flex: 1;
+  width: 100%;
   min-height: 0;
-  background:
-    radial-gradient(ellipse 70% 55% at 0% 14%, rgba(255, 142, 104, 0.1) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 35% at 100% 6%, rgba(255, 142, 104, 0.05) 0%, transparent 60%),
-    linear-gradient(180deg, #fff8f5 0%, #fafbfa 22%, #f7f7f9 48%, #f7f7f9 100%);
+  background: transparent;
 }
 .hr-dashboard-content .hero,
 .hr-dashboard-content .modules-section {
@@ -667,7 +705,7 @@ body:not(.page-dashboard) .hero-left .back-btn {
   text-decoration: none;
   font-size: 0.8125rem;
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 1;
   margin-bottom: 1rem;
   transition: color 0.2s;
 }
@@ -678,9 +716,12 @@ body:not(.page-dashboard) .hero-left .back-btn {
 .hero.proc-hero .back-btn svg,
 .hero.review-hero .back-btn svg,
 body:not(.page-dashboard) .hero-left .back-btn svg {
-  width: var(--hero-back-icon, 16px);
-  height: var(--hero-back-icon, 16px);
+  display: block;
+  width: 1em;
+  height: 1em;
   flex-shrink: 0;
+  overflow: visible;
+  transform: translateY(-0.06em);
 }
 
 .hero.hr-hero .back-btn:hover,
@@ -692,10 +733,10 @@ body:not(.page-dashboard) .hero-left .back-btn:hover {
   color: var(--primary-light);
 }
 
-/* Inspection / QHSI hero: same green gradient at top as HR module, no grid */
+/* Inspection / QHSI hero: inherit the page wash (no separate band) */
 .hero.inspection-hero,
 .hero.qhsi-hero {
-  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #f7f7f9 100%);
+  background: transparent;
 }
 .hero.inspection-hero::before,
 .hero.inspection-hero::after,
@@ -783,8 +824,8 @@ body:not(.page-dashboard) .hero-left .back-btn:hover {
   align-items: flex-start;
   justify-content: center;
   text-align: left;
-  --hero-back-icon: 16px;
-  --hero-back-gap: 0.35rem;
+  --hero-back-icon: 14px;
+  --hero-back-gap: 0.2rem;
 }
 
 body.procurement-page .proc-hero-inner {
@@ -1631,7 +1672,9 @@ a.module-card--soon {
 }
 
 body.page-dashboard .footer,
-body.hr-dashboard .footer {
+body.hr-dashboard .footer,
+body.inspection-dashboard .footer,
+body.qhsi-dashboard .footer {
   background: transparent;
 }
 
@@ -2681,6 +2724,10 @@ body.hr-dashboard .footer {
     padding: 7rem 0 4.5rem !important;
   }
 
+  body.hr-kynvera-queue .hero.hr-queue-hero {
+    padding: 0.2rem 0 0.85rem !important;
+  }
+
   .hero-split .hero-content {
     padding: 0 1.25rem !important;
   }
@@ -3485,6 +3532,10 @@ body.hr-dashboard .footer {
     padding: 6.5rem 0 4rem !important;
   }
 
+  body.hr-kynvera-queue .hero.hr-queue-hero {
+    padding: 0.2rem 0 0.85rem !important;
+  }
+
   .hero-split .hero-content {
     padding: 0 1rem !important;
     gap: 1rem !important;
@@ -3677,6 +3728,10 @@ body.hr-dashboard .footer {
 @media (max-width: 375px) {
   .hero {
     padding: 4.75rem 0 1rem !important;
+  }
+
+  body.hr-kynvera-queue .hero.hr-queue-hero {
+    padding: 0.15rem 0 0.75rem !important;
   }
 
   .hero-split .hero-content {

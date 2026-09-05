@@ -1,10 +1,9 @@
-{% set fm_page_title = 'FM Executive Dashboard' %}
+{% set fm_page_title = 'Executive' %}
 {% set fm_topbar_title = 'Executive' %}
 {% include 'partials/fm_shell_start.html' %}
 
   <header class="fm-header">
     <div>
-      <h1>FM Executive Dashboard</h1>
       <p>Building health, warranty, budget, and work-order portfolio</p>
     </div>
     <div class="fm-header-actions">
@@ -50,16 +49,17 @@
       <span class="fm-badge-estimate">Estimate</span>
     </div>
     <div id="forecastBox">
-      {% if forecast %}
+      {% set forecast_ready = forecast and forecast.method != 'sample' %}
+      {% if forecast_ready %}
       <div class="fm-predict-grid">
-        <div><span class="fm-kpi-label">Budget forecast</span><span class="fm-kpi-value">{{ '{:,.0f}'.format(forecast.budget_forecast or 0) }}</span></div>
-        <div><span class="fm-kpi-label">Failures forecast</span><span class="fm-kpi-value">{{ forecast.failure_count_forecast }}</span></div>
-        <div><span class="fm-kpi-label">Horizon</span><span class="fm-kpi-value">{{ forecast.horizon_days }}d</span></div>
+        <div><span class="fm-kpi-label">Budget forecast</span><span class="fm-kpi-value">{% if forecast.budget_forecast is not none %}{{ '{:,.0f}'.format(forecast.budget_forecast) }}{% else %}—{% endif %}</span></div>
+        <div><span class="fm-kpi-label">Failures forecast</span><span class="fm-kpi-value">{% if forecast.failure_count_forecast is not none %}{{ forecast.failure_count_forecast }}{% else %}—{% endif %}</span></div>
+        <div><span class="fm-kpi-label">Horizon</span><span class="fm-kpi-value">{% if forecast.horizon_days %}{{ forecast.horizon_days }}d{% else %}—{% endif %}</span></div>
       </div>
-      <p class="fm-notes">{{ forecast.narrative }}</p>
-      <p class="fm-muted">Spares: {{ (forecast.spare_parts_top or [])|join(', ') or '—' }} · <code>method: {{ forecast.method }}</code></p>
+      {% if forecast.narrative %}<p class="fm-notes">{{ forecast.narrative }}</p>{% endif %}
+      <p class="fm-muted">Spares: {{ (forecast.spare_parts_top or [])|join(', ') or '—' }}</p>
       {% else %}
-      <p class="fm-muted" id="forecastEmptyHint">No forecast yet. Click “Run portfolio forecast”.</p>
+      <p class="fm-muted" id="forecastEmptyHint">No forecast yet. Click “Run portfolio forecast” to estimate budget and failures.</p>
       {% endif %}
       <p id="forecastError" class="fm-inline-error" hidden></p>
     </div>
@@ -72,7 +72,7 @@
       {% for b in kpis.by_building %}
       <div class="fm-building-card">
         <strong>{{ b.building }}</strong>
-        <span>{{ b.count }} assets</span>
+        <span>{{ b.count }} asset{{ '' if b.count == 1 else 's' }}</span>
         <span>Health {% if b.avg_health is not none %}{{ b.avg_health }}%{% else %}—{% endif %}</span>
       </div>
       {% endfor %}

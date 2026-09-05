@@ -381,3 +381,68 @@ class TestProjectPackPdf:
         greens = [p for p in stamped.getdata() if p[1] > p[0] + 20 and p[1] > p[2] + 20]
         assert greens, 'expected a green pin on the stamped drawing'
 
+
+class TestEmailIntakeTemplate:
+    def test_settings_shows_kynvera_support_inbox(self, client, admin_auth_headers):
+        res = client.get('/tickets/settings', headers=admin_auth_headers)
+        assert res.status_code == 200
+        html = res.get_data(as_text=True)
+        assert 'support@kynvera.store' in html
+        assert 'tickets@intake.injaaz.com' not in html
+        assert 'mailto:support@kynvera.store' in html
+
+    def test_ticket_list_has_email_template_info(self, client, admin_auth_headers):
+        res = client.get('/tickets/list', headers=admin_auth_headers)
+        assert res.status_code == 200
+        html = res.get_data(as_text=True)
+        assert 'tktEmailTplModal' in html
+        assert 'tkt-email-tpl-open' in html
+        assert 'support@kynvera.store' in html
+        assert '[Project Name] Category - Priority - Short title' in html
+
+
+class TestTicketingClickins:
+    def test_dashboard_menu_chip_and_work_order_labels(self, client, admin_auth_headers):
+        res = client.get('/tickets/', headers=admin_auth_headers)
+        assert res.status_code == 200
+        html = res.get_data(as_text=True)
+        assert 'tkt-menu-toggle' in html
+        assert 'tkt-menu-toggle-label">Menu</span>' in html
+        assert 'Open New Ticket' not in html
+        assert 'New work order' in html
+        assert 'All work orders' in html
+        assert 'Email drafts' in html
+        assert 'View assigned tickets' in html
+        assert 'sb-nav-item--accent' not in html
+
+    def test_open_queue_title_matches_filter(self, client, admin_auth_headers):
+        res = client.get(
+            '/tickets/list?status=open,pending_supervisor',
+            headers=admin_auth_headers,
+        )
+        assert res.status_code == 200
+        html = res.get_data(as_text=True)
+        assert '<h1 class="tkt-topbar-title">Open</h1>' in html
+        assert 'value="open,pending_supervisor" selected' in html or (
+            'value="open,pending_supervisor"' in html and 'selected' in html
+        )
+        assert 'All Tickets' not in html
+        assert 'Create Ticket' not in html
+
+    def test_drafts_has_single_back(self, client, admin_auth_headers):
+        res = client.get('/tickets/drafts', headers=admin_auth_headers)
+        assert res.status_code == 200
+        html = res.get_data(as_text=True)
+        assert 'Back to All Tickets' not in html
+        assert html.count('>Back<') + html.count('>Back </') >= 0
+        assert 'Email drafts' in html
+
+    def test_new_work_order_has_no_settings_header(self, client, admin_auth_headers):
+        res = client.get('/tickets/new', headers=admin_auth_headers)
+        assert res.status_code == 200
+        html = res.get_data(as_text=True)
+        assert 'tkt-topbar-title">New work order</h1>' in html
+        assert 'tkt-page-title' not in html
+        assert 'ticketing.settings_page' not in html.split('tkt-content', 1)[-1].split('new-tkt-layout', 1)[0]
+
+

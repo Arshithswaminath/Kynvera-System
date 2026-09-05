@@ -8,22 +8,13 @@
 <title>Approved Forms - Kynvera</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/static/animations.css">
-  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=25">
   <link rel="stylesheet" href="/static/css/hr-forms.css">
   <link rel="stylesheet" href="/static/mobile_responsive.css">
   <style>
     :root { --primary: #ff8e68; --primary-light: #f97e54; }
-    body { background: #f1f5f9; }
-    .page-header { background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 2rem; border-radius: 16px; margin-bottom: 2rem; }
-    .back-link {
-      display: inline-flex; align-items: center; gap: 0.5rem; color: #047857 !important;
-      background: rgba(255,255,255,0.95); text-decoration: none; font-weight: 600;
-      padding: 0.5rem 1rem; border-radius: 8px; margin-bottom: 1rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.2s;
-    }
-    .back-link:hover { color: #047857 !important; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateX(-2px); }
     .review-card { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s; }
-    .review-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.12); border-color: #10b981; }
+    .review-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.12); border-color: #ff8e68; }
     .form-type-badge { padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
     .type-leave, .type-leave_application { background: #d1fae5; color: #047857; }
     .type-termination { background: #fee2e2; color: #dc2626; }
@@ -141,13 +132,13 @@
       font-weight: 500;
       padding: 0.35rem 2rem 0.35rem 0.65rem;
       border-radius: 9px;
-      border: 1px solid rgba(16,185,129,0.25);
-      background-color: #f0fdf4;
-      color: #14532d;
+      border: 1px solid rgba(255,142,104,0.28);
+      background-color: #fff8f5;
+      color: #1c1917;
     }
     .approved-sort-select:focus {
-      border-color: #059669;
-      box-shadow: 0 0 0 3px rgba(5,150,105,0.12);
+      border-color: #ff8e68;
+      box-shadow: 0 0 0 3px rgba(255,142,104,0.18);
       outline: none;
     }
     /* Preview modal: vertically centered, one scrollbar (iframe only) */
@@ -192,19 +183,21 @@
   </style>
   <style>body.has-main-nav { padding-top: 5.5rem; }</style>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-queue-kynvera.css') }}?v=22">
 </head>
-<body class="has-main-nav hr-module-page">
+<body class="has-main-nav hr-module-page hr-kynvera-queue">
   {% set active_page = 'hr' %}
   {% include 'partials/hr_embed_optional_navbar.html' %}
   <div class="container py-4">
-    <div class="page-header">
-      <a href="/hr/" class="back-link">
-        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-        Back to HR Module
-      </a>
-      <h1 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem;">Approved Forms</h1>
-      <p style="opacity: 0.9; margin: 0;">HR requests fully approved – click to view details</p>
-    </div>
+    <header class="hr-queue-banner">
+      <div class="hr-queue-banner-top">
+        {% set module_back_url = url_for('hr.hr_dashboard') %}
+        {% set module_back_extra_class = 'back-btn' %}
+        {% include 'partials/module_back_link.html' %}
+      </div>
+      <h1 class="hr-queue-banner-title">Approved Forms</h1>
+      <p class="hr-queue-banner-sub">HR requests fully approved — click to view details</p>
+    </header>
 
     <div class="approved-sort-wrap" id="approvedSortWrap" aria-hidden="true">
       <label for="approvedListSortOrder" class="approved-sort-label">Sort</label>
@@ -224,6 +217,7 @@
   
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/hr-display.js') }}?v=1"></script>
   <script src="{{ url_for('static', filename='js/hr_submission_full_form_url.js') }}"></script>
   <script>
     const token = localStorage.getItem('access_token');
@@ -257,10 +251,9 @@
         setApprovedToolbarVisible(false);
         approvedSubmissionsList = [];
         container.innerHTML = `
-            <div class="text-center py-5 bg-white rounded-3">
-              <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+            <div class="hr-approved-empty">
               <h5>No approved forms yet</h5>
-              <p class="text-muted">Approved HR requests will appear here</p>
+              <p>Approved HR requests will appear here</p>
             </div>
           `;
         return;
@@ -273,7 +266,7 @@
               <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
                 <div>
                   <span class="form-type-badge ${getFormTypeClass(s.module_type)}">${getFormTypeLabel(s.module_type)}</span>
-                  <h5 style="font-weight: 600; margin: 0.5rem 0 0.25rem;">${escapeHtml(s.submission_id)}</h5>
+                  <h5 style="font-weight: 600; margin: 0.5rem 0 0.25rem;">${escapeHtml(hrSubmissionRef(s.submission_id))}</h5>
                   <p class="text-muted mb-0" style="font-size: 0.875rem;">
                     ${escapeHtml((s.form_data && s.form_data.employee_name) || s.submitter_name || 'Unknown')} •
                     ${InjaazDateTimeUAE.formatDateMed(s.created_at)}
@@ -292,7 +285,12 @@
       return div.innerHTML;
     }
     function getFormTypeClass(type) { return `type-${(type || '').replace('hr_', '')}`; }
-    function getFormTypeLabel(type) { return (type || '').replace('hr_', '').replace(/_/g, ' ').toUpperCase(); }
+    function getFormTypeLabel(type) {
+      return (window.hrDisplay && hrDisplay.formTypeLabel(type)) || (type || '').replace('hr_', '').replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+    }
+    function hrSubmissionRef(id) {
+      return (window.hrDisplay && hrDisplay.submissionRef(id)) || id;
+    }
 
     async function loadApproved() {
       try {
@@ -328,7 +326,7 @@
         '<div class="modal-content" style="border-radius:16px;overflow:hidden;box-shadow:0 24px 48px rgba(0,0,0,0.15);">' +
         '<div class="modal-header border-0 py-2 px-3 d-flex align-items-center justify-content-between gap-2" style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">' +
         '<div class="text-truncate" style="min-width:0"><span class="badge text-bg-secondary text-uppercase me-1">' + escapeHtml(getFormTypeLabel(s.module_type)) + '</span>' +
-        '<strong class="text-dark">' + escapeHtml(s.submission_id) + '</strong> <span class="text-muted small">(Approved)</span></div>' +
+        '<strong class="text-dark">' + escapeHtml(hrSubmissionRef(s.submission_id)) + '</strong> <span class="text-muted small">(Approved)</span></div>' +
         '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>' +
         '<div class="modal-body bg-white">' + formIframeHtml +
         '<div class="hr-embed-modal-footer hr-approved-embed-footer" role="complementary" aria-label="Open full page for exports and timeline">' +

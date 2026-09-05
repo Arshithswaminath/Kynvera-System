@@ -1,7 +1,14 @@
-"""Idempotent reference/demo data bootstrap for local + Render startup.
+"""Idempotent reference bootstrap for local + Render startup.
 
 Runs only when tables are empty (or demo accounts missing). Safe to re-run.
 Disable with AUTO_SEED_DEMO_DATA=0.
+
+Does NOT recreate demo supervisor/technician logins after you delete them.
+Does NOT load sample HR / hiring / leave / manpower rows. Those come back
+on every restart if seeded here, which overwrites a user deleting them.
+Fill dashboards only when asked:
+
+  ./venv/bin/python scripts/seed_all_sample_data.py
 """
 from __future__ import annotations
 
@@ -27,7 +34,7 @@ def bootstrap_demo_data() -> dict:
         'ticketing': 'skipped',
         'fm_assets': 'skipped',
         'teams': 'skipped',
-        'sample_fill': 'skipped',
+        'sample_fill': 'skipped',  # never auto; opt-in via scripts/seed_all_sample_data.py
     }
     if not summary['enabled']:
         logger.info('AUTO_SEED_DEMO_DATA disabled — skipping reference/demo seeds')
@@ -61,11 +68,21 @@ def bootstrap_demo_data() -> dict:
         summary['fm_assets'] = f'error: {exc}'
         logger.warning('FM assets seed skipped: %s', exc)
 
-    # Demo supervisors / technicians (needed for assignment workflows)
+    # Demo supervisors / technicians — first boot only. If the operator deleted
+    # those accounts, missing usernames must not bring them back on restart.
     try:
-        has_demo = User.query.filter_by(username='demo_sup_alpha').first() is not None
+        demo_usernames = (
+            'demo_sup_alpha',
+            'demo_sup_bravo',
+            'demo_tech_alpha_1',
+            'demo_tech_bravo_1',
+        )
+        has_demo = User.query.filter(User.username.in_(demo_usernames)).count() > 0
         has_teams = TicketSupervisorTeam.query.count() > 0
-        if not has_demo or not has_teams:
+        other_people = User.query.filter(~User.username.in_(('email_intake',))).count()
+        if has_demo:
+            summary['teams'] = 'already_present'
+        elif other_people <= 1 and not has_teams:
             from scripts.seed_supervisors_teams import seed_supervisors_teams
             result = seed_supervisors_teams()
             summary['teams'] = (
@@ -74,22 +91,13 @@ def bootstrap_demo_data() -> dict:
             )
             logger.info('Seeded demo supervisor/technician teams: %s', summary['teams'])
         else:
-            summary['teams'] = 'already_present'
+            summary['teams'] = 'skipped_removed'
+            logger.info(
+                'Demo supervisor/technician teams not reseeded '
+                '(accounts were removed or the user directory is already in use)'
+            )
     except Exception as exc:
         summary['teams'] = f'error: {exc}'
         logger.warning('Supervisor/team seed skipped: %s', exc)
-
-    # Local only — fill remaining models so every dashboard has sample rows.
-    flask_env = os.environ.get('FLASK_ENV', 'development').strip().lower()
-    testing = os.environ.get('TESTING', '').strip().lower() in ('1', 'true', 'yes')
-    if flask_env in ('development', 'dev', '') and not testing:
-        try:
-            from scripts.seed_all_sample_data import seed_all_sample_data
-            seed_all_sample_data()
-            summary['sample_fill'] = 'seeded'
-            logger.info('Seeded local sample rows across remaining models')
-        except Exception as exc:
-            summary['sample_fill'] = f'error: {exc}'
-            logger.warning('Local sample-data fill skipped: %s', exc)
 
     return summary

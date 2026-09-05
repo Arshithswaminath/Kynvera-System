@@ -1,0 +1,28 @@
+{# Shared HR submit success dialog. Optional: success_title, success_lead #}
+<div class="success-bg hr-success-modal" id="successModal" role="dialog" aria-modal="true" aria-hidden="true" inert aria-labelledby="hrSuccessTitle" aria-describedby="successMsgLead">
+  <div class="success-box">
+    <div class="success-icon" aria-hidden="true">
+      <svg width="28" height="28" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M5 13l4 4L19 7"/></svg>
+    </div>
+    <h2 id="hrSuccessTitle">{{ success_title|default('Form submitted') }}</h2>
+    <p id="successMsgLead">{{ success_lead|default('Your form has been sent for review. Track it from My Requests.') }}</p>
+    <div class="success-ref">
+      <span class="success-ref-label">Reference</span>
+      <div class="sub-id" id="submissionId"></div>
+    </div>
+    <button type="button" class="success-cta" onclick="hrGoToSubmittedRequest()">
+      View My Requests
+      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+    </button>
+  </div>
+</div>
+<script>
+window.hrShowSuccessModal = window.hrShowSuccessModal || function () {
+  var el = document.getElementById('successModal');
+  if (!el) return;
+  try { document.documentElement.appendChild(el); } catch (_) {}
+  el.removeAttribute('inert');
+  el.setAttribute('aria-hidden', 'false');
+  el.classList.add('show');
+};
+</script>

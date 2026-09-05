@@ -1,0 +1,500 @@
+{% set proc_page_title = 'Refill queue — Procurement' %}
+{% set proc_topbar_title = 'Refill queue' %}
+{% set proc_body_class = 'proc-refill-page' %}
+{% include 'partials/proc_shell_start.html' %}
+
+<div class="proc-dash-head">
+  <div>
+    <p class="proc-kicker">Inventory</p>
+    <h1>Refill queue</h1>
+    <p class="proc-sub">Items at or below minimum, including stock used on tickets. Select what to restock and raise a purchase request.</p>
+  </div>
+  <div class="proc-dash-actions">
+    <button type="button" class="proc-btn proc-btn-outline" id="exportExcelBtn">Excel</button>
+    <button type="button" class="proc-btn proc-btn-outline" id="exportPdfBtn">PDF</button>
+    <div class="proc-refill-head-actions">
+      <button class="proc-btn proc-btn-dark" type="button" id="createPrBtn">Create purchase request</button>
+    </div>
+  </div>
+</div>
+
+<section class="proc-refill-kpis" id="refillKpis" hidden>
+  <div class="proc-refill-kpi">
+    <span>To refill</span>
+    <b id="kpiCount">0</b>
+  </div>
+  <div class="proc-refill-kpi">
+    <span>Out of stock</span>
+    <b id="kpiZero">0</b>
+  </div>
+  <div class="proc-refill-kpi">
+    <span>Suggested value</span>
+    <b id="kpiValue">AED 0</b>
+  </div>
+</section>
+
+<section class="proc-card proc-refill-card">
+  <div class="proc-card-head">
+    <div>
+      <h2>Needs refill</h2>
+      <p id="refillCount">Loading…</p>
+    </div>
+    <div class="proc-refill-filters" role="tablist" aria-label="Filter by trade">
+      <button type="button" class="is-on" data-dept="">All</button>
+      <button type="button" data-dept="HVAC">HVAC</button>
+      <button type="button" data-dept="Cleaning">Cleaning</button>
+      <button type="button" data-dept="Electrical">Electrical</button>
+      <button type="button" data-dept="Plumbing">Plumbing</button>
+    </div>
+  </div>
+  <div id="refillResume" class="proc-refill-resume" hidden></div>
+
+  <div class="proc-refill-list-head">
+    <label class="proc-tick">
+      <input type="checkbox" id="checkAll" aria-label="Select all">
+      <span class="proc-tick-box"></span>
+    </label>
+    <span>Material</span>
+    <span class="hide-sm">Property</span>
+    <span class="hide-sm">When</span>
+    <span class="hide-sm">Stock</span>
+    <span class="hide-sm">Order</span>
+    <span class="hide-sm">Value</span>
+  </div>
+
+  <div class="proc-refill-scroller">
+    <div id="refillBody" class="proc-refill-list">
+      <div class="proc-empty">Loading…</div>
+    </div>
+  </div>
+</section>
+
+<div class="proc-refill-bar" id="refillBar" hidden>
+  <div>
+    <b id="barCount">0 selected</b>
+    <span id="barValue">AED 0</span>
+  </div>
+  <button class="proc-btn proc-btn-dark" type="button" id="createPrBtnBar">Create purchase request</button>
+</div>
+
+<div class="proc-toast" id="refillToast" hidden></div>
+
+<script>
+  const TRADE_DOT = {
+    HVAC: '#18181b',
+    Cleaning: '#ff8e68',
+    Electrical: '#c4c4cc',
+    Plumbing: '#71717a',
+  };
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = String(s ?? '');
+    return d.innerHTML;
+  }
+  function fmtNum(n) {
+    return Number(n || 0).toLocaleString('en-AE', { maximumFractionDigits: 1 });
+  }
+  function fmtAed(n) {
+    return 'AED ' + Number(n || 0).toLocaleString('en-AE', { maximumFractionDigits: 0 });
+  }
+  function rowWhen(r) {
+    return r.updated_at || r.created_at || r.flagged_at || '';
+  }
+  function parseWhen(iso) {
+    if (!iso) return null;
+    let s = String(iso).trim();
+    if (!s) return null;
+    s = s.replace(' ', 'T').replace(/(\.\d{3})\d+/, '$1');
+    if (!/[zZ]$/.test(s) && !/[+-]\d{2}:?\d{2}$/.test(s)) s += 'Z';
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  function fmtWhenAgo(iso) {
+    const d = parseWhen(iso);
+    if (!d) return '—';
+    const diff = Date.now() - d.getTime();
+    const mins = Math.round(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return mins + 'm ago';
+    const hours = Math.round(mins / 60);
+    if (hours < 24) return hours + 'h ago';
+    const days = Math.round(hours / 24);
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return days + 'd ago';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  }
+  function fmtWhenClock(iso) {
+    const d = parseWhen(iso);
+    if (!d) return '';
+    return d.toLocaleString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+  }
+  function fmtWhen(iso) { return fmtWhenAgo(iso); }
+  function fmtWhenFull(iso) { return fmtWhenClock(iso); }
+  function sameMinute(a, b) {
+    const da = parseWhen(a);
+    const db = parseWhen(b);
+    if (!da || !db) return !a && !b;
+    return Math.abs(da.getTime() - db.getTime()) < 60000;
+  }
+  const PR_ST = {
+    draft: 'Draft',
+    submitted: 'Submitted',
+    procurement_review: 'Procurement review',
+    awaiting_quotation: 'Waiting for quotation',
+    gm_review: 'GM / admin review',
+    approved: 'Approved',
+    ordered: 'Ordered',
+  };
+  const DRAFT_KEY = 'proc_refill_draft_v1';
+  function readDraft() {
+    try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}'); }
+    catch (e) { return {}; }
+  }
+  function writeDraft() {
+    const picks = {};
+    items.forEach((r, i) => {
+      if (!r.stock_id) return;
+      const input = document.querySelector(`.qty-input[data-idx="${i}"]`);
+      const cb = document.querySelector(`.row-check[data-idx="${i}"]`);
+      const suggested = Number(r.suggested_qty || 1);
+      const qty = input ? Number(input.value) : suggested;
+      const checked = !!(cb && cb.checked);
+      if (checked || (qty && qty !== suggested)) {
+        picks[r.stock_id] = { checked, qty };
+      }
+    });
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ picks }));
+  }
+  function clearDraftIds(ids) {
+    const draft = readDraft();
+    const picks = draft.picks || {};
+    (ids || []).forEach(id => { delete picks[id]; });
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ picks }));
+  }
+  function draftFor(r) {
+    const picks = (readDraft().picks || {});
+    return picks[r.stock_id] || null;
+  }
+  function toast(msg) {
+    const el = document.getElementById('refillToast');
+    el.textContent = msg;
+    el.hidden = false;
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => { el.hidden = true; }, 2800);
+  }
+  function statusPill(status) {
+    const map = {
+      ok: ['proc-pill-ok', 'In stock'],
+      low: ['proc-pill-low', 'Low stock'],
+      refill: ['proc-pill-refill', 'Out of stock'],
+    };
+    const [cls, label] = map[status] || ['proc-pill-refill', 'Refill needed'];
+    return `<span class="proc-pill ${cls}">${label}</span>`;
+  }
+  function stockMeter(qty, minQty) {
+    const min = Math.max(Number(minQty) || 0, 0);
+    const q = Math.max(Number(qty) || 0, 0);
+    const pct = min > 0 ? Math.min(100, Math.round((q / min) * 100)) : (q > 0 ? 100 : 0);
+    const cls = q <= 0 ? 'is-empty' : (min > 0 && q <= min ? 'is-low' : '');
+    return `<div class="proc-stock-meter ${cls}" title="${fmtNum(q)} of ${fmtNum(min)} min">
+      <div class="proc-stock-meter-fill" style="width:${pct}%"></div>
+    </div>`;
+  }
+
+  let items = [];
+  let deptFilter = '';
+
+  function visibleItems() {
+    if (!deptFilter) return items.map((r, i) => ({ r, i }));
+    return items.map((r, i) => ({ r, i })).filter(x => rDept(x.r) === deptFilter);
+  }
+  function rDept(r) { return r.department || ''; }
+
+  function rowQty(idx) {
+    const input = document.querySelector(`.qty-input[data-idx="${idx}"]`);
+    const n = Number(input && input.value);
+    return n > 0 ? n : Number(items[idx].suggested_qty || 1);
+  }
+  function rowValue(idx) {
+    return rowQty(idx) * Number(items[idx].unit_price || 0);
+  }
+
+  function setRowChecked(row, on) {
+    const cb = row.querySelector('.row-check');
+    if (!cb) return;
+    cb.checked = !!on;
+    row.classList.toggle('is-selected', !!on);
+  }
+  function syncRowSelected(row) {
+    const cb = row.querySelector('.row-check');
+    row.classList.toggle('is-selected', !!(cb && cb.checked));
+  }
+
+  function selectedRows() {
+    const out = [];
+    document.querySelectorAll('.row-check:checked').forEach(el => {
+      const row = items[Number(el.dataset.idx)];
+      if (row) out.push(row);
+    });
+    return out;
+  }
+  function continuePrId(rows) {
+    if (!rows.length) return '';
+    const ids = [...new Set(rows.map(r => r.open_pr && r.open_pr.id).filter(Boolean))];
+    if (ids.length === 1 && rows.every(r => r.open_pr && r.open_pr.id === ids[0])) return ids[0];
+    return '';
+  }
+  function isContinueSelection(rows) {
+    return rows.length > 0 && rows.every(r => r.open_pr && r.open_pr.id);
+  }
+  function setActionLabels(isContinue) {
+    const label = isContinue ? 'Continue the purchase request' : 'Create purchase request';
+    document.getElementById('createPrBtn').textContent = label;
+    document.getElementById('createPrBtnBar').textContent = label;
+  }
+
+  function syncBar() {
+    const picked = selectedRows();
+    let value = 0;
+    document.querySelectorAll('.row-check:checked').forEach(el => {
+      const idx = Number(el.dataset.idx);
+      if (items[idx]) value += rowValue(idx);
+    });
+    const count = picked.length;
+    document.getElementById('barCount').textContent = count + ' selected';
+    document.getElementById('barValue').textContent = fmtAed(value);
+    document.getElementById('refillBar').hidden = count === 0;
+    setActionLabels(isContinueSelection(picked));
+    const all = document.querySelectorAll('.row-check');
+    const checked = document.querySelectorAll('.row-check:checked');
+    const master = document.getElementById('checkAll');
+    master.checked = all.length > 0 && checked.length === all.length;
+    master.indeterminate = checked.length > 0 && checked.length < all.length;
+    document.querySelectorAll('.proc-refill-row').forEach(syncRowSelected);
+    writeDraft();
+  }
+
+  function renderResume() {
+    const box = document.getElementById('refillResume');
+    const seen = new Map();
+    items.forEach(r => {
+      if (r.open_pr && r.open_pr.id && !seen.has(r.open_pr.id)) seen.set(r.open_pr.id, r.open_pr);
+    });
+    const draftPicks = Object.values(readDraft().picks || {}).filter(p => p.checked);
+    if (!seen.size && !draftPicks.length) {
+      box.hidden = true;
+      box.innerHTML = '';
+      return;
+    }
+    const prLinks = [...seen.values()].map(pr =>
+      `<a class="proc-btn proc-btn-outline" href="/procurement/purchase-requests/${esc(pr.id)}">Continue ${esc(pr.id)}</a>`
+    ).join('');
+    const draftNote = draftPicks.length
+      ? `<p>Your ticks and order quantities are saved on this device. Pick up where you left off.</p>`
+      : '';
+    const prNote = seen.size
+      ? `<p>Purchase request${seen.size === 1 ? '' : 's'} already started from this queue — open ${seen.size === 1 ? 'it' : 'them'} instead of creating a new one.</p>`
+      : '';
+    box.innerHTML = prNote + draftNote + (prLinks ? `<div class="proc-refill-resume-acts">${prLinks}</div>` : '');
+    box.hidden = false;
+  }
+
+  function render() {
+    const vis = visibleItems();
+    const zero = items.filter(r => Number(r.qty || 0) <= 0).length;
+    const suggestedValue = items.reduce((s, r) => s + Number(r.suggested_qty || 0) * Number(r.unit_price || 0), 0);
+    document.getElementById('refillKpis').hidden = !items.length;
+    document.getElementById('kpiCount').textContent = items.length;
+    document.getElementById('kpiZero').textContent = zero;
+    document.getElementById('kpiValue').textContent = fmtAed(suggestedValue);
+    document.getElementById('refillCount').textContent = vis.length + ' item' + (vis.length === 1 ? '' : 's');
+
+    const body = document.getElementById('refillBody');
+    if (!items.length) {
+      body.innerHTML = `<div class="proc-refill-empty">
+        <p>Stock is above minimum</p>
+        <span>Catalog items land here when tickets consume stock down to the refill point.</span>
+      </div>`;
+      document.getElementById('refillBar').hidden = true;
+      document.getElementById('refillResume').hidden = true;
+      return;
+    }
+    if (!vis.length) {
+      body.innerHTML = `<div class="proc-refill-empty"><p>No ${esc(deptFilter)} items in the queue</p></div>`;
+      document.getElementById('refillBar').hidden = true;
+      document.getElementById('refillResume').hidden = true;
+      return;
+    }
+
+    body.innerHTML = vis.map(({ r, i }) => {
+      const saved = draftFor(r);
+      const qty = (saved && saved.qty > 0) ? saved.qty : Number((r.open_pr && r.open_pr.qty) || r.suggested_qty || 1);
+      const value = qty * Number(r.unit_price || 0);
+      const when = rowWhen(r);
+      const eventAt = r.last_event_at || when;
+      const editedAt = r.edited_at || when;
+      const clock = fmtWhenClock(eventAt);
+      const ago = fmtWhenAgo(eventAt);
+      const event = r.last_event || 'Below minimum';
+      const showEdited = editedAt && !sameMinute(editedAt, eventAt);
+      const pr = r.open_pr;
+      const checked = !!(saved && saved.checked);
+      const dot = TRADE_DOT[r.department] || '#a1a1aa';
+      return `<article class="proc-refill-row${pr ? ' has-pr' : ''}${checked ? ' is-selected' : ''}" data-idx="${i}">
+        <label class="proc-tick">
+          <input class="row-check" type="checkbox" data-idx="${i}"${checked ? ' checked' : ''}>
+          <span class="proc-tick-box"></span>
+        </label>
+        <div class="proc-refill-main">
+          <div class="proc-refill-name">
+            <span class="proc-trade-dot" style="background:${dot}"></span>
+            <strong>${esc(r.name)}</strong>
+          </div>
+          <div class="proc-refill-meta">${esc(r.department)} · ${esc(r.brand || '—')} · ${esc(r.property || 'Unassigned')}</div>
+          <div class="proc-refill-statusline">
+            ${statusPill(r.status)}
+            ${pr ? `<a class="proc-refill-continue" href="/procurement/purchase-requests/${esc(pr.id)}">Continue ${esc(pr.id)} · ${esc(PR_ST[pr.status] || pr.status)}</a>` : ''}
+          </div>
+        </div>
+        <div class="proc-refill-prop hide-sm">${esc(r.property || '—')}</div>
+        <div class="proc-refill-when">
+          <time datetime="${esc(eventAt)}" title="${esc(clock)}">${esc(clock || '—')}</time>
+          <span class="proc-refill-ago">${esc(ago)}</span>
+          <span class="proc-refill-event">${esc(event)}</span>
+          ${showEdited ? `<span class="proc-refill-edited">Edited ${esc(fmtWhenClock(editedAt))}</span>` : ''}
+        </div>
+        <div class="proc-refill-stock">
+          ${stockMeter(r.qty, r.min_qty)}
+          <span>${fmtNum(r.qty)} <em>/ ${fmtNum(r.min_qty)} ${esc(r.uom || '')}</em></span>
+        </div>
+        <div class="proc-stepper">
+          <button type="button" class="qty-btn" data-idx="${i}" data-delta="-1" aria-label="Decrease quantity">−</button>
+          <input class="qty-input" type="number" min="0.01" step="0.01" value="${qty}" data-idx="${i}" inputmode="decimal" aria-label="Order quantity">
+          <button type="button" class="qty-btn" data-idx="${i}" data-delta="1" aria-label="Increase quantity">+</button>
+        </div>
+        <div class="proc-refill-value" data-value-idx="${i}">${fmtAed(value)}</div>
+      </article>`;
+    }).join('');
+
+    body.querySelectorAll('.row-check').forEach(el => el.addEventListener('change', () => {
+      syncRowSelected(el.closest('.proc-refill-row'));
+      syncBar();
+    }));
+    body.querySelectorAll('.qty-input').forEach(el => el.addEventListener('input', () => {
+      const idx = Number(el.dataset.idx);
+      const valEl = document.querySelector(`[data-value-idx="${idx}"]`);
+      if (valEl) valEl.textContent = fmtAed(rowValue(idx));
+      const row = el.closest('.proc-refill-row');
+      if (row) setRowChecked(row, true);
+      syncBar();
+    }));
+    body.querySelectorAll('.qty-btn').forEach(btn => btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const idx = btn.dataset.idx;
+      const input = document.querySelector(`.qty-input[data-idx="${idx}"]`);
+      if (!input) return;
+      const next = Math.max(0.01, Number(input.value || 0) + Number(btn.dataset.delta));
+      input.value = String(next);
+      input.dispatchEvent(new Event('input'));
+    }));
+    body.querySelectorAll('.proc-refill-row').forEach(row => {
+      row.addEventListener('click', (ev) => {
+        if (ev.target.closest('.proc-tick, .proc-stepper, a')) return;
+        const cb = row.querySelector('.row-check');
+        if (!cb) return;
+        setRowChecked(row, !cb.checked);
+        syncBar();
+      });
+    });
+    document.getElementById('checkAll').checked = false;
+    document.getElementById('checkAll').indeterminate = false;
+    renderResume();
+    syncBar();
+  }
+
+  async function loadRefill() {
+    const res = await fetch('/procurement/api/refill', { headers: procAuthHeaders() });
+    const data = await res.json();
+    items = (data.items || []).slice().sort((a, b) => {
+      const da = parseWhen(rowWhen(a));
+      const db = parseWhen(rowWhen(b));
+      const ta = da ? da.getTime() : 0;
+      const tb = db ? db.getTime() : 0;
+      if (ta !== tb) return tb - ta;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+    render();
+  }
+
+  async function createPr() {
+    const picked = selectedRows();
+    if (!picked.length) { toast('Select at least one item.'); return; }
+    const one = continuePrId(picked);
+    if (one) {
+      location.href = '/procurement/purchase-requests/' + one;
+      return;
+    }
+    if (isContinueSelection(picked)) {
+      toast('These items belong to different purchase requests. Continue one of them from the row.');
+      return;
+    }
+    if (picked.some(r => r.open_pr && r.open_pr.id)) {
+      toast('Some items already have a purchase request. Continue that one, or deselect those rows.');
+      return;
+    }
+    const selected = [];
+    document.querySelectorAll('.row-check:checked').forEach(el => {
+      const idx = Number(el.dataset.idx);
+      const row = items[idx];
+      if (!row) return;
+      selected.push({
+        catalog_id: row.catalog_id,
+        property_id: row.property_id,
+        qty: rowQty(idx),
+        unit_price: row.unit_price,
+        stock_id: row.stock_id,
+      });
+    });
+    const btn = document.getElementById('createPrBtn');
+    const bar = document.getElementById('createPrBtnBar');
+    btn.disabled = true;
+    bar.disabled = true;
+    const res = await fetch('/procurement/api/refill/create-pr', {
+      method: 'POST',
+      headers: procAuthHeaders(),
+      body: JSON.stringify({ items: selected, property_id: selected[0].property_id }),
+    });
+    const data = await res.json();
+    btn.disabled = false;
+    bar.disabled = false;
+    if (!res.ok || !data.success) { toast(data.error || 'Could not create request'); return; }
+    clearDraftIds(selected.map(s => s.stock_id));
+    location.href = '/procurement/purchase-requests/' + data.request.id;
+  }
+
+  document.getElementById('checkAll').addEventListener('change', function() {
+    document.querySelectorAll('.proc-refill-row').forEach(row => setRowChecked(row, this.checked));
+    syncBar();
+  });
+  document.getElementById('createPrBtn').addEventListener('click', createPr);
+  document.getElementById('createPrBtnBar').addEventListener('click', createPr);
+  function refillExportParams() {
+    return deptFilter ? { department: deptFilter } : {};
+  }
+  document.getElementById('exportExcelBtn').addEventListener('click', () => procExportDownload('refill', 'xlsx', refillExportParams()));
+  document.getElementById('exportPdfBtn').addEventListener('click', () => procExportDownload('refill', 'pdf', refillExportParams()));
+  document.querySelectorAll('.proc-refill-filters button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.proc-refill-filters button').forEach(b => b.classList.remove('is-on'));
+      btn.classList.add('is-on');
+      deptFilter = btn.dataset.dept || '';
+      render();
+    });
+  });
+  loadRefill();
+</script>
+
+{% include 'partials/proc_shell_end.html' %}

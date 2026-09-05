@@ -31,9 +31,9 @@
     <header class="fm-public-hero">
       <p class="fm-public-id">{{ asset.asset_id }}</p>
       <h1>{{ asset.name }}</h1>
-      <p class="fm-public-sub">{{ asset.asset_type or 'Equipment' }}</p>
+      <p class="fm-public-sub">{{ asset.asset_type|fm_human('Equipment') }}</p>
       <div class="fm-public-chips">
-        <span class="fm-status fm-status-{{ asset.status or 'active' }}">{{ asset.status or 'active' }}</span>
+        <span class="fm-status fm-status-{{ asset.status or 'active' }}">{{ asset.status|fm_human('Active') }}</span>
         {% if asset.health_score is not none %}
         <span class="fm-public-chip">Health {{ asset.health_score }} / 100</span>
         {% endif %}

@@ -1,28 +1,25 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>{{ property_name }} — Procurement</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="/static/animations.css">
-  <link rel="stylesheet" href="/static/css/dashboard.css">
-  <link rel="stylesheet" href="/static/mobile_responsive.css">
-  <style>
+{% set shown_name = property_display_name or property_name %}
+{% set theme = theme|default({'from': '#6366f1', 'to': '#4f46e5', 'solid': '#4f46e5', 'icon': '🏢'}) %}
+{% set proc_page_title = shown_name ~ ' — Procurement' %}
+{% set proc_topbar_title = shown_name %}
+{% set proc_head_extra %}
+<style>
+
     *, *::before, *::after { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; box-sizing: border-box; }
     :root {
       --brand: #ff8e68; --brand-mid: #f97e54; --brand-light: #10b981;
       --brand-pale: #f0fdf4; --bg: #f4f6f5;
       --text: #0f172a; --muted: #64748b; --border: #e2e8f0;
-      --prop-color: #4f46e5;
+      --prop-from: {{ theme.from }};
+      --prop-to: {{ theme.to }};
+      --prop-color: {{ theme.solid }};
     }
-    body { background: var(--bg); min-height: 100vh; }
+    body.procurement-page { background: var(--bg); min-height: 100vh; }
+    body.procurement-page .nav { border-bottom: none !important; }
 
     /* ── Banner ── */
     .page-banner {
-      background: linear-gradient(135deg, #312e81, #4f46e5 60%, #6366f1);
+      background: linear-gradient(135deg, var(--prop-from), var(--prop-to));
       padding: 2.5rem 2.5rem 1.5rem; position: relative; overflow: hidden;
     }
     .page-banner::before {
@@ -43,7 +40,9 @@
       width: 64px; height: 64px; border-radius: 16px;
       background: rgba(255,255,255,.18); border: 1.5px solid rgba(255,255,255,.28);
       display: flex; align-items: center; justify-content: center; font-size: 1.75rem;
+      cursor: pointer; position: relative; color: inherit; font-family: inherit; padding: 0;
     }
+    .prop-avatar:hover { background: rgba(255,255,255,.28); }
     .banner-title { font-size: 1.7rem; font-weight: 800; color: #fff; margin: 0; }
     .banner-sub   { font-size: .85rem; color: rgba(255,255,255,.65); margin: .2rem 0 0; }
     .banner-actions { display:flex; gap:.65rem; flex-wrap:wrap; }
@@ -56,14 +55,19 @@
     .btn-export-prop:hover { background: rgba(255,255,255,.22); }
     .btn-add-mat-prop {
       display: inline-flex; align-items: center; gap:.4rem;
-      background: #fff; color: #4f46e5; border: none;
+      background: #fff; color: var(--prop-color); border: none;
       padding: .6rem 1.25rem; border-radius: 10px; font-size: .82rem; font-weight: 700;
       cursor: pointer; transition: all .2s; box-shadow: 0 2px 8px rgba(0,0,0,.12);
     }
-    .btn-add-mat-prop:hover { background: #ede9fe; transform: translateY(-1px); }
+    .btn-add-mat-prop:hover { background: #fff; filter: brightness(0.97); transform: translateY(-1px); }
     .btn-add-mat-prop svg, .btn-export-prop svg { width: 14px; height: 14px; }
     .btn-export-prop svg { stroke: white; }
-    .btn-add-mat-prop svg { stroke: #4f46e5; }
+    .btn-add-mat-prop svg { stroke: var(--prop-color); }
+    .btn-prop-primary {
+      background: linear-gradient(135deg, var(--prop-from), var(--prop-to));
+      color: white; border: none; border-radius: 10px; font-weight: 600;
+      padding: .6rem 1.5rem; cursor: pointer;
+    }
 
     /* ── KPI Strip ── */
     .kpi-strip {
@@ -94,7 +98,10 @@
     }
 
     /* ── Main content ── */
-    .main-content { max-width: 1400px; margin: 2.5rem auto; padding: 0 2rem; }
+    .main-content {
+      max-width: 1400px; margin: 1.25rem auto 0; padding: 0 2rem 1.75rem;
+      display: flex; flex-direction: column; gap: 1.15rem;
+    }
 
     /* ── Toolbar ── */
     .toolbar {
@@ -114,7 +121,7 @@
       border: 1.5px solid var(--border); border-radius: 9px; font-size: .85rem;
       outline: none; transition: border-color .15s; background: #f8fafc;
     }
-    .search-input:focus { border-color: #6366f1; background: #fff; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+    .search-input:focus { border-color: var(--prop-from); background: #fff; box-shadow: 0 0 0 3px color-mix(in srgb, var(--prop-from) 18%, transparent); }
     .toolbar-count { margin-left: auto; font-size: .78rem; font-weight: 600; color: var(--muted); background: #f1f5f9; border-radius: 20px; padding: .28rem .85rem; white-space: nowrap; }
 
     /* ── Table ── */
@@ -148,21 +155,110 @@
     }
     .btn-rm:hover { background: #fee2e2; border-color: #fca5a5; }
     .btn-rm svg { width: 11px; height: 11px; stroke: #dc2626; }
-    .empty-row td { text-align: center; padding: 3.5rem 1rem; color: var(--muted); }
+    .empty-row td { text-align: center; padding: 2rem 1rem; color: var(--muted); }
+
+    .prop-fold { margin-bottom: 0; flex: 0 0 auto; }
+    .prop-fold-head {
+      width: 100%;
+      display: flex; align-items: center; gap: .75rem;
+      background: #fff; border: 1px solid var(--border); border-radius: 14px;
+      padding: .85rem 1.15rem; cursor: pointer; text-align: left;
+      font: inherit; color: inherit; flex-shrink: 0;
+    }
+    .prop-fold.is-open {
+      height: min(48vh, 480px);
+      min-height: 380px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .prop-fold.is-open .prop-fold-head {
+      border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+      border-bottom-color: transparent;
+    }
+    .prop-fold-head:hover { background: #f8fafc; }
+    .prop-fold-title { font-size: .92rem; font-weight: 700; color: var(--text); }
+    .prop-fold-sub { font-size: .75rem; color: var(--muted); font-weight: 500; }
+    .prop-fold-count {
+      margin-left: auto; font-size: .75rem; font-weight: 600; color: var(--muted);
+      background: #f1f5f9; border-radius: 20px; padding: .22rem .75rem;
+    }
+    .prop-fold-chevron {
+      width: 18px; height: 18px; stroke: #94a3b8; fill: none; stroke-width: 2;
+      flex-shrink: 0; transition: transform .18s;
+    }
+    .prop-fold.is-open .prop-fold-chevron { transform: rotate(180deg); }
+    .prop-fold-body {
+      display: none;
+      background: #fff; border: 1px solid var(--border); border-top: 0;
+      border-radius: 0 0 16px 14px;
+      min-height: 0;
+    }
+    .prop-fold.is-open .prop-fold-body {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .prop-fold .toolbar { margin: 0; border: 0; border-radius: 0; box-shadow: none; flex-shrink: 0; }
+    .prop-fold .table-card {
+      border: 0; border-radius: 0; box-shadow: none;
+      flex: 1; min-height: 0;
+      display: flex; flex-direction: column;
+    }
+    .prop-fold-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .prop-fold-scroll::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+    .prop-fold-scroll thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .type-badge { display: inline-flex; padding: .18rem .55rem; border-radius: 20px; font-size: .71rem; font-weight: 700; }
+    .type-issue { background: #ffedd5; color: #c2410c; }
+    .type-return { background: #dcfce7; color: #15803d; }
+    .type-transfer { background: #e0e7ff; color: #4338ca; }
+    .type-adjust { background: #f1f5f9; color: #475569; }
+    .type-receipt { background: #dbeafe; color: #1d4ed8; }
+    .log-ticket { font-weight: 700; color: var(--prop-color); text-decoration: none; }
+    .log-ticket:hover { text-decoration: underline; }
+    .log-title { font-size: .75rem; color: var(--muted); margin-top: .12rem; }
+    .prop-fold .form-select {
+      max-width: 170px;
+      min-height: 40px;
+      border-radius: 9px;
+      font-size: .85rem;
+      border: 1.5px solid var(--border);
+    }
+    @media (max-height: 700px) {
+      .prop-fold.is-open { height: 340px; min-height: 300px; }
+    }
 
     /* ── Modal ── */
     .proc-modal .modal-content { border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,.14); }
-    .proc-modal .modal-header { background: linear-gradient(135deg,#4f46e5,#4338ca); color: white; border: none; padding: 1.5rem 2rem; }
+    .proc-modal .modal-header { background: linear-gradient(135deg, var(--prop-from), var(--prop-to)); color: white; border: none; padding: 1.5rem 2rem; }
     .proc-modal .modal-body   { padding: 1.75rem 2rem; }
     .proc-modal .modal-footer { border: none; padding: 0 2rem 1.75rem; }
     .proc-modal .form-control, .proc-modal .form-select { border-radius: 10px; padding: .68rem 1rem; border-color: #d1d5db; }
-    .proc-modal .form-control:focus, .proc-modal .form-select:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+    .proc-modal .form-control:focus, .proc-modal .form-select:focus { border-color: var(--prop-from); box-shadow: 0 0 0 3px color-mix(in srgb, var(--prop-from) 16%, transparent); }
     .proc-modal .form-label { font-weight: 600; font-size: .85rem; color: #374151; }
-  </style>
-</head>
-<body>
-
-  <!-- Banner -->
+  
+</style>
+{% endset %}
+{% include 'partials/proc_shell_start.html' %}
+<!-- Banner -->
   <div class="page-banner">
     <div class="banner-inner">
       <a href="/procurement/properties" class="back-link">
@@ -171,17 +267,21 @@
       </a>
       <div class="banner-row">
         <div class="banner-identity">
-          <div class="prop-avatar">🏢</div>
+          <button type="button" class="prop-avatar" id="propAvatar" title="Change icon" onclick="openIconPicker()">
+            <span id="propAvatarGlyph">{{ theme.icon }}</span>
+          </button>
           <div>
-            <div class="banner-title">{{ property_name }}</div>
-            <div class="banner-sub">Materials inventory for this property</div>
+            <div class="banner-title">{{ shown_name }}</div>
+            <div class="banner-sub">Materials for this site — usable on any floor</div>
           </div>
         </div>
         <div class="banner-actions">
+          <button class="btn-export-prop" onclick="showIssueModal()">Issue to ticket</button>
           <button class="btn-export-prop" onclick="exportPropertyExcel()">
             <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
             Export Excel
           </button>
+          <button class="btn-export-prop" onclick="showFromSitesModal()">Share from other sites</button>
           <button class="btn-add-mat-prop" onclick="showAddMaterialModal()">
             <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
             Add Material
@@ -211,98 +311,316 @@
     </div>
   </div>
 
-  <!-- Materials Table -->
+  <!-- Materials + log -->
   <div class="main-content">
-    <div class="toolbar">
-      <div class="search-wrap">
-        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="search-input" id="searchInput" placeholder="Search materials…" oninput="filterMaterials()">
+    <div class="prop-fold is-open" id="stockFold">
+      <button type="button" class="prop-fold-head" onclick="togglePropFold('stockFold')" aria-expanded="true">
+        <div>
+          <div class="prop-fold-title">On-hand stock</div>
+          <div class="prop-fold-sub">Materials on this site right now</div>
+        </div>
+        <span class="prop-fold-count" id="countBadge">Loading…</span>
+        <svg class="prop-fold-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+      <div class="prop-fold-body">
+        <div class="toolbar">
+          <div class="search-wrap">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" class="search-input" id="searchInput" placeholder="Search materials…" oninput="filterMaterials()">
+          </div>
+        </div>
+        <div class="table-card">
+          <div class="table-responsive prop-fold-scroll">
+            <table class="mat-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Material</th>
+                  <th>Category</th>
+                  <th>Qty</th>
+                  <th>Unit Price</th>
+                  <th>Total Value</th>
+                  <th>Supplier</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="materialsBody">
+                <tr class="empty-row"><td colspan="8"><div class="d-flex justify-content-center align-items-center gap-2"><div class="spinner-border spinner-border-sm text-secondary"></div><span>Loading…</span></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
-      <div class="toolbar-count" id="countBadge">Loading…</div>
     </div>
 
-    <div class="table-card">
-      <div class="table-responsive">
-        <table class="mat-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Material</th>
-              <th>Category</th>
-              <th>Qty</th>
-              <th>Unit Price</th>
-              <th>Total Value</th>
-              <th>Supplier</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="materialsBody">
-            <tr class="empty-row"><td colspan="8"><div class="d-flex justify-content-center align-items-center gap-2"><div class="spinner-border spinner-border-sm text-secondary"></div><span>Loading…</span></div></td></tr>
-          </tbody>
-        </table>
+    <div class="prop-fold is-open" id="logFold">
+      <button type="button" class="prop-fold-head" onclick="togglePropFold('logFold')" aria-expanded="true">
+        <div>
+          <div class="prop-fold-title">Material log</div>
+          <div class="prop-fold-sub">Tickets and materials used from this site</div>
+        </div>
+        <span class="prop-fold-count" id="logCountBadge">Loading…</span>
+        <svg class="prop-fold-chevron" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+      <div class="prop-fold-body">
+        <div class="toolbar">
+          <div class="search-wrap">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" class="search-input" id="logSearch" placeholder="Search ticket or material…" oninput="loadMaterialLog()">
+          </div>
+          <select class="form-select" id="logTypeFilter" onchange="loadMaterialLog()" style="max-width:160px;border-radius:9px;font-size:.85rem;">
+            <option value="">All types</option>
+            <option value="issue">Issued to ticket</option>
+            <option value="return">Returned</option>
+            <option value="transfer">Reallocated</option>
+            <option value="adjust">Adjusted</option>
+          </select>
+        </div>
+        <div class="table-card">
+          <div class="table-responsive prop-fold-scroll">
+            <table class="mat-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Ticket</th>
+                  <th>Material</th>
+                  <th>Qty</th>
+                  <th>Type</th>
+                  <th>By</th>
+                </tr>
+              </thead>
+              <tbody id="logBody">
+                <tr class="empty-row"><td colspan="6"><div class="d-flex justify-content-center align-items-center gap-2"><div class="spinner-border spinner-border-sm text-secondary"></div><span>Loading…</span></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Add Material Modal -->
   <div class="modal fade proc-modal" id="addMaterialModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-dialog-centered add-mat-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" style="font-weight:700;font-size:1.05rem;">Add Material to {{ property_name }}</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          <h5 class="modal-title">Add material</h5>
+          <p class="add-mat-site">{{ shown_name }}</p>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div class="row g-3">
-            <div class="col-md-8">
-              <label class="form-label">Material Name *</label>
-              <input type="text" class="form-control" id="materialName" required placeholder="e.g., PVC Pipe 4 inch">
+          <div class="add-mat-grid">
+            <div>
+              <label class="form-label" for="materialName">Material name *</label>
+              <input type="text" class="form-control" id="materialName" required placeholder="e.g. PVC pipe 4 inch" autocomplete="off">
             </div>
-            <div class="col-md-4">
-              <label class="form-label">Category</label>
+            <div>
+              <label class="form-label" for="materialCategory">Category</label>
               <select class="form-select" id="materialCategory">
                 <option value="General">General</option>
-                <option value="Electrical">Electrical</option>
-                <option value="Plumbing">Plumbing</option>
-                <option value="HVAC/MEP">HVAC / MEP</option>
                 <option value="Cleaning">Cleaning</option>
+                <option value="Electrical">Electrical</option>
+                <option value="HVAC/MEP">HVAC / MEP</option>
+                <option value="Plumbing">Plumbing</option>
                 <option value="Safety">Safety</option>
                 <option value="Tools">Tools</option>
               </select>
             </div>
-            <div class="col-md-4">
-              <label class="form-label">Quantity *</label>
-              <input type="number" class="form-control" id="materialQty" value="1" min="0" step="0.01">
+            <div class="span-3">
+              <div>
+                <label class="form-label" for="materialQty">Quantity *</label>
+                <input type="number" class="form-control" id="materialQty" value="1" min="0" step="0.01">
+              </div>
+              <div>
+                <label class="form-label" for="materialUnit">Unit</label>
+                <select class="form-select" id="materialUnit">
+                  <option value="pcs">Pieces (pcs)</option>
+                  <option value="box">Box</option>
+                  <option value="kg">Kilograms (kg)</option>
+                  <option value="ltr">Liters</option>
+                  <option value="m">Meters (m)</option>
+                  <option value="set">Set</option>
+                  <option value="sqm">Square meters</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label" for="materialPrice">Unit price (AED)</label>
+                <input type="number" class="form-control" id="materialPrice" value="0" min="0" step="0.01">
+              </div>
             </div>
-            <div class="col-md-4">
-              <label class="form-label">Unit</label>
-              <select class="form-select" id="materialUnit">
-                <option value="pcs">Pieces (pcs)</option>
-                <option value="kg">Kilograms (kg)</option>
-                <option value="m">Meters (m)</option>
-                <option value="sqm">Square Meters</option>
-                <option value="ltr">Liters</option>
-                <option value="box">Box</option>
-                <option value="set">Set</option>
-              </select>
+            <div class="span-2">
+              <label class="form-label" for="materialSupplier">Supplier</label>
+              <input type="text" class="form-control" id="materialSupplier" placeholder="Vendor name" autocomplete="off">
             </div>
-            <div class="col-md-4">
-              <label class="form-label">Unit Price (AED)</label>
-              <input type="number" class="form-control" id="materialPrice" value="0" min="0" step="0.01">
+            <div class="span-2">
+              <label class="form-label" for="materialNotes">Notes</label>
+              <textarea class="form-control" id="materialNotes" rows="2" placeholder="Optional"></textarea>
             </div>
-            <div class="col-12">
-              <label class="form-label">Supplier</label>
-              <input type="text" class="form-control" id="materialSupplier" placeholder="Supplier / vendor name">
-            </div>
-            <div class="col-12">
-              <label class="form-label">Notes</label>
-              <textarea class="form-control" id="materialNotes" rows="2" placeholder="Additional notes…"></textarea>
+            <div class="span-2">
+              <p class="form-label" style="margin-bottom:0.45rem;">Where should this quantity go?</p>
+              <div class="xfer-choice" id="addDistribute">
+                <label class="xfer-choice-opt">
+                  <input type="radio" name="addDistribute" value="site" checked>
+                  <span>
+                    <strong>This project only</strong>
+                    <em>Increase stock on {{ shown_name }}.</em>
+                  </span>
+                </label>
+                <label class="xfer-choice-opt">
+                  <input type="radio" name="addDistribute" value="equal">
+                  <span>
+                    <strong>Share</strong>
+                    <em>Split this quantity across every site that already has this material — or every site if it is new.</em>
+                  </span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600;">Cancel</button>
-          <button type="button" class="btn" style="background:linear-gradient(135deg,#4f46e5,#4338ca);color:white;border-radius:10px;font-weight:600;padding:.6rem 1.5rem;" onclick="addMaterial()">Add Material</button>
+          <button type="button" class="btn btn-prop-primary" onclick="addMaterial()">Add material</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade proc-modal" id="fromSitesModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered add-mat-dialog xfer-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Share from other sites</h5>
+          <p class="add-mat-site">Available on every property — including {{ shown_name }}</p>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="xferBrowse">
+            <p class="xfer-hint">Type how many this site should get. Share keeps the source count. Reallocate deducts from the source. Type more than available to set a higher count on this project or as a shared count.</p>
+            <div class="xfer-toolbar">
+              <div class="search-wrap">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" class="search-input" id="xferSearch" placeholder="Search materials…" oninput="renderFromSitesList()" autocomplete="off">
+              </div>
+              <select class="form-select" id="xferSource" onchange="renderFromSitesList()">
+                <option value="">All sources</option>
+              </select>
+            </div>
+            <div class="xfer-list" id="xferList">
+              <div class="xfer-empty">Loading…</div>
+            </div>
+          </div>
+          <div id="xferConfirm" hidden>
+            <button type="button" class="xfer-back" onclick="cancelShareConfirm()">← Back to list</button>
+            <h6 class="xfer-confirm-name" id="xferConfirmName"></h6>
+            <p class="xfer-confirm-sub" id="xferConfirmSub"></p>
+            <label class="form-label" for="xferConfirmQty">Quantity</label>
+            <div class="xfer-confirm-qty">
+              <input type="number" class="form-control" id="xferConfirmQty" min="1" step="1" value="1">
+              <span class="xfer-qty-of" id="xferConfirmMax"></span>
+            </div>
+            <p class="xfer-hint" id="xferConfirmMinHint"></p>
+            <div id="xferWithinWrap">
+              <p class="form-label" style="margin-top:0.85rem;">Share it, or reallocate it here?</p>
+              <div class="xfer-choice">
+                <label class="xfer-choice-opt">
+                  <input type="radio" name="xferWithinMode" value="copy" checked>
+                  <span>
+                    <strong>Share</strong>
+                    <em id="xferCopyHint">This site also gets this quantity. The source site keeps its current count — source count is not deducted.</em>
+                  </span>
+                </label>
+                <label class="xfer-choice-opt">
+                  <input type="radio" name="xferWithinMode" value="add">
+                  <span>
+                    <strong>Reallocate</strong>
+                    <em id="xferAddHint">This is a transfer. Deduct this quantity from the source and add it here. If you take all of it, the source will have none.</em>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div id="xferOverWrap" hidden>
+              <p class="form-label" style="margin-top:0.85rem;">This is more than the source has. How should it be applied?</p>
+              <div class="xfer-choice">
+                <label class="xfer-choice-opt">
+                  <input type="radio" name="xferMode" value="site">
+                  <span>
+                    <strong>Only for this project</strong>
+                    <em id="xferSiteHint">This site is counted as the new number. The source site keeps its current count. Source count is not deducted.</em>
+                  </span>
+                </label>
+                <label class="xfer-choice-opt">
+                  <input type="radio" name="xferMode" value="equal" checked>
+                  <span>
+                    <strong>Add as a shared count</strong>
+                    <em id="xferEqualHint">The source site and this site are both counted as this number. Source count is not deducted.</em>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <button type="button" class="btn-prop-primary xfer-confirm-btn" id="xferConfirmBtn" onclick="submitShareConfirm()">Share</button>
+            <p class="xfer-hint" id="xferConfirmFoot" style="margin-top:0.75rem;"></p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600;">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade proc-modal" id="issueModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" style="font-weight:700;font-size:1.05rem;">Issue stock to a ticket</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Material</label>
+            <select class="form-select" id="issueCatalog"></select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Quantity</label>
+            <input type="number" class="form-control" id="issueQty" value="1" min="0.01" step="0.01">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Ticket</label>
+            <select class="form-select" id="issueTicket"></select>
+          </div>
+          <label class="form-label" style="display:flex;gap:.5rem;align-items:center;">
+            <input type="checkbox" id="issueChargeable"> Chargeable
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600;">Cancel</button>
+          <button type="button" class="btn btn-prop-primary" onclick="submitIssue()">Issue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade proc-modal" id="iconPickerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered icon-picker-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Choose an icon</h5>
+          <p class="icon-picker-site" id="iconPickerSite">{{ shown_name }}</p>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="icon-pick-preview">
+            <div class="icon-pick-card-mock">
+              <div class="icon-pick-preview-well" id="iconPickerPreviewGlyph"></div>
+              <p class="icon-pick-preview-kind" id="iconPickerPreviewKind">Site</p>
+            </div>
+            <p class="icon-pick-preview-hint">This is how it appears on the card.</p>
+          </div>
+          <div class="icon-pick-grid" id="iconPickerGrid"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600;">Cancel</button>
+          <button type="button" class="btn btn-prop-primary" onclick="savePropertyIcon()">Save icon</button>
         </div>
       </div>
     </div>
@@ -312,7 +630,69 @@
   <script>
     const token = localStorage.getItem('access_token');
     const propertyName = '{{ property_name }}';
+    const propertyShown = {{ shown_name|tojson }};
+    const propertyPublicId = '{{ property_public_id or "" }}';
+    const iconChoices = {{ icon_choices|default([])|tojson }};
+    const ICON_CHECK = '<span class="icon-pick-check" aria-hidden="true"><svg fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></span>';
+    let chosenIcon = {{ theme.icon|tojson }};
     let allMaterials = [];
+    let elsewhereSources = [];
+    let pendingShare = null;
+
+    function iconLabelFor(glyph) {
+      const hit = (iconChoices || []).find((item) => item.icon === glyph);
+      return (hit && hit.label) || 'Site';
+    }
+
+    function syncIconPreview() {
+      const glyph = document.getElementById('iconPickerPreviewGlyph');
+      const kind = document.getElementById('iconPickerPreviewKind');
+      if (glyph) glyph.textContent = chosenIcon || '';
+      if (kind) kind.textContent = iconLabelFor(chosenIcon);
+    }
+
+    function openIconPicker() {
+      const grid = document.getElementById('iconPickerGrid');
+      grid.innerHTML = (iconChoices || []).map((item) => {
+        const on = item.icon === chosenIcon ? ' is-on' : '';
+        return `<button type="button" class="icon-pick-btn${on}" data-icon="${item.icon}" onclick="choosePropertyIcon(this)">
+          <span class="icon-pick-glyph">${item.icon}</span>
+          <span class="icon-pick-label">${item.label}</span>
+          ${ICON_CHECK}
+        </button>`;
+      }).join('');
+      syncIconPreview();
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('iconPickerModal')).show();
+    }
+
+    function choosePropertyIcon(btn) {
+      chosenIcon = btn.dataset.icon || chosenIcon;
+      document.querySelectorAll('#iconPickerGrid .icon-pick-btn').forEach((el) => {
+        el.classList.toggle('is-on', el === btn);
+      });
+      syncIconPreview();
+    }
+
+    async function savePropertyIcon() {
+      if (!chosenIcon) return;
+      try {
+        const response = await fetch('/procurement/api/properties/icon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ icon: chosenIcon, id: propertyPublicId || undefined, name: propertyName }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          procAlert(result.error || 'Could not save icon');
+          return;
+        }
+        bootstrap.Modal.getInstance(document.getElementById('iconPickerModal'))?.hide();
+        const glyph = document.getElementById('propAvatarGlyph');
+        if (glyph) glyph.textContent = result.icon || chosenIcon;
+      } catch (err) {
+        procAlert(err.message || 'Could not save icon');
+      }
+    }
 
     function getCatClass(cat) {
       const c = (cat || '').toLowerCase();
@@ -355,17 +735,29 @@
       if (materials.length === 0) {
         tbody.innerHTML = `<tr class="empty-row"><td colspan="8">
           <div style="font-size:2.5rem;margin-bottom:.75rem;">📦</div>
-          <div style="font-weight:600;margin-bottom:.3rem;">No materials yet</div>
-          <div style="font-size:.82rem;margin-bottom:1rem;">Add materials to this property</div>
-          <button onclick="showAddMaterialModal()" style="background:linear-gradient(135deg,#4f46e5,#4338ca);color:white;border:none;border-radius:9px;padding:.55rem 1.25rem;font-weight:600;cursor:pointer;font-size:.82rem;">+ Add First Material</button>
+          <div style="font-weight:600;margin-bottom:.3rem;">No stock yet</div>
+          <div style="font-size:.82rem;margin-bottom:1rem;">Add a new material, or share stock from another site so every ticket can use it.</div>
+          <div class="empty-actions">
+            <button onclick="showAddMaterialModal()" class="btn-prop-primary" style="padding:.55rem 1.25rem;font-size:.82rem;border-radius:9px;">+ Add first material</button>
+            <button type="button" class="btn-from-sites-ghost" onclick="showFromSitesModal()">Share from other sites</button>
+          </div>
         </td></tr>`;
         return;
       }
-      tbody.innerHTML = materials.map((m, i) => `
+      tbody.innerHTML = materials.map((m, i) => {
+        const shared = m.is_shared_pool || m.pool === 'shared';
+        const canRemove = !shared || (propertyName || '').toLowerCase() === 'shared';
+        const remove = canRemove
+          ? `<button class="btn-rm" onclick="removeMaterial('${m.id}')">
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+              Remove
+            </button>`
+          : '';
+        return `
         <tr>
           <td style="color:#94a3b8;font-size:.78rem;font-weight:600;">${i+1}</td>
           <td>
-            <div class="mat-name">${esc(m.material_name)}</div>
+            <div class="mat-name">${esc(m.material_name)}${shared ? ' <span class="pool-shared">Shared</span>' : ''}</div>
             ${m.description ? `<div class="mat-desc">${esc(m.description)}</div>` : ''}
           </td>
           <td><span class="cat-badge ${getCatClass(m.category)}"><span class="dot"></span>${esc(m.category || 'General')}</span></td>
@@ -373,13 +765,9 @@
           <td class="sub-val">AED ${parseFloat(m.unit_price).toFixed(2)}</td>
           <td class="bold-val">AED ${parseFloat(m.total_price).toFixed(2)}</td>
           <td class="sub-val">${esc(m.supplier || '—')}</td>
-          <td>
-            <button class="btn-rm" onclick="removeMaterial('${m.id}')">
-              <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
-              Remove
-            </button>
-          </td>
-        </tr>`).join('');
+          <td>${remove}</td>
+        </tr>`;
+      }).join('');
     }
 
     function filterMaterials() {
@@ -396,12 +784,270 @@
       new bootstrap.Modal(document.getElementById('addMaterialModal')).show();
     }
 
+    async function showFromSitesModal() {
+      const list = document.getElementById('xferList');
+      list.innerHTML = '<div class="xfer-empty">Loading…</div>';
+      pendingShare = null;
+      setShareConfirmVisible(false);
+      const confirmBtn = document.getElementById('xferConfirmBtn');
+      if (confirmBtn) confirmBtn.disabled = false;
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('fromSitesModal')).show();
+      try {
+        const response = await fetch(
+          `/procurement/api/stock-elsewhere?exclude=${encodeURIComponent(propertyName)}`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        const data = await response.json();
+        elsewhereSources = data.sources || [];
+        const sel = document.getElementById('xferSource');
+        const prev = sel.value;
+        sel.innerHTML = '<option value="">All sources</option>' + elsewhereSources.map((g) =>
+          `<option value="${esc(g.property)}">${esc(g.display_name || g.property)}</option>`
+        ).join('');
+        if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
+        renderFromSitesList();
+      } catch (err) {
+        list.innerHTML = '<div class="xfer-empty">Could not load stock from other sites.</div>';
+      }
+    }
+
+    function renderFromSitesList() {
+      const list = document.getElementById('xferList');
+      const q = (document.getElementById('xferSearch').value || '').trim().toLowerCase();
+      const source = document.getElementById('xferSource').value;
+      const groups = elsewhereSources.filter((g) => !source || g.property === source).map((g) => {
+        const materials = (g.materials || []).filter((m) => {
+          if (!q) return true;
+          return (m.material_name || '').toLowerCase().includes(q)
+            || (m.category || '').toLowerCase().includes(q)
+            || (m.supplier || '').toLowerCase().includes(q)
+            || (g.display_name || '').toLowerCase().includes(q);
+        });
+        return Object.assign({}, g, { materials });
+      }).filter((g) => g.materials.length);
+      if (!groups.length) {
+        list.innerHTML = `<div class="xfer-empty">${
+          elsewhereSources.length
+            ? 'No matching stock at other sites.'
+            : 'No stock at other sites yet. Add a new material instead.'
+        }</div>`;
+        return;
+      }
+      list.innerHTML = groups.map((g) => {
+        const rows = g.materials.map((m) => {
+          const avail = parseFloat(m.quantity) || 0;
+          const whole = Number.isInteger(avail);
+          const min = avail >= 1 ? 1 : (avail > 0 ? 0.01 : 1);
+          const step = whole ? 1 : 0.01;
+          const start = Math.min(min, avail) || min;
+          const shown = whole ? String(avail) : String(avail);
+          return `<div class="xfer-row">
+            <div class="xfer-meta">
+              <div class="xfer-name">${esc(m.material_name)}</div>
+              <div class="xfer-sub">${esc(m.category || 'General')} · ${shown} ${esc(m.unit || '')} available</div>
+            </div>
+            <span class="xfer-src">${esc(g.display_name || g.property)}</span>
+            <div class="xfer-act">
+              <div class="xfer-qty">
+                <input type="number" class="form-control" min="${min}" step="${step}" value="${start}" data-stock="${esc(m.id)}" data-name="${esc(m.material_name)}" data-unit="${esc(m.unit || '')}" data-source="${esc(g.display_name || g.property)}" data-sites="${m.equal_site_count || 1}" data-avail="${avail}" aria-label="Quantity to share">
+                <span class="xfer-qty-of">of ${shown}</span>
+              </div>
+              <button type="button" class="btn-prop-primary" onclick="openShareConfirm(this)">Share</button>
+            </div>
+          </div>`;
+        }).join('');
+        return `<div><div class="xfer-group-title">${esc(g.display_name || g.property)}</div>${rows}</div>`;
+      }).join('');
+    }
+
+    function setShareConfirmVisible(on) {
+      const browse = document.getElementById('xferBrowse');
+      const confirm = document.getElementById('xferConfirm');
+      if (browse) browse.hidden = !!on;
+      if (confirm) confirm.hidden = !on;
+    }
+
+    function cancelShareConfirm() {
+      pendingShare = null;
+      setShareConfirmVisible(false);
+    }
+
+    function shareNotice(mode, qty, name) {
+      return { title: 'Material added', message: name };
+    }
+
+    async function runShare({ stockId, qty, mode, name, source, avail, btn }) {
+      if (btn) btn.disabled = true;
+      try {
+        const response = await fetch('/procurement/api/stock-share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            stock_id: stockId,
+            qty,
+            mode,
+            to_property: propertyName,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          procAlert(result.error || 'Could not share stock');
+          if (btn) btn.disabled = false;
+          return false;
+        }
+        pendingShare = null;
+        setShareConfirmVisible(false);
+        loadMaterials();
+        loadMaterialLog();
+        procHint(shareNotice(mode, qty, name));
+        await showFromSitesModal();
+        return true;
+      } catch (err) {
+        procAlert(err.message || 'Could not share stock');
+        if (btn) btn.disabled = false;
+        return false;
+      }
+    }
+
+    function openShareConfirm(btn) {
+      const wrap = btn.closest('.xfer-act');
+      const input = wrap && wrap.querySelector('input');
+      if (!input) return;
+      const avail = parseFloat(input.dataset.avail);
+      let qty = parseFloat(input.value);
+      if (!Number.isFinite(qty) || qty <= 0) qty = parseFloat(input.min) || 1;
+      pendingShare = {
+        stockId: input.dataset.stock,
+        name: input.dataset.name || '',
+        unit: input.dataset.unit || '',
+        source: input.dataset.source || '',
+        sites: parseInt(input.dataset.sites, 10) || 1,
+        avail: Number.isFinite(avail) ? avail : 0,
+        min: parseFloat(input.min) || 1,
+        step: input.step || '1',
+      };
+      document.getElementById('xferConfirmName').textContent = pendingShare.name;
+      document.getElementById('xferConfirmSub').textContent =
+        `From ${pendingShare.source} · ${pendingShare.avail} ${pendingShare.unit} available`;
+      const qtyEl = document.getElementById('xferConfirmQty');
+      qtyEl.min = pendingShare.min;
+      qtyEl.removeAttribute('max');
+      qtyEl.step = pendingShare.step;
+      qtyEl.value = String(qty);
+      document.getElementById('xferConfirmMax').textContent = `of ${pendingShare.avail}`;
+      const copyRadio = document.querySelector('input[name="xferWithinMode"][value="copy"]');
+      if (copyRadio) copyRadio.checked = true;
+      const equalRadio = document.querySelector('input[name="xferMode"][value="equal"]');
+      if (equalRadio) equalRadio.checked = true;
+      qtyEl.oninput = syncShareChoice;
+      document.querySelectorAll('input[name="xferWithinMode"], input[name="xferMode"]').forEach(function (el) {
+        el.onchange = syncShareChoice;
+      });
+      syncShareChoice();
+      setShareConfirmVisible(true);
+    }
+
+    function syncShareChoice() {
+      if (!pendingShare) return;
+      const qty = parseFloat(document.getElementById('xferConfirmQty').value) || 0;
+      const avail = pendingShare.avail;
+      const n = pendingShare.sites;
+      const unit = pendingShare.unit;
+      const shown = qty || 0;
+      const over = qty > avail;
+      const left = Math.max(0, Math.round((avail - qty) * 100) / 100);
+      const withinWrap = document.getElementById('xferWithinWrap');
+      const overWrap = document.getElementById('xferOverWrap');
+      if (withinWrap) withinWrap.hidden = over;
+      if (overWrap) overWrap.hidden = !over;
+      const copyHint = document.getElementById('xferCopyHint');
+      if (copyHint) {
+        copyHint.textContent = `${propertyShown}: ${avail} → ${avail + shown} ${unit}. ${pendingShare.source} stays at ${avail} ${unit}. Source count is not deducted.`;
+      }
+      const addHint = document.getElementById('xferAddHint');
+      if (addHint) {
+        addHint.textContent = left === 0
+          ? `This is a transfer. Move all ${avail} ${unit} here. ${pendingShare.source}: ${avail} → 0.`
+          : `This is a transfer. ${pendingShare.source}: ${avail} → ${left} ${unit}. ${propertyShown} gets ${shown} ${unit}.`;
+      }
+      const siteHint = document.getElementById('xferSiteHint');
+      if (siteHint) {
+        siteHint.textContent = `${propertyShown} will be counted as ${shown} ${unit}. ${pendingShare.source} stays at ${avail} ${unit}. Source count is not deducted.`;
+      }
+      const equalHint = document.getElementById('xferEqualHint');
+      if (equalHint) {
+        equalHint.textContent = n > 2
+          ? `All ${n} sites that share this material — including ${pendingShare.source} — will be counted as ${shown} ${unit}. Source count is not deducted.`
+          : `${pendingShare.source} and ${propertyShown} will both be counted as ${shown} ${unit}. Source count is not deducted.`;
+      }
+      const hint = document.getElementById('xferConfirmMinHint');
+      if (hint) {
+        hint.textContent = over
+          ? `This is more than ${pendingShare.source} has. Choose only this project, or add it as a shared count. Neither option deducts from the source.`
+          : `Share keeps ${pendingShare.source} at ${avail} ${unit}. Reallocate is a transfer and deducts from ${pendingShare.source}.`;
+      }
+      const foot = document.getElementById('xferConfirmFoot');
+      if (foot) {
+        if (over) {
+          const overMode = (document.querySelector('input[name="xferMode"]:checked') || {}).value;
+          foot.textContent = overMode === 'site'
+            ? `Before → after · ${pendingShare.source} ${avail} → ${avail} · ${propertyShown} set to ${shown}`
+            : `Before → after · every holder of this SKU set to ${shown} (source unchanged)`;
+        } else {
+          const withinMode = (document.querySelector('input[name="xferWithinMode"]:checked') || {}).value;
+          foot.textContent = withinMode === 'add'
+            ? `Before → after · ${pendingShare.source} ${avail} → ${left} · ${propertyShown} +${shown}`
+            : `Before → after · ${pendingShare.source} ${avail} → ${avail} · ${propertyShown} +${shown}`;
+        }
+      }
+      const btn = document.getElementById('xferConfirmBtn');
+      if (btn) {
+        if (over) {
+          const overMode = (document.querySelector('input[name="xferMode"]:checked') || {}).value;
+          btn.textContent = overMode === 'site' ? 'Apply to this project' : 'Share this count';
+        } else {
+          const withinMode = (document.querySelector('input[name="xferWithinMode"]:checked') || {}).value;
+          btn.textContent = withinMode === 'add' ? 'Reallocate' : 'Share';
+        }
+      }
+    }
+
+    async function submitShareConfirm() {
+      if (!pendingShare) return;
+      const qtyEl = document.getElementById('xferConfirmQty');
+      const qty = parseFloat(qtyEl.value);
+      const min = parseFloat(qtyEl.min) || 1;
+      if (!qty || qty < min) {
+        procAlert('Enter at least ' + min);
+        return;
+      }
+      const over = qty > pendingShare.avail;
+      const mode = over
+        ? ((document.querySelector('input[name="xferMode"]:checked') || {}).value || 'equal')
+        : ((document.querySelector('input[name="xferWithinMode"]:checked') || {}).value || 'copy');
+      await runShare({
+        stockId: pendingShare.stockId,
+        qty,
+        mode,
+        name: pendingShare.name,
+        source: pendingShare.source,
+        avail: pendingShare.avail,
+        btn: document.getElementById('xferConfirmBtn'),
+      });
+    }
+
+    async function shareFromSite(btn) {
+      openShareConfirm(btn);
+    }
+
     async function addMaterial() {
       const name = document.getElementById('materialName').value.trim();
-      if (!name) { alert('Material name is required'); return; }
+      if (!name) { procAlert('Material name is required'); return; }
+      const distribute = (document.querySelector('#addDistribute input:checked') || {}).value || 'site';
       const data = {
         material_name: name,
         property: propertyName,
+        distribute,
         category:  document.getElementById('materialCategory').value,
         quantity:  document.getElementById('materialQty').value,
         unit:      document.getElementById('materialUnit').value,
@@ -423,25 +1069,158 @@
           document.getElementById('materialNotes').value    = '';
           document.getElementById('materialQty').value      = '1';
           document.getElementById('materialPrice').value    = '0';
+          const siteRadio = document.querySelector('#addDistribute input[value="site"]');
+          if (siteRadio) siteRadio.checked = true;
           loadMaterials();
-        } else { alert('Error: ' + result.error); }
-      } catch (error) { alert('Error: ' + error.message); }
+          loadMaterialLog();
+          procHint({ title: 'Material added', message: name });
+        } else { procAlert('Error: ' + result.error); }
+      } catch (error) { procAlert('Error: ' + error.message); }
     }
 
     async function removeMaterial(id) {
-      if (!confirm('Remove this material from the property?')) return;
+      const mat = (allMaterials || []).find((m) => m.id === id);
+      const name = (mat && mat.material_name) || 'this material';
+      const ok = await procPrompt({
+        title: 'Remove material',
+        message: 'Remove ' + name + ' from ' + propertyShown + '? Only this site’s stock is deleted.',
+        okText: 'Remove',
+        danger: true,
+      });
+      if (!ok) return;
       try {
         const response = await fetch(`/procurement/api/materials/${id}`, {
           method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
         });
         const result = await response.json();
-        if (result.success) loadMaterials();
-        else alert('Error: ' + result.error);
-      } catch (error) { alert('Error: ' + error.message); }
+        if (result.success) { loadMaterials(); loadMaterialLog(); }
+        else procAlert(result.error || 'Could not remove material');
+      } catch (error) { procAlert(error.message || 'Could not remove material'); }
     }
 
     function exportPropertyExcel() {
       window.open(`/procurement/api/export-excel?property=${encodeURIComponent(propertyName)}`, '_blank');
+    }
+
+    async function showIssueModal() {
+      const [matRes, tktRes, propRes] = await Promise.all([
+        fetch(`/procurement/api/property-materials/${encodeURIComponent(propertyName)}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch('/procurement/api/open-tickets', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch('/procurement/api/registered-properties', { headers: { 'Authorization': `Bearer ${token}` } }),
+      ]);
+      const mats = (await matRes.json()).materials || [];
+      const tickets = (await tktRes.json()).tickets || [];
+      const props = (await propRes.json()).properties || [];
+      window._issuePropertyId = (props.find(p => p.name === propertyName) || {}).id;
+      document.getElementById('issueCatalog').innerHTML = mats.map(m => {
+        const shared = m.is_shared_pool || m.pool === 'shared';
+        const label = shared ? `${m.material_name} (${m.quantity} ${m.unit || ''} · Shared)` : `${m.material_name} (${m.quantity} ${m.unit || ''})`;
+        return `<option value="${esc(m.catalog_id || '')}" data-qty="${m.quantity}" data-property="${esc(m.property_id || '')}">${esc(label)}</option>`;
+      }).join('') || '<option value="">No stock</option>';
+      document.getElementById('issueTicket').innerHTML = tickets.map(t =>
+        `<option value="${esc(t.ticket_id)}">${esc(t.ticket_id)} — ${esc(t.title)}</option>`
+      ).join('') || '<option value="">No open tickets</option>';
+      new bootstrap.Modal(document.getElementById('issueModal')).show();
+    }
+
+    async function submitIssue() {
+      const catalogEl = document.getElementById('issueCatalog');
+      const catalogId = catalogEl.value;
+      const ticketId = document.getElementById('issueTicket').value;
+      const qty = document.getElementById('issueQty').value;
+      const opt = catalogEl.selectedOptions[0];
+      const propertyId = (opt && opt.dataset.property) || window._issuePropertyId;
+      if (!catalogId || !ticketId || !propertyId) { procAlert('Select material, ticket, and make sure this property is registered.'); return; }
+      const res = await fetch('/procurement/api/issue-to-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          property_id: propertyId,
+          catalog_id: catalogId,
+          ticket_id: ticketId,
+          qty: qty,
+          chargeable: document.getElementById('issueChargeable').checked,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) { procAlert(data.error || 'Issue failed'); return; }
+      bootstrap.Modal.getInstance(document.getElementById('issueModal')).hide();
+      loadMaterials();
+      loadMaterialLog();
+    }
+
+    function togglePropFold(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const open = !el.classList.contains('is-open');
+      el.classList.toggle('is-open', open);
+      const btn = el.querySelector('.prop-fold-head');
+      if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function typeBadge(type) {
+      const map = {
+        issue: ['type-issue', 'Issued'],
+        return: ['type-return', 'Returned'],
+        transfer: ['type-transfer', 'Reallocated'],
+        adjust: ['type-adjust', 'Adjusted'],
+        receipt: ['type-receipt', 'Received'],
+      };
+      const [cls, label] = map[type] || ['type-adjust', type || '—'];
+      return `<span class="type-badge ${cls}">${label}</span>`;
+    }
+
+    function fmtWhen(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return String(iso).slice(0, 16).replace('T', ' ');
+      return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function loadMaterialLog() {
+      const body = document.getElementById('logBody');
+      const badge = document.getElementById('logCountBadge');
+      if (!body) return;
+      const params = new URLSearchParams();
+      if (propertyPublicId) params.set('property_id', propertyPublicId);
+      else if (propertyName) params.set('property', propertyName);
+      const q = (document.getElementById('logSearch') || {}).value;
+      const type = (document.getElementById('logTypeFilter') || {}).value;
+      if (q && q.trim()) params.set('q', q.trim());
+      if (type) params.set('type', type);
+      params.set('limit', '200');
+      try {
+        const res = await fetch('/procurement/api/usage-log?' + params.toString(), {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        const data = await res.json();
+        const rows = data.rows || [];
+        if (badge) badge.textContent = rows.length + ' movement' + (rows.length === 1 ? '' : 's');
+        if (!rows.length) {
+          body.innerHTML = `<tr class="empty-row"><td colspan="6">
+            <div style="font-weight:600;margin-bottom:.3rem;">No movements yet</div>
+            <div style="font-size:.82rem;">Issue stock to a ticket to see it here.</div>
+          </td></tr>`;
+          return;
+        }
+        body.innerHTML = rows.map((r) => {
+          const ticket = r.ticket_id
+            ? `<a class="log-ticket" href="/tickets/${encodeURIComponent(r.ticket_id)}">${esc(r.ticket_id)}</a>
+               ${r.ticket_title ? `<div class="log-title">${esc(r.ticket_title)}</div>` : ''}`
+            : '—';
+          return `<tr>
+            <td>${esc(fmtWhen(r.created_at))}</td>
+            <td>${ticket}</td>
+            <td><div class="mat-name">${esc(r.material_name)}</div></td>
+            <td>${Number(r.qty || 0).toLocaleString('en-AE')} ${esc(r.uom || '')}</td>
+            <td>${typeBadge(r.movement_type)}</td>
+            <td class="sub-val">${esc(r.submitted_by || '—')}</td>
+          </tr>`;
+        }).join('');
+      } catch (err) {
+        if (badge) badge.textContent = '—';
+        body.innerHTML = '<tr class="empty-row"><td colspan="6" class="text-danger">Could not load the material log</td></tr>';
+      }
     }
 
     function esc(s) {
@@ -451,8 +1230,7 @@
     }
 
     loadMaterials();
+    loadMaterialLog();
   </script>
-  <script>window.FILES_SAVE_MODULE = 'procurement'; window.FILES_SAVE_MODULE_LABEL = 'Procurement';</script>
-  <script src="{{ url_for('static', filename='js/files-save.js') }}?v=16"></script>
-</body>
-</html>
+  
+{% include 'partials/proc_shell_end.html' %}

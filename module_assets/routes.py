@@ -5,7 +5,7 @@ URL prefix: /assets
 import json
 import logging
 import os
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timezone, timedelta
 from io import BytesIO
 from base64 import b64encode
 from flask import (
@@ -35,6 +35,7 @@ from module_assets.twin import (
     catalog_buildings_for_project,
     drawings_for_asset,
     enrich_floor_plan,
+    local_plan_image_path,
     normalize_hotspots,
     plan_pin_stats,
     project_location_assets,
@@ -51,6 +52,22 @@ assets_bp = Blueprint(
     url_prefix='/assets',
     template_folder='templates',
 )
+
+
+def fm_human_label(value, fallback='—'):
+    """Turn snake_case / lowercase status and type values into readable labels."""
+    raw = ('' if value is None else str(value)).strip()
+    if not raw:
+        return fallback
+    spaced = ' '.join(raw.replace('_', ' ').replace('-', ' ').split())
+    if '_' in raw or '-' in raw or raw == raw.lower():
+        return spaced[:1].upper() + spaced[1:]
+    return raw
+
+
+@assets_bp.app_template_filter('fm_human')
+def _fm_human_filter(value, fallback='—'):
+    return fm_human_label(value, fallback)
 
 
 def _utcnow():
@@ -220,6 +237,7 @@ def compute_dashboard_kpis():
             },
             'critical_count': 0,
             'by_building': [],
+            'status': {'active': 0, 'critical': 0, 'inactive': 0, 'decommissioned': 0},
         }
 
     avg_health = db.session.query(func.avg(Asset.health_score)).filter(
@@ -229,7 +247,12 @@ def compute_dashboard_kpis():
 
     assets = Asset.query.all()
     warranty = {'active': 0, 'expiring_30d': 0, 'expired': 0, 'unknown': 0}
+    status = {'active': 0, 'critical': 0, 'inactive': 0, 'decommissioned': 0}
     for a in assets:
+        st = (a.status or 'active').strip().lower()
+        if st not in status:
+            status[st] = 0
+        status[st] += 1
         if not a.warranty_expiry:
             warranty['unknown'] += 1
         elif a.warranty_expiry < today:
@@ -254,23 +277,46 @@ def compute_dashboard_kpis():
         )
     ).count()
 
-    by_building_rows = (
-        db.session.query(
-            Asset.building,
-            func.count(Asset.id),
-            func.avg(Asset.health_score),
+    by_map = {}
+    for a in assets:
+        bname = (a.building or '').strip() or 'Unassigned'
+        rec = by_map.setdefault(bname, {
+            'building': bname,
+            'count': 0,
+            'health_sum': 0.0,
+            'health_n': 0,
+            'critical': 0,
+            'watch': 0,
+            'healthy': 0,
+        })
+        rec['count'] += 1
+        is_crit = (a.status or '') == 'critical' or (
+            a.health_score is not None and a.health_score < 40
         )
-        .group_by(Asset.building)
-        .all()
-    )
-    by_building = [
-        {
-            'building': b or 'Unassigned',
-            'count': c,
-            'avg_health': round(float(h), 1) if h is not None else None,
-        }
-        for b, c, h in by_building_rows
-    ]
+        if is_crit:
+            rec['critical'] += 1
+        elif a.health_score is not None and a.health_score < 70:
+            rec['watch'] += 1
+        else:
+            rec['healthy'] += 1
+        if a.health_score is not None:
+            rec['health_sum'] += float(a.health_score)
+            rec['health_n'] += 1
+
+    by_building = []
+    for rec in by_map.values():
+        avg = round(rec['health_sum'] / rec['health_n'], 1) if rec['health_n'] else None
+        needs_watch = rec['critical'] > 0 or (avg is not None and avg < 70)
+        by_building.append({
+            'building': rec['building'],
+            'count': rec['count'],
+            'avg_health': avg,
+            'critical': rec['critical'],
+            'watch': rec['watch'],
+            'healthy': rec['healthy'],
+            'band': 'watch' if needs_watch else 'healthy',
+        })
+    by_building.sort(key=lambda row: (-row['count'], row['building'].lower()))
 
     return {
         'total_assets': total,
@@ -283,6 +329,121 @@ def compute_dashboard_kpis():
         },
         'critical_count': critical_count,
         'by_building': by_building,
+        'status': status,
+    }
+
+
+def _month_starts(months):
+    """First day of each of the last `months` calendar months, oldest first."""
+    cursor = date.today().replace(day=1)
+    out = []
+    for _ in range(months):
+        out.append(cursor)
+        if cursor.month == 1:
+            cursor = date(cursor.year - 1, 12, 1)
+        else:
+            cursor = date(cursor.year, cursor.month - 1, 1)
+    return list(reversed(out))
+
+
+def _stamp_month_key(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.strftime('%Y-%m')
+    if isinstance(value, date):
+        return value.strftime('%Y-%m')
+    text = str(value)
+    return text[:7] if len(text) >= 7 else None
+
+
+def dashboard_month_series(months=6):
+    """Work orders opened vs assets registered, by month. Empty months are 0."""
+    try:
+        months = int(months or 6)
+    except (TypeError, ValueError):
+        months = 6
+    months = max(3, min(months, 12))
+    starts = _month_starts(months)
+    keys = [s.strftime('%Y-%m') for s in starts]
+    buckets = {key: {'work_orders': 0, 'assets': 0} for key in keys}
+    first = datetime.combine(starts[0], datetime.min.time())
+
+    for (created,) in (
+        db.session.query(Ticket.created_at)
+        .filter(Ticket.status != 'draft', Ticket.created_at >= first)
+        .all()
+    ):
+        key = _stamp_month_key(created)
+        if key in buckets:
+            buckets[key]['work_orders'] += 1
+
+    for (created,) in (
+        db.session.query(Asset.created_at)
+        .filter(Asset.created_at >= first)
+        .all()
+    ):
+        key = _stamp_month_key(created)
+        if key in buckets:
+            buckets[key]['assets'] += 1
+
+    return {
+        'months': months,
+        'labels': [s.strftime('%b') for s in starts],
+        'keys': keys,
+        'work_orders': [buckets[k]['work_orders'] for k in keys],
+        'assets': [buckets[k]['assets'] for k in keys],
+    }
+
+
+def _stamp_day_key(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    text = str(value)
+    return text[:10] if len(text) >= 10 else None
+
+
+def dashboard_day_series(days=90):
+    """Work orders and assets per day. Empty days are 0."""
+    try:
+        days = int(days or 90)
+    except (TypeError, ValueError):
+        days = 90
+    days = max(7, min(days, 90))
+    today = date.today()
+    starts = [today - timedelta(days=days - 1 - i) for i in range(days)]
+    keys = [d.isoformat() for d in starts]
+    buckets = {key: {'work_orders': 0, 'assets': 0} for key in keys}
+    first = datetime.combine(starts[0], datetime.min.time())
+
+    for (created,) in (
+        db.session.query(Ticket.created_at)
+        .filter(Ticket.status != 'draft', Ticket.created_at >= first)
+        .all()
+    ):
+        key = _stamp_day_key(created)
+        if key in buckets:
+            buckets[key]['work_orders'] += 1
+
+    for (created,) in (
+        db.session.query(Asset.created_at)
+        .filter(Asset.created_at >= first)
+        .all()
+    ):
+        key = _stamp_day_key(created)
+        if key in buckets:
+            buckets[key]['assets'] += 1
+
+    return {
+        'days': days,
+        'labels': [f'{d.strftime("%b")} {d.day}' for d in starts],
+        'iso': keys,
+        'work_orders': [buckets[k]['work_orders'] for k in keys],
+        'assets': [buckets[k]['assets'] for k in keys],
     }
 
 
@@ -295,12 +456,16 @@ def assets_dashboard():
     if not _has_access(user):
         return redirect('/dashboard')
     kpis = compute_dashboard_kpis()
-    assets = Asset.query.order_by(Asset.updated_at.desc()).limit(50).all()
+    recent = Asset.query.order_by(Asset.updated_at.desc()).limit(8).all()
+    last_dt = db.session.query(func.max(Asset.updated_at)).scalar()
+    last_updated = last_dt.strftime('%d %b %Y, %H:%M') if last_dt else None
     return render_template(
         'assets_dashboard.html',
         user=user,
         kpis=kpis,
-        assets=assets,
+        assets=recent,
+        chart=dashboard_day_series(90),
+        last_updated=last_updated,
         can_write=_can_write(user),
     )
 
@@ -952,6 +1117,47 @@ def api_bulk_qr_labels_pdf():
     )
 
 
+@assets_bp.route('/api/assets.xlsx', methods=['GET'])
+@jwt_required()
+def api_assets_xlsx():
+    """Registry snapshot for the dashboard Export action."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    from openpyxl import Workbook
+    from common.kynvera_excel_brand import apply_column_widths, write_data_row, write_header_row
+
+    rows = Asset.query.order_by(Asset.asset_id.asc()).all()
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Assets'
+    headers = ['ID', 'Name', 'Type', 'Building', 'Floor', 'Room', 'Health', 'Status', 'Warranty']
+    write_header_row(ws, headers)
+    for i, asset in enumerate(rows, start=2):
+        write_data_row(ws, i, [
+            asset.asset_id,
+            asset.name,
+            fm_human_label(asset.asset_type, ''),
+            asset.building or '',
+            asset.floor or '',
+            asset.room or '',
+            asset.health_score if asset.health_score is not None else '',
+            fm_human_label(asset.status, 'Active'),
+            asset.warranty_expiry.isoformat() if asset.warranty_expiry else '',
+        ])
+    apply_column_widths(ws, [12, 28, 16, 18, 12, 16, 10, 16, 14])
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    stamp = date.today().isoformat()
+    return send_file(
+        buf,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'fm-assets-{stamp}.xlsx',
+    )
+
+
 @assets_bp.route('/api/kpis', methods=['GET'])
 @jwt_required()
 def api_kpis():
@@ -1352,11 +1558,12 @@ def api_floor_plan_file(plan_id):
     if not _has_access(user):
         return jsonify({'success': False, 'error': 'Access denied'}), 403
     plan = FloorPlan.query.get_or_404(plan_id)
-    url = plan.image_url or ''
-    if url.startswith('/static/uploads/floor-plans/'):
-        path = os.path.join(current_app.root_path, url.lstrip('/'))
-        if os.path.isfile(path):
-            return send_file(path)
+    url = (plan.image_url or '').strip()
+    if url.startswith(('http://', 'https://')):
+        return redirect(url)
+    path = local_plan_image_path(plan)
+    if path:
+        return send_file(path)
     return jsonify({'success': False, 'error': 'No uploaded file'}), 404
 
 

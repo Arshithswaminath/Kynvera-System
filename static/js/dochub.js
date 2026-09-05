@@ -91,6 +91,7 @@
     manuals: { label: 'User Manuals', icon: '📖' },
     reports: { label: 'Reports', icon: '📊' },
     other: { label: 'Other', icon: '📄' },
+    internal: { label: 'Internal', icon: '📄' },
     Internal: { label: 'Internal', icon: '📄' },
     API: { label: 'API', icon: '📄' },
     Guide: { label: 'Guide', icon: '📄' },
@@ -979,6 +980,8 @@
 
   function updateKpis() {}
 
+  const COLLECTION_BUCKETS = ['onboarding', 'contracts', 'policies', 'manuals', 'reports', 'internal'];
+
   function visibleDocs() {
     const now = Math.floor(Date.now() / 1000);
     const recentCutoff = now - 30 * 24 * 60 * 60;
@@ -990,15 +993,10 @@
       if (fb === 'review' && d.status !== 'review') return false;
       if (fb === 'archived' && d.status !== 'archived') return false;
       if (fb === 'uploads' && d.doc_type !== 'upload') return false;
-      if (fb === 'internal' && (d.tag || '').toLowerCase() !== 'internal') {
-        return false;
-      }
       if (fb === 'starred' && !d.starred) return false;
       if (fb === 'recent' && (d.dateTs || 0) < recentCutoff) return false;
-      if (
-        ['onboarding', 'contracts', 'policies', 'manuals', 'reports'].includes(fb)
-      ) {
-        if ((d.tag || '').toLowerCase() !== fb) return false;
+      if (COLLECTION_BUCKETS.includes(fb) && (d.tag || '').toLowerCase() !== fb) {
+        return false;
       }
       if (searchQ && !docMatchesSearch(d)) return false;
       return true;
@@ -1022,7 +1020,8 @@
     'contracts',
     'policies',
     'manuals',
-    'reports'
+    'reports',
+    'internal'
   ];
 
   function isOtherFilter() {
@@ -1032,7 +1031,7 @@
   function docsForNavBucket(bucket) {
     const now = Math.floor(Date.now() / 1000);
     const recentCutoff = now - 30 * 24 * 60 * 60;
-    const catBuckets = ['onboarding', 'contracts', 'policies', 'manuals', 'reports'];
+    const catBuckets = ['onboarding', 'contracts', 'policies', 'manuals', 'reports', 'internal'];
     return docs.filter(d => {
       if (bucket === 'published' && d.status !== 'published') return false;
       if (bucket === 'draft' && d.status !== 'draft') return false;
@@ -1053,6 +1052,7 @@
     if (!wrap || !empty) return;
 
     const q = String(searchQ || '').trim();
+    const browsing = !q && COLLECTION_BUCKETS.includes(filterBucket);
     const viewerOn = document.getElementById('dhViewerState');
     const editorOn = document.getElementById('dhEditorState');
     const chromeOpen =
@@ -1065,7 +1065,7 @@
       return;
     }
 
-    if (!q) {
+    if (!q && !browsing) {
       wrap.hidden = true;
       wrap.innerHTML = '';
       empty.style.display = 'flex';
@@ -1077,15 +1077,20 @@
     wrap.hidden = false;
 
     const n = list.length;
+    const title = browsing ? (LABELS[filterBucket] || panelTitle()) : 'Search results';
     let html = '<div class="dh-search-results-inner">';
+    if (browsing) {
+      html += '<button type="button" class="dh-search-results-back" id="dhCollectionBack">← Collections</button>';
+    }
     html += '<div class="dh-search-results-head">';
-    html += '<h2 class="dh-search-results-title">Search results</h2>';
-    html += `<p class="dh-search-results-meta">${n === 0 ? 'No matching documents' : n + ' document' + (n === 1 ? '' : 's')}</p>`;
+    html += '<h2 class="dh-search-results-title">' + esc(title) + '</h2>';
+    html += `<p class="dh-search-results-meta">${n === 0 ? 'No documents in this collection' : n + ' document' + (n === 1 ? '' : 's')}</p>`;
     html += '</div>';
 
     if (n === 0) {
-      html +=
-        '<p class="dh-search-results-hint">Try other keywords, open the <strong>menu (☰)</strong> to browse by folder, or clear the search.</p>';
+      html += browsing
+        ? '<p class="dh-search-results-hint">This collection is empty. Use the menu to upload or create a document.</p>'
+        : '<p class="dh-search-results-hint">Try other keywords, open the <strong>menu (☰)</strong> to browse by folder, or clear the search.</p>';
     } else {
       html += '<ul class="dh-search-results-list" role="list">';
       html += list
@@ -1108,6 +1113,12 @@
     wrap.querySelectorAll('.dh-search-result-row').forEach(btn => {
       btn.onclick = () => selectDoc(Number(btn.dataset.docId));
     });
+    const back = document.getElementById('dhCollectionBack');
+    if (back) {
+      back.onclick = function () {
+        filterDocs('all', document.getElementById('dhSbHeadAll'));
+      };
+    }
   }
 
   function renderSbDocRowHtml(doc) {
@@ -1183,7 +1194,7 @@
     if (osl) osl.textContent = panelTitle();
 
     // Update folder grid card counts on the home screen
-    ['onboarding', 'contracts', 'policies', 'manuals', 'reports', 'Internal'].forEach(tag => {
+    ['onboarding', 'contracts', 'policies', 'manuals', 'reports', 'internal', 'Internal'].forEach(tag => {
       const el = document.getElementById('dhFolderCount-' + tag);
       if (!el) return;
       const n = docs.filter(d => (d.tag || '').toLowerCase() === tag.toLowerCase() && d.status !== 'archived').length;
@@ -1757,7 +1768,17 @@
   }
 
   window.dhGoToFolder = function(tag) {
-    dhSelectSbBucket(tag);
+    const key = String(tag || '').toLowerCase();
+    const head = document.querySelector('.dh-sb-bucket-head[data-filter="' + key + '"]');
+    sbCollapsedBuckets.delete(key);
+    filterDocs(key, head);
+    if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
+      const results = document.getElementById('dhSearchResults');
+      if (!results || results.hidden) {
+        const sb = document.getElementById('dhSidebar');
+        if (sb && !sb.classList.contains('open')) dhToggleSidebar();
+      }
+    }
   };
 
   function applyWriteUI() {
@@ -2227,7 +2248,7 @@
     document.querySelectorAll('.sb-nav-item').forEach(e => e.classList.remove('active'));
     document.querySelectorAll('.dh-sb-bucket-head').forEach(e => e.classList.remove('active'));
     if (el) el.classList.add('active');
-    if (['onboarding', 'contracts', 'policies', 'manuals', 'reports'].includes(f)) {
+    if (COLLECTION_BUCKETS.includes(f)) {
       ensureCategoriesGroupOpen();
     }
     renderDocList();

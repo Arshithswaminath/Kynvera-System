@@ -4,15 +4,23 @@
    Include as first child of .tkt-dh-main:
      {% set tkt_topbar_title = 'Dashboard' %}
      {% include 'partials/tkt_topbar.html' with context %}
+   Set tkt_hide_module_back = true on the module home (dashboard).
 ──────────────────────────────────────────────────────────────────── #}
 <header class="tkt-topbar">
   <div class="tkt-topbar-left">
-    <button type="button" id="tktDhSidebarToggle" aria-label="Toggle menu"
-            onclick="if(typeof tktToggleMobileSidebar==='function'){tktToggleMobileSidebar();}">&#9776;</button>
+    <button type="button" id="tktDhSidebarToggle" class="tkt-menu-toggle"
+            aria-label="Open service tickets menu" aria-expanded="false"
+            onclick="if(typeof tktToggleMobileSidebar==='function'){tktToggleMobileSidebar();}">
+      <span aria-hidden="true">&#9776;</span>
+      <span class="tkt-menu-toggle-label">Menu</span>
+    </button>
     <h1 class="tkt-topbar-title">{{ tkt_topbar_title | default('Service Tickets') }}</h1>
   </div>
 </header>
+{% if not tkt_hide_module_back|default(false) %}
 <div class="module-back-bar tkt-module-back-bar">
-  {% set module_back_url = module_back_url|default(url_for('dashboard')) %}
+  {% set module_back_url = module_back_url|default(url_for('ticketing.dashboard')) %}
+  {% set module_back_label = module_back_label|default('Back') %}
   {% include 'partials/module_back_link.html' %}
 </div>
+{% endif %}

@@ -77,7 +77,7 @@
   /**
    * @param opts {{
    *   selectId: string,
-   *   addBtnId: string,
+   *   addBtnId?: string,
    *   chipsId: string,
    *   ids: number[],
    *   multi?: boolean
@@ -89,7 +89,7 @@
     var chipsEl = document.getElementById(opts.chipsId);
     var ids = opts.ids;
     var multi = opts.multi !== false;
-    if (!sel || !addBtn || !chipsEl || !ids) return Promise.resolve();
+    if (!sel || !chipsEl || !ids) return Promise.resolve();
 
     return loadUsers().then(function (users) {
       users.sort(function (a, b) {
@@ -105,15 +105,22 @@
         sel.appendChild(opt);
       });
       renderChipList(chipsEl, ids, users, multi);
-      addBtn.addEventListener('click', function () {
+      function addFromSelect() {
         var id = parseInt(sel.value, 10);
         if (!Number.isFinite(id)) return;
-        if (ids.indexOf(id) >= 0) return;
+        if (ids.indexOf(id) >= 0) {
+          sel.value = '';
+          return;
+        }
         if (!multi && ids.length >= 1) ids.length = 0;
         ids.push(id);
         sel.value = '';
         renderChipList(chipsEl, ids, users, multi);
-      });
+      }
+      sel.addEventListener('change', addFromSelect);
+      if (addBtn) {
+        addBtn.addEventListener('click', addFromSelect);
+      }
     });
   }
 

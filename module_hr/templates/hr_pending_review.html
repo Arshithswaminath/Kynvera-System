@@ -7,44 +7,13 @@
   <title>Pending HR Review - Kynvera</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/static/animations.css">
-  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=25">
   <link rel="stylesheet" href="/static/css/hr-forms.css">
   <link rel="stylesheet" href="/static/mobile_responsive.css">
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-  <script src="{{ url_for('static', filename='js/hr_sign_pdf_preview.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/hr_sign_pdf_preview.js') }}?v=3"></script>
   <style>
-    :root { --primary: #ff8e68; --primary-light: #f97e54; --hr-amber: #d97706; --hr-amber-dark: #b45309; }
-    body { background: #f1f5f9; }
-
-    /* ── Page Header ─────────────────────────────────────── */
-    .page-header {
-      background: linear-gradient(135deg, #f59e0b 0%, #d97706 55%, #b45309 100%);
-      color: white; padding: 1.75rem 2rem; border-radius: 18px; margin-bottom: 1.75rem;
-      position: relative; overflow: hidden;
-      box-shadow: 0 8px 32px rgba(217,119,6,0.28);
-    }
-    .page-header::before {
-      content: ''; position: absolute; top: -40px; right: -40px;
-      width: 220px; height: 220px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .page-header::after {
-      content: ''; position: absolute; bottom: -60px; right: 120px;
-      width: 160px; height: 160px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .back-link {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      color: #b45309 !important; background: rgba(255,255,255,0.96);
-      text-decoration: none; font-weight: 600; font-size: 0.82rem;
-      padding: 0.42rem 0.9rem; border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12); transition: all 0.2s;
-    }
-    .back-link:hover { background: white; transform: translateX(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.14); }
-    .page-header h1 { font-size: 1.7rem; font-weight: 800; margin: 0.75rem 0 0.25rem; letter-spacing: -0.025em; position: relative; }
-    .page-header p { opacity: 0.82; margin: 0; font-size: 0.875rem; position: relative; }
+    :root { --primary: #ff8e68; --primary-light: #f97e54; }
 
     /* ── Pending List Container ───────────────────────────── */
     /* Cap shell to viewport so #pendingList gets a bounded height and scrolls (flex:1 alone expands with content otherwise). */
@@ -62,7 +31,9 @@
       display: flex;
       flex-direction: column;
     }
-    .hr-list-page-shell > .page-header { flex-shrink: 0; }
+    .hr-list-page-shell > .page-header,
+    .hr-list-page-shell > .hr-queue-hero,
+    .hr-list-page-shell > .hr-queue-banner { flex-shrink: 0; }
 
     .pending-list-container {
       flex: 1;
@@ -70,7 +41,7 @@
       display: flex;
       flex-direction: column;
       background: white; border-radius: 16px; overflow: hidden;
-      border: 1px solid rgba(217,119,6,0.12);
+      border: 1px solid rgba(255,142,104,0.16);
       box-shadow: 0 4px 24px rgba(0,0,0,0.06);
     }
     #pendingList {
@@ -91,7 +62,7 @@
       row-gap: 0.65rem;
       padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9;
       display: flex; align-items: center; justify-content: space-between;
-      background: linear-gradient(to right, rgba(245,158,11,0.05), transparent);
+      background: linear-gradient(to right, rgba(255,142,104,0.05), transparent);
     }
     .pending-list-sort-wrap {
       display: flex;
@@ -115,19 +86,19 @@
       font-weight: 500;
       padding: 0.35rem 2rem 0.35rem 0.65rem;
       border-radius: 9px;
-      border: 1px solid rgba(217,119,6,0.22);
-      background-color: #fffbf5;
-      color: #431407;
+      border: 1px solid rgba(255,142,104,0.28);
+      background-color: #fff8f5;
+      color: #1c1917;
     }
     .pending-sort-select:focus {
-      border-color: #d97706;
-      box-shadow: 0 0 0 3px rgba(217,119,6,0.12);
+      border-color: #ff8e68;
+      box-shadow: 0 0 0 3px rgba(255,142,104,0.18);
       outline: none;
     }
     .pending-list-header-left { display: flex; align-items: center; gap: 0.6rem; }
     .pending-list-header h2 { font-size: 0.95rem; font-weight: 700; color: #1e293b; margin: 0; }
     .pending-count-badge {
-      background: #d97706; color: white;
+      background: #ff8e68; color: white;
       font-size: 0.72rem; font-weight: 700;
       padding: 0.18rem 0.55rem; border-radius: 100px;
       min-width: 22px; text-align: center; display: none;
@@ -141,7 +112,7 @@
       background: white;
     }
     .review-card:last-child { border-bottom: none; }
-    .review-card:hover { background: #fffbeb; }
+    .review-card:hover { background: #fff8f5; }
 
     .form-type-badge {
       padding: 0.28rem 0.62rem; border-radius: 6px;
@@ -180,13 +151,13 @@
     .card-chip strong { color: #1e293b; font-weight: 600; }
 
     .btn-review-card {
-      background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none;
+      background: #ff8e68; color: white; border: none;
       border-radius: 8px; font-size: 0.8rem; font-weight: 600;
       padding: 0.42rem 0.85rem; transition: all 0.2s; white-space: nowrap;
     }
     .btn-review-card:hover {
       color: white; transform: translateY(-1px);
-      box-shadow: 0 4px 14px rgba(217,119,6,0.38);
+      box-shadow: 0 4px 14px rgba(255,142,104,0.35);
     }
 
     /* ── Empty State ──────────────────────────────────────── */
@@ -227,32 +198,32 @@
     /* HR Action Zone — pinned below iframe */
     .review-actions-card {
       flex-shrink: 0; overflow-y: auto; max-height: 38vh;
-      background: #f0fdf4; border-top: 2px solid #bbf7d0; border-left: none; border-right: none; border-bottom: none;
+      background: #fff8f5; border-top: 2px solid rgba(255,142,104,0.28); border-left: none; border-right: none; border-bottom: none;
       border-radius: 0; padding: 1rem 1.25rem;
     }
     .review-actions-title {
-      font-size: 0.87rem; font-weight: 700; color: #065f46;
+      font-size: 0.87rem; font-weight: 700; color: #191b23;
       margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.45rem;
     }
     .review-actions-card .form-control {
-      border-radius: 10px; border-color: #d1fae5; font-size: 0.875rem;
+      border-radius: 10px; border-color: #fde4d8; font-size: 0.875rem;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
     .review-actions-card .form-control:focus {
-      border-color: #059669; box-shadow: 0 0 0 3px rgba(5,150,105,0.12);
+      border-color: #ff8e68; box-shadow: 0 0 0 3px rgba(255,142,104,0.18);
     }
     .review-actions-card .form-label { font-weight: 600; font-size: 0.83rem; color: #374151; }
     .review-actions-card .form-label.small { font-size: 0.78rem; color: #6b7280; font-weight: 500; }
 
     /* Signature pad */
     .review-sig-wrap {
-      border: 2px dashed #6ee7b7; border-radius: 12px;
+      border: 2px dashed #fdba8c; border-radius: 12px;
       background: white; overflow: hidden; transition: border-color 0.2s;
     }
-    .review-sig-wrap:focus-within { border-color: #059669; box-shadow: 0 0 0 3px rgba(5,150,105,0.1); }
+    .review-sig-wrap:focus-within { border-color: #ff8e68; box-shadow: 0 0 0 3px rgba(255,142,104,0.18); }
     .review-sig-label {
-      font-size: 0.75rem; font-weight: 600; color: #059669;
-      padding: 0.35rem 0.75rem; background: #f0fdf4; border-bottom: 1px solid #d1fae5;
+      font-size: 0.75rem; font-weight: 600; color: #c2440c;
+      padding: 0.35rem 0.75rem; background: #fff8f5; border-bottom: 1px solid #fde4d8;
       display: flex; justify-content: space-between; align-items: center;
     }
     .btn-clear-signature {
@@ -281,38 +252,12 @@
     }
     .btn-approve:hover { color: white; transform: translateY(-1px); box-shadow: 0 5px 16px rgba(5,150,105,0.35); }
 
-    /* ── Full-screen "page-like" review overlay (matches hr_mgmt_sign) ── */
-    #reviewModal .modal-dialog {
-      max-width: none;
-      width: 100vw;
-      height: 100dvh;
-      margin: 0;
-      display: block;
-      align-items: stretch;
-    }
-    #reviewModal .modal-content {
-      width: 100vw;
-      min-height: 100dvh;
-      max-height: 100dvh;
-      height: 100dvh;
-      border: none;
-      border-radius: 0;
-      box-shadow: none;
-      background: #f8faf8;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    /* Hide the existing badge header (replaced by page-style bar) */
+    /* Overlay chrome lives in hr-queue-kynvera.css (centered popup, not full-screen). */
     #reviewModal .modal-header { display: none !important; }
     #reviewModal .modal-body {
       flex: 1 1 auto;
       min-height: 0;
-      display: block !important;
-      overflow-y: auto !important;
-      overflow-x: hidden !important;
       padding: 0 !important;
-      background: #f8faf8 !important;
     }
 
     /* Page-style top bar */
@@ -341,11 +286,11 @@
     }
     .hr-page-back:hover { background: #f1f5f9; color: #0f172a; }
     .hr-page-caption {
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
+      font-size: 0.88rem;
+      font-weight: 650;
+      letter-spacing: 0;
       color: #64748b;
-      text-transform: uppercase;
+      text-transform: none;
     }
     .hr-page-ref {
       margin-left: auto;
@@ -380,7 +325,7 @@
       font-weight: 700;
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      color: #b45309;
+      color: #ff8e68;
       margin: 0 0 0.15rem;
     }
     .hr-preview-scroll {
@@ -505,31 +450,27 @@
   </style>
   <style>body.has-main-nav { padding-top: 5.5rem; }</style>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-queue-kynvera.css') }}?v=22">
 </head>
-<body class="has-main-nav hr-queue-list-page hr-module-page">
+<body class="has-main-nav hr-queue-list-page hr-module-page hr-kynvera-queue">
   {% set active_page = 'pending-review' %}
   {% include 'partials/hr_embed_optional_navbar.html' %}
 
   <div class="container py-4 hr-list-page-shell">
-    <!-- Page Header -->
-    <div class="page-header">
-      <div style="position:relative;">
-        <a href="/hr/" class="back-link">
-          <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
-          Back to HR Module
-        </a>
+    <header class="hr-queue-banner">
+      <div class="hr-queue-banner-top">
+        {% set module_back_url = url_for('hr.hr_dashboard') %}
+        {% set module_back_extra_class = 'back-btn' %}
+        {% include 'partials/module_back_link.html' %}
       </div>
-      <h1>Pending HR Review</h1>
-      <p>Review and approve employee HR requests before forwarding to GM</p>
-    </div>
+      <h1 class="hr-queue-banner-title">Pending HR Review</h1>
+      <p class="hr-queue-banner-sub">Review and approve employee HR requests before forwarding to GM</p>
+    </header>
 
     <!-- Pending List -->
     <div class="pending-list-container">
       <div class="pending-list-header">
         <div class="pending-list-header-left">
-          <svg width="17" height="17" fill="none" stroke="#d97706" stroke-width="2.2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-          </svg>
           <h2>Pending Reviews</h2>
           <span class="pending-count-badge" id="pendingCountBadge">0</span>
         </div>
@@ -543,7 +484,7 @@
       </div>
       <div id="pendingList">
         <div class="text-center py-5">
-          <div class="spinner-border spinner-border-sm" style="color:#d97706;"></div>
+          <div class="spinner-border spinner-border-sm" style="color:#ff8e68;"></div>
           <p class="mt-2 text-muted small mb-0">Loading requests...</p>
         </div>
       </div>
@@ -552,7 +493,7 @@
 
   <!-- ── Review Overlay (full-screen, page-like) ────────────────────────── -->
   <div class="modal fade" id="reviewModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
 
         <!-- Hidden legacy header (kept so existing JS that fills these IDs does not break) -->
@@ -595,14 +536,14 @@
             <!-- Right: action card -->
             <div class="hr-sign-col">
               <div class="hr-sign-card">
-                <h2 class="hr-sign-title" id="hrSignTitle">HR Review</h2>
-                <p class="hr-sign-meta" id="hrSignMeta">Review and forward to GM</p>
+                <header class="gm-rail-head">
+                  <p class="hr-sign-kicker">HR review</p>
+                  <h2 class="hr-sign-title" id="hrSignTitle">HR Review</h2>
+                  <p class="hr-sign-meta" id="hrSignMeta">Review and forward to GM</p>
+                </header>
 
                 <div class="review-actions-card">
-                  <div class="review-actions-title">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Your Review
-                  </div>
+                  <div class="review-actions-title">Your Review</div>
 
                   <!-- HR-only leave fields (shown only for leave applications) -->
                   <div id="hrFormFields" style="display:none;">
@@ -631,30 +572,25 @@
                     </div>
                   </div>
 
-                  <div class="mb-2" style="margin-top:0.85rem;">
-                    <label class="form-label" for="reviewComments">Comments <span style="font-weight:400;color:#9ca3af;">(optional)</span></label>
+                  <div class="mb-2">
+                    <label class="form-label" for="reviewComments">Comments <span style="font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0;">(optional)</span></label>
                     <textarea class="form-control" id="reviewComments" rows="2" placeholder="Brief note for the GM..."></textarea>
                   </div>
 
-                  <div style="touch-action:none;margin-top:0.4rem;">
-                    <label class="form-label" style="font-weight:600;font-size:0.83rem;color:#374151;">HR Signature</label>
+                  <div class="gm-sig-block" style="touch-action:none;">
+                    <label class="form-label" for="signatureCanvas">Signature</label>
                     <div class="review-sig-wrap">
-                      <div class="review-sig-label">
-                        <span>Sign here to confirm your decision</span>
-                        <button type="button" class="btn-clear-signature" onclick="clearSignature()">Clear</button>
-                      </div>
-                      <canvas id="signatureCanvas" class="w-100" width="400" height="100"
-                        style="touch-action:none; display:block; min-height:100px; background:white;"></canvas>
+                      <p class="gm-sig-hint">Sign here</p>
+                      <button type="button" class="btn-clear-signature" onclick="clearSignature()">Clear</button>
+                      <canvas id="signatureCanvas" class="w-100" width="400" height="128"
+                        style="touch-action:none; display:block; min-height:128px;"></canvas>
                     </div>
                   </div>
+                </div>
 
-                  <div class="hr-decision-actions">
-                    <button type="button" class="btn btn-outline-danger" onclick="rejectRequest()" style="border-radius:9px;font-weight:600;">Reject</button>
-                    <button type="button" class="btn-approve" onclick="approveRequest()">
-                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                      Approve &amp; Forward
-                    </button>
-                  </div>
+                <div class="hr-decision-actions">
+                  <button type="button" class="btn btn-outline-danger" onclick="rejectRequest()">Reject</button>
+                  <button type="button" class="btn-approve" onclick="approveRequest()">Approve &amp; Forward</button>
                 </div>
               </div>
             </div>
@@ -686,6 +622,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/hr-display.js') }}?v=1"></script>
   <script src="{{ url_for('static', filename='js/hr_submission_full_form_url.js') }}"></script>
   <script>
     const HR_SUPPORTED_DOCX_FORMS = {{ (supported_docx_forms or [])|tojson }};
@@ -742,19 +679,31 @@
       const canvas = document.getElementById('signatureCanvas');
       if (!canvas || typeof SignaturePad === 'undefined') return;
       if (signaturePad) { signaturePad.clear(); }
-      else { signaturePad = new SignaturePad(canvas, { backgroundColor: 'rgb(255,255,255)', penColor: 'rgb(0,0,0)' }); }
+      else { signaturePad = new SignaturePad(canvas, { backgroundColor: 'rgba(0,0,0,0)', penColor: 'rgb(28,25,23)', minWidth: 0.8, maxWidth: 2.2 }); }
       const wrap = canvas.closest('.review-sig-wrap');
       const w = wrap ? wrap.offsetWidth : 320;
       const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      const h = 128;
       canvas.width  = Math.max(w, 200) * ratio;
-      canvas.height = 100 * ratio;
+      canvas.height = h * ratio;
       canvas.style.width  = (canvas.width / ratio) + 'px';
-      canvas.style.height = '100px';
+      canvas.style.height = h + 'px';
       canvas.getContext('2d').scale(ratio, ratio);
       signaturePad.clear();
+      bindSigPadHint(signaturePad, wrap);
     }
     document.getElementById('reviewModal')?.addEventListener('shown.bs.modal', initSignaturePad);
-    function clearSignature() { if (signaturePad) signaturePad.clear(); }
+    function bindSigPadHint(pad, wrap) {
+      if (!pad || !wrap) return;
+      const sync = () => wrap.classList.toggle('is-signed', !pad.isEmpty());
+      pad.addEventListener('beginStroke', () => wrap.classList.add('is-signed'));
+      pad.addEventListener('endStroke', sync);
+      sync();
+    }
+    function clearSignature() {
+      if (signaturePad) signaturePad.clear();
+      document.querySelector('.review-sig-wrap')?.classList.remove('is-signed');
+    }
 
     /* ── Helpers ──────────────────────────────────────────── */
     function escapeHtml(text) {
@@ -785,13 +734,17 @@
     }
     function getFormTypeClass(type) { return 'type-' + type.replace('hr_', ''); }
     function getFormTypeLabel(type) {
+      if (window.hrDisplay) return hrDisplay.formTypeLabel(type);
       const labels = {
-        leave_application: 'Leave', termination: 'Termination',
+        leave_application: 'Leave Application', termination: 'Termination',
         long_vacation: 'Long Vacation', grievance: 'Grievance',
-        passport_release: 'Passport', duty_resumption: 'Duty Resumption', asset: 'Asset'
+        passport_release: 'Passport Release', duty_resumption: 'Duty Resumption', asset: 'Asset'
       };
       const key = type.replace('hr_', '');
-      return labels[key] || key.replace(/_/g, ' ').toUpperCase();
+      return labels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+    }
+    function hrSubmissionRef(id) {
+      return (window.hrDisplay && hrDisplay.submissionRef(id)) || id;
     }
     /* ── Form renderers ───────────────────────────────────── */
     function renderFormAsFilled(formType, formData, submissionId) {
@@ -939,11 +892,6 @@
         badge.style.display = 'none';
         container.innerHTML = `
             <div class="empty-state">
-              <div class="empty-state-icon">
-                <svg width="28" height="28" fill="none" stroke="#059669" stroke-width="2.5" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-              </div>
               <h5 style="font-weight:700;color:#1e293b;margin-bottom:0.4rem;">All caught up</h5>
               <p class="text-muted mb-0" style="font-size:0.875rem;">No requests pending HR review</p>
             </div>`;
@@ -975,7 +923,7 @@
                       <span class="form-type-badge ${getFormTypeClass(s.module_type)}">${getFormTypeLabel(s.module_type)}</span>
                       ${agePill(s.created_at)}
                     </div>
-                    <div style="font-weight:700;font-size:0.92rem;color:#1e293b;margin-bottom:0.15rem;">${escapeHtml(s.submission_id)}</div>
+                    <div style="font-weight:700;font-size:0.92rem;color:#1e293b;margin-bottom:0.15rem;">${escapeHtml(hrSubmissionRef(s.submission_id))}</div>
                     <div style="font-size:0.8rem;color:#64748b;">
                       From <strong style="color:#374151;">${escapeHtml(s.submitter_name || 'Unknown')}</strong>
                       &nbsp;·&nbsp;
@@ -1123,8 +1071,7 @@
       if (signMeta) {
         const submitterName = escapeHtml(submission.submitter_name || (formData && formData.submitted_by_name) || 'Employee');
         signMeta.innerHTML =
-          '<strong>' + submitterName + '</strong> submitted an HR form requiring your review.' +
-          '<br>Ref: <code>' + escapeHtml(submission.submission_id || '') + '</code>';
+          '<strong>' + submitterName + '</strong> submitted this request.';
       }
 
       // Hidden legacy iframe (kept so other code paths that read it do not break)

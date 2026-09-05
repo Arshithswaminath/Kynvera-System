@@ -456,6 +456,29 @@ body.mp-page .mp-settings-view {
   background: #fafafa;
 }
 
+.mp-matrix tfoot th,
+.mp-matrix tfoot td {
+  font-weight: 700;
+  color: #125435;
+  background: #eef6f1;
+  border-top: 2px solid #125435;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+
+.mp-matrix tfoot th.mp-matrix-trade {
+  text-align: left;
+  font-weight: 700;
+  background: #eef6f1;
+  left: 0;
+  z-index: 3;
+}
+
+.mp-matrix tfoot .mp-matrix-total {
+  background: #e4f0e9;
+}
+
 .mp-matrix-input {
   width: 3.5rem;
   min-width: 3.5rem;
@@ -765,28 +788,54 @@ body.mp-page .mp-settings-view {
   align-items: center;
   justify-content: center;
   margin-left: 0.2rem;
-  padding: 0 0.2rem;
-  min-width: 1.25rem;
-  min-height: 1.25rem;
+  padding: 0;
+  width: 1.45rem;
+  height: 1.45rem;
+  min-width: 1.45rem;
+  min-height: 1.45rem;
   border: none;
-  border-radius: 4px;
+  border-radius: 5px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.92);
   line-height: 1;
   cursor: pointer;
   vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.mp-col-filter-btn svg {
+  display: block;
+  width: 0.85rem;
+  height: 0.85rem;
 }
 
 .mp-col-filter-btn:hover,
 .mp-col-filter-btn.is-open {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.14);
   color: #fff;
 }
 
 .mp-col-filter-btn.is-active {
-  background: var(--hh-brand, #ff8e68);
+  background: transparent;
   color: #fff;
+}
+
+.mp-col-filter-btn.is-active svg {
+  fill: currentColor;
+}
+
+@media (max-width: 768px) {
+  .mp-col-filter-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .mp-col-filter-btn svg {
+    width: 1rem;
+    height: 1rem;
+  }
 }
 
 .mp-col-menu {
@@ -856,11 +905,11 @@ body.mp-page .mp-settings-view {
 }
 
 .mp-col-menu-opt:hover {
-  background: #fff4ef;
+  background: #f3f4f6;
 }
 
 .mp-col-menu-opt input {
-  accent-color: var(--hh-brand, #ff8e68);
+  accent-color: #125435;
 }
 
 .mp-col-menu-actions {
@@ -1914,7 +1963,51 @@ body.mp-page .mp-settings-view {
   box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.25);
 }
 
-.mp-link-option.is-suggested:not(.is-restricted) {
+.mp-link-option.is-on-hold {
+  opacity: 0.62;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  filter: grayscale(0.55);
+}
+
+.mp-link-option.is-on-hold .mp-link-avatar {
+  background: #94a3b8;
+}
+
+.mp-link-option.is-on-hold .mp-link-option-name,
+.mp-link-option.is-on-hold .mp-link-option-name-text {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.mp-link-option.is-on-hold .mp-link-option-sub {
+  color: #94a3b8;
+}
+
+.mp-link-option.is-on-hold .mp-link-badge.is-available {
+  color: #64748b;
+  background: #e2e8f0;
+}
+
+.mp-link-option.is-on-hold .mp-link-pipe {
+  color: #475569;
+  background: #e2e8f0;
+}
+
+.mp-link-option.is-on-hold:hover {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+}
+
+.mp-link-option.is-on-hold.is-selected {
+  opacity: 0.78;
+  border-color: var(--hh-brand, #ff8e68);
+  background: #f1f5f9;
+  box-shadow: 0 0 0 2px rgba(255, 142, 104, 0.16);
+  filter: grayscale(0.4);
+}
+
+.mp-link-option.is-suggested:not(.is-restricted):not(.is-on-hold) {
   border-color: #fdba74;
 }
 

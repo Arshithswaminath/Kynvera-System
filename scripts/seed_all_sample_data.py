@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Fill every SQLAlchemy model with local sample rows so dashboards are not empty.
 
-Usage (from project root):
+Usage (from project root) — run this only when someone asks for sample data:
   ./venv/bin/python scripts/seed_all_sample_data.py
+
+Not called on app start. Deleting sample HR rows must stay deleted.
 
 Idempotent: unique SAMPLE- keys / [SAMPLE] tags. Re-runs merge, they do not wipe
 existing real data.
@@ -169,7 +171,7 @@ def seed_people():
         username='demo_gm', email='gm@demo.injaaz.local',
         full_name='Demo General Manager', designation='general_manager',
         access_hr=True, access_ticketing=True, access_qhsi=True,
-        access_submitted_forms=True,
+        access_submitted_forms=True, access_procurement_module=True,
     )
     hr = _ensure_user(
         username='demo_hr', email='hr@demo.injaaz.local',
@@ -692,28 +694,6 @@ def seed_submissions(people):
         status='submitted', workflow='submitted',
     )
 
-    add_sub(
-        'CAT-MAT-SAMPLE1', 'catalog_material', 'HEPA Filter 24x24',
-        {'department': 'HVAC', 'material_name': 'HEPA Filter 24x24', 'brand': 'Camfil', 'uom': 'PCS', 'unit_price': 85},
-    )
-    add_sub(
-        'CAT-MAT-SAMPLE2', 'catalog_material', 'LED Tube 18W',
-        {'department': 'Electrical', 'material_name': 'LED Tube 18W', 'brand': 'Philips', 'uom': 'PCS', 'unit_price': 22},
-    )
-    add_sub(
-        'PROC-MAT-SAMPLE1', 'procurement_material', 'HEPA Filter 24x24',
-        {
-            'material_name': 'HEPA Filter 24x24', 'property': 'Tower A', 'category': 'HVAC',
-            'description': SEED_TAG, 'unit': 'pcs', 'quantity': 12, 'unit_price': 85,
-            'total_price': 1020, 'supplier': 'Gulf Filters LLC',
-        },
-    )
-    add_sub(
-        'PROC-PROP-SAMPLE1', 'procurement_property', 'Tower A',
-        {'property_name': 'Tower A', 'address': 'Dubai Marina', 'description': SEED_TAG},
-        status='active', workflow='active',
-    )
-
 
 def seed_qhsi_and_hr_trackers(people):
     from app.models import (
@@ -906,6 +886,8 @@ def seed_all_sample_data() -> dict:
     seed_submissions(people)
     seed_qhsi_and_hr_trackers(people)
     seed_files_module(people)
+    from scripts.seed_procurement import seed_procurement
+    seed_procurement()
     db.session.commit()
     return {'ok': True, 'password': DEMO_PASSWORD}
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>HR Module - Kynvera</title>
+<title>My Requests - Kynvera</title>
   <meta name="theme-color" content="#ff8e68">
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
@@ -74,6 +74,16 @@
     }
     .my-requests-section { margin-top: 2rem; }
     .my-requests-list { background: transparent; }
+    #hrFormsGrid { margin-bottom: 0; }
+    .hr-inbox-banner {
+      margin-top: 1.75rem;
+      margin-bottom: 0;
+    }
+    .hr-inbox-banner + .hr-inbox-banner { margin-top: 1.25rem; }
+    .my-requests-heading {
+      margin-top: 0.35rem;
+      margin-bottom: 1.15rem;
+    }
     .detail-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
@@ -239,7 +249,7 @@
         {% set module_back_url = url_for('dashboard') %}
         {% set module_back_extra_class = 'back-btn' %}
         {% include 'partials/module_back_link.html' %}
-        <h1 class="hero-title">HR <span class="hero-title-accent">Module</span></h1>
+        <h1 class="hero-title">My <span class="hero-title-accent">Requests</span></h1>
       </div>
       <div class="hero-right"></div>
     </div>
@@ -248,11 +258,22 @@
   <!-- HR Forms (same module-card style as hr_dashboard) -->
   <section class="modules-section hr-modules-section" id="modules">
     <div class="modules-inner">
-      <h2 class="modules-section-label">HR Module</h2>
+      <div id="replacementSignBanner" class="hr-inbox-banner" style="display:none"></div>
+      <div id="mgmtChainBanner" class="hr-inbox-banner" style="display:none"></div>
+
+      <h2 class="modules-section-label my-requests-heading">My submitted requests</h2>
+      <div id="requestsList" class="my-requests-list">
+        <div style="text-align: center; padding: 3rem; color: #64748b;">
+          <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
+          <p>Loading your requests...</p>
+        </div>
+      </div>
+
+      <h2 class="modules-section-label">Start a new request</h2>
       <div class="modules-grid" id="hrFormsGrid">
         <a href="/hr/leave-application-form" class="module-card"><div class="card-body"><span class="module-number">01 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div><h2 class="module-title">Leave Application</h2><p class="module-description">Submit leave application (annual, sick, emergency)</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
         <a href="/hr/commencement-form" class="module-card"><div class="card-body"><span class="module-number">02 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><h2 class="module-title">Commencement Form</h2><p class="module-description">Complete within 5 days of joining</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
-        <a href="/hr/duty-resumption-form" class="module-card"><div class="card-body"><span class="module-number">03 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg></div><h2 class="module-title">Duty Resumption</h2><p class="module-description">Resumption of duty after leave</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
+        <a href="/hr/duty-resumption-form" class="module-card"><div class="card-body"><span class="module-number">03 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg></div><h2 class="module-title">Duty Resumption</h2><p class="module-description">Resumption of duty after leave</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
         <a href="/hr/contract-renewal-form" class="module-card"><div class="card-body"><span class="module-number">04 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><h2 class="module-title">Contract Renewal</h2><p class="module-description">Employee contract renewal evaluation</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
         <a href="/hr/performance-evaluation-form" class="module-card"><div class="card-body"><span class="module-number">05 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div><h2 class="module-title">Performance Evaluation</h2><p class="module-description">Employee performance evaluation</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
         <a href="/hr/grievance-form" class="module-card"><div class="card-body"><span class="module-number">06 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div><h2 class="module-title">Grievance / Disciplinary</h2><p class="module-description">Employee grievance or disciplinary action</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
@@ -262,21 +283,11 @@
         <a href="/hr/station-clearance-form" class="module-card"><div class="card-body"><span class="module-number">10 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div><h2 class="module-title">Station Clearance</h2><p class="module-description">Exit formalities</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
         <a href="/hr/visa-renewal-form" class="module-card"><div class="card-body"><span class="module-number">11 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg></div><h2 class="module-title">Visa Renewal</h2><p class="module-description">Visa renewal or cancellation</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
       </div>
-
-      <div id="replacementSignBanner" style="display:none;margin-bottom:1rem"></div>
-      <div id="mgmtChainBanner" style="display:none;margin-bottom:1rem"></div>
-
-      <h2 class="modules-section-label" style="margin-top: 2.5rem;">My Submitted Requests</h2>
-      <div id="requestsList" class="my-requests-list">
-        <div style="text-align: center; padding: 3rem; color: #64748b;">
-          <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
-          <p>Loading your requests...</p>
-        </div>
-      </div>
     </div>
   </section>
 
   <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/hr-display.js') }}?v=1"></script>
   <script>
     (function redirectLegacySubmissionModalLink() {
       try {
@@ -307,7 +318,12 @@
       };
       return labels[status] || status;
     }
-    function getFormTypeLabel(type) { return type.replace('hr_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()); }
+    function getFormTypeLabel(type) {
+      return (window.hrDisplay && hrDisplay.formTypeLabel(type)) || String(type || '').replace('hr_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+    function hrSubmissionRef(id) {
+      return (window.hrDisplay && hrDisplay.submissionRef(id)) || id;
+    }
     function getFormTypeClass(type) { const t = type.replace('hr_', ''); return `type-${t}`; }
     function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 
@@ -330,7 +346,7 @@
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem;">
                   <div>
                     <span class="form-type-badge ${getFormTypeClass(s.module_type)}">${getFormTypeLabel(s.module_type)}</span>
-                    <h3 style="font-size: 1.05rem; font-weight: 600; margin: 0.5rem 0 0.25rem; color: #1e293b;">${escapeHtml(s.submission_id)}</h3>
+                    <h3 style="font-size: 1.05rem; font-weight: 600; margin: 0.5rem 0 0.25rem; color: #1e293b;">${escapeHtml(hrSubmissionRef(s.submission_id))}</h3>
                     <p style="font-size: 0.875rem; color: #64748b; margin: 0;">Submitted: ${InjaazDateTimeUAE.formatDateMed(s.created_at)}</p>
                   </div>
                   <span class="status-badge status-${s.workflow_status}">${getStatusLabel(s.workflow_status)}</span>
@@ -348,7 +364,7 @@
             <div style="text-align: center; padding: 3rem; background: white; border-radius: 14px; border: 1px solid #e2e8f0;">
               <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
               <h4 style="font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">No requests yet</h4>
-              <p style="color: #64748b;">Use the forms above to submit your first HR request</p>
+              <p style="color: #64748b;">Use Start a new request below to submit your first HR form</p>
             </div>
           `;
         }
@@ -370,7 +386,7 @@
           d.submissions.map(s => {
             const sid = encodeURIComponent(s.submission_id);
             const step = escapeHtml(s.pending_step_label || 'Your step');
-            return `<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.65rem;margin-top:.55rem;padding-top:.55rem;border-top:1px solid #cffafe"><div><strong>${escapeHtml(s.submitter_display||'Employee')}</strong><span style="color:#64748b;margin-left:.4rem">${escapeHtml(s.submission_id)}</span><div style="font-size:.82rem;color:#64748b;margin-top:.2rem">${escapeHtml(getFormTypeLabel(s.module_type))} · ${step}</div></div><a href="/hr/mgmt-sign/${sid}" style="flex-shrink:0;background:#0f766e;color:#fff;text-decoration:none;padding:.45rem .85rem;border-radius:10px;font-weight:600;font-size:.82rem;">Open · Sign</a></div>`;
+            return `<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.65rem;margin-top:.55rem;padding-top:.55rem;border-top:1px solid #cffafe"><div><strong>${escapeHtml(s.submitter_display||'Employee')}</strong><span style="color:#64748b;margin-left:.4rem">${escapeHtml(hrSubmissionRef(s.submission_id))}</span><div style="font-size:.82rem;color:#64748b;margin-top:.2rem">${escapeHtml(getFormTypeLabel(s.module_type))} · ${step}</div></div><a href="/hr/mgmt-sign/${sid}" style="flex-shrink:0;background:#0f766e;color:#fff;text-decoration:none;padding:.45rem .85rem;border-radius:10px;font-weight:600;font-size:.82rem;">Open · Sign</a></div>`;
           }).join('') + '</div>';
       } catch(e){ wrap.style.display='none'; }
     }
@@ -386,7 +402,7 @@
         wrap.innerHTML = '<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:14px;padding:1rem 1.1rem;"><div style="font-weight:700;color:#5b21b6;margin-bottom:0.55rem;font-size:.95rem">Your signature is required</div>' +
           d.submissions.map(s => {
             const sid = encodeURIComponent(s.submission_id);
-            return `<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.65rem;margin-top:.55rem;padding-top:.55rem;border-top:1px solid #ede9fe"><div><strong>${escapeHtml(s.submitter_display||'Colleague')}</strong><span style="color:#64748b;margin-left:.4rem">${escapeHtml(s.submission_id)}</span><div style="font-size:.82rem;color:#64748b;margin-top:.2rem">${escapeHtml(getFormTypeLabel(s.module_type))}${s.pending_slot_label ? ' · ' + escapeHtml(s.pending_slot_label) : ''}</div></div><a href="/hr/replacement-sign/${sid}" style="flex-shrink:0;background:#ff8e68;color:#fff;text-decoration:none;padding:.45rem .85rem;border-radius:10px;font-weight:600;font-size:.82rem;">Open · Sign</a></div>`;
+            return `<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.65rem;margin-top:.55rem;padding-top:.55rem;border-top:1px solid #ede9fe"><div><strong>${escapeHtml(s.submitter_display||'Colleague')}</strong><span style="color:#64748b;margin-left:.4rem">${escapeHtml(hrSubmissionRef(s.submission_id))}</span><div style="font-size:.82rem;color:#64748b;margin-top:.2rem">${escapeHtml(getFormTypeLabel(s.module_type))}${s.pending_slot_label ? ' · ' + escapeHtml(s.pending_slot_label) : ''}</div></div><a href="/hr/replacement-sign/${sid}" style="flex-shrink:0;background:#ff8e68;color:#fff;text-decoration:none;padding:.45rem .85rem;border-radius:10px;font-weight:600;font-size:.82rem;">Open · Sign</a></div>`;
           }).join('') + '</div>';
       } catch(e){ wrap.style.display='none'; }
     }

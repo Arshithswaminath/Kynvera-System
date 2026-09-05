@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="theme-color" content="#ff8e68">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Hiring — Letters of Intent · Kynvera</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=139">
+  {% set active_page = 'hr' %}
+</head>
+<body class="hh-page">
+  {% include 'partials/hr_embed_optional_navbar.html' %}
+
+  <div class="hh-shell" id="olRoot">
+    {% include 'partials/hr_hiring_sidebar.html' %}
+
+    <main class="hh-main">
+      <div class="hh-topbar">
+        <div>
+          {% set module_back_url = module_back_url|default(url_for('hr.hr_dashboard')) %}
+          {% include 'partials/module_back_link.html' %}
+          <h1 class="hh-title">Letters of Intent</h1>
+          <p class="hh-subtitle">Step 1: get the unsigned letter of intent from HR. Step 2: candidate signs, or mark it not accepted — then connect to hiring</p>
+        </div>
+      </div>
+
+      <div class="hh-toolbar ol-toolbar">
+        <div class="hh-search">
+          <svg class="hh-search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+          </svg>
+          <input type="search" id="olSearch" placeholder="Search name, role, comment…" autocomplete="off" aria-label="Search letters of intent">
+        </div>
+        <div class="hh-toolbar-filters" role="group" aria-label="Status filters">
+          <select id="olReceivedFilter" class="hh-select hh-toolbar-select" aria-label="Received filter">
+            <option value="all">Step 1: All</option>
+            <option value="yes">From HR: Yes</option>
+            <option value="no">From HR: No</option>
+          </select>
+          <select id="olOutcomeFilter" class="hh-select hh-toolbar-select" aria-label="Candidate outcome filter">
+            <option value="all">Step 2: All</option>
+            <option value="awaiting">Awaiting signature</option>
+            <option value="signed">Signed</option>
+            <option value="not_accepted">Not accepted</option>
+          </select>
+          <select id="olLinkFilter" class="hh-select hh-toolbar-select" aria-label="Hiring link filter">
+            <option value="all">Hiring: All</option>
+            <option value="unlinked">Hiring: Not linked</option>
+            <option value="linked">Hiring: Linked</option>
+            <option value="manual">Hiring: Manual</option>
+          </select>
+        </div>
+        <button type="button" class="hh-btn hh-btn-primary hh-add-btn hh-add-btn-toolbar" id="olAddBtn" aria-label="Add letter of intent">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+          </svg>
+          Add letter of intent
+        </button>
+      </div>
+
+      <div class="hh-list" id="olList">
+        <div class="hh-loading"><div class="hh-spinner"></div>Loading letters…</div>
+      </div>
+      <div class="hh-pagination" id="olPagination"></div>
+    </main>
+  </div>
+
+  <div class="hh-modal-backdrop" id="olFormModal" role="dialog" aria-modal="true" aria-labelledby="olFormTitle">
+    <div class="hh-modal hh-modal-wide ol-form-modal">
+      <h2 id="olFormTitle">Add letter of intent</h2>
+      <p class="hh-modal-sub" id="olFormSub">Step 1: log the unsigned letter from HR. Step 2: mark when the candidate signs — or that it was not accepted.</p>
+      <p class="ol-form-stamps" id="olFormStamps" hidden></p>
+      <form id="olForm">
+        <input type="hidden" id="olFormId" value="">
+        <div class="hh-field">
+          <label for="olFullName">Candidate name *</label>
+          <input id="olFullName" name="full_name" type="text" required autocomplete="name" placeholder="As on the letter">
+        </div>
+        <div class="hh-field-row">
+          <div class="hh-field">
+            <label for="olRole">Role / position</label>
+            <input id="olRole" name="role" type="text" placeholder="e.g. Technician">
+          </div>
+          <div class="hh-field">
+            <label for="olDept">Department</label>
+            <input id="olDept" name="department" type="text" placeholder="Optional">
+          </div>
+        </div>
+        <div class="hh-field">
+          <label for="olComments">Comment</label>
+          <textarea id="olComments" name="comments" rows="2" maxlength="4000" placeholder="Scan status, sent date, decline reason…"></textarea>
+        </div>
+
+        <p class="ol-section-label">Workflow</p>
+        <div class="ol-status-grid ol-status-steps">
+          <section class="ol-status-card" data-flag="received" data-step="1">
+            <header class="ol-status-head">
+              <span class="ol-step-num" aria-hidden="true">1</span>
+              <div>
+                <h3>Received from HR</h3>
+                <p>Unsigned letter of intent on file</p>
+              </div>
+            </header>
+            <div class="ol-seg" role="radiogroup" aria-label="Received from HR">
+              <label class="ol-seg-opt">
+                <input type="radio" name="received" value="no" checked>
+                <span>No</span>
+              </label>
+              <label class="ol-seg-opt">
+                <input type="radio" name="received" value="yes">
+                <span>Yes</span>
+              </label>
+            </div>
+            <div class="ol-file-row">
+              <label class="ol-file-drop" for="olScanFile">
+                <input id="olScanFile" class="hh-visually-hidden" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
+                <span class="ol-file-drop-icon ol-file-drop-icon-add" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+                  </svg>
+                </span>
+                <span class="ol-file-drop-icon ol-file-drop-icon-done" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                  </svg>
+                </span>
+                <span class="ol-file-drop-copy">
+                  <span class="ol-file-drop-text" id="olScanName">Add HR scan</span>
+                  <span class="ol-file-drop-hint" id="olScanHint">PDF, JPG, or PNG · unsigned copy</span>
+                </span>
+              </label>
+              <button type="button" class="ol-file-view" id="olScanView" hidden>View</button>
+            </div>
+          </section>
+
+          <section class="ol-status-card is-locked" data-flag="outcome" data-step="2" id="olStep2Card">
+            <header class="ol-status-head">
+              <span class="ol-step-num" aria-hidden="true">2</span>
+              <div>
+                <h3>Candidate response</h3>
+                <p>Sign the letter, or mark it not accepted</p>
+              </div>
+            </header>
+            <p class="ol-step-lock-hint" id="olStep2Hint">Complete step 1 first — receive the unsigned letter from HR.</p>
+            <div class="ol-seg ol-seg-3" role="radiogroup" aria-label="Candidate response" id="olOutcomeGroup">
+              <label class="ol-seg-opt">
+                <input type="radio" name="candidate_outcome" value="awaiting_signature" checked disabled>
+                <span>Waiting</span>
+              </label>
+              <label class="ol-seg-opt">
+                <input type="radio" name="candidate_outcome" value="signed" disabled>
+                <span>Signed</span>
+              </label>
+              <label class="ol-seg-opt">
+                <input type="radio" name="candidate_outcome" value="not_accepted" disabled>
+                <span>Not accepted</span>
+              </label>
+            </div>
+            <div class="ol-file-row">
+              <label class="ol-file-drop" for="olSignedFile" id="olSignedDrop">
+                <input id="olSignedFile" class="hh-visually-hidden" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" disabled>
+                <span class="ol-file-drop-icon ol-file-drop-icon-add" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+                  </svg>
+                </span>
+                <span class="ol-file-drop-icon ol-file-drop-icon-done" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                  </svg>
+                </span>
+                <span class="ol-file-drop-copy">
+                  <span class="ol-file-drop-text" id="olSignedName">Add signed copy</span>
+                  <span class="ol-file-drop-hint" id="olSignedHint">Available after the HR letter is received</span>
+                </span>
+              </label>
+              <button type="button" class="ol-file-view" id="olSignedView" hidden>View</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="hh-modal-actions">
+          <button type="button" class="hh-btn hh-btn-ghost" data-ol-close>Cancel</button>
+          <button type="submit" class="hh-btn hh-btn-primary" id="olFormSubmit">Save letter of intent</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="hh-modal-backdrop" id="olConnectModal" role="dialog" aria-modal="true" aria-labelledby="olConnectTitle">
+    <div class="hh-modal hh-modal-wide">
+      <h2 id="olConnectTitle">Connect to hiring?</h2>
+      <p class="hh-modal-sub" id="olConnectSub">This letter of intent is marked received. Link it to a hiring candidate, create one, or keep hiring work separate.</p>
+      <div class="ol-connect-choices">
+        <button type="button" class="ol-connect-choice" id="olConnectExisting">
+          <strong>Link to an existing candidate</strong>
+          <span>Attach this file to someone already in Hiring Docs.</span>
+        </button>
+        <button type="button" class="ol-connect-choice" id="olConnectCreate">
+          <strong>Create a new hiring candidate</strong>
+          <span>Start their checklist from this letter (name and role pre-filled).</span>
+        </button>
+        <button type="button" class="ol-connect-choice" id="olConnectManual">
+          <strong>Work on hiring manually</strong>
+          <span>Keep this letter here. Add or update the hiring file yourself later.</span>
+        </button>
+      </div>
+      <div class="ol-connect-picker" id="olConnectPicker" hidden>
+        <label class="hh-import-label" for="olCandidateSearch">Search candidates</label>
+        <input type="search" id="olCandidateSearch" class="hh-select" placeholder="Name or role…" autocomplete="off">
+        <div class="ol-candidate-list" id="olCandidateList" role="listbox" aria-label="Hiring candidates"></div>
+      </div>
+      <div class="hh-modal-actions">
+        <button type="button" class="hh-btn hh-btn-ghost" id="olConnectLater">Decide later</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hh-modal-backdrop ol-preview-backdrop" id="olPreviewModal" role="dialog" aria-modal="true" aria-labelledby="olPreviewTitle">
+    <div class="hh-modal ol-preview-modal">
+      <div class="ol-preview-head">
+        <h2 id="olPreviewTitle">File preview</h2>
+        <button type="button" class="hh-btn hh-btn-ghost" data-ol-preview-close>Close</button>
+      </div>
+      <div class="ol-preview-body" id="olPreviewBody"></div>
+      <div class="hh-modal-actions">
+        <button type="button" class="hh-btn hh-btn-secondary" id="olPreviewDownload">Download</button>
+        <button type="button" class="hh-btn hh-btn-primary" data-ol-preview-close>Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script>window.FILES_SAVE_MODULE = 'hiring'; window.FILES_SAVE_MODULE_LABEL = 'Hiring Documents';</script>
+  <script src="{{ url_for('static', filename='js/files-save.js') }}?v=16"></script>
+  <script src="{{ url_for('static', filename='js/hr-hiring-offer-letters.js') }}?v=14"></script>
+</body>
+</html>

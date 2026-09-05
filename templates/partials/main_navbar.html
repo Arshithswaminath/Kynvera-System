@@ -19,7 +19,6 @@
         <li><a href="{{ _kynvera_home_url }}">Kynvera Home</a></li>
         {% endif %}
         <li><a href="/dashboard"{% if active_page == 'home' %} class="nav-current"{% endif %}>Home</a></li>
-        <li><a href="/about"{% if active_page == 'about' %} class="nav-current"{% endif %}>About</a></li>
         <li><a href="javascript:void(0)" id="profileLink" role="button" onclick="if(typeof openProfileModal==='function'){openProfileModal();}">Profile</a></li>
         <li id="inspection-forms-menu-item" style="display: none;">
           <a href="/inspection/"{% if active_page == 'inspection' %} class="nav-current"{% endif %}>Inspection</a>
@@ -48,7 +47,7 @@
         </li>
         <li id="pending-review-menu-item" style="display: none;">
           <a href="/workflow/pending-reviews"{% if active_page == 'pending-review' %} class="nav-current"{% endif %}>
-            Pending Review
+            Pending forms
             <span id="navPendingBadge" style="display: none; background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; margin-left: 4px; font-weight: 600;">0</span>
           </a>
         </li>
@@ -81,6 +80,18 @@
         <span class="hamburger-bar" aria-hidden="true"></span>
         <span class="hamburger-bar" aria-hidden="true"></span>
       </button>
+      <div class="files-sync-chip" id="filesSyncChip" hidden data-state="idle">
+        <span class="files-sync-chip-spinner" aria-hidden="true"></span>
+        <span class="files-sync-chip-check" aria-hidden="true">
+          <svg viewBox="0 0 20 20" fill="none" width="14" height="14"><path d="M4.5 10.5 8 14l7.5-8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <div class="files-sync-chip-body">
+          <span class="files-sync-chip-label" id="filesSyncChipLabel">Syncing…</span>
+          <span class="files-sync-chip-bar" aria-hidden="true"><span class="files-sync-chip-bar-fill" id="filesSyncChipBarFill"></span></span>
+        </div>
+        <a class="files-sync-chip-link" id="filesSyncChipLink" href="/files/" hidden>Check folder</a>
+        <button type="button" class="files-sync-chip-close" id="filesSyncChipClose" aria-label="Dismiss sync status">×</button>
+      </div>
       <button type="button" class="nav-assistant-btn" id="navAssistantBtn" aria-label="Ask Kynvera assistant" title="Ask Kynvera — help with forms, leave, documents" aria-expanded="false" aria-controls="assistantPanel">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a49.255 49.255 0 0 0 4.365-1.238C20.864 15.052 22 13.714 22 12.015c0-4.746-4.03-8.511-9-8.511S4 7.269 4 12.015v.745Z" />
@@ -127,4 +138,6 @@
 <div class="mobile-overlay" id="mobileOverlay"></div>
 {% include 'partials/profile_modal.html' %}
 {% include 'partials/assistant_widget.html' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/files-sync-chip.css') }}?v=1">
 <script src="{{ url_for('static', filename='js/module-back.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/files-sync-status.js') }}?v=2" defer></script>

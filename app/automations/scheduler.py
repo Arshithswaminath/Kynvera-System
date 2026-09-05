@@ -1,4 +1,8 @@
-"""APScheduler for Automations: 8 PM Dubai cron + startup catch-up."""
+"""APScheduler for Automations: 1-minute tick with due-time catch-up.
+
+Reads live DB hour/minute/enabled each tick. Catch-up runs only after today's
+scheduled time, so a restart before 11:10 does not send the backup early.
+"""
 from __future__ import annotations
 
 import logging
@@ -7,14 +11,12 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
-from apscheduler.triggers.date import DateTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 logger = logging.getLogger(__name__)
 
 _scheduler: BackgroundScheduler | None = None
-_CRON_PREFIX = 'automations_cron_'
-_CATCHUP_ID = 'automations_startup_catchup'
+_TICK_ID = 'automations_minute_tick'
 
 
 def _env_timezone() -> ZoneInfo:
@@ -26,30 +28,23 @@ def _env_timezone() -> ZoneInfo:
         return ZoneInfo('Asia/Dubai')
 
 
-def _cron_job_id(slug: str) -> str:
-    return f'{_CRON_PREFIX}{slug}'
-
-
-def _run_scheduled(app):
+def _run_tick(app):
     with app.app_context():
         try:
-            from app.automations.runner import run_scheduled_due
-            results = run_scheduled_due()
+            from app.automations.runner import run_scheduler_tick
+            results = run_scheduler_tick()
             for row in results:
-                logger.info('Automations scheduled %s: %s', row.get('slug'), row.get('status'))
+                status = row.get('status')
+                if status == 'skipped':
+                    continue
+                logger.info('Automations tick %s: %s', row.get('slug'), status)
         except Exception:
-            logger.exception('Automations scheduled tick failed')
-
-
-def _run_catchup(app):
-    with app.app_context():
-        try:
-            from app.automations.runner import run_catchup
-            results = run_catchup()
-            for row in results:
-                logger.info('Automations catch-up %s: %s', row.get('slug'), row.get('status'))
-        except Exception:
-            logger.exception('Automations catch-up failed')
+            try:
+                from app.models import db
+                db.session.rollback()
+            except Exception:
+                pass
+            logger.exception('Automations scheduler tick failed')
 
 
 def _is_testing(app) -> bool:
@@ -61,72 +56,37 @@ def _is_testing(app) -> bool:
     return (os.environ.get('FLASK_ENV') or '').strip().lower() == 'testing'
 
 
+def _scheduler_disabled(app) -> bool:
+    flag = (os.environ.get('AUTOMATIONS_SCHEDULER') or '').strip().lower()
+    if flag in ('0', 'false', 'no', 'off'):
+        return True
+    return _is_testing(app)
+
+
 def refresh_cron_jobs(app) -> None:
-    """Re-register cron jobs from DB rows (enabled + implemented)."""
-    global _scheduler
-    if not _scheduler:
-        return
-    from app.automations.jobs import ensure_seed_jobs, get_catalog_entry
-    from app.models import AutomationJob
-
-    existing = [j.id for j in _scheduler.get_jobs() if str(j.id).startswith(_CRON_PREFIX)]
-    for jid in existing:
-        try:
-            _scheduler.remove_job(jid)
-        except Exception:
-            pass
-
-    specs = []
-    with app.app_context():
-        ensure_seed_jobs()
-        for job in AutomationJob.query.all():
-            spec = get_catalog_entry(job.slug)
-            if not spec or not spec.get('implemented') or not job.enabled:
-                continue
-            specs.append({
-                'slug': job.slug,
-                'timezone': (job.timezone or '').strip(),
-                'hour': int(job.schedule_hour if job.schedule_hour is not None else 20),
-                'minute': int(job.schedule_minute if job.schedule_minute is not None else 0),
-            })
-
-    for row in specs:
-        tz_name = row['timezone']
-        try:
-            tz = ZoneInfo(tz_name) if tz_name else _env_timezone()
-        except Exception:
-            tz = _env_timezone()
-        hour = row['hour']
-        minute = row['minute']
-        _scheduler.add_job(
-            _run_scheduled,
-            CronTrigger(hour=hour, minute=minute, timezone=tz),
-            args=[app],
-            id=_cron_job_id(row['slug']),
-            replace_existing=True,
-            misfire_grace_time=120,
-        )
-        logger.info(
-            'Automations cron %s at %02d:%02d %s',
-            row['slug'], hour, minute, getattr(tz, 'key', str(tz)),
-        )
+    """Kept for PATCH callers. The minute tick reads hour/minute/enabled from DB."""
+    return
 
 
 def init_scheduler(app) -> None:
     global _scheduler
-    if _is_testing(app):
+    if _scheduler_disabled(app):
         return
     if _scheduler and _scheduler.running:
         return
 
-    _scheduler = BackgroundScheduler(daemon=True)
-    refresh_cron_jobs(app)
+    tz = _env_timezone()
+    _scheduler = BackgroundScheduler(daemon=True, timezone=tz)
     _scheduler.add_job(
-        _run_catchup,
-        DateTrigger(run_date=datetime.now() + timedelta(seconds=15)),
+        _run_tick,
+        IntervalTrigger(minutes=1, timezone=tz),
         args=[app],
-        id=_CATCHUP_ID,
+        id=_TICK_ID,
         replace_existing=True,
+        next_run_time=datetime.now(tz) + timedelta(seconds=15),
+        coalesce=True,
+        max_instances=1,
+        misfire_grace_time=3600,
     )
     _scheduler.start()
-    logger.info('Automations APScheduler started (daily cron + startup catch-up)')
+    logger.info('Automations APScheduler started (1-minute tick, timezone %s)', tz.key)

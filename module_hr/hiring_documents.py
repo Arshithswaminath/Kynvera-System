@@ -30,6 +30,7 @@ from app.models import (
     HIRING_DOC_TYPES,
     HIRING_PIPELINE_DEFAULT,
     HIRING_PIPELINE_LABELS,
+    HIRING_PIPELINE_PROCESS_STATUSES,
     HIRING_PIPELINE_STATUSES,
     HIRING_PIPELINE_STEPS,
     HIRING_VISA_GATED_DOC_TYPES,
@@ -69,14 +70,10 @@ def _user_desig_lc(user: Optional[User]) -> str:
 
 
 def user_can_manage_hiring_docs(user: Optional[User]) -> bool:
-    """HR staff who may manage the hiring document tracker."""
+    """Hiring document tracker — requires the HR Hiring submodule flag."""
     if not user:
         return False
-    if _role_is_admin(user):
-        return True
-    if getattr(user, 'access_hr', False):
-        return True
-    return _user_desig_lc(user) == 'hr_manager'
+    return bool(user.has_hiring_submodule())
 
 
 def _get_current_user():
@@ -540,6 +537,14 @@ def register_hiring_document_routes(hr_bp):
                     status_code=400,
                     error_code='VALIDATION_ERROR',
                 )
+            current = candidate.normalized_pipeline_status()
+            if current == 'candidate_employee' and pipeline in HIRING_PIPELINE_PROCESS_STATUSES:
+                return error_response(
+                    'This person has already been hired, so Put on hold and Not hired '
+                    'are not enabled. Ask for approval if you need to use those options.',
+                    status_code=400,
+                    error_code='PIPELINE_LOCKED',
+                )
             candidate.pipeline_status = pipeline
         candidate.updated_at = utc_now_naive()
         # Keep linked manpower vacancy in sync (name/contact/status)
@@ -560,6 +565,11 @@ def register_hiring_document_routes(hr_bp):
         candidate = db.session.get(HiringCandidate, candidate_id)
         if not candidate:
             return error_response('Candidate not found', status_code=404, error_code='NOT_FOUND')
+
+        for letter in list(getattr(candidate, 'linked_offer_letters', None) or []):
+            letter.hiring_candidate_id = None
+            letter.link_status = 'unlinked'
+            letter.updated_at = utc_now_naive()
 
         for doc in list(candidate.documents or []):
             _clear_document_file(doc)

@@ -335,32 +335,60 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
 .bf-trend-insight{margin-top:10px;padding:8px 10px;border-radius:8px;background:var(--g50);border:1px solid var(--line);font-size:12px;color:var(--ink2);line-height:1.35}
 .bf-trend-insight strong{color:var(--g800);font-weight:700}
 
-.bf-modal-veil{position:fixed;inset:0;background:rgba(8,24,15,.45);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .22s;backdrop-filter:blur(5px)}
+.bf-modal-veil{
+  position:fixed;
+  inset:0;
+  padding:calc(var(--bf-nav-top, var(--nav-bar-h, 72px)) + 12px) 1.25rem 1.25rem;
+  background:rgba(8,24,15,.45);
+  z-index:10050;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .22s;
+  backdrop-filter:blur(5px);
+  box-sizing:border-box;
+  overflow:auto;
+}
 .bf-modal-veil.open{opacity:1;pointer-events:all}
-.bf-modal-box{background:#fff;border-radius:var(--r-xl);width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:var(--sh-lg);transform:scale(.95) translateY(14px);transition:transform .22s}
+.bf-modal-box{
+  background:#fff;
+  border-radius:var(--r-xl);
+  width:min(480px,100%);
+  max-width:95vw;
+  max-height:calc(100dvh - var(--bf-nav-top, var(--nav-bar-h, 72px)) - 2.5rem);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  box-shadow:var(--sh-lg);
+  transform:scale(.95) translateY(14px);
+  transition:transform .22s;
+}
 .bf-modal-veil.open .bf-modal-box{transform:scale(1) translateY(0)}
-.bf-modal-head{padding:24px 26px 18px;border-bottom:1.5px solid var(--line);display:flex;align-items:center;gap:13px;position:sticky;top:0;background:#fff;z-index:10;border-radius:var(--r-xl) var(--r-xl) 0 0}
-.bf-modal-head-ico{width:44px;height:44px;border-radius:13px;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:22px}
-.bf-modal-head-title{font-size:17px;font-weight:700;color:var(--ink)}
-.bf-modal-head-sub{font-size:12px;color:var(--subtle);margin-top:2px}
-.bf-modal-close{margin-left:auto;width:32px;height:32px;border-radius:8px;border:1.5px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--subtle);transition:all .14s}
+.bf-modal-head{padding:14px 20px 12px;border-bottom:1.5px solid var(--line);display:flex;align-items:center;gap:10px;flex-shrink:0;background:#fff;z-index:10}
+.bf-modal-head-ico{width:36px;height:36px;border-radius:10px;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.bf-modal-head-title{font-size:16px;font-weight:700;color:var(--ink)}
+.bf-modal-head-sub{font-size:12px;color:var(--subtle);margin-top:1px}
+.bf-modal-close{margin-left:auto;width:32px;height:32px;border-radius:8px;border:1.5px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--subtle);transition:all .14s;flex-shrink:0}
 .bf-modal-close:hover{border-color:var(--rose);color:var(--rose)}
-.bf-modal-body{padding:22px 26px}
-.bf-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.bf-modal-body{padding:14px 20px;overflow-y:auto;flex:1 1 auto;min-height:0;-webkit-overflow-scrolling:touch}
+.bf-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
 .bf-field-grid.solo{grid-template-columns:1fr}
 .bf-field-grid.trio{grid-template-columns:1fr 1fr 1fr}
-.bf-fld label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.3px;margin-bottom:6px}
-.bf-fld input,.bf-fld select,.bf-fld textarea{width:100%;padding:9px 13px;border:1.5px solid var(--line);border-radius:var(--r-sm);font-family:inherit;font-size:13px;color:var(--ink);background:var(--bg);outline:none;transition:all .15s;resize:none}
+.bf-fld label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.3px;margin-bottom:4px}
+.bf-fld input,.bf-fld select,.bf-fld textarea{width:100%;padding:8px 12px;border:1.5px solid var(--line);border-radius:var(--r-sm);font-family:inherit;font-size:13px;color:var(--ink);background:var(--bg);outline:none;transition:all .15s;resize:none;min-height:40px}
+.bf-fld textarea{min-height:64px}
 .bf-fld input:focus,.bf-fld select:focus,.bf-fld textarea:focus{border-color:var(--g800);background:#fff;box-shadow:var(--sh-glow)}
-.bf-section-divider{display:flex;align-items:center;gap:10px;margin:16px 0 14px;font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.8px}
+.bf-section-divider{display:flex;align-items:center;gap:10px;margin:10px 0 10px;font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.8px}
 .bf-section-divider::before,.bf-section-divider::after{content:'';flex:1;height:1px;background:var(--line)}
-.bf-modal-foot{padding:14px 26px 22px;display:flex;gap:10px;justify-content:flex-end}
+.bf-modal-foot{padding:10px 20px 14px;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;border-top:1.5px solid var(--line);background:#fff}
 .bf-btn-cancel{padding:9px 20px;border:1.5px solid var(--line);border-radius:var(--r-sm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);background:#fff;transition:all .14s}
 .bf-btn-cancel:hover{background:var(--bg)}
 .bf-btn-primary{padding:9px 24px;background:var(--g800);color:#fff;border:none;border-radius:var(--r-sm);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .18s;box-shadow:none!important;filter:none}
 .bf-btn-primary:hover{background:var(--g700);transform:none;box-shadow:none!important}
 
-#bf-toast{position:fixed;bottom:28px;right:28px;background:var(--g800);color:#fff;padding:12px 20px;border-radius:12px;font-size:13.5px;font-weight:600;box-shadow:var(--sh-md);transform:translateY(70px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:999;max-width:320px;display:flex;align-items:center;gap:9px}
+#bf-toast{position:fixed;bottom:28px;right:28px;background:var(--g800);color:#fff;padding:12px 20px;border-radius:12px;font-size:13.5px;font-weight:600;box-shadow:var(--sh-md);transform:translateY(70px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:10060;max-width:320px;display:flex;align-items:center;gap:9px}
 
 @keyframes bfFadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 .bf-kpi-card:nth-child(1){animation-delay:.04s}
@@ -409,9 +437,12 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
     border:1.5px solid rgba(255, 142, 104, 0.2);border-radius:10px
   }
   .bf-fld label{font-size:12px;margin-bottom:4px}
-  .bf-modal-body{padding:1rem}
-  .bf-modal-footer{padding:0.875rem 1rem;gap:0.5rem}
-  .bf-modal-footer .bf-btn{width:100%}
+  .bf-modal-veil{padding:calc(var(--bf-nav-top, var(--nav-bar-h, 56px)) + 8px) 0.75rem 0.75rem;align-items:flex-start}
+  .bf-modal-box{width:100%;max-height:calc(100dvh - var(--bf-nav-top, var(--nav-bar-h, 56px)) - 1.25rem);border-radius:16px}
+  .bf-modal-head{padding:12px 14px 10px}
+  .bf-modal-body{padding:12px 14px}
+  .bf-modal-foot{padding:10px 14px 12px;gap:0.5rem}
+  .bf-modal-foot .bf-btn-cancel,.bf-modal-foot .bf-btn-primary{min-height:44px}
 }
   </style>
 </head>
@@ -450,7 +481,7 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
         </div>
         <div class="dh-sb-section">
           <div class="sb-section-label">System</div>
-          <a href="/bd/email-module" class="sb-nav-item">Email Automation</a>
+          {# Email Automation is hidden until the UI is ready to ship. Keep the route at /bd/email-module. #}
           <a href="/admin/dashboard" class="sb-nav-item">Settings</a>
         </div>
       </nav>
@@ -651,7 +682,7 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
         <div class="bf-section-divider">Contact</div>
         <div class="bf-field-grid"><div class="bf-fld"><label>Primary Contact</label><input id="bfFldContactName" placeholder="Contact full name"></div><div class="bf-fld"><label>Contact Email</label><input id="bfFldContactEmail" placeholder="email@company.com"></div></div>
         <div class="bf-section-divider">Details</div>
-        <div class="bf-field-grid solo"><div class="bf-fld"><label>Notes / Description</label><textarea id="bfFldNotes" rows="3" placeholder="Key details, requirements, context…"></textarea></div></div>
+        <div class="bf-field-grid solo"><div class="bf-fld"><label>Notes / Description</label><textarea id="bfFldNotes" rows="2" placeholder="Key details, requirements, context…"></textarea></div></div>
       </div>
       <div class="bf-modal-foot">
         <button type="button" class="bf-btn-cancel" onclick="bfCloseModal()">Cancel</button>

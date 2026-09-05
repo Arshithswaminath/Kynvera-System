@@ -1,21 +1,216 @@
 /**
- * Leave Tracker — Sick / Annual staff master + Leave Logs (source of truth)
+ * Leave Tracker — month cards with shared roster; Leave Logs are the source of truth
  */
 (function () {
   'use strict';
 
-  var MONTHS = [8, 9, 10, 11, 12];
-  var MONTH_LABELS = { 8: 'Aug', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec' };
-  var YEAR = 2026;
-  var WINDOW_START = new Date(2026, 7, 1);
-  var WINDOW_END = new Date(2026, 11, 31);
+  var MONTH_LABELS = {
+    1: 'Jan',
+    2: 'Feb',
+    3: 'Mar',
+    4: 'Apr',
+    5: 'May',
+    6: 'Jun',
+    7: 'Jul',
+    8: 'Aug',
+    9: 'Sep',
+    10: 'Oct',
+    11: 'Nov',
+    12: 'Dec',
+  };
+  var MONTH_FULL = {
+    1: 'January',
+    2: 'February',
+    3: 'March',
+    4: 'April',
+    5: 'May',
+    6: 'June',
+    7: 'July',
+    8: 'August',
+    9: 'September',
+    10: 'October',
+    11: 'November',
+    12: 'December',
+  };
+  var BASE_YEAR = 2026;
+  var PERIODS_KEY = 'ltMonthPeriods';
+  var DEFAULT_PERIODS = { '2026': [7, 8, 9, 10, 11, 12] };
+  var SICK_ENTITLEMENT = 15;
+  var VALID_TABS = ['logs', 'sick', 'annual', 'planner'];
 
+  function clonePeriods(src) {
+    var out = {};
+    Object.keys(src || {}).forEach(function (y) {
+      out[y] = (src[y] || []).slice();
+    });
+    return out;
+  }
+
+  function defaultPeriods() {
+    return clonePeriods(DEFAULT_PERIODS);
+  }
+
+  function normalizePeriods(raw) {
+    var out = defaultPeriods();
+    if (!raw || typeof raw !== 'object') return out;
+    Object.keys(raw).forEach(function (key) {
+      var year = parseInt(key, 10);
+      if (year < 2026 || year > 2035) return;
+      var months = [];
+      (raw[key] || []).forEach(function (item) {
+        var m = parseInt(item, 10);
+        if (m >= 1 && m <= 12 && months.indexOf(m) < 0) months.push(m);
+      });
+      if (year === 2026) {
+        DEFAULT_PERIODS['2026'].forEach(function (m) {
+          if (months.indexOf(m) < 0) months.push(m);
+        });
+      }
+      months.sort(function (a, b) {
+        return a - b;
+      });
+      if (months.length) out[String(year)] = months;
+    });
+    return out;
+  }
+
+  function readLocalPeriods() {
+    try {
+      var raw = localStorage.getItem(PERIODS_KEY);
+      if (raw) return normalizePeriods(JSON.parse(raw));
+    } catch (e) { /* ignore */ }
+    return defaultPeriods();
+  }
+
+  function activePeriods() {
+    return (state && state.periods) || readLocalPeriods();
+  }
+
+  function periodYears(periods) {
+    return Object.keys(periods || activePeriods())
+      .map(function (y) {
+        return parseInt(y, 10);
+      })
+      .filter(function (y) {
+        return y;
+      })
+      .sort(function (a, b) {
+        return a - b;
+      });
+  }
+
+  function monthsForYear(year) {
+    var list = activePeriods()[String(year)] || [];
+    return list.slice();
+  }
+
+  function hasPeriod(year, month) {
+    return monthsForYear(year).indexOf(Number(month)) >= 0;
+  }
+
+  function openMonths() {
+    return monthsForYear(state.openYear);
+  }
+
+  function allPeriodSlots() {
+    var slots = [];
+    periodYears().forEach(function (y) {
+      monthsForYear(y).forEach(function (m) {
+        slots.push({ year: y, month: m });
+      });
+    });
+    return slots;
+  }
+
+  function adjacentPeriod(delta) {
+    var slots = allPeriodSlots();
+    var i = -1;
+    slots.forEach(function (s, idx) {
+      if (s.year === Number(state.openYear) && s.month === Number(state.openMonth)) i = idx;
+    });
+    if (i < 0) return null;
+    return slots[i + delta] || null;
+  }
+
+  function syncMonthNav() {
+    var prev = adjacentPeriod(-1);
+    var next = adjacentPeriod(1);
+    var prevBtn = $('ltPrevMonth');
+    var nextBtn = $('ltNextMonth');
+    if (prevBtn) {
+      prevBtn.disabled = !prev;
+      prevBtn.textContent = prev
+        ? '← ' + (MONTH_FULL[prev.month] || '')
+        : '← Previous';
+      prevBtn.setAttribute(
+        'aria-label',
+        prev ? 'Previous month, ' + MONTH_FULL[prev.month] + ' ' + prev.year : 'No previous month'
+      );
+    }
+    if (nextBtn) {
+      nextBtn.disabled = !next;
+      nextBtn.textContent = next
+        ? (MONTH_FULL[next.month] || '') + ' →'
+        : 'Next →';
+      nextBtn.setAttribute(
+        'aria-label',
+        next ? 'Next month, ' + MONTH_FULL[next.month] + ' ' + next.year : 'No next month'
+      );
+    }
+  }
+
+  function shiftOpenMonth(delta) {
+    var next = adjacentPeriod(delta);
+    if (!next) return;
+    setOpenMonth(next.month, { year: next.year, skipTabReset: true });
+  }
+
+  function writeMonthUrl() {
+    if (!(window.history && window.history.replaceState)) return;
+    try {
+      var url = new URL(window.location.href);
+      if (state.view === 'month' && state.openMonth) {
+        url.searchParams.set('year', String(state.openYear));
+        url.searchParams.set('month', String(state.openMonth));
+        if (state.tab && state.tab !== 'logs') url.searchParams.set('tab', state.tab);
+        else url.searchParams.delete('tab');
+      } else {
+        url.searchParams.delete('month');
+        url.searchParams.delete('year');
+        url.searchParams.delete('tab');
+      }
+      var qs = url.searchParams.toString();
+      window.history.replaceState({}, '', url.pathname + (qs ? '?' + qs : '') + url.hash);
+    } catch (e) { /* ignore */ }
+  }
+
+  function currentTrackerPeriod() {
+    var now = new Date();
+    var y = now.getFullYear();
+    var m = now.getMonth() + 1;
+    if (hasPeriod(y, m)) return { year: y, month: m };
+    var years = periodYears();
+    if (!years.length) return { year: BASE_YEAR, month: 7 };
+    if (y < years[0]) {
+      var first = monthsForYear(years[0]);
+      return { year: years[0], month: first[0] };
+    }
+    var lastYear = years[years.length - 1];
+    var lastMonths = monthsForYear(lastYear);
+    return { year: lastYear, month: lastMonths[lastMonths.length - 1] };
+  }
+
+  var _nowPeriod = currentTrackerPeriod();
   var state = {
     employees: [],
     directory: [], // full unfiltered staff for typeahead
     plans: [],
     logs: [],
-    tab: 'sick',
+    tab: 'logs',
+    view: 'grid',
+    periods: readLocalPeriods(),
+    openYear: _nowPeriod.year,
+    openMonth: _nowPeriod.month,
     alertLevel: '', // '' | approaching | exhausted
     selectedLogEmp: null,
     selectedPlanEmp: null,
@@ -157,12 +352,13 @@
   function queryParams() {
     var q = ($('ltSearch') && $('ltSearch').value) || '';
     var company = ($('ltCompany') && $('ltCompany').value) || 'all';
-    var month = ($('ltMonth') && $('ltMonth').value) || '';
+    var month = state.openMonth;
     var alerts = $('ltAlertsOnly') && $('ltAlertsOnly').checked;
     var params = new URLSearchParams();
     if (q.trim()) params.set('q', q.trim());
     if (company && company !== 'all') params.set('company', company);
-    if (month) params.set('month', month);
+    if (state.openYear) params.set('year', String(state.openYear));
+    if (month) params.set('month', String(month));
     if (state.alertLevel) params.set('alert_level', state.alertLevel);
     else if (alerts) params.set('alerts_only', '1');
     return params.toString();
@@ -177,13 +373,11 @@
     var company = ($('ltCompany') && $('ltCompany').value) || 'all';
     var lt = ($('ltLogTypeFilter') && $('ltLogTypeFilter').value) || 'all';
     if ($('ltLogCompanyFilter')) company = $('ltLogCompanyFilter').value || 'all';
-    var month = ($('ltMonth') && $('ltMonth').value) || '';
     var leaveFrom = ($('ltLogLeaveFrom') && $('ltLogLeaveFrom').value) || '';
     var leaveTo = ($('ltLogLeaveTo') && $('ltLogLeaveTo').value) || '';
     if (q) params.set('q', q);
     if (company && company !== 'all') params.set('company', company);
     if (lt && lt !== 'all') params.set('leave_type', lt);
-    if (month) params.set('month', month);
     if (leaveFrom) params.set('leave_from', leaveFrom);
     if (leaveTo) params.set('leave_to', leaveTo);
     if (state.alertLevel) params.set('alert_level', state.alertLevel);
@@ -259,9 +453,13 @@
         : 'On leave this month';
     }
     if ($('ltStatLeaveDays')) {
-      var sick = summary.sick_days_total != null ? summary.sick_days_total : 0;
-      var annual = summary.annual_days_total != null ? summary.annual_days_total : 0;
-      $('ltStatLeaveDays').textContent = sick + ' / ' + annual;
+      var sick = summary.sick_staff_month != null ? summary.sick_staff_month : 0;
+      var annual = summary.annual_staff_month != null ? summary.annual_staff_month : 0;
+      $('ltStatLeaveDays').innerHTML =
+        '<span class="lt-stat-val-pair">' +
+        '<span>' + sick + '<small>sick</small></span>' +
+        '<span>' + annual + '<small>annual</small></span>' +
+        '</span>';
     }
     if ($('ltStatLow')) {
       $('ltStatLow').textContent = summary.low_remaining != null ? summary.low_remaining : '—';
@@ -285,6 +483,479 @@
 
   function monthCell(value) {
     return '<td class="lt-num lt-month-ro">' + esc(fmtDays(value)) + '</td>';
+  }
+
+  function pad2(n) {
+    return n < 10 ? '0' + n : String(n);
+  }
+
+  function ymdFromParts(y, m, d) {
+    return y + '-' + pad2(m) + '-' + pad2(d);
+  }
+
+  function monthStartYmd(month, year) {
+    year = year == null ? state.openYear : year;
+    return ymdFromParts(year, month, 1);
+  }
+
+  function daysInMonth(month, year) {
+    year = year == null ? state.openYear : year;
+    return new Date(year, month, 0).getDate();
+  }
+
+  function monthEndYmd(month, year) {
+    year = year == null ? state.openYear : year;
+    return ymdFromParts(year, month, daysInMonth(month, year));
+  }
+
+  function defaultDateInOpenMonth() {
+    var m = state.openMonth;
+    var start = monthStartYmd(m);
+    var end = monthEndYmd(m);
+    var today = new Date();
+    var iso = ymdFromParts(today.getFullYear(), today.getMonth() + 1, today.getDate());
+    if (iso >= start && iso <= end) return iso;
+    return start;
+  }
+
+  function monthValue(map, month) {
+    if (!map) return null;
+    if (map[month] != null) return map[month];
+    if (map[String(month)] != null) return map[String(month)];
+    return null;
+  }
+
+  function sumMonths(map, months) {
+    var total = 0;
+    var any = false;
+    (months || []).forEach(function (mo) {
+      var v = monthValue(map, mo);
+      if (v != null && v !== '') {
+        var n = Number(v);
+        if (!Number.isNaN(n)) {
+          total += n;
+          any = true;
+        }
+      }
+    });
+    return any ? total : 0;
+  }
+
+  function monthsThrough(month, year) {
+    year = year == null ? state.openYear : year;
+    if (year === BASE_YEAR) {
+      var all = [];
+      for (var m = 1; m <= month; m++) all.push(m);
+      return all;
+    }
+    return monthsForYear(year).filter(function (mo) {
+      return mo <= month;
+    });
+  }
+
+  function monthsBefore(month, year) {
+    year = year == null ? state.openYear : year;
+    if (year === BASE_YEAR) {
+      var prior = [];
+      for (var m = 1; m < month; m++) prior.push(m);
+      return prior;
+    }
+    return monthsForYear(year).filter(function (mo) {
+      return mo < month;
+    });
+  }
+
+  function asOfSick(e, month) {
+    var sick = (e && e.sick) || {};
+    var months = sick.months || {};
+    var thisMonth = monthValue(months, month);
+    var ytd = sumMonths(months, monthsThrough(month));
+    var remaining = SICK_ENTITLEMENT - ytd;
+    var alert = '';
+    if (ytd >= SICK_ENTITLEMENT) alert = 'exhausted';
+    else if (ytd >= 13) alert = 'critical';
+    else if (ytd >= 10) alert = 'warning';
+    return {
+      thisMonth: thisMonth,
+      ytd: ytd,
+      remaining: remaining,
+      alert: alert,
+    };
+  }
+
+  function asOfAnnual(e, month) {
+    var an = (e && e.annual) || {};
+    var months = an.months || {};
+    var entitlement = e && e.annual_entitlement != null ? Number(e.annual_entitlement) : null;
+    var thisMonth = monthValue(months, month);
+    var usedBefore = sumMonths(months, monthsBefore(month));
+    var usedYtd = sumMonths(months, monthsThrough(month));
+    var bf = entitlement == null ? null : entitlement - usedBefore;
+    var remaining = entitlement == null ? null : entitlement - usedYtd;
+    return {
+      thisMonth: thisMonth,
+      broughtForward: bf,
+      remaining: remaining,
+      entitlement: entitlement,
+    };
+  }
+
+  function rangeOverlapsMonth(startYmd, endYmd, month, year) {
+    year = year == null ? state.openYear : year;
+    var start = toYmdKey(startYmd);
+    var end = toYmdKey(endYmd || startYmd) || start;
+    if (!start) return false;
+    var ms = monthStartYmd(month, year);
+    var me = monthEndYmd(month, year);
+    return start <= me && end >= ms;
+  }
+
+  function continuesHtml(startYmd, endYmd, month, year) {
+    year = year == null ? state.openYear : year;
+    var start = toYmdKey(startYmd);
+    var end = toYmdKey(endYmd || startYmd) || start;
+    if (!start) return '';
+    var startKey = start.slice(0, 7);
+    var endKey = end.slice(0, 7);
+    var openKey = ymdFromParts(year, month, 1).slice(0, 7);
+    if (startKey === endKey) return '';
+    var bits = [];
+    if (startKey < openKey) {
+      bits.push('from ' + (MONTH_LABELS[Number(start.slice(5, 7))] || start.slice(5, 7)));
+    }
+    if (endKey > openKey) {
+      bits.push('into ' + (MONTH_LABELS[Number(end.slice(5, 7))] || end.slice(5, 7)));
+    }
+    if (!bits.length) return '';
+    return '<span class="lt-continues">' + esc(bits.join(' · ')) + '</span>';
+  }
+
+  var ROSTER_BANNER_DISMISS_KEY = 'ltRosterBannerDismissed';
+
+  function showRosterBanner(detail) {
+    var banner = $('ltRosterBanner');
+    var text = $('ltRosterBannerText');
+    if (!banner) return;
+    if (text && detail) text.textContent = detail;
+    banner.hidden = false;
+    try {
+      sessionStorage.removeItem(ROSTER_BANNER_DISMISS_KEY);
+    } catch (e) { /* ignore */ }
+  }
+
+  function hideRosterBanner() {
+    var banner = $('ltRosterBanner');
+    if (banner) banner.hidden = true;
+    try {
+      sessionStorage.setItem(ROSTER_BANNER_DISMISS_KEY, '1');
+    } catch (e) { /* ignore */ }
+  }
+
+  function periodFromUrl() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      var year = parseInt(params.get('year'), 10);
+      var month = parseInt(params.get('month'), 10);
+      var tab = String(params.get('tab') || '').toLowerCase();
+      if (!year) year = BASE_YEAR;
+      if (!hasPeriod(year, month)) return null;
+      return {
+        year: year,
+        month: month,
+        tab: VALID_TABS.indexOf(tab) >= 0 ? tab : null,
+      };
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+
+  function monthCardHtml(year, month) {
+    return (
+      '<article class="lt-month-card" data-year="' +
+      year +
+      '" data-month="' +
+      month +
+      '" id="ltMonthCard-' +
+      year +
+      '-' +
+      month +
+      '">' +
+      '<h2 class="lt-mc-title">' +
+      esc(MONTH_FULL[month] || '') +
+      '</h2>' +
+      '<div class="lt-mc-tags" data-month-chips="' +
+      year +
+      '-' +
+      month +
+      '"></div>' +
+      '<div class="lt-mc-foot">' +
+      '<div class="lt-mc-metric" data-month-metric="' +
+      year +
+      '-' +
+      month +
+      '">—</div>' +
+      '<button type="button" class="lt-mc-open" data-open-year="' +
+      year +
+      '" data-open-month="' +
+      month +
+      '" aria-label="Open ' +
+      esc(MONTH_FULL[month] || '') +
+      ' ' +
+      year +
+      '">Open</button>' +
+      '</div>' +
+      '</article>'
+    );
+  }
+
+  function addCardHtml() {
+    return (
+      '<button type="button" class="lt-month-card lt-add-card" id="ltAddMonthCard" aria-label="Add month card">' +
+      '<span class="lt-add-card-plus" aria-hidden="true">+</span>' +
+      '<p class="lt-add-card-title">Add card</p>' +
+      '<p class="lt-add-card-sub">New year sits on a row below</p>' +
+      '</button>'
+    );
+  }
+
+  function renderMonthBoard() {
+    var board = $('ltMonthBoard');
+    if (!board) return;
+    var years = periodYears();
+    var lastYear = years.length ? years[years.length - 1] : BASE_YEAR;
+    board.innerHTML = years
+      .map(function (year) {
+        var months = monthsForYear(year);
+        var cards = months.map(function (m) {
+          return monthCardHtml(year, m);
+        });
+        if (year === lastYear) cards.push(addCardHtml());
+        return (
+          '<section class="lt-year-block" data-year-block="' +
+          year +
+          '">' +
+          '<h2 class="lt-year-heading">' +
+          year +
+          '</h2>' +
+          '<div class="lt-month-cards">' +
+          cards.join('') +
+          '</div>' +
+          '</section>'
+        );
+      })
+      .join('');
+    updateMonthChips();
+  }
+
+  function persistPeriods(next) {
+    state.periods = normalizePeriods(next);
+    try {
+      localStorage.setItem(PERIODS_KEY, JSON.stringify(state.periods));
+    } catch (e) { /* ignore */ }
+    renderMonthBoard();
+    return apiJson('/hr/api/leave-tracker/periods', 'PUT', { periods: state.periods })
+      .then(function (data) {
+        if (data && data.periods) state.periods = normalizePeriods(data.periods);
+        renderMonthBoard();
+        return state.periods;
+      })
+      .catch(function () {
+        return state.periods;
+      });
+  }
+
+  function nextYearToAdd() {
+    var years = periodYears();
+    var last = years.length ? years[years.length - 1] : BASE_YEAR;
+    return Math.min(2035, last + 1);
+  }
+
+  function fillAddCardMonthSelect(year) {
+    var sel = $('ltAddCardMonth');
+    if (!sel) return;
+    var used = monthsForYear(year);
+    var html = '';
+    for (var m = 1; m <= 12; m++) {
+      if (used.indexOf(m) >= 0) continue;
+      html += '<option value="' + m + '">' + esc(MONTH_FULL[m]) + '</option>';
+    }
+    sel.innerHTML = html || '<option value="">All months already added</option>';
+    sel.disabled = !html;
+  }
+
+  function syncAddCardNote() {
+    var year = parseInt(($('ltAddCardYear') && $('ltAddCardYear').value) || '', 10);
+    var mode = ($('ltAddCardMode') && $('ltAddCardMode').value) || 'year';
+    var note = $('ltAddCardNote');
+    var wrap = $('ltAddCardMonthWrap');
+    if (wrap) wrap.hidden = mode !== 'month';
+    if (year) fillAddCardMonthSelect(year);
+    if (!note) return;
+    var years = periodYears();
+    if (year && years.indexOf(year) < 0) {
+      note.textContent = year + ' will appear as a new row below ' + (years[years.length - 1] || BASE_YEAR) + '.';
+    } else if (mode === 'year') {
+      note.textContent = 'Missing months in ' + (year || 'this year') + ' will be added to that year’s row.';
+    } else {
+      note.textContent = 'This month is added to the ' + (year || '') + ' row.';
+    }
+  }
+
+  function openAddCardModal() {
+    var modal = $('ltAddCardModal');
+    if (!modal) return;
+    if ($('ltAddCardYear')) $('ltAddCardYear').value = String(nextYearToAdd());
+    if ($('ltAddCardMode')) $('ltAddCardMode').value = 'year';
+    syncAddCardNote();
+    modal.hidden = false;
+    setTimeout(function () {
+      if ($('ltAddCardYear')) $('ltAddCardYear').focus();
+    }, 50);
+  }
+
+  function closeAddCardModal() {
+    if ($('ltAddCardModal')) $('ltAddCardModal').hidden = true;
+  }
+
+  function submitAddCard() {
+    var year = parseInt(($('ltAddCardYear') && $('ltAddCardYear').value) || '', 10);
+    var mode = ($('ltAddCardMode') && $('ltAddCardMode').value) || 'year';
+    if (!year || year < 2026 || year > 2035) {
+      throw new Error('Year must be between 2026 and 2035');
+    }
+    var next = clonePeriods(state.periods);
+    var existing = next[String(year)] ? next[String(year)].slice() : [];
+    var add = [];
+    if (mode === 'year') {
+      for (var m = 1; m <= 12; m++) add.push(m);
+    } else {
+      var month = parseInt(($('ltAddCardMonth') && $('ltAddCardMonth').value) || '', 10);
+      if (!month) throw new Error('Choose a month that is not already on the board');
+      add.push(month);
+    }
+    add.forEach(function (m) {
+      if (existing.indexOf(m) < 0) existing.push(m);
+    });
+    existing.sort(function (a, b) {
+      return a - b;
+    });
+    next[String(year)] = existing;
+    closeAddCardModal();
+    persistPeriods(next).then(function () {
+      showMonthGrid();
+    });
+  }
+
+  function showMonthGrid() {
+    state.view = 'grid';
+    if ($('ltMonthBoard')) $('ltMonthBoard').hidden = false;
+    if ($('ltMonthDetail')) $('ltMonthDetail').hidden = true;
+    document.querySelectorAll('.lt-month-card').forEach(function (card) {
+      card.classList.remove('is-open');
+      card.removeAttribute('aria-current');
+      var openBtn = card.querySelector('.lt-mc-open');
+      if (openBtn) openBtn.textContent = 'Open';
+    });
+    updateMonthChips();
+    if (window.history && window.history.replaceState) {
+      try {
+        var url = new URL(window.location.href);
+        url.searchParams.delete('month');
+        url.searchParams.delete('year');
+        url.searchParams.delete('tab');
+        window.history.replaceState({}, '', url.pathname + (url.search || '') + url.hash);
+      } catch (e) { /* ignore */ }
+    }
+  }
+
+  function placeMonthWorkspace() {
+    var detail = $('ltMonthDetail');
+    var workspace = $('ltMonthWorkspace');
+    if (!detail || !workspace) return;
+    if (workspace.parentNode !== detail) detail.appendChild(workspace);
+    detail.hidden = false;
+  }
+
+  function setOpenMonth(month, opts) {
+    opts = opts || {};
+    month = Number(month);
+    var year = Number(opts.year != null ? opts.year : state.openYear);
+    if (!hasPeriod(year, month)) return;
+    var changed = state.openMonth !== month || state.openYear !== year || state.view !== 'month';
+    state.openMonth = month;
+    state.openYear = year;
+    state.view = 'month';
+    if ($('ltMonthBoard')) $('ltMonthBoard').hidden = true;
+    placeMonthWorkspace();
+    var heading = $('ltMonthDetailTitle');
+    if (heading) heading.textContent = (MONTH_FULL[month] || '') + ' ' + year;
+    syncMonthNav();
+    if (!opts.skipTabReset && changed) {
+      setTab('logs');
+    } else {
+      setTab(state.tab);
+    }
+    updateMonthChips();
+    if (!opts.skipLoad) {
+      loadEmployees();
+      loadLogs();
+      loadPlans();
+    }
+    if (!opts.skipScroll && window.scrollTo) {
+      window.scrollTo({ top: 0, behavior: opts.instant ? 'auto' : 'smooth' });
+    }
+    if (!opts.skipUrl) writeMonthUrl();
+  }
+
+  function overlapDaysInMonth(log, year, month) {
+    var start = toYmdKey(log && log.leave_date);
+    var end = toYmdKey((log && log.end_date) || start) || start;
+    if (!start) return 0;
+    var ms = monthStartYmd(month, year);
+    var me = monthEndYmd(month, year);
+    var from = start > ms ? start : ms;
+    var to = end < me ? end : me;
+    if (from > to) return 0;
+    var days = Math.round((new Date(to + 'T00:00:00') - new Date(from + 'T00:00:00')) / 86400000) + 1;
+    return days > 0 ? days : 0;
+  }
+
+  function updateMonthChips() {
+    periodYears().forEach(function (year) {
+      var months = monthsForYear(year);
+      months.forEach(function (m) {
+        var key = year + '-' + m;
+        var tags = document.querySelector('[data-month-chips="' + key + '"]');
+        var metric = document.querySelector('[data-month-metric="' + key + '"]');
+        var logs = (state.logs || []).filter(function (p) {
+          return rangeOverlapsMonth(p.leave_date, p.end_date || p.leave_date, m, year);
+        });
+        var onLeaveIds = {};
+        var sickDays = 0;
+        var annualDays = 0;
+        logs.forEach(function (p) {
+          if (p.employee_id) onLeaveIds[p.employee_id] = true;
+          var days = overlapDaysInMonth(p, year, m);
+          if ((p.leave_type || '') === 'sick') sickDays += days;
+          if ((p.leave_type || '') === 'annual') annualDays += days;
+        });
+        var onLeave = Object.keys(onLeaveIds).length;
+        if (tags) {
+          tags.innerHTML =
+            '<span class="lt-chip">' +
+            logs.length +
+            ' log' +
+            (logs.length === 1 ? '' : 's') +
+            '</span>' +
+            '<span class="lt-chip">' +
+            fmtDays(sickDays) +
+            ' sick</span>' +
+            '<span class="lt-chip">' +
+            fmtDays(annualDays) +
+            ' annual</span>';
+        }
+        if (metric) metric.textContent = onLeave + ' on leave';
+      });
+    });
   }
 
   var COL_LABELS = {
@@ -359,7 +1030,9 @@
   }
 
   function filteredLogs() {
-    var rows = state.logs || [];
+    var rows = (state.logs || []).filter(function (p) {
+      return rangeOverlapsMonth(p.leave_date, p.end_date || p.leave_date, state.openMonth);
+    });
     var filters = state.logColFilters || {};
     var leaveFrom = ($('ltLogLeaveFrom') && $('ltLogLeaveFrom').value) || '';
     var leaveTo = ($('ltLogLeaveTo') && $('ltLogLeaveTo').value) || '';
@@ -617,21 +1290,18 @@
     var tbody = $('ltSickBody');
     if (!tbody) return;
     var rows = filteredEmployees();
+    var month = state.openMonth;
     if (!rows.length) {
       tbody.innerHTML = state.employees.length
-        ? '<tr><td colspan="12" class="lt-empty">No staff match these column filters.</td></tr>'
-        : '<tr><td colspan="12" class="lt-empty">No staff yet. Click <strong>Seed Staff</strong>, then use <strong>Log leave</strong> to record days.</td></tr>';
+        ? '<tr><td colspan="8" class="lt-empty">No staff match these column filters.</td></tr>'
+        : '<tr><td colspan="8" class="lt-empty">No staff yet. Click <strong>Add employee</strong> or <strong>Seed Staff</strong>, then use <strong>Log leave</strong> to record days.</td></tr>';
       syncColFilterButtons();
       return;
     }
     tbody.innerHTML = rows
       .map(function (e) {
-        var sick = e.sick || {};
-        var months = sick.months || {};
+        var sick = asOfSick(e, month);
         var alert = sick.alert || '';
-        var cells = MONTHS.map(function (m) {
-          return monthCell(months[m] != null ? months[m] : months[String(m)]);
-        }).join('');
         var badge = alert
           ? '<span class="lt-badge ' + alert + '">' + esc(alertLabel(alert)) + '</span>'
           : '';
@@ -657,14 +1327,16 @@
           '<td>' +
           esc(e.company) +
           '</td>' +
-          cells +
+          '<td class="lt-num lt-month-ro">' +
+          esc(fmtDays(sick.thisMonth)) +
+          '</td>' +
           '<td class="lt-num">' +
-          esc(fmtDays(sick.used)) +
+          esc(fmtDays(sick.ytd)) +
           '</td>' +
           '<td class="lt-num">' +
           esc(fmtDays(sick.remaining)) +
           '</td>' +
-          '<td>' +
+          '<td class="lt-col-alert">' +
           badge +
           '</td>' +
           '</tr>'
@@ -678,21 +1350,19 @@
     var tbody = $('ltAnnualBody');
     if (!tbody) return;
     var rows = filteredEmployees();
+    var month = state.openMonth;
     if (!rows.length) {
       tbody.innerHTML = state.employees.length
-        ? '<tr><td colspan="12" class="lt-empty">No staff match these column filters.</td></tr>'
-        : '<tr><td colspan="12" class="lt-empty">No staff yet. Click <strong>Seed Staff</strong>.</td></tr>';
+        ? '<tr><td colspan="8" class="lt-empty">No staff match these column filters.</td></tr>'
+        : '<tr><td colspan="8" class="lt-empty">No staff yet. Click <strong>Add employee</strong> or <strong>Seed Staff</strong>.</td></tr>';
       syncColFilterButtons();
       return;
     }
     tbody.innerHTML = rows
       .map(function (e) {
-        var an = e.annual || {};
-        var months = an.months || {};
-        var cells = MONTHS.map(function (m) {
-          return monthCell(months[m] != null ? months[m] : months[String(m)]);
-        }).join('');
+        var an = asOfAnnual(e, month);
         var rem = an.remaining == null ? '—' : fmtDays(an.remaining);
+        var bf = an.broughtForward == null ? '—' : fmtDays(an.broughtForward);
         return (
           '<tr class="lt-row-clickable" data-id="' +
           e.id +
@@ -713,15 +1383,18 @@
           '<td>' +
           esc(e.company) +
           '</td>' +
-          '<td><input class="lt-cell lt-ent" type="number" min="0" step="1" ' +
+          '<td class="lt-num">' +
+          '<input class="lt-cell lt-ent" type="number" min="0" step="1" ' +
           'data-emp="' +
           e.id +
           '" data-field="annual_entitlement" value="' +
           esc(e.annual_entitlement != null ? e.annual_entitlement : '') +
           '" placeholder="—" aria-label="Annual entitlement"></td>' +
-          cells +
-          '<td class="lt-num">' +
-          esc(fmtDays(an.used)) +
+          '<td class="lt-num lt-month-ro">' +
+          esc(bf) +
+          '</td>' +
+          '<td class="lt-num lt-month-ro">' +
+          esc(fmtDays(an.thisMonth)) +
           '</td>' +
           '<td class="lt-num">' +
           esc(rem) +
@@ -785,17 +1458,22 @@
     syncLogSortButtons();
     if (!all.length) {
       tbody.innerHTML =
-        '<tr><td colspan="10" class="lt-empty">No leave logs yet. Click <strong>Log leave</strong> to add an entry — it rolls into the staff master.</td></tr>';
+        '<tr><td colspan="10" class="lt-empty">No leave logs in ' +
+        esc(MONTH_FULL[state.openMonth] || 'this month') +
+        ' yet. Click <strong>Log leave</strong> to add an entry.</td></tr>';
       return;
     }
     if (!logs.length) {
       tbody.innerHTML =
-        '<tr><td colspan="10" class="lt-empty">No leave logs match these filters.</td></tr>';
+        '<tr><td colspan="10" class="lt-empty">No leave logs match these filters for ' +
+        esc(MONTH_FULL[state.openMonth] || 'this month') +
+        '.</td></tr>';
       return;
     }
     tbody.innerHTML = logs
       .map(function (p) {
         var end = p.end_date || p.leave_date;
+        var chip = continuesHtml(p.leave_date, end, state.openMonth);
         return (
           '<tr class="lt-row-clickable" data-log="' +
           p.id +
@@ -804,6 +1482,7 @@
           '">' +
           '<td>' +
           esc(fmtDateDMY(p.leave_date)) +
+          chip +
           '</td>' +
           '<td>' +
           esc(fmtDateDMY(end)) +
@@ -845,178 +1524,344 @@
       .join('');
   }
 
-  function dayOffset(d) {
-    var t = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
-    var s = Date.UTC(WINDOW_START.getFullYear(), WINDOW_START.getMonth(), WINDOW_START.getDate());
-    return Math.round((t - s) / 86400000);
+  function shortFirstName(name) {
+    var parts = String(name || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    return parts[0] || '—';
   }
 
-  var WINDOW_DAYS = dayOffset(WINDOW_END) + 1;
+  function plannerLeaveKindLabel(p) {
+    if (p && p.kind === 'planned') return 'Planned';
+    var t = String((p && p.leave_type) || 'annual').toLowerCase();
+    if (t === 'annual') return 'Annual leave';
+    if (t === 'sick') return 'Sick leave';
+    return t ? t.charAt(0).toUpperCase() + t.slice(1) + ' leave' : 'Leave';
+  }
 
-  function timelineMonthSegments() {
-    var segs = [];
-    var cursor = 0;
-    MONTHS.forEach(function (m) {
-      var daysInMonth = new Date(YEAR, m, 0).getDate();
-      var widthPct = (daysInMonth / WINDOW_DAYS) * 100;
-      var leftPct = (cursor / WINDOW_DAYS) * 100;
-      segs.push({
-        month: m,
-        label: MONTH_LABELS[m] || String(m),
-        days: daysInMonth,
-        leftPct: leftPct,
-        widthPct: widthPct,
+  function plannerChipClass(p) {
+    if (p && p.kind === 'planned') return 'is-planned';
+    var t = String((p && p.leave_type) || 'annual').toLowerCase();
+    if (t === 'sick') return 'is-sick';
+    return 'is-annual';
+  }
+
+  function plannerChipLabel(p) {
+    return shortFirstName(p && p.full_name) + ' - ' + plannerLeaveKindLabel(p);
+  }
+
+  function todayYmdDubai() {
+    var now = new Date();
+    try {
+      var tz = (window.InjaazDateTimeUAE && InjaazDateTimeUAE.TZ) || 'Asia/Dubai';
+      var parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: tz,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(now);
+      var map = {};
+      parts.forEach(function (p) {
+        if (p.type !== 'literal') map[p.type] = p.value;
       });
-      cursor += daysInMonth;
-    });
-    return segs;
+      if (map.year && map.month && map.day) return map.year + '-' + map.month + '-' + map.day;
+    } catch (e) { /* ignore */ }
+    return ymdFromParts(now.getFullYear(), now.getMonth() + 1, now.getDate());
   }
 
-  function timelineScaleHtml() {
-    var segs = timelineMonthSegments();
-    return (
-      '<div class="lt-tl-scale" aria-hidden="true">' +
-      segs
-        .map(function (s) {
-          return (
-            '<div class="lt-tl-scale-cell" style="left:' +
-            s.leftPct +
-            '%;width:' +
-            s.widthPct +
-            '%">' +
-            '<span class="lt-tl-scale-label">' +
-            esc(s.label) +
-            '</span>' +
-            '</div>'
-          );
+  function ymdAddDays(ymd, n) {
+    var p = String(ymd).split('-').map(Number);
+    var d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + n));
+    return ymdFromParts(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+  }
+
+  function eachYmd(start, end, fn) {
+    if (!start || !end || start > end) return;
+    var cur = start;
+    while (cur <= end) {
+      fn(cur);
+      cur = ymdAddDays(cur, 1);
+    }
+  }
+
+  function weekdayMon0(ymd) {
+    var p = String(ymd).split('-').map(Number);
+    var d = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
+    return (d.getUTCDay() + 6) % 7;
+  }
+
+  function clipRangeToMonth(startYmd, endYmd, month, year) {
+    var a = toYmdKey(startYmd);
+    var b = toYmdKey(endYmd || startYmd) || a;
+    if (!a) return null;
+    var ms = monthStartYmd(month, year);
+    var me = monthEndYmd(month, year);
+    if (a > me || b < ms) return null;
+    return { start: a < ms ? ms : a, end: b > me ? me : b };
+  }
+
+  function daysOnLeaveInMonth(month, year) {
+    year = year == null ? state.openYear : year;
+    month = month == null ? state.openMonth : month;
+    var byDay = {};
+    function dayBucket(ymd) {
+      if (!byDay[ymd]) byDay[ymd] = { logged: [], planned: [] };
+      return byDay[ymd];
+    }
+    function loggedKey(empId, ymd) {
+      return String(empId) + '|' + ymd;
+    }
+    var loggedAnnualSet = {};
+
+    (state.logs || []).forEach(function (log) {
+      var leaveType = String(log.leave_type || '').toLowerCase();
+      if (leaveType !== 'annual' && leaveType !== 'sick') return;
+      var clip = clipRangeToMonth(log.leave_date, log.end_date || log.leave_date, month, year);
+      if (!clip) return;
+      var empId = log.employee_id;
+      eachYmd(clip.start, clip.end, function (ymd) {
+        if (leaveType === 'annual') loggedAnnualSet[loggedKey(empId, ymd)] = true;
+        dayBucket(ymd).logged.push({
+          kind: 'logged',
+          leave_type: leaveType,
+          employee_id: empId,
+          emp_id: log.emp_id,
+          full_name: log.full_name,
+          start: log.leave_date,
+          end: log.end_date || log.leave_date,
+          notes: log.notes || '',
+        });
+      });
+    });
+
+    (state.plans || []).forEach(function (plan) {
+      var clip = clipRangeToMonth(plan.start_date, plan.end_date, month, year);
+      if (!clip) return;
+      var empId = plan.employee_id;
+      eachYmd(clip.start, clip.end, function (ymd) {
+        if (loggedAnnualSet[loggedKey(empId, ymd)]) return;
+        dayBucket(ymd).planned.push({
+          kind: 'planned',
+          leave_type: 'annual',
+          plan_id: plan.id,
+          employee_id: empId,
+          emp_id: plan.emp_id,
+          full_name: plan.full_name,
+          start: plan.start_date,
+          end: plan.end_date,
+          notes: plan.notes || '',
+        });
+      });
+    });
+
+    Object.keys(byDay).forEach(function (ymd) {
+      var b = byDay[ymd];
+      function typeRank(p) {
+        if (p.kind === 'planned') return 2;
+        if (String(p.leave_type || '').toLowerCase() === 'sick') return 1;
+        return 0;
+      }
+      function byTypeThenName(a, c) {
+        var d = typeRank(a) - typeRank(c);
+        if (d) return d;
+        return String(a.full_name || '').localeCompare(String(c.full_name || ''));
+      }
+      b.logged.sort(byTypeThenName);
+      b.planned.sort(byTypeThenName);
+      b.all = b.logged.concat(b.planned);
+    });
+    return byDay;
+  }
+
+  function closePlannerPop() {
+    var pop = $('ltPlannerPop');
+    if (pop) {
+      pop.hidden = true;
+      pop.innerHTML = '';
+    }
+  }
+
+  function openPlannerPop(ymd, people, anchor) {
+    var pop = $('ltPlannerPop');
+    if (!pop) return;
+    var items = (people || [])
+      .map(function (p) {
+        var range = fmtDateDMY(p.start) + (p.end && p.end !== p.start ? ' → ' + fmtDateDMY(p.end) : '');
+        var kind = p.kind === 'planned' ? 'Planned' : 'Logged';
+        var typeLabel = plannerLeaveKindLabel(p);
+        return (
+          '<li class="lt-cal-pop-item">' +
+          '<button type="button" class="lt-cal-pop-person" data-person-id="' +
+          esc(String(p.employee_id || '')) +
+          '">' +
+          '<span class="lt-cal-pop-name">' +
+          esc(p.full_name || '—') +
+          '</span>' +
+          '<span class="lt-cal-pop-meta">' +
+          esc((p.emp_id || '') + (p.emp_id ? ' · ' : '') + typeLabel + ' · ' + kind + ' · ' + range) +
+          '</span>' +
+          '</button></li>'
+        );
+      })
+      .join('');
+    pop.innerHTML =
+      '<p class="lt-cal-pop-date">' +
+      esc(fmtDateDMY(ymd)) +
+      '</p>' +
+      (items
+        ? '<ul class="lt-cal-pop-list">' + items + '</ul>'
+        : '<p class="lt-empty" style="padding:0.5rem !important">No leave this day.</p>');
+    pop.hidden = false;
+    if (anchor && anchor.getBoundingClientRect) {
+      var rect = anchor.getBoundingClientRect();
+      var top = rect.bottom + 6;
+      var left = Math.min(rect.left, window.innerWidth - 280);
+      if (left < 8) left = 8;
+      if (top + 220 > window.innerHeight) top = Math.max(8, rect.top - 220);
+      pop.style.top = top + 'px';
+      pop.style.left = left + 'px';
+    }
+  }
+
+  function renderPlannerCalendar() {
+    var root = $('ltPlannerCal');
+    if (!root) return;
+    closePlannerPop();
+    var month = state.openMonth;
+    var year = state.openYear;
+    if (!month || !year) {
+      root.innerHTML = '';
+      return;
+    }
+    var byDay = daysOnLeaveInMonth(month, year);
+    var ms = monthStartYmd(month, year);
+    var me = monthEndYmd(month, year);
+    var today = todayYmdDubai();
+    var lead = weekdayMon0(ms);
+    var gridStart = ymdAddDays(ms, -lead);
+    var trail = 6 - weekdayMon0(me);
+    var gridEnd = ymdAddDays(me, trail);
+    var weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    var html =
+      '<div class="lt-cal-weekdays" role="row">' +
+      weekdays
+        .map(function (d) {
+          return '<div class="lt-cal-wd" role="columnheader">' + d + '</div>';
         })
         .join('') +
-      '</div>'
-    );
+      '</div><div class="lt-cal-grid">';
+    var CHIP_MAX = 3;
+    eachYmd(gridStart, gridEnd, function (ymd) {
+      var inMonth = ymd >= ms && ymd <= me;
+      var dayNum = Number(ymd.slice(8, 10));
+      var bucket = inMonth ? byDay[ymd] : null;
+      var people = (bucket && bucket.all) || [];
+      var shown = people.slice(0, CHIP_MAX);
+      var extra = people.length - shown.length;
+      var chips = shown
+        .map(function (p) {
+          return (
+            '<span class="lt-cal-chip ' +
+            plannerChipClass(p) +
+            '" title="' +
+            esc((p.full_name || '') + ' - ' + plannerLeaveKindLabel(p)) +
+            '">' +
+            esc(plannerChipLabel(p)) +
+            '</span>'
+          );
+        })
+        .join('');
+      if (extra > 0) {
+        chips +=
+          '<button type="button" class="lt-cal-more" data-cal-more="' +
+          ymd +
+          '">+' +
+          extra +
+          '</button>';
+      }
+      var cls = 'lt-cal-cell';
+      if (!inMonth) cls += ' is-out';
+      if (ymd === today) cls += ' is-today';
+      if (people.length) cls += ' has-leave';
+      html +=
+        '<div class="' +
+        cls +
+        '" role="gridcell" data-cal-day="' +
+        ymd +
+        '"' +
+        (inMonth ? '' : ' aria-disabled="true"') +
+        '>' +
+        '<span class="lt-cal-num">' +
+        dayNum +
+        '</span>' +
+        '<div class="lt-cal-chips">' +
+        chips +
+        '</div></div>';
+    });
+    html += '</div>';
+    root.innerHTML = html;
+    renderUpcomingPlans(month, year);
   }
 
-  function timelineMonthMarksHtml() {
-    var segs = timelineMonthSegments();
-    return segs
-      .slice(1)
-      .map(function (s) {
+  function renderUpcomingPlans(month, year) {
+    var wrap = $('ltUpcomingPlans');
+    var list = $('ltUpcomingPlansList');
+    if (!wrap || !list) return;
+    var plans = (state.plans || []).filter(function (p) {
+      return rangeOverlapsMonth(p.start_date, p.end_date, month, year);
+    });
+    if (!plans.length) {
+      wrap.hidden = true;
+      list.innerHTML = '';
+      return;
+    }
+    wrap.hidden = false;
+    list.innerHTML = plans
+      .map(function (p) {
         return (
-          '<span class="lt-tl-mark" style="left:' + s.leftPct + '%"></span>'
+          '<li class="lt-upcoming-item">' +
+          '<div class="lt-upcoming-copy">' +
+          '<strong>' +
+          esc(p.full_name || '—') +
+          '</strong>' +
+          '<span>' +
+          esc((p.emp_id || '') + ' · ' + fmtDateDMY(p.start_date) + ' → ' + fmtDateDMY(p.end_date) + ' · ' + p.days + 'd') +
+          (p.notes ? ' · ' + esc(p.notes) : '') +
+          '</span></div>' +
+          '<div class="lt-actions">' +
+          '<button type="button" data-apply="' +
+          p.id +
+          '" title="Create leave logs from this plan">Apply to logs</button>' +
+          '<button type="button" data-del="' +
+          p.id +
+          '">Delete</button></div></li>'
         );
       })
       .join('');
   }
 
   function renderPlans() {
-    var tbody = $('ltPlansBody');
-    var timeline = $('ltTimeline');
-    if (!tbody) return;
-    var plans = state.plans || [];
-    if (!plans.length) {
-      tbody.innerHTML =
-        '<tr><td colspan="8" class="lt-empty">No planned leave yet. Add a date range to plan annual leave.</td></tr>';
-    } else {
-      tbody.innerHTML = plans
-        .map(function (p) {
-          return (
-            '<tr class="lt-row-clickable" data-plan="' +
-            p.id +
-            '" data-person-id="' +
-            p.employee_id +
-            '">' +
-            '<td>' +
-            esc(p.emp_id) +
-            '</td>' +
-            '<td class="name-cell">' +
-            esc(p.full_name) +
-            '</td>' +
-            '<td>' +
-            esc(p.company) +
-            '</td>' +
-            '<td>' +
-            esc(fmtDateDMY(p.start_date)) +
-            '</td>' +
-            '<td>' +
-            esc(fmtDateDMY(p.end_date)) +
-            '</td>' +
-            '<td class="lt-num">' +
-            esc(p.days) +
-            '</td>' +
-            '<td>' +
-            esc(p.notes) +
-            '</td>' +
-            '<td class="lt-actions">' +
-            '<button type="button" data-apply="' +
-            p.id +
-            '" title="Create leave logs from this plan">Apply to logs</button>' +
-            '<button type="button" data-del="' +
-            p.id +
-            '">Delete</button>' +
-            '</td>' +
-            '</tr>'
-          );
-        })
-        .join('');
-    }
-
-    if (timeline) {
-      if (!plans.length) {
-        timeline.innerHTML = '<p class="lt-empty">No overlapping leave in this window.</p>';
-      } else {
-        var marks = timelineMonthMarksHtml();
-        timeline.innerHTML =
-          timelineScaleHtml() +
-          plans
-            .map(function (p) {
-              var start = new Date(p.start_date + 'T00:00:00');
-              var end = new Date(p.end_date + 'T00:00:00');
-              var left = Math.max(0, dayOffset(start));
-              var right = Math.min(WINDOW_DAYS - 1, dayOffset(end));
-              var width = Math.max(1, right - left + 1);
-              var leftPct = (left / WINDOW_DAYS) * 100;
-              var widthPct = (width / WINDOW_DAYS) * 100;
-              return (
-                '<div class="lt-tl-item">' +
-                '<div class="lt-tl-name">' +
-                esc(p.full_name) +
-                ' <span class="lt-tl-meta">(' +
-                esc(p.emp_id) +
-                ')</span></div>' +
-                '<div class="lt-tl-meta">' +
-                esc(fmtDateDMY(p.start_date)) +
-                ' → ' +
-                esc(fmtDateDMY(p.end_date)) +
-                ' · ' +
-                esc(p.days) +
-                'd</div>' +
-                '<div class="lt-tl-bar" aria-hidden="true">' +
-                marks +
-                '<div class="lt-tl-fill" style="left:' +
-                leftPct +
-                '%;width:' +
-                widthPct +
-                '%"></div>' +
-                '</div></div>'
-              );
-            })
-            .join('');
-      }
-    }
+    renderPlannerCalendar();
   }
 
   function setTab(tab) {
+    if (VALID_TABS.indexOf(tab) < 0) tab = 'logs';
     state.tab = tab;
     document.querySelectorAll('.lt-tab').forEach(function (btn) {
       var on = btn.getAttribute('data-tab') === tab;
       btn.classList.toggle('active', on);
       btn.setAttribute('aria-selected', on ? 'true' : 'false');
     });
-    $('ltPanelSick').hidden = tab !== 'sick';
-    $('ltPanelAnnual').hidden = tab !== 'annual';
+    if ($('ltPanelSick')) $('ltPanelSick').hidden = tab !== 'sick';
+    if ($('ltPanelAnnual')) $('ltPanelAnnual').hidden = tab !== 'annual';
     if ($('ltPanelLogs')) $('ltPanelLogs').hidden = tab !== 'logs';
-    $('ltPanelPlanner').hidden = tab !== 'planner';
-    if (tab === 'planner') loadPlans();
-    if (tab === 'logs') loadLogs();
+    if ($('ltPanelPlanner')) $('ltPanelPlanner').hidden = tab !== 'planner';
+    if (tab === 'planner') renderPlans();
+    if (tab === 'logs') renderLogs();
+    if (tab === 'sick') renderSick();
+    if (tab === 'annual') renderAnnual();
+    if (state.view === 'month') writeMonthUrl();
   }
 
   function loadEmployees() {
@@ -1028,15 +1873,20 @@
         renderSummary(data.summary);
         renderSick();
         renderAnnual();
+        updateMonthChips();
         if (!state.directory.length) {
           state.directory = data.employees || [];
         }
       })
       .catch(function (err) {
-        $('ltSickBody').innerHTML =
-          '<tr><td colspan="12" class="lt-empty">' + esc(err.message) + '</td></tr>';
-        $('ltAnnualBody').innerHTML =
-          '<tr><td colspan="12" class="lt-empty">' + esc(err.message) + '</td></tr>';
+        if ($('ltSickBody')) {
+          $('ltSickBody').innerHTML =
+            '<tr><td colspan="8" class="lt-empty">' + esc(err.message) + '</td></tr>';
+        }
+        if ($('ltAnnualBody')) {
+          $('ltAnnualBody').innerHTML =
+            '<tr><td colspan="8" class="lt-empty">' + esc(err.message) + '</td></tr>';
+        }
       });
   }
 
@@ -1047,6 +1897,8 @@
       .then(function (data) {
         state.logs = data.logs || [];
         renderLogs();
+        renderPlannerCalendar();
+        updateMonthChips();
       })
       .catch(function (err) {
         if ($('ltLogsBody')) {
@@ -1062,15 +1914,18 @@
     var params = new URLSearchParams();
     if (company && company !== 'all') params.set('company', company);
     if (q.trim()) params.set('q', q.trim());
+    if (state.openYear) params.set('year', String(state.openYear));
+    if (state.view === 'month' && state.openMonth) params.set('month', String(state.openMonth));
     var url = '/hr/api/leave-tracker/plans' + (params.toString() ? '?' + params : '');
     return apiGet(url)
       .then(function (data) {
         state.plans = data.plans || [];
         renderPlans();
+        updateMonthChips();
       })
       .catch(function (err) {
-        $('ltPlansBody').innerHTML =
-          '<tr><td colspan="8" class="lt-empty">' + esc(err.message) + '</td></tr>';
+        showImportResult(err.message, true);
+        renderPlannerCalendar();
       });
   }
 
@@ -1330,13 +2185,7 @@
         if ($('ltLogEmployeeResults')) $('ltLogEmployeeResults').hidden = true;
         $('ltLogType').value = 'sick';
         $('ltLogNotes').value = '';
-        var today = new Date();
-        var iso;
-        if (today >= WINDOW_START && today <= WINDOW_END) {
-          iso = today.toISOString().slice(0, 10);
-        } else {
-          iso = '2026-08-01';
-        }
+        var iso = defaultDateInOpenMonth();
         $('ltLogDate').value = iso;
         $('ltLogEndDate').value = iso;
         calcLogDays();
@@ -1383,7 +2232,7 @@
     var el = $('ltPersonLatest');
     if (!el) return;
     if (!log) {
-      el.innerHTML = '<p class="lt-person-empty">No leave logged in Aug–Dec 2026 yet.</p>';
+      el.innerHTML = '<p class="lt-person-empty">No leave logged in this tracker window yet.</p>';
       return;
     }
     el.innerHTML =
@@ -1450,8 +2299,8 @@
 
   function openPersonModal(empId) {
     if (!empId || !$('ltPersonModal')) return;
-    var month = ($('ltMonth') && $('ltMonth').value) || '';
-    var qs = month ? '?month=' + encodeURIComponent(month) : '';
+    var month = state.openMonth;
+    var qs = month ? '?month=' + encodeURIComponent(String(month)) : '';
     $('ltPersonLatest').innerHTML = '<p class="lt-person-empty">Loading…</p>';
     $('ltPersonApps').innerHTML = '';
     $('ltPersonModal').hidden = false;
@@ -1501,6 +2350,9 @@
     ensure.then(function () {
       selectPlanEmployee(null);
       if ($('ltPlanEmployeeSearch')) $('ltPlanEmployeeSearch').value = '';
+      var iso = defaultDateInOpenMonth();
+      if ($('ltPlanStart')) $('ltPlanStart').value = iso;
+      if ($('ltPlanEnd')) $('ltPlanEnd').value = iso;
       $('ltPlanModal').hidden = false;
       setTimeout(function () {
         $('ltPlanEmployeeSearch') && $('ltPlanEmployeeSearch').focus();
@@ -1560,8 +2412,7 @@
 
   function refreshAll() {
     return loadEmployees().then(function () {
-      if (state.tab === 'logs') return loadLogs();
-      if (state.tab === 'planner') return loadPlans();
+      return Promise.all([loadLogs(), loadPlans()]);
     });
   }
 
@@ -1636,6 +2487,12 @@
             (data.usage_updates || 0) +
             (data.errors && data.errors.length ? '; issues: ' + data.errors.slice(0, 3).join('; ') : '')
         );
+        if ((data.created || 0) > 0) {
+          showRosterBanner(
+            (data.created || 0) +
+              ' new people are on the main roster and appear in every month with 0 used. Set annual entitlement where needed.'
+          );
+        }
         refreshAll();
       })
       .catch(function (err) {
@@ -1670,7 +2527,13 @@
             (data.total_parsed || 0) +
             ')'
         );
-        loadEmployees();
+        if ((data.created || 0) > 0) {
+          showRosterBanner(
+            (data.created || 0) +
+              ' people were added to the main roster. They appear in every month with 0 used. Set annual entitlement where needed.'
+          );
+        }
+        refreshAll();
       })
       .catch(function (err) {
         showImportResult(err.message, true);
@@ -1693,7 +2556,7 @@
       setTab('sick');
     }
     loadEmployees();
-    if (state.tab === 'logs') loadLogs();
+    loadLogs();
   }
 
   function emptyLogColFilters() {
@@ -1735,17 +2598,50 @@
     sync();
   }
 
+  function openEmpModal() {
+    if ($('ltEmpForm')) $('ltEmpForm').reset();
+    if ($('ltEmpModal')) $('ltEmpModal').hidden = false;
+    setTimeout(function () {
+      $('ltEmpIdInput') && $('ltEmpIdInput').focus();
+    }, 50);
+  }
+
+  function closeEmpModal() {
+    if ($('ltEmpModal')) $('ltEmpModal').hidden = true;
+  }
+
+  function submitNewEmployee() {
+    var payload = {
+      emp_id: ($('ltEmpIdInput') && $('ltEmpIdInput').value) || '',
+      full_name: ($('ltEmpName') && $('ltEmpName').value) || '',
+      designation: ($('ltEmpDesig') && $('ltEmpDesig').value) || '',
+      company: ($('ltEmpCompany') && $('ltEmpCompany').value) || 'Kynvera',
+    };
+    var ent = $('ltEmpEntitlement') && $('ltEmpEntitlement').value;
+    if (ent) payload.annual_entitlement = Number(ent);
+    return apiJson('/hr/api/leave-tracker/employees', 'POST', payload).then(function () {
+      closeEmpModal();
+      showImportResult('Employee added to the main list');
+      showRosterBanner(
+        'A new person is on the main roster and appears in every month with 0 used. Set annual entitlement if needed.'
+      );
+      state.directory = [];
+      return loadDirectory().then(function () {
+        return refreshAll();
+      });
+    });
+  }
+
   function init() {
     var reload = debounce(function () {
       state.alertLevel = '';
       loadEmployees();
-      if (state.tab === 'logs') loadLogs();
-      if (state.tab === 'planner') loadPlans();
+      loadLogs();
+      loadPlans();
     }, 250);
 
     $('ltSearch') && $('ltSearch').addEventListener('input', reload);
     $('ltCompany') && $('ltCompany').addEventListener('change', reload);
-    $('ltMonth') && $('ltMonth').addEventListener('change', reload);
     wireSearchClear('ltSearch', 'ltSearchClear');
     wireSearchClear('ltLogsSearch', 'ltLogsSearchClear');
     $('ltLogsSearch') &&
@@ -1776,7 +2672,7 @@
       $('ltAlertsOnly').addEventListener('change', function () {
         state.alertLevel = '';
         loadEmployees();
-        if (state.tab === 'logs') loadLogs();
+        loadLogs();
       });
 
     document.addEventListener('click', function (e) {
@@ -2049,8 +2945,8 @@
           });
       });
 
-    $('ltPlansBody') &&
-      $('ltPlansBody').addEventListener('click', function (e) {
+    $('ltUpcomingPlans') &&
+      $('ltUpcomingPlans').addEventListener('click', function (e) {
         var del = e.target.closest('[data-del]');
         var apply = e.target.closest('[data-apply]');
         if (del) {
@@ -2093,6 +2989,39 @@
         }
       });
 
+    $('ltPlannerCal') &&
+      $('ltPlannerCal').addEventListener('click', function (e) {
+        var more = e.target.closest('[data-cal-more]');
+        var cell = e.target.closest('[data-cal-day]');
+        if (!cell || cell.classList.contains('is-out')) return;
+        var ymd = (more && more.getAttribute('data-cal-more')) || cell.getAttribute('data-cal-day');
+        if (!ymd) return;
+        var bucket = daysOnLeaveInMonth()[ymd];
+        var people = (bucket && bucket.all) || [];
+        if (!people.length && !more) return;
+        e.preventDefault();
+        openPlannerPop(ymd, people, cell);
+      });
+
+    $('ltPlannerPop') &&
+      $('ltPlannerPop').addEventListener('click', function (e) {
+        var person = e.target.closest('[data-person-id]');
+        if (!person) return;
+        var id = Number(person.getAttribute('data-person-id'));
+        closePlannerPop();
+        if (id) openPersonModal(id);
+      });
+
+    document.addEventListener('click', function (e) {
+      var pop = $('ltPlannerPop');
+      if (!pop || pop.hidden) return;
+      if (e.target.closest('#ltPlannerPop') || e.target.closest('#ltPlannerCal')) return;
+      closePlannerPop();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closePlannerPop();
+    });
+
     wireAutocomplete('ltLogEmployeeSearch', 'ltLogEmployeeResults', selectLogEmployee);
     wireAutocomplete('ltPlanEmployeeSearch', 'ltPlanEmployeeResults', selectPlanEmployee);
 
@@ -2101,8 +3030,113 @@
     $('ltLogDate') && $('ltLogDate').addEventListener('input', calcLogDays);
     $('ltLogEndDate') && $('ltLogEndDate').addEventListener('input', calcLogDays);
 
-    loadDirectory();
-    loadEmployees();
+    $('ltMonthBoard') &&
+      $('ltMonthBoard').addEventListener('click', function (e) {
+        if (e.target.closest('.lt-add-card')) {
+          e.preventDefault();
+          openAddCardModal();
+          return;
+        }
+        var btn = e.target.closest('[data-open-month]');
+        var card = e.target.closest('.lt-month-card');
+        if (!card) return;
+        var m = btn ? Number(btn.getAttribute('data-open-month')) : Number(card.getAttribute('data-month'));
+        var y = btn ? Number(btn.getAttribute('data-open-year')) : Number(card.getAttribute('data-year'));
+        if (!m) return;
+        e.preventDefault();
+        setOpenMonth(m, { year: y });
+      });
+    $('ltMonthBoard') &&
+      $('ltMonthBoard').addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var card = e.target.closest('.lt-month-card');
+        if (!card || card.classList.contains('lt-add-card')) return;
+        if (e.target !== card) return;
+        e.preventDefault();
+        setOpenMonth(Number(card.getAttribute('data-month')), {
+          year: Number(card.getAttribute('data-year')),
+        });
+      });
+
+    $('ltBackMonths') &&
+      $('ltBackMonths').addEventListener('click', function () {
+        showMonthGrid();
+      });
+    $('ltPrevMonth') &&
+      $('ltPrevMonth').addEventListener('click', function () {
+        shiftOpenMonth(-1);
+      });
+    $('ltNextMonth') &&
+      $('ltNextMonth').addEventListener('click', function () {
+        shiftOpenMonth(1);
+      });
+
+    $('ltRosterBannerDismiss') &&
+      $('ltRosterBannerDismiss').addEventListener('click', hideRosterBanner);
+
+    $('ltAddEmpBtn') && $('ltAddEmpBtn').addEventListener('click', openEmpModal);
+    document.querySelectorAll('[data-close-emp-modal]').forEach(function (el) {
+      el.addEventListener('click', closeEmpModal);
+    });
+    $('ltEmpForm') &&
+      $('ltEmpForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        submitNewEmployee().catch(function (err) {
+          showImportResult(err.message, true);
+        });
+      });
+    document.querySelectorAll('[data-close-add-card]').forEach(function (el) {
+      el.addEventListener('click', closeAddCardModal);
+    });
+    $('ltAddCardYear') && $('ltAddCardYear').addEventListener('input', syncAddCardNote);
+    $('ltAddCardMode') && $('ltAddCardMode').addEventListener('change', syncAddCardNote);
+    $('ltAddCardForm') &&
+      $('ltAddCardForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        try {
+          submitAddCard();
+        } catch (err) {
+          showImportResult(err.message, true);
+        }
+      });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      if ($('ltEmpModal') && !$('ltEmpModal').hidden) {
+        closeEmpModal();
+        return;
+      }
+      if ($('ltAddCardModal') && !$('ltAddCardModal').hidden) {
+        closeAddCardModal();
+      }
+    });
+
+    function bootView() {
+      renderMonthBoard();
+      var start = periodFromUrl();
+      if (start) {
+        if (start.tab) state.tab = start.tab;
+        setOpenMonth(start.month, {
+          year: start.year,
+          skipTabReset: true,
+          skipLoad: true,
+          skipUrl: true,
+          skipScroll: true,
+        });
+      } else {
+        showMonthGrid();
+      }
+      loadDirectory();
+      loadEmployees();
+      loadLogs();
+      loadPlans();
+    }
+
+    apiGet('/hr/api/leave-tracker/periods')
+      .then(function (data) {
+        if (data && data.periods) state.periods = normalizePeriods(data.periods);
+      })
+      .catch(function () { /* local defaults */ })
+      .then(bootView);
   }
 
   if (document.readyState === 'loading') {

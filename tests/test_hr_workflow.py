@@ -172,6 +172,20 @@ def test_hr_workflow_submit_hr_approve_gm_approve(client, app, hr_three_users):
         assert len(buf.getvalue()) > 2000
 
 
+def test_leave_submit_rejects_coverage_yes_without_colleague(client, app, hr_three_users):
+    _, _, _, emp_u, _, _ = hr_three_users
+    h_emp = _login_headers(client, emp_u, "TestPass123!")
+    payload = {
+        "form_type": "leave_application",
+        "employee_name": "Coverage Tester",
+        "need_coverage_signature": "yes",
+        "employee_signature": SIG,
+    }
+    r = client.post("/hr/api/submit", json=payload, headers=h_emp)
+    assert r.status_code == 400
+    assert "coverage colleague" in (r.get_json() or {}).get("error", "").lower()
+
+
 def test_hr_permissions_endpoints(client, app, hr_three_users):
     _, _, _, emp_u, hr_u, gm_u = hr_three_users
     h_emp = _login_headers(client, emp_u, "TestPass123!")

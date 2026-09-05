@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=4">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=21">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <style>
@@ -299,9 +299,14 @@
 {% include 'partials/tkt_sidebar.html' with context %}
 <div class="tkt-dh-main">
 {% set tkt_topbar_title = 'Locations' %}
+{% set module_back_url = url_for('ticketing.settings_page') ~ '?tab=' ~ back_tab %}
 {% include 'partials/tkt_topbar.html' with context %}
 <div class="tkt-content">
 
+  <div class="loc-welcome" id="locWelcomeBanner" hidden>
+    <p>Add the first <strong>property</strong> (building or site), then floors and zones so tickets can be assigned.</p>
+    <button type="button" class="loc-welcome-dismiss" id="locWelcomeDismiss">Dismiss</button>
+  </div>
   <div class="loc-ws-head">
     <div>
       <h1 class="loc-ws-title">{% if standalone %}Unlinked properties{% else %}{{ project.name }}{% endif %}</h1>
@@ -315,8 +320,6 @@
       </p>
       <nav class="loc-crumb" id="locCrumb" aria-label="Location levels"></nav>
     </div>
-    <a class="tkt-btn tkt-btn-outline tkt-btn-sm" id="locBackLink"
-       href="{{ url_for('ticketing.settings_page') }}?tab={{ back_tab }}">← Back to Settings</a>
   </div>
 
   <div class="loc-ws">
@@ -440,14 +443,27 @@ function parseQuery() {
   state.subZoneId = numOrNull(p.get('sub_zone_id'));
 }
 
+function locQueryPrefill() {
+  const p = new URLSearchParams(window.location.search);
+  return {
+    name: (p.get('prefill_name') || '').trim(),
+    procId: (p.get('proc_id') || '').trim(),
+    from: (p.get('from') || '').trim(),
+  };
+}
+
 function syncUrl() {
   const url = new URL(window.location.href);
-  url.searchParams.set('from', LOC_CFG.backTab);
+  const keep = locQueryPrefill();
+  if (keep.from === 'procurement') url.searchParams.set('from', 'procurement');
+  else url.searchParams.set('from', LOC_CFG.backTab);
   url.searchParams.set('level', state.level);
   [['property_id', state.propertyId], ['zone_id', state.zoneId], ['sub_zone_id', state.subZoneId]].forEach(([k, v]) => {
     if (v) url.searchParams.set(k, String(v));
     else url.searchParams.delete(k);
   });
+  if (keep.name) url.searchParams.set('prefill_name', keep.name);
+  if (keep.procId) url.searchParams.set('proc_id', keep.procId);
   history.replaceState(null, '', url);
 }
 
@@ -736,6 +752,11 @@ function renderAddForm() {
     </div>`;
   document.getElementById('addCancel').addEventListener('click', () => { state.addOpen = false; renderAddForm(); });
   document.getElementById('addSave').addEventListener('click', saveNew);
+  const prefill = locQueryPrefill();
+  if (state.level === 'property' && prefill.name) {
+    const inp = document.getElementById('addName');
+    if (inp && !inp.value) inp.value = prefill.name;
+  }
   document.getElementById('addName')?.focus();
 }
 
@@ -901,6 +922,25 @@ async function saveNew() {
   const res = await tktFetch(url, { method: 'POST', body: JSON.stringify(body) });
   if (res.ok && res.data.success) {
     tktToast(`${LEVEL_LABELS[state.level]} added.`, 'success');
+    const prefill = locQueryPrefill();
+    if (state.level === 'property' && prefill.procId && res.data.property && res.data.property.id) {
+      const token = localStorage.getItem('access_token');
+      try {
+        const linkRes = await fetch(`/procurement/api/properties/${encodeURIComponent(prefill.procId)}/link`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ ticket_property_id: res.data.property.id }),
+        });
+        const linkData = await linkRes.json().catch(() => ({}));
+        if (linkRes.ok && linkData.success) {
+          tktToast('Linked to procurement stock.', 'success');
+        } else {
+          tktToast(linkData.error || 'Saved in ticketing, but procurement link failed.', 'error');
+        }
+      } catch (err) {
+        tktToast('Saved in ticketing, but procurement link failed.', 'error');
+      }
+    }
     state.addOpen = false;
     await loadTree();
   } else {
@@ -1235,9 +1275,25 @@ function bindExcelBar() {
   parseQuery();
   bindExcelBar();
   bindPinModal();
+  const welcome = new URLSearchParams(window.location.search).get('welcome') === '1';
+  const banner = document.getElementById('locWelcomeBanner');
+  if (welcome && !LOC_CFG.standalone && banner) {
+    banner.hidden = false;
+    document.getElementById('locWelcomeDismiss')?.addEventListener('click', () => {
+      banner.hidden = true;
+    });
+    const url = new URL(window.location.href);
+    url.searchParams.delete('welcome');
+    history.replaceState(null, '', url);
+  }
   const projRes = await tktFetch('/tickets/api/settings/projects');
   _projects = (projRes.ok && projRes.data.projects) || [];
   await loadTree();
+  const prefill = locQueryPrefill();
+  if (LOC_CFG.standalone && prefill.name && state.level === 'property') {
+    state.addOpen = true;
+    renderAddForm();
+  }
 })();
 </script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>

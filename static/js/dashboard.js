@@ -988,8 +988,6 @@ function displayProfileData(user) {
   const getModuleAccess = () => {
     const modules = [];
     if (isAppAdmin(user) || user.access_hvac || user.access_civil || user.access_cleaning) modules.push('Inspection');
-    if (isAppAdmin(user) || user.access_civil) modules.push('Civil Works');
-    if (isAppAdmin(user) || user.access_cleaning) modules.push('Cleaning');
     if (userHasHrNavAccess(user)) modules.push('HR');
     if (isAppAdmin(user) || user.access_procurement_module) modules.push('Procurement');
     if (isAppAdmin(user) || user.access_files || user.access_hr || userHasHrNavAccess(user)) modules.push('Files');
@@ -1045,6 +1043,7 @@ const PROFILE_ICONS = {
   clipboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M9 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3"/><path d="M9 12h6M9 16h4"/></svg>',
   shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
   role: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 9.5 8.5 3 9l5 4.5L6.5 21 12 17l5.5 4L16 13.5 21 9l-6.5-.5z"/></svg>',
+  at: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>',
   warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a1.8 1.8 0 0 0 1.5 2.7h17.4a1.8 1.8 0 0 0 1.5-2.7L13.7 3.9a1.8 1.8 0 0 0-3.1 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
   pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
@@ -1064,8 +1063,6 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
   const I = PROFILE_ICONS;
   const modules = [];
   if (isAppAdmin(user) || user.access_hvac || user.access_civil || user.access_cleaning) modules.push({ name: 'Inspection', desc: 'Site inspection forms', icon: 'hvac', color: '#3b82f6', bg: '#eff6ff' });
-  if (isAppAdmin(user) || user.access_civil) modules.push({ name: 'Civil Works', desc: 'Construction & site management', icon: 'civil', color: '#8b5cf6', bg: '#f5f3ff' });
-  if (isAppAdmin(user) || user.access_cleaning) modules.push({ name: 'Cleaning', desc: 'Facility hygiene & maintenance', icon: 'cleaning', color: '#10b981', bg: '#ecfdf5' });
   if (userHasHrNavAccess(user)) modules.push({ name: 'HR', desc: 'People & workforce management', icon: 'hr_mod', color: '#f59e0b', bg: '#fffbeb' });
   if (isAppAdmin(user) || user.access_procurement_module) modules.push({ name: 'Procurement', desc: 'Purchasing & vendor tracking', icon: 'procurement', color: '#7c3aed', bg: '#faf5ff' });
   if (userHasBdModuleAccess(user)) modules.push({ name: 'Business Development', desc: 'Pipeline, quotations & follow-ups', icon: 'biz_dev', color: '#ff8e68', bg: '#fff4ef' });
@@ -1176,6 +1173,14 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         color: #1c1c1e;
         line-height: 1.25;
         letter-spacing: -0.01em;
+        word-break: break-word;
+      }
+
+      .pro-rail-username {
+        font-size: 0.74rem;
+        font-weight: 500;
+        color: #8e8e93;
+        line-height: 1.3;
         word-break: break-word;
       }
 
@@ -1656,7 +1661,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         to { opacity: 1; transform: translateY(0); }
       }
       
-      /* Info grids — two columns on wide profile sheet */
+      /* Info grids — three columns on the security sheet */
       .pro-info-list {
         display: flex;
         flex-direction: column;
@@ -1665,7 +1670,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
 
       .pro-info-list--grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 0.5rem;
       }
 
@@ -2564,6 +2569,9 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
           <div class="pro-rail-head">
             <div class="pro-avatar pro-rail-avatar">${getInitials()}</div>
             <div class="pro-rail-name">${escapeHtml(user.full_name || user.username)}</div>
+            ${user.username && user.full_name && String(user.full_name).toLowerCase() !== String(user.username).toLowerCase()
+              ? `<div class="pro-rail-username">@${escapeHtml(user.username)}</div>`
+              : ''}
             <div class="pro-rail-role">${escapeHtml(user.job_designation || getRoleDisplay())}</div>
           </div>
           <nav class="pro-nav">
@@ -2676,6 +2684,13 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
               </div>
 
               <div class="pro-info-list pro-info-list--grid">
+                <div class="pro-info-item">
+                  <div class="pro-info-icon" style="--icon-color:#ff8e68">${I.at}</div>
+                  <div class="pro-info-content">
+                    <div class="pro-info-label">Username</div>
+                    <div class="pro-info-value">${escapeHtml(user.username || '—')}</div>
+                  </div>
+                </div>
                 <div class="pro-info-item">
                   <div class="pro-info-icon" style="--icon-color:${user.is_active ? '#ff8e68' : '#dc2626'}">${I.shield}</div>
                   <div class="pro-info-content">
@@ -3760,7 +3775,8 @@ function initNotifications() {
         item.getAttribute('data-notif-id'),
         item.getAttribute('data-submission-id') || '',
         item.getAttribute('data-notif-type') || '',
-        item.getAttribute('data-notif-title') || ''
+        item.getAttribute('data-notif-title') || '',
+        item.getAttribute('data-notif-message') || ''
       );
     });
     notificationList.addEventListener('keydown', function(e) {
@@ -3891,6 +3907,9 @@ function notificationVisual(type, title, submissionId) {
   if (t.startsWith('ticket_') || hay.includes('tkt-') || hay.includes('ticket') || hay.includes('work order')) {
     return { kind: 'ticket', glyph: 'ticket' };
   }
+  if (t.startsWith('proc_') || hay.includes('pr-') || hay.includes('purchase request') || hay.includes('quotation') || hay.includes('refill')) {
+    return { kind: 'info', glyph: 'bell' };
+  }
   return { kind: 'info', glyph: 'bell' };
 }
 
@@ -3904,7 +3923,32 @@ function isTicketNotification(type, submissionId, title) {
   return false;
 }
 
-function notificationDestination(type, submissionId, title) {
+function extractPrId(submissionId, title, message) {
+  const hay = `${submissionId || ''} ${title || ''} ${message || ''}`;
+  const m = hay.match(/\bPR-[A-Z0-9]+\b/i);
+  return m ? m[0].toUpperCase() : '';
+}
+
+function isProcurementNotification(type, submissionId, title, message) {
+  const t = String(type || '').toLowerCase();
+  if (t.startsWith('proc_') || t.startsWith('procurement')) return true;
+  if (/^PR-[A-Z0-9]+$/i.test(String(submissionId || '').trim())) return true;
+  const hay = `${title || ''} ${message || ''}`.toLowerCase();
+  if (/^(purchase request|quotation ready|supplier invoice|refill needed|low stock after)/i.test(title || '')) {
+    return true;
+  }
+  if (extractPrId(submissionId, title, message) && (
+    hay.includes('purchase request') ||
+    hay.includes('quotation') ||
+    hay.includes('invoice') ||
+    hay.includes('procurement')
+  )) {
+    return true;
+  }
+  return false;
+}
+
+function notificationDestination(type, submissionId, title, message) {
   const t = String(type || '').toLowerCase();
   const sid = String(submissionId || '').trim();
   const enc = sid ? encodeURIComponent(sid) : '';
@@ -3915,6 +3959,15 @@ function notificationDestination(type, submissionId, title) {
       return '/tickets/drafts/' + enc + '/review';
     }
     return '/tickets/' + enc;
+  }
+
+  if (isProcurementNotification(t, sid, title, message)) {
+    if (t === 'proc_refill' || /^(refill needed|low stock after)/i.test(title || '')) {
+      return '/procurement/refill';
+    }
+    const pr = extractPrId(sid, title, message);
+    if (pr) return '/procurement/purchase-requests/' + encodeURIComponent(pr);
+    return '/procurement/purchase-requests';
   }
 
   if (t === 'gm_approval_pending') return '/hr/gm-approval';
@@ -4018,7 +4071,8 @@ async function loadNotifications() {
                data-notif-id="${escapeHtml(String(n.id))}"
                data-submission-id="${escapeHtml(n.submission_id || '')}"
                data-notif-type="${escapeHtml(n.notification_type || '')}"
-               data-notif-title="${escapeHtml(n.title || '')}">
+               data-notif-title="${escapeHtml(n.title || '')}"
+               data-notif-message="${escapeHtml(n.message || '')}">
             <div class="notification-icon ${visual.kind}">${notificationGlyphSvg(visual.glyph)}</div>
             <div class="notification-content">
               <div class="notification-title">${escapeHtml(n.title)}</div>
@@ -4044,8 +4098,8 @@ async function loadNotifications() {
   }
 }
 
-async function markNotificationRead(id, submissionId, notificationType, title) {
-  const dest = notificationDestination(notificationType, submissionId, title);
+async function markNotificationRead(id, submissionId, notificationType, title, message) {
+  const dest = notificationDestination(notificationType, submissionId, title, message);
   try {
     await authenticatedFetch(`/hr/api/notifications/${id}/read`, {
       method: 'POST'
@@ -4063,6 +4117,14 @@ async function markNotificationRead(id, submissionId, notificationType, title) {
 }
 
 window.__hrLastHrSubmissionId = '';
+window.hrShowSuccessModal = function hrShowSuccessModal() {
+  const el = document.getElementById('successModal');
+  if (!el) return;
+  try { document.documentElement.appendChild(el); } catch (_) {}
+  el.removeAttribute('inert');
+  el.setAttribute('aria-hidden', 'false');
+  el.classList.add('show');
+};
 window.hrGoToSubmittedRequest = function hrGoToSubmittedRequest() {
   let id = String(window.__hrLastHrSubmissionId || '').trim();
   if (!id) {

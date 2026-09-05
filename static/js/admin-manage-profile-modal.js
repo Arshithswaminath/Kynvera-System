@@ -6,7 +6,6 @@
   'use strict';
 
   const DEFAULT_RESET_DISPLAY_PASSWORD = 'Injaaz@123';
-  const ADMIN_PROFILE_LAYOUT_KEY = 'injaaz_admin_profile_layout';
 
   const CFG = {
     notify: function (msg, type, persist) {
@@ -23,6 +22,7 @@
 
   let bindingsDone = false;
   let passwordResetConfirmContext = null;
+  let emailCredentialsConfirmContext = null;
 
   function setProfileQuickToggleButton(tbtn, isActive) {
     if (!tbtn) return;
@@ -180,12 +180,19 @@
   }
 
   function handleUnauthorized(response) {
-    if (!(response.status === 401 || response.status === 403)) return false;
+    if (response.status !== 401) return false;
     if (typeof CFG.onUnauthorized === 'function' && CFG.onUnauthorized(response)) return true;
     CFG.notify('Access denied. Please log in again.', 'error', true);
     setTimeout(() => {
       w.location.href = '/login';
     }, 900);
+    return true;
+  }
+
+  function handleOtpRequired(data) {
+    if (!data || !data.otp_required) return false;
+    notify(data.error || 'This administrator account is locked to prevent unconfirmed profile, password, or access changes. Verify the one-time code sent to the account email before editing.', 'error');
+    if (w.AdminEditOtp) w.AdminEditOtp.relock();
     return true;
   }
 
@@ -199,9 +206,28 @@
   }
 
   function ensurePortalModal(modalEl) {
-    if (modalEl && modalEl.parentElement !== document.body) {
-      document.body.appendChild(modalEl);
-    }
+    if (modalEl) (document.documentElement || document.body).appendChild(modalEl);
+  }
+
+  function syncOverlayLock() {
+    const ids = [
+      'accessModal',
+      'passwordResetConfirmModal',
+      'passwordResetResultModal',
+      'userActivityModal',
+      'profileStatusConfirmModal',
+      'profileDeleteConfirmModal',
+      'profileAdminOtpModal',
+      'emailCredentialsConfirmModal',
+    ];
+    const any = ids.some(function (id) {
+      const el = document.getElementById(id);
+      return el && el.classList.contains('active');
+    });
+    document.documentElement.classList.toggle('kyn-overlay-open', any);
+    document.body.classList.toggle('kyn-overlay-open', any);
+    document.documentElement.style.overflow = any ? 'hidden' : '';
+    document.body.style.overflow = '';
   }
 
   function activatePortalModal(modalEl) {
@@ -209,7 +235,7 @@
     ensurePortalModal(modalEl);
     modalEl.scrollTop = 0;
     modalEl.classList.add('active');
-    document.body.style.overflow = 'hidden';
+    syncOverlayLock();
   }
 
   function escapeHtml(s) {
@@ -230,6 +256,15 @@
     }
   }
 
+  function syncProfileSignatureFileName() {
+    const input = document.getElementById('profileSignatureFile');
+    const name = document.getElementById('profileSignatureFileName');
+    if (!name) return;
+    const f = input && input.files && input.files[0];
+    name.textContent = f ? f.name : 'No file chosen';
+    name.classList.toggle('is-empty', !f);
+  }
+
   w.clearProfileSignaturePreview = function clearProfileSignaturePreview() {
     profileSignatureDataUrl = '';
     const f = document.getElementById('profileSignatureFile');
@@ -239,6 +274,7 @@
       img.src = '';
       img.hidden = true;
     }
+    syncProfileSignatureFileName();
   };
 
   function updateProfileSignaturePreview() {
@@ -261,8 +297,8 @@
     if (!modal) return;
     const intro = document.getElementById('passwordResetConfirmIntro');
     if (intro) {
-      intro.textContent = 'Reset the password for "' + (username || 'this user')
-        + '"? The standard temporary password will be shown next.';
+      intro.textContent = 'Reset the password for ' + (username || 'this user')
+        + '? The temporary password will be shown next.';
     }
     ensurePortalModal(modal);
     activatePortalModal(modal);
@@ -274,7 +310,7 @@
     passwordResetConfirmContext = null;
     const resOpen = document.getElementById('passwordResetResultModal');
     if (!resOpen || !resOpen.classList.contains('active')) {
-      document.body.style.overflow = '';
+      syncOverlayLock();
     }
   };
 
@@ -294,14 +330,10 @@
         headers: { 'Content-Type': 'application/json' },
       });
 
+      const data = await response.json().catch(function () { return {}; });
+      if (handleOtpRequired(data)) return;
       if (handleUnauthorized(response)) return;
 
-      if (!response || typeof response.json !== 'function') {
-        notify('Could not complete the request. Reload and try again.', 'error');
-        return;
-      }
-
-      const data = await response.json();
       if (data.success) {
         const pw = data.temp_password || DEFAULT_RESET_DISPLAY_PASSWORD;
         patchDirectoryUserPassword(userId, pw);
@@ -331,7 +363,7 @@
   w.closePasswordResetResultModal = function closePasswordResetResultModal() {
     const modal = document.getElementById('passwordResetResultModal');
     if (modal) modal.classList.remove('active');
-    document.body.style.overflow = '';
+    syncOverlayLock();
   };
 
   w.copyPasswordResetResult = function copyPasswordResetResult() {
@@ -355,19 +387,19 @@
     }
   };
 
-  async function toggleUserActiveRemote(userId, currentStatus) {
-    const action = currentStatus ? 'deactivate' : 'activate';
-    if (!confirm('Are you sure you want to ' + action + ' this user?')) return;
+  let statusConfirmContext = null;
 
+  async function toggleUserActiveRemote(userId, currentStatus) {
     try {
       const response = await profileAuthenticatedFetch('/api/admin/users/' + userId + '/toggle-active', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
+      const data = await response.json().catch(function () { return {}; });
+      if (handleOtpRequired(data)) return;
       if (handleUnauthorized(response)) return;
-      const data = await response.json();
       if (data.success) {
-        notify(data.message || 'Updated', 'success');
+        notify(data.message || (currentStatus ? 'Account deactivated' : 'Account activated'), 'success');
         await CFG.reloadDirectory();
       } else {
         notify(data.error || 'Failed', 'error');
@@ -377,6 +409,44 @@
       notify('Error updating status', 'error');
     }
   }
+
+  w.openProfileStatusConfirmModal = function openProfileStatusConfirmModal(userId, isActive, username) {
+    statusConfirmContext = { userId: userId, isActive: isActive };
+    const modal = document.getElementById('profileStatusConfirmModal');
+    if (!modal) return;
+    const title = document.getElementById('profileStatusConfirmTitle');
+    const intro = document.getElementById('profileStatusConfirmIntro');
+    const btn = document.getElementById('profileStatusConfirmBtn');
+    const name = username || 'this user';
+    if (title) title.textContent = isActive ? 'Deactivate account?' : 'Activate account?';
+    if (intro) {
+      intro.textContent = isActive
+        ? name + ' will not be able to sign in until you activate this account again.'
+        : name + ' will be able to sign in again.';
+    }
+    if (btn) {
+      btn.textContent = isActive ? 'Deactivate' : 'Activate';
+      btn.classList.toggle('injz-mgmt-btn-danger', !!isActive);
+    }
+    activatePortalModal(modal);
+  };
+
+  w.closeProfileStatusConfirmModal = function closeProfileStatusConfirmModal() {
+    const modal = document.getElementById('profileStatusConfirmModal');
+    if (modal) modal.classList.remove('active');
+    statusConfirmContext = null;
+    syncOverlayLock();
+  };
+
+  w.submitProfileStatusConfirm = async function submitProfileStatusConfirm() {
+    const ctx = statusConfirmContext;
+    if (!ctx) return;
+    const userId = ctx.userId;
+    const isActive = ctx.isActive;
+    closeProfileStatusConfirmModal();
+    closeUserProfileModal();
+    await toggleUserActiveRemote(userId, isActive);
+  };
 
   w.profileModalResetPassword = function profileModalResetPassword() {
     const uid = parseInt(document.getElementById('profileUserId').value, 10);
@@ -391,34 +461,172 @@
     if (Number.isFinite(uid)) openUserActivityModal(uid);
   };
 
-  w.profileModalToggleActive = async function profileModalToggleActive() {
+  w.profileModalToggleActive = function profileModalToggleActive() {
     const uid = parseInt(document.getElementById('profileUserId').value, 10);
     const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
     if (!u || !Number.isFinite(uid)) return;
-    closeUserProfileModal();
-    await toggleUserActiveRemote(uid, u.is_active);
+    openProfileStatusConfirmModal(uid, u.is_active, u.full_name || u.username || '');
   };
 
-  function getAdminProfileLayoutMode() {
-    return localStorage.getItem(ADMIN_PROFILE_LAYOUT_KEY) || 'cards';
-  }
+  let deleteConfirmContext = null;
 
-  function applyAdminProfileLayout() {
-    const modal = document.getElementById('accessModal');
-    if (!modal) return;
-    const isLine = getAdminProfileLayoutMode() === 'line';
-    modal.classList.toggle('admin-profile-shell--v2', isLine);
-    const btn = document.getElementById('adminProfileLayoutToggle');
-    if (btn) {
-      btn.textContent = isLine ? 'Cards' : 'Line';
-      btn.setAttribute('aria-pressed', isLine ? 'true' : 'false');
+  function currentAdminId() {
+    try {
+      const raw = localStorage.getItem('user');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && parsed.id != null ? Number(parsed.id) : null;
+    } catch (_) {
+      return null;
     }
   }
 
-  function toggleAdminProfileLayout() {
-    const next = getAdminProfileLayoutMode() === 'line' ? 'cards' : 'line';
-    localStorage.setItem(ADMIN_PROFILE_LAYOUT_KEY, next);
-    applyAdminProfileLayout();
+  w.openProfileDeleteConfirmModal = function openProfileDeleteConfirmModal(userId) {
+    const uid = Number(userId);
+    const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
+    if (!u) {
+      notify('User not found', 'error');
+      return;
+    }
+    if (u.is_active) {
+      notify('Deactivate this account before deleting it.', 'error');
+      return;
+    }
+    if (Number(u.id) === currentAdminId()) {
+      notify('You cannot delete your own account', 'error');
+      return;
+    }
+    deleteConfirmContext = { userId: uid };
+    const modal = document.getElementById('profileDeleteConfirmModal');
+    if (!modal) return;
+    const intro = document.getElementById('profileDeleteConfirmIntro');
+    const name = u.full_name || u.username || 'this user';
+    if (intro) {
+      intro.textContent = 'Are you sure you want to delete user "' + name
+        + '"? This action cannot be undone.';
+    }
+    activatePortalModal(modal);
+  };
+
+  w.closeProfileDeleteConfirmModal = function closeProfileDeleteConfirmModal() {
+    const modal = document.getElementById('profileDeleteConfirmModal');
+    if (modal) modal.classList.remove('active');
+    deleteConfirmContext = null;
+    syncOverlayLock();
+  };
+
+  w.submitProfileDeleteConfirm = async function submitProfileDeleteConfirm() {
+    const ctx = deleteConfirmContext;
+    if (!ctx) return;
+    const userId = ctx.userId;
+    closeProfileDeleteConfirmModal();
+    closeUserProfileModal();
+    try {
+      const response = await profileAuthenticatedFetch('/api/admin/users/' + userId, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json().catch(function () { return {}; });
+      if (handleOtpRequired(data)) return;
+      if (handleUnauthorized(response)) return;
+      if (data.success) {
+        notify(data.message || 'User deleted', 'success');
+        await CFG.reloadDirectory();
+      } else {
+        notify(data.error || 'Failed to delete user', 'error');
+      }
+    } catch (e) {
+      console.error(e);
+      notify('Error deleting user', 'error');
+    }
+  };
+
+  w.profileModalDeleteUser = function profileModalDeleteUser() {
+    const uid = parseInt(document.getElementById('profileUserId').value, 10);
+    if (!Number.isFinite(uid)) return;
+    openProfileDeleteConfirmModal(uid);
+  };
+
+  function currentProfileEmail() {
+    const el = document.getElementById('profileEmail');
+    const typed = el && el.value ? el.value.trim() : '';
+    if (typed) return typed;
+    const uid = parseInt(document.getElementById('profileUserId').value, 10);
+    const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
+    return (u && u.email) ? String(u.email).trim() : '';
+  }
+
+  w.profileModalEmailCredentials = function profileModalEmailCredentials() {
+    const uid = parseInt(document.getElementById('profileUserId').value, 10);
+    const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
+    if (!Number.isFinite(uid)) return;
+    const email = currentProfileEmail();
+    const pwEl = document.getElementById('profilePassword');
+    const typed = pwEl && pwEl.value ? pwEl.value.trim() : '';
+    const stored = pwEl && pwEl.dataset.storedPassword ? pwEl.dataset.storedPassword.trim() : '';
+    if (!email) {
+      notify('This account has no email address.', 'error');
+      return;
+    }
+    if (typed && stored && typed !== stored) {
+      notify('Save the new password first, then email login details.', 'error');
+      return;
+    }
+    if (!stored) {
+      notify('No password on file for admin view. Reset password or save a new password first.', 'error');
+      return;
+    }
+    const name = (u && (u.full_name || u.username)) || 'this user';
+    openEmailCredentialsConfirmModal(uid, name, email);
+  };
+
+  function openEmailCredentialsConfirmModal(userId, name, email) {
+    emailCredentialsConfirmContext = { userId: userId };
+    const modal = document.getElementById('emailCredentialsConfirmModal');
+    if (!modal) return;
+    const intro = document.getElementById('emailCredentialsConfirmIntro');
+    if (intro) {
+      intro.textContent = 'Send the username and stored password for ' + name
+        + ' to ' + email + '?';
+    }
+    ensurePortalModal(modal);
+    activatePortalModal(modal);
+  }
+
+  w.closeEmailCredentialsConfirmModal = function closeEmailCredentialsConfirmModal() {
+    const modal = document.getElementById('emailCredentialsConfirmModal');
+    if (modal) modal.classList.remove('active');
+    emailCredentialsConfirmContext = null;
+    syncOverlayLock();
+  };
+
+  w.submitEmailCredentialsConfirm = async function submitEmailCredentialsConfirm() {
+    const ctx = emailCredentialsConfirmContext;
+    if (!ctx) return;
+    const userId = ctx.userId;
+    closeEmailCredentialsConfirmModal();
+    try {
+      const response = await profileAuthenticatedFetch('/api/admin/users/' + userId + '/email-login-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json().catch(function () { return {}; });
+      if (handleOtpRequired(data)) return;
+      if (handleUnauthorized(response)) return;
+      if (response.ok && data.success) {
+        notify(data.message || 'Login details were emailed.', 'success');
+      } else {
+        notify(data.error || data.message || 'Could not send the email.', 'error');
+      }
+    } catch (e) {
+      console.error(e);
+      notify('Could not send the email.', 'error');
+    }
+  };
+
+  function applyAdminProfileLayout() {
+    const modal = document.getElementById('accessModal');
+    if (modal) modal.classList.remove('admin-profile-shell--v2');
   }
 
   function fillReportingManagerDropdown(selectEl, excludeUserId) {
@@ -521,7 +729,7 @@
       if (isAdminTarget) {
         modNote.hidden = false;
         modNote.textContent = 'Administrators have full access to all modules by policy.';
-        ['accessHvac', 'accessCivil', 'accessCleaning', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessSalesManager', 'accessQuotations', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessQhsi', 'accessFiles'].forEach(function (id) {
+        ['accessInspection', 'accessHr', 'accessHiring', 'accessProcurement', 'accessBusinessDev', 'accessSalesManager', 'accessQuotations', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessQhsi', 'accessFiles'].forEach(function (id) {
           const cb = document.getElementById(id);
           if (cb) {
             cb.checked = true;
@@ -531,10 +739,11 @@
       } else {
         modNote.hidden = true;
         modNote.textContent = '';
-        document.getElementById('accessHvac').checked = !!user.access_hvac;
-        document.getElementById('accessCivil').checked = !!user.access_civil;
-        document.getElementById('accessCleaning').checked = !!user.access_cleaning;
-        document.getElementById('accessHr').checked = !!user.access_hr;
+        const inspEl = document.getElementById('accessInspection');
+        if (inspEl) inspEl.checked = !!(user.access_hvac || user.access_civil || user.access_cleaning);
+        document.getElementById('accessHr').checked = !!user.access_hr || !!user.access_hiring;
+        const hiringCb = document.getElementById('accessHiring');
+        if (hiringCb) hiringCb.checked = !!user.access_hiring;
         document.getElementById('accessProcurement').checked = !!user.access_procurement_module;
         const bd = document.getElementById('accessBusinessDev');
         if (bd) bd.checked = !!user.access_business_development || !!user.access_sales_manager;
@@ -567,9 +776,20 @@
     const sigFileEl = document.getElementById('profileSignatureFile');
     if (sigFileEl) sigFileEl.value = '';
     updateProfileSignaturePreview();
+    syncProfileSignatureFileName();
 
     const tbtn = document.getElementById('profileQuickToggleBtn');
     setProfileQuickToggleButton(tbtn, user.is_active);
+    const delBtn = document.getElementById('profileDeleteUserBtn');
+    if (delBtn) {
+      const hideDel = !!user.is_active || Number(user.id) === currentAdminId();
+      delBtn.hidden = hideDel;
+      delBtn.style.display = hideDel ? 'none' : '';
+    }
+
+    if (w.AdminEditOtp && typeof w.AdminEditOtp.apply === 'function') {
+      w.AdminEditOtp.apply(user);
+    }
 
     activatePortalModal(modal);
   };
@@ -579,11 +799,7 @@
   w.closeUserProfileModal = function closeUserProfileModal() {
     const modal = document.getElementById('accessModal');
     if (modal) modal.classList.remove('active');
-    const pr = document.getElementById('passwordResetResultModal');
-    const pc = document.getElementById('passwordResetConfirmModal');
-    const pu = pr && pr.classList.contains('active');
-    const pcc = pc && pc.classList.contains('active');
-    if (!pu && !pcc) document.body.style.overflow = '';
+    syncOverlayLock();
   };
 
   /* ── Activity modal ───────────────────────────────────────── */
@@ -740,6 +956,7 @@
   w.closeUserActivityModal = function closeUserActivityModal() {
     const modal = document.getElementById('userActivityModal');
     if (modal) modal.classList.remove('active');
+    syncOverlayLock();
   };
 
   function bindOnce() {
@@ -754,10 +971,19 @@
       const conf = document.getElementById('passwordResetConfirmModal');
       const prof = document.getElementById('accessModal');
       const act = document.getElementById('userActivityModal');
+      const statusConf = document.getElementById('profileStatusConfirmModal');
+      const deleteConf = document.getElementById('profileDeleteConfirmModal');
+      const otpConf = document.getElementById('profileAdminOtpModal');
       if (res && res.classList.contains('active')) {
         closePasswordResetResultModal();
       } else if (conf && conf.classList.contains('active')) {
         closePasswordResetConfirmModal();
+      } else if (otpConf && otpConf.classList.contains('active')) {
+        closeAdminProfileOtpModal();
+      } else if (deleteConf && deleteConf.classList.contains('active')) {
+        closeProfileDeleteConfirmModal();
+      } else if (statusConf && statusConf.classList.contains('active')) {
+        closeProfileStatusConfirmModal();
       } else if (prof && prof.classList.contains('active')) {
         closeUserProfileModal();
       } else if (act && act.classList.contains('active')) {
@@ -786,6 +1012,10 @@
       formEl.dataset.bound = '1';
       formEl.addEventListener('submit', async function (ev) {
         ev.preventDefault();
+        if (w.AdminEditOtp && w.AdminEditOtp.isLocked()) {
+          notify('This administrator account is locked to prevent unconfirmed profile, password, or access changes. Verify the one-time code first.', 'error');
+          return;
+        }
         const userId = document.getElementById('profileUserId').value;
         if (!userId) return;
 
@@ -831,10 +1061,13 @@
           return String(x.id) === String(userId);
         });
         if (u && u.role !== 'admin') {
-          payload.access_hvac = document.getElementById('accessHvac').checked;
-          payload.access_civil = document.getElementById('accessCivil').checked;
-          payload.access_cleaning = document.getElementById('accessCleaning').checked;
-          payload.access_hr = document.getElementById('accessHr').checked;
+          const inspOn = !!(document.getElementById('accessInspection') && document.getElementById('accessInspection').checked);
+          payload.access_hvac = inspOn;
+          payload.access_civil = inspOn;
+          payload.access_cleaning = inspOn;
+          const hiringOn = !!(document.getElementById('accessHiring') && document.getElementById('accessHiring').checked);
+          payload.access_hiring = hiringOn;
+          payload.access_hr = !!(document.getElementById('accessHr') && document.getElementById('accessHr').checked) || hiringOn;
           payload.access_procurement_module = document.getElementById('accessProcurement').checked;
           const salesMgrOn = !!(document.getElementById('accessSalesManager') && document.getElementById('accessSalesManager').checked);
           payload.access_sales_manager = salesMgrOn;
@@ -858,8 +1091,9 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
           });
+          const data = await response.json().catch(function () { return {}; });
+          if (handleOtpRequired(data)) return;
           if (handleUnauthorized(response)) return;
-          const data = await response.json();
           const roleIsAdmin = document.getElementById('profileRole').value === 'admin';
           const okPut = response.ok && data.success;
           if (okPut) {
@@ -904,6 +1138,20 @@
     }
 
     try {
+      const hrCb = document.getElementById('accessHr');
+      const hiringCb = document.getElementById('accessHiring');
+      if (hrCb && hiringCb && !hiringCb.dataset.hrCoupled) {
+        hiringCb.dataset.hrCoupled = '1';
+        hiringCb.addEventListener('change', function () {
+          if (hiringCb.checked) hrCb.checked = true;
+        });
+        hrCb.addEventListener('change', function () {
+          if (!hrCb.checked) hiringCb.checked = false;
+        });
+      }
+    } catch (_) { /* ignore */ }
+
+    try {
       const pwToggle = document.getElementById('profilePasswordToggle');
       if (pwToggle && !pwToggle.dataset.bound) {
         pwToggle.dataset.bound = '1';
@@ -917,14 +1165,6 @@
     } catch (_) { /* ignore */ }
 
     try {
-      const lt = document.getElementById('adminProfileLayoutToggle');
-      if (lt && !lt.dataset.layoutBound) {
-        lt.dataset.layoutBound = '1';
-        lt.addEventListener('click', toggleAdminProfileLayout);
-      }
-    } catch (_) { /* ignore */ }
-
-    try {
       const sigFile = document.getElementById('profileSignatureFile');
       if (sigFile && !sigFile.dataset.bound) {
         sigFile.dataset.bound = '1';
@@ -934,12 +1174,14 @@
           if (f.size > 400 * 1024) {
             notify('Signature image must be under 400KB.', 'error');
             sigFile.value = '';
+            syncProfileSignatureFileName();
             return;
           }
           const reader = new FileReader();
           reader.onload = function () {
             profileSignatureDataUrl = reader.result || '';
             updateProfileSignaturePreview();
+            syncProfileSignatureFileName();
           };
           reader.readAsDataURL(f);
         });
@@ -949,6 +1191,10 @@
     try {
       ensurePortalModal(document.getElementById('passwordResetConfirmModal'));
       ensurePortalModal(document.getElementById('passwordResetResultModal'));
+      ensurePortalModal(document.getElementById('profileStatusConfirmModal'));
+      ensurePortalModal(document.getElementById('profileDeleteConfirmModal'));
+      ensurePortalModal(document.getElementById('profileAdminOtpModal'));
+      ensurePortalModal(document.getElementById('emailCredentialsConfirmModal'));
       ensurePortalModal(document.getElementById('accessModal'));
     } catch (_) { /* ignore */ }
   }
@@ -962,6 +1208,13 @@
       if (opts.onUnauthorized) CFG.onUnauthorized = opts.onUnauthorized;
       if (opts.getUsersDirectory) CFG.getUsersDirectory = opts.getUsersDirectory;
       if (opts.reloadDirectory) CFG.reloadDirectory = opts.reloadDirectory;
+      if (w.AdminEditOtp) {
+        w.AdminEditOtp.configure({
+          fetch: profileAuthenticatedFetch,
+          notify: notify,
+          syncOverlay: syncOverlayLock,
+        });
+      }
       bindOnce();
     },
     init: bindOnce,

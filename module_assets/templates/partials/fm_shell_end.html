@@ -41,17 +41,32 @@
       setTimeout(function () { el.remove(); }, 220);
     }, 5200);
   }
+  function fmHumanLabel(value, fallback) {
+    const raw = String(value == null ? '' : value).trim();
+    if (!raw) return fallback == null ? '—' : fallback;
+    const spaced = raw.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (raw.includes('_') || raw.includes('-') || raw === raw.toLowerCase()) {
+      return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+    }
+    return raw;
+  }
+  function tktSetMenuExpanded(open){
+    const btn=document.getElementById('tktDhSidebarToggle');
+    if(btn)btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
   function tktOpenMobileSidebar(){
     const s=document.getElementById('tktDhSidebar');
     const o=document.getElementById('tktDhOverlay');
     if(s)s.classList.add('open');
     if(o){o.classList.add('active');o.setAttribute('aria-hidden','false');}
+    tktSetMenuExpanded(true);
   }
   function tktCloseMobileSidebar(){
     const s=document.getElementById('tktDhSidebar');
     const o=document.getElementById('tktDhOverlay');
     if(s)s.classList.remove('open');
     if(o){o.classList.remove('active');o.setAttribute('aria-hidden','true');}
+    tktSetMenuExpanded(false);
   }
   function tktToggleMobileSidebar(){
     const s=document.getElementById('tktDhSidebar');

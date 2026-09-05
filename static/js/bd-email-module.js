@@ -102,6 +102,31 @@
     return currentTab === 'public' ? 'public' : 'personal';
   }
 
+  const SCOPE_HINTS = {
+    personal: 'Private to you. Only you and admins can see, edit, or run this.',
+    public: 'Shared with the BD team. Anyone in BD can view and run it; only you or an admin can edit.',
+  };
+  const LIST_HINTS = {
+    personal: 'Private to you',
+    public: 'Shared with BD',
+  };
+
+  function setScopeButtons(scope) {
+    const isPublic = scope === 'public';
+    const personalBtn = $('scopePersonalBtn');
+    const publicBtn = $('scopePublicBtn');
+    if (personalBtn) {
+      personalBtn.classList.toggle('active', !isPublic);
+      personalBtn.setAttribute('aria-pressed', String(!isPublic));
+    }
+    if (publicBtn) {
+      publicBtn.classList.toggle('active', isPublic);
+      publicBtn.setAttribute('aria-pressed', String(isPublic));
+    }
+    const hint = $('builderScopeHint');
+    if (hint) hint.textContent = SCOPE_HINTS[isPublic ? 'public' : 'personal'];
+  }
+
   function selectedAutomation() {
     return automations.find((a) => String(a.id) === String(selectedId)) || null;
   }
@@ -206,6 +231,8 @@
       onceView.classList.add('hidden-view');
       autoView.classList.remove('hidden-view');
       if (listSub) listSub.textContent = tab === 'public' ? 'Public' : 'Personal';
+      const listHint = $('autoListHint');
+      if (listHint) listHint.textContent = LIST_HINTS[tab === 'public' ? 'public' : 'personal'];
       loadAutomations();
       loadGroups();
     }
@@ -327,13 +354,14 @@
         <button type="button" class="auto-card ${String(auto.id) === String(selectedId) ? 'active' : ''}" data-id="${auto.id}">
           <span class="auto-card__av auto-card__av--${avatarTone(auto.name)}">${escapeHtml(initialsFrom(auto.name))}</span>
           <span class="auto-card__body">
-            <strong>${escapeHtml(auto.name || 'Untitled')}</strong>
-            <span class="auto-card__sub">${escapeHtml(auto.subject || 'No subject')}</span>
-            <span class="auto-card__preview">${escapeHtml(preview)}</span>
-          </span>
-          <span class="auto-card__meta">
-            <span class="auto-card__time">${escapeHtml(listTimeLabel(auto))}</span>
-            ${clip}
+            <span class="auto-card__row">
+              <strong>${escapeHtml(auto.name || 'Untitled')}</strong>
+              <span class="auto-card__time">${escapeHtml(listTimeLabel(auto))}</span>
+            </span>
+            <span class="auto-card__row auto-card__row--sub">
+              <span class="auto-card__preview">${escapeHtml(preview)}</span>
+              ${clip}
+            </span>
           </span>
         </button>
       `;
@@ -350,7 +378,7 @@
     const box = $('autoSlots');
     if (!box) return;
     if (!draftSlots.length) {
-      box.innerHTML = '<p class="helper">No files yet. Pick from Files, upload a new file, or use the latest file in a folder.</p>';
+      box.innerHTML = '<p class="helper">No files attached yet.</p>';
       return;
     }
     box.innerHTML = draftSlots.map((slot, idx) => `
@@ -375,8 +403,7 @@
   function fillBuilder(auto) {
     $('autoName').value = auto && auto.name ? auto.name : '';
     const scope = (auto && auto.scope) || currentScope();
-    $('scopePersonalBtn').classList.toggle('active', scope !== 'public');
-    $('scopePublicBtn').classList.toggle('active', scope === 'public');
+    setScopeButtons(scope);
     $('autoTo').value = auto && auto.to_emails ? auto.to_emails : '';
     $('autoCc').value = auto && auto.cc_emails ? auto.cc_emails : '';
     $('autoSubject').value = auto && auto.subject ? auto.subject : '';
@@ -776,14 +803,8 @@
     closeSidebar();
   });
 
-  $('scopePersonalBtn').addEventListener('click', () => {
-    $('scopePersonalBtn').classList.add('active');
-    $('scopePublicBtn').classList.remove('active');
-  });
-  $('scopePublicBtn').addEventListener('click', () => {
-    $('scopePublicBtn').classList.add('active');
-    $('scopePersonalBtn').classList.remove('active');
-  });
+  $('scopePersonalBtn').addEventListener('click', () => setScopeButtons('personal'));
+  $('scopePublicBtn').addEventListener('click', () => setScopeButtons('public'));
 
   bindRecipientField($('autoTo'), $('autoToList'));
   bindRecipientField($('autoCc'), $('autoCcList'));

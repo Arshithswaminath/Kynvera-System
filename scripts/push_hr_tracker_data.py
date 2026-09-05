@@ -42,6 +42,7 @@ TABLE_ORDER = [
     "leave_employees",
     "hiring_candidates",
     "hiring_documents",
+    "hiring_offer_letters",
     "manpower_vacancies",
     "leave_logs",
     "leave_monthly_usage",
@@ -121,11 +122,13 @@ DT_COLS = {
     "manpower_vacancies": {"created_at", "updated_at"},
     "hiring_candidates": {"created_at", "updated_at"},
     "hiring_documents": {"uploaded_at"},
+    "hiring_offer_letters": {"created_at", "updated_at"},
 }
 BOOL_COLS = {
     "leave_employees": {"active"},
     "manpower_trades": {"active"},
     "manpower_projects": {"active"},
+    "hiring_offer_letters": {"received", "signed_back", "not_accepted"},
 }
 # Drop FKs that point at rows not present on the target DB
 OPTIONAL_FKS = {
@@ -136,6 +139,7 @@ OPTIONAL_FKS = {
     "manpower_projects": (("created_by", "users"),),
     "hiring_candidates": (("created_by", "users"),),
     "hiring_documents": (("uploaded_by", "users"),),
+    "hiring_offer_letters": (("created_by", "users"), ("hiring_candidate_id", "hiring_candidates")),
 }
 
 

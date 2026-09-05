@@ -594,6 +594,15 @@ def change_password():
         
         # Log password change
         log_audit(user_id, 'change_password', 'user', str(user_id))
+
+        if user.email:
+            try:
+                from common.email_service import send_password_updated_email
+                send_password_updated_email(
+                    user.email, user.username, by_admin=False, full_name=user.full_name
+                )
+            except Exception as email_error:
+                current_app.logger.warning('Password updated email failed: %s', email_error)
         
         return jsonify({'message': 'Password changed successfully'}), 200
         

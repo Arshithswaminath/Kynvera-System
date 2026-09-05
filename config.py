@@ -114,7 +114,7 @@ MAILJET_SECRET_KEY = os.getenv("MAILJET_SECRET_KEY")
 
 # Ticket email intake (Mailjet Parse API webhook)
 TICKET_INBOUND_WEBHOOK_SECRET = os.getenv("TICKET_INBOUND_WEBHOOK_SECRET")
-TICKET_INTAKE_EMAIL = os.getenv("TICKET_INTAKE_EMAIL")
+TICKET_INTAKE_EMAIL = os.getenv("TICKET_INTAKE_EMAIL") or "support@kynvera.store"
 
 # Application
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5002")

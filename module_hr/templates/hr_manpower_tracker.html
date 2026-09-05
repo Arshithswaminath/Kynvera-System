@@ -10,8 +10,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=111">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-manpower.css') }}?v=53">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=139">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-manpower.css') }}?v=57">
   {% set active_page = 'hr' %}
 </head>
 <body class="hh-page mp-page">
@@ -161,6 +161,7 @@
               <tbody id="mpMatrixBody">
                 <tr><td class="mp-empty">Loading…</td></tr>
               </tbody>
+              <tfoot id="mpMatrixFoot"></tfoot>
             </table>
           </div>
         </section>
@@ -190,7 +191,7 @@
               Manage trades and projects from the Excel Lists sheet. Remove hides an item from dropdowns; existing vacancy rows stay linked.
             </p>
           </div>
-          <button type="button" class="hh-btn hh-btn-secondary" id="mpSettingsBackBtn">Back to board</button>
+          <button type="button" class="hh-btn hh-btn-secondary" id="mpSettingsBackBtn">Board</button>
         </div>
 
         <div class="mp-settings-grid">
@@ -246,7 +247,7 @@
     </div>
   </div>
 
-  <!-- Add vacancy modal -->
+  <!-- Add / edit vacancy modal -->
   <div class="hh-modal" id="mpAddModal" hidden aria-hidden="true">
     <div class="hh-modal-backdrop" data-close-modal></div>
     <div class="hh-modal-panel" role="dialog" aria-labelledby="mpAddTitle">
@@ -307,7 +308,7 @@
           </button>
           <span class="mp-form-actions-spacer"></span>
           <button type="button" class="hh-btn hh-btn-secondary" data-close-modal>Cancel</button>
-          <button type="submit" class="hh-btn hh-btn-primary">Create</button>
+          <button type="submit" class="hh-btn hh-btn-primary" id="mpAddSubmit">Create</button>
         </div>
       </form>
     </div>
@@ -368,6 +369,6 @@
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
   <script>window.FILES_SAVE_MODULE = 'manpower'; window.FILES_SAVE_MODULE_LABEL = 'Manpower Tracker';</script>
   <script src="{{ url_for('static', filename='js/files-save.js') }}?v=16"></script>
-  <script src="{{ url_for('static', filename='js/hr-manpower.js') }}?v=39"></script>
+  <script src="{{ url_for('static', filename='js/hr-manpower.js') }}?v=45"></script>
 </body>
 </html>
