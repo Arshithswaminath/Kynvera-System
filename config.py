@@ -43,7 +43,8 @@ GOOGLE_DRIVE_REDIRECT_URI = os.getenv("GOOGLE_DRIVE_REDIRECT_URI", "")  # e.g. h
 
 # DATABASE - PostgreSQL for production (REQUIRED in production)
 # Fix for Render: Replace postgres:// with postgresql:// for SQLAlchemy compatibility
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Strip copy/paste whitespace — a trailing space on DATABASE_URL makes Postgres hang or refuse.
+DATABASE_URL = (os.getenv("DATABASE_URL") or "").strip() or None
 if not DATABASE_URL:
     # Only allow SQLite in development
     if os.getenv("FLASK_ENV", "development") == "development":
@@ -151,6 +152,12 @@ SQLALCHEMY_DATABASE_URI = DATABASE_URL
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 # SQLite does not support pool_size, max_overflow, pool_timeout - use minimal options
 _use_sqlite = DATABASE_URL and 'sqlite' in DATABASE_URL.lower()
+_pg_connect_args = {'connect_timeout': 10}
+# Render's public hostname (*.oregon-postgres.render.com etc.) requires TLS.
+# Internal hostnames do not include render.com; leave sslmode unset for those.
+if DATABASE_URL and 'render.com' in DATABASE_URL.lower():
+    _pg_connect_args['sslmode'] = 'require'
+
 SQLALCHEMY_ENGINE_OPTIONS = {
     'echo': False,                   # Don't log all SQL queries (set to True for debugging)
 } if _use_sqlite else {
@@ -159,5 +166,9 @@ SQLALCHEMY_ENGINE_OPTIONS = {
     'pool_size': 5,                  # Number of connections to maintain (reduced for free tier)
     'max_overflow': 10,              # Maximum overflow connections (reduced for free tier)
     'pool_timeout': 30,              # Timeout for getting connection from pool
+    # psycopg2 default connect timeout is unlimited — a bad/unreachable
+    # DATABASE_URL hangs gunicorn --preload before it can bind $PORT, and
+    # Render then kills the deploy ("no open ports detected").
+    'connect_args': _pg_connect_args,
     'echo': False,                   # Don't log all SQL queries (set to True for debugging)
 }

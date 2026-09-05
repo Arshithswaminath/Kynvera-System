@@ -14,10 +14,19 @@ services:
     previews:
       generation: manual
     buildCommand: bash build.sh
-    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 300 --worker-class gthread
+    # Bind 0.0.0.0:$PORT explicitly. Do not add --preload: Render may also set
+    # GUNICORN_CMD_ARGS=--preload, which loads create_app() before the socket
+    # exists and looks like "no open ports" if Postgres hangs.
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 300 --worker-class gthread --log-file -
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      # Override Render's default GUNICORN_CMD_ARGS (--preload) so the master
+      # binds $PORT before importing the Flask app / connecting to Postgres.
+      - key: GUNICORN_CMD_ARGS
+        value: "--error-logfile - --access-logfile -"
       - key: SECRET_KEY
         generateValue: true
       - key: JWT_SECRET_KEY

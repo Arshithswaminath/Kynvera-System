@@ -356,21 +356,33 @@ def create_app():
             import time
             from sqlalchemy import inspect, text
             
-            # Retry logic for database connection (Render databases may need a moment)
+            # Retry logic for database connection (Render databases may need a moment).
+            # Each attempt is capped by SQLALCHEMY connect_timeout (10s) so a bad
+            # DATABASE_URL cannot stall past Render's port-scan window.
             max_retries = 5
             retry_delay = 2
             inspector = None
-            
+
+            logger.info("Connecting to database (attempt 1/%s)...", max_retries)
+            sys.stdout.flush()
             for attempt in range(max_retries):
                 try:
                     inspector = inspect(db.engine)
                     # Test connection by getting table names
                     inspector.get_table_names()
                     logger.info("✅ Database connection verified")
+                    sys.stdout.flush()
                     break
                 except Exception as conn_error:
                     if attempt < max_retries - 1:
-                        logger.info(f"Database connection attempt {attempt + 1}/{max_retries} failed, retrying in {retry_delay}s...")
+                        logger.info(
+                            "Database connection attempt %s/%s failed (%s), retrying in %ss...",
+                            attempt + 1,
+                            max_retries,
+                            conn_error,
+                            retry_delay,
+                        )
+                        sys.stdout.flush()
                         time.sleep(retry_delay)
                         retry_delay *= 2
                     else:
