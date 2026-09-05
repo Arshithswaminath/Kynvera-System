@@ -150,16 +150,23 @@
 
             <div class="lp-hero-visual">
                 <figure class="lp-hero-photo">
-                    <img
-                        class="lp-hero-photo-img"
-                        src="{{ url_for('static', filename='images/kynvera/hero-photo.png') }}?v=22"
-                        alt="Professionals using Kynvera on laptops"
-                        width="1024"
-                        height="1024"
-                        loading="eager"
-                        decoding="async"
-                        fetchpriority="high"
-                    >
+                    <img class="lp-hero-photo-lqip" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABkRExYTEBkWFBYcGxkeJT4pJSIiJUw3Oi0+WlBfXllQV1ZkcJB6ZGqIbFZXfap+iJSZoaKhYXiwva+cu5CeoZr/2wBDARscHCUhJUkpKUmaZ1dnmpqampqampqampqampqampqampqampqampqampqampqampqampqampqampqampqampr/wAARCAAoACgDASIAAhEBAxEB/8QAGgAAAgMBAQAAAAAAAAAAAAAAAAYDBAUBAv/EACgQAAEEAQQABQUBAAAAAAAAAAEAAgMEEQUSIVETFDFBYSNiY3Gxwf/EABUBAQEAAAAAAAAAAAAAAAAAAAAB/8QAGBEBAQEBAQAAAAAAAAAAAAAAAAERIQL/2gAMAwEAAhEDEQA/AGlC4VUn1CGG02udxkcNx2tyGjs9ILiqsusdZ8HaRkkB3ZC9PtRRnD3gHolYElgxWnWnSkO9m44SdLwzoVejY81UjmIALhyB2hBLK9scbnuOGtBJPwElTas+a9JYbHhr9o259AP9TRrkjotJsFo5c3b+s8JHrtie/wCpN4Yz7jKhpmsWWWaptVyHuY3JZnkLFmveZwHQYx93qtCXUqUVaUVwA4twAGYysccYx0kmL6unjSoTBQiYXbiRuzjHryhSUDuo1z3G3+IVR27XFupLA44D2kZ6PskK/Rnoyhs7A3dkgg5DkIQQt5c0fHKkYc4QhEPWku3aXWP4whCEV//Z" alt="" width="40" height="40" aria-hidden="true">
+                    <picture>
+                        <source
+                            type="image/webp"
+                            srcset="{{ url_for('static', filename='images/kynvera/hero-photo-640.webp') }}?v=1 640w, {{ url_for('static', filename='images/kynvera/hero-photo.webp') }}?v=1 1024w"
+                            sizes="(max-width: 900px) 92vw, min(620px, 48vw)">
+                        <img
+                            class="lp-hero-photo-img"
+                            src="{{ url_for('static', filename='images/kynvera/hero-photo.png') }}?v=23"
+                            alt="Professionals using Kynvera on laptops"
+                            width="1024"
+                            height="1024"
+                            loading="eager"
+                            decoding="async"
+                            fetchpriority="high"
+                        >
+                    </picture>
                 </figure>
             </div>
         </div>
@@ -699,6 +706,6 @@
 </footer>
 
 <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
-<script src="{{ url_for('static', filename='js/landing.js') }}?v=1" defer></script>
+<script src="{{ url_for('static', filename='js/landing.js') }}?v=2" defer></script>
 </body>
 </html>

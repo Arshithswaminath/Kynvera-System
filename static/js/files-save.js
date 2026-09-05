@@ -93,13 +93,13 @@
       '.files-menu-footer-icon{flex:0 0 auto;width:32px;height:32px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:#ff8e68;color:#fff}' +
       '.files-menu-footer-icon svg{width:16px;height:16px;display:block}' +
       '.files-menu-footer-copy{min-width:0;flex:1 1 auto}' +
-      '.files-menu-footer-title{margin:0;font-size:.8125rem;font-weight:700;color:#1f2937;line-height:1.2}' +
+      '.files-menu-footer-title{margin:0;padding-top:8px;font-size:.8125rem;font-weight:700;color:#1f2937;line-height:1.15}' +
       '.files-menu-footer-hint{margin:.2rem 0 0;font-size:.72rem;line-height:1.35;color:#7c5a4e}' +
       '.files-menu-footer-mod{font-weight:700;color:#e05f36}' +
       '.files-menu-footer-actions{display:flex;align-items:center;gap:.5rem}' +
-      '.files-save-menu-link{flex:1 1 auto;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:.4rem .7rem;border:none;border-radius:9px;background:#ff8e68;color:#fff!important;font-size:.78rem;font-weight:700;cursor:pointer;text-decoration:none;box-shadow:none}' +
+      '.files-save-menu-link{flex:1 1 auto;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:36px;min-height:36px;padding:1px .7rem 0;border:none;border-radius:9px;background:#ff8e68;color:#fff!important;font-size:.78rem;font-weight:700;line-height:1;cursor:pointer;text-decoration:none;box-shadow:none;-webkit-appearance:none;appearance:none}' +
       '.files-save-menu-link:hover{background:#f97e54}' +
-      '.files-menu-footer-open{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:.35rem .65rem;border-radius:9px;border:1px solid rgba(224,95,54,.28);background:#fff;color:#e05f36!important;font-size:.75rem;font-weight:600;text-decoration:none}' +
+      '.files-menu-footer-open{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:36px;min-height:36px;padding:1px .65rem 0;border-radius:9px;border:1px solid rgba(224,95,54,.28);background:#fff;color:#e05f36!important;font-size:.75rem;font-weight:600;line-height:1;text-decoration:none}' +
       '.files-menu-footer-open:hover{background:#fff8f5;text-decoration:none}';
     document.head.appendChild(style);
   }

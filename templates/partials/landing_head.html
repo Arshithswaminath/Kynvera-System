@@ -23,9 +23,14 @@
 <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
 <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}?v=3">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-180.png') }}?v=3">
+{# Hero photo first — do not let fonts/CSS queue ahead of LCP on live. #}
+<link rel="preload" as="image" type="image/webp" fetchpriority="high"
+      href="{{ url_for('static', filename='images/kynvera/hero-photo.webp') }}?v=1"
+      imagesrcset="{{ url_for('static', filename='images/kynvera/hero-photo-640.webp') }}?v=1 640w, {{ url_for('static', filename='images/kynvera/hero-photo.webp') }}?v=1 1024w"
+      imagesizes="(max-width: 900px) 92vw, min(620px, 48vw)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}?v=2">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}?v=54">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}?v=55">

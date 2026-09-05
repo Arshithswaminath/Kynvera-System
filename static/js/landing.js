@@ -49,6 +49,30 @@
     });
   }
 
+  /* --- Hero photo: keep a blur stand-in until the real image is ready,
+     then fade it in. Cached loads skip the pending state so the photo
+     never flashes out. Page still works if this file is absent. --- */
+  var heroImg = document.querySelector('.lp-hero-photo-img');
+  if (heroImg) {
+    var heroFig = heroImg.closest('.lp-hero-photo');
+    var markHeroReady = function (ok) {
+      heroImg.classList.remove('is-pending');
+      if (ok) {
+        heroImg.classList.add('is-loaded');
+        if (heroFig) heroFig.classList.add('is-loaded');
+      } else {
+        heroImg.classList.add('is-missing');
+      }
+    };
+    heroImg.addEventListener('load', function () { markHeroReady(true); });
+    heroImg.addEventListener('error', function () { markHeroReady(false); });
+    if (heroImg.complete && heroImg.naturalWidth) {
+      markHeroReady(true);
+    } else {
+      heroImg.classList.add('is-pending');
+    }
+  }
+
   /* --- Scroll reveal ---
      The .lp-reveal class is added here rather than in the markup so that
      content is never hidden when JS is unavailable or IO is unsupported.

@@ -632,7 +632,6 @@
 .lp-hero-visual {
   position: relative;
   z-index: 0;
-  animation: lp-rise 0.8s 0.08s var(--lp-ease) both;
   align-self: center;
   display: flex;
   align-items: center;
@@ -648,16 +647,17 @@
   width: 100%;
   max-width: 100%;
   height: auto;
+  aspect-ratio: 1;
   border-radius: 0;
   overflow: visible; /* allow zoomed art to bleed — no side/top crop */
-  background: transparent;
+  background: radial-gradient(ellipse 58% 52% at 52% 42%, #ffcbb4 0%, #ffe8dc 36%, #fff 74%);
   display: block;
   padding: 0;
   contain: none;
 }
 
+.lp-hero-photo-lqip,
 .lp-hero-photo-img {
-  position: relative;
   display: block;
   width: 100%;
   max-width: 100%;
@@ -671,43 +671,40 @@
   -webkit-clip-path: none;
 }
 
-.lp-hero-photo-img.is-missing {
-  display: none;
-}
-
-.lp-hero-photo:has(.lp-hero-photo-img:not(.is-missing)) .lp-hero-photo-ph {
-  color: transparent;
-}
-
-.lp-hero-photo:has(.lp-hero-photo-img:not(.is-missing)) .lp-hero-photo-ph::before {
-  display: none;
-}
-
-.lp-hero-photo-ph {
+.lp-hero-photo-lqip {
   position: absolute;
   inset: 0;
   z-index: 0;
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 1rem;
-  padding: 1.5rem;
-  font-family: var(--lp-display);
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(25, 27, 35, 0.32);
-  background: var(--lp-accent-wash);
+  width: 100%;
+  height: 100%;
+  object-fit: contain !important;
+  pointer-events: none;
+  filter: blur(22px) saturate(1.12);
+  transform: scale(1.5) translateY(-16%);
+  transform-origin: 42% 18%;
 }
 
-.lp-hero-photo-ph::before {
-  content: '';
-  width: 72px;
-  height: 72px;
-  border-radius: 22px;
-  border: 1.5px dashed rgba(25, 27, 35, 0.16);
-  background: rgba(255, 255, 255, 0.4);
+.lp-hero-photo-img {
+  position: relative;
+  z-index: 1;
+}
+
+.lp-hero-photo-img.is-pending {
+  opacity: 0;
+}
+
+.lp-hero-photo-img.is-loaded {
+  opacity: 1;
+  transition: opacity 0.45s ease;
+}
+
+.lp-hero-photo.is-loaded .lp-hero-photo-lqip {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.lp-hero-photo-img.is-missing {
+  display: none;
 }
 
 /* Proof strip shares the panel's horizontal edges with the split above */
@@ -2467,6 +2464,11 @@
     transform: scale(1.12) translateY(-6%);
     transform-origin: center 22%;
     max-height: none;
+  }
+
+  .lp-hero-photo-lqip {
+    transform: scale(1.28) translateY(-4%);
+    transform-origin: center 22%;
   }
 
   .lp-hero-copy {
