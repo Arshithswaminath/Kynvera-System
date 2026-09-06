@@ -2431,6 +2431,7 @@
 .lp-footer-scene picture {
   display: block;
   width: 100%;
+  height: 100%;
 }
 
 .landing .lp-footer-scene-img {
@@ -2811,12 +2812,28 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
+  /* Phone: crop/zoom the panorama into a mural the legal bar can sit on,
+     instead of shrinking the full-width strip until it looks like a band. */
   .lp-footer-scene {
-    margin-top: -2.1rem;
+    margin-top: 0.15rem;
+    height: 16.5rem;
+    overflow: hidden;
+  }
+
+  .landing .lp-footer-scene-img {
+    width: 220%;
+    height: 100%;
+    margin-left: -60%;
+    object-fit: cover;
+    object-position: 50% 72%;
   }
 
   .lp-footer-bottom {
-    margin-top: -1.25rem;
+    margin-top: -3.15rem;
+  }
+
+  .landing .lp-footer-links .lp-footer-auth {
+    display: none;
   }
 
   .landing .lp-pb-cta {
@@ -2932,8 +2949,31 @@
   }
 
   .lp-footer-bottom {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+  }
+
+  .landing .lp-footer-copy {
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+
+  .lp-footer-links {
+    gap: 0.7rem;
+    flex-shrink: 0;
+  }
+
+  .landing .lp-footer-links a {
+    font-size: 0.7rem;
+  }
+
+  .lp-footer-scene {
+    height: 15.25rem;
+  }
+
+  .landing .lp-footer-scene-img {
+    width: 250%;
+    margin-left: -75%;
   }
 }
 
@@ -2944,6 +2984,12 @@
 
   .lp-footer-cols {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 360px) {
+  .lp-footer-copy-rest {
+    display: none;
   }
 }
 
