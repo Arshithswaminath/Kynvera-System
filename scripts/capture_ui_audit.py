@@ -8,6 +8,7 @@ Prerequisites:
 Usage:
   ./venv/bin/python scripts/capture_ui_audit.py
   ./venv/bin/python scripts/capture_ui_audit.py --base-url http://127.0.0.1:5002
+  ./venv/bin/python scripts/capture_ui_audit.py --viewports mobile --gallery --stamp mobile_gallery
 """
 from __future__ import annotations
 
@@ -72,6 +73,18 @@ OVERLAY_JS = """() => {
     '#qhseDhOverlay.open',
     '.ol-preview-backdrop.open',
     '.success-bg.active', '.success-overlay.active',
+    '.injaaz-assistant.open', '#injaazAssistant.open', '#assistantPanel.open',
+    '.injaaz-assistant-info-overlay:not([hidden])', '#assistantInfoOverlay:not([hidden])',
+    '.lp-nav-links.is-open', '#lp-nav-links.is-open',
+    '#filesConfirmBackdrop:not([hidden])', '#filesMissingBackdrop:not([hidden])',
+    '#dhTableModal.open', '#dhAccessModal.open', '#dhTableModal:not([hidden])',
+    '#olConnectModal.open', '#olPreviewModal.open',
+    '#ltPersonModal:not([hidden])', '#approvalModal.show',
+    '#scanOverlay.active', '#scanOverlay.open', '#scanOverlay:not([hidden])',
+    '#tktEmailTplModal.open', '#projDetailModal.open', '#locPinModal.open',
+    '#pdEditModal.active', '#pdNotesModal.active', '#pdSignoffModal.active',
+    '#automationModal.show', '#reportFolderOverlay.open', '#roadmapOverlay.open',
+    '#uploadModal.active', '#hhImportConfirmModal.open',
   ];
   for (const s of sels) {
     const el = document.querySelector(s);
@@ -85,14 +98,20 @@ OVERLAY_JS = """() => {
 CLOSE_OVERLAYS_JS = """() => {
   document.querySelectorAll('dialog[open]').forEach((d) => { try { d.close(); } catch (e) {} });
   const kill = [
-    'active', 'open', 'show',
+    'active', 'open', 'show', 'is-open',
   ];
   document.querySelectorAll(
     '.modal, .hh-modal-backdrop, .tkt-modal-backdrop, .contact-modal, .modal-overlay, ' +
     '.dm-modal-overlay, .kb-modal-overlay, .db-modal-overlay, .bf-modal-veil, ' +
     '.signoff-modal-overlay, .ol-preview-backdrop, .success-bg, .success-overlay, ' +
     '.twin-confirm, #mobileMenuDrawer, #filesOverlay, #dhOverlay, #hhSidebarOverlay, ' +
-    '#tktDhOverlay, #adminDhOverlay, #qhseDhOverlay, #mobileOverlay'
+    '#tktDhOverlay, #adminDhOverlay, #qhseDhOverlay, #mobileOverlay, ' +
+    '#injaazAssistant, #assistantPanel, #assistantInfoOverlay, #lp-nav-links, #lp-nav, ' +
+    '#filesConfirmBackdrop, #filesMissingBackdrop, #dhTableModal, #dhAccessModal, ' +
+    '#olConnectModal, #olPreviewModal, #ltPersonModal, #scanOverlay, ' +
+    '#tktEmailTplModal, #projDetailModal, #locPinModal, #pdEditModal, ' +
+    '#pdNotesModal, #pdSignoffModal, #reportFolderOverlay, #roadmapOverlay, ' +
+    '#hhImportConfirmModal'
   ).forEach((el) => {
     kill.forEach((c) => el.classList.remove(c));
     if (el.hasAttribute('hidden')) el.hidden = true;
@@ -149,6 +168,10 @@ STATIC_PAGES: list[tuple[str, str, str, bool]] = [
     ("00_shell", "login", "/login", False),
     ("00_shell", "register", "/register", False),
     ("00_shell", "offline", "/offline", False),
+    ("00_shell", "privacy", "/privacy", False),
+    ("00_shell", "terms", "/terms", False),
+    ("00_shell", "forgot_password", "/forgot-password", False),
+    ("00_shell", "reset_password", "/reset-password", False),
     ("00_shell", "dashboard", "/dashboard", True),
     ("01_hr", "hub", "/hr/", True),
     ("01_hr", "my_requests", "/hr/my-requests", False),
@@ -173,6 +196,7 @@ STATIC_PAGES: list[tuple[str, str, str, bool]] = [
     ("01_hr", "leave_repeat_sick", "/hr/leave-tracker/repeat-sick", False),
     ("01_hr", "leave_sick_trends", "/hr/leave-tracker/sick-trends", False),
     ("01_hr", "manpower", "/hr/manpower-tracker", False),
+    ("01_hr", "staffing_assignments", "/hr/staffing-assignments", False),
     ("02_tickets", "hub", "/tickets/", True),
     ("02_tickets", "list", "/tickets/list", False),
     ("02_tickets", "new", "/tickets/new", False),
@@ -201,6 +225,7 @@ STATIC_PAGES: list[tuple[str, str, str, bool]] = [
     ("04_procurement", "email_settings", "/procurement/email-settings", False),
     ("05_inspection", "hub", "/inspection/", True),
     ("05_inspection", "form", "/inspection/form", False),
+    ("05_inspection", "site_visit", "/site-visit/form", False),
     ("06_qhse", "hub", "/qhsi/", True),
     ("06_qhse", "staff_compliance", "/qhsi/staff-compliance", False),
     ("06_qhse", "training", "/qhsi/training", False),
@@ -226,23 +251,74 @@ STATIC_PAGES: list[tuple[str, str, str, bool]] = [
     ("13_bd", "email_module", "/bd/email-module", True),
 ]
 
+HR_FORM_PATHS = (
+    "/hr/leave-application-form",
+    "/hr/commencement-form",
+    "/hr/duty-resumption-form",
+    "/hr/contract-renewal-form",
+    "/hr/performance-evaluation-form",
+    "/hr/grievance-form",
+    "/hr/interview-assessment-form",
+    "/hr/passport-release-form",
+    "/hr/staff-appraisal-form",
+    "/hr/station-clearance-form",
+    "/hr/visa-renewal-form",
+    "/hr/asset-handover-form",
+)
+HR_SIGNATURE_POPUP = {
+    "name": "signature",
+    "click": "[data-open-signature], .sig-open, .sig-pad-open, button:has-text('Sign'), .sig-btn, #signBtn, canvas.signature-pad",
+    "wait": "#sigmBg, #sigBg, .sigm-modal, .sig-modal",
+}
+
+LANDING_SECTIONS: list[tuple[str, str]] = [
+    ("hero", ".lp-hero-section"),
+    ("platform", "#platform"),
+    ("features", "#features"),
+    ("modules", "#modules"),
+    ("interop", "#interop"),
+    ("proof", "#proof"),
+    ("audience", "#audience"),
+    ("cta", "#lp-cta-title, .lp-cta, footer"),
+]
+
+PUBLIC_PATHS = {
+    "/",
+    "/login",
+    "/register",
+    "/offline",
+    "/privacy",
+    "/terms",
+    "/forgot-password",
+    "/reset-password",
+}
+
 # path-prefix → list of {name, click?, js?, wait?}
 POPUPS: dict[str, list[dict[str, str]]] = {
+    "/": [
+        {"name": "nav", "click": "#lp-nav-toggle", "wait": "#lp-nav-links.is-open, .lp-nav-links.is-open"},
+    ],
     "/dashboard": [
         {"name": "profile", "js": "typeof openProfileModal==='function' && openProfileModal()", "wait": "#profileModal.active"},
         {"name": "todo", "click": "#todoToggle, [data-todo-toggle], .todo-nav-btn, button[aria-label*='To-do' i]", "wait": "#todoPanel, .todo-panel-pop"},
+        {"name": "assistant", "click": "#assistantFab, #navAssistantBtn", "wait": "#injaazAssistant.open, .injaaz-assistant.open, #assistantPanel"},
+        {"name": "assistant_info", "js": "document.getElementById('assistantFab')?.click(); setTimeout(() => document.getElementById('assistantInfoBtn')?.click(), 200)", "wait": "#assistantInfoOverlay:not([hidden])"},
     ],
     "/hr/hiring": [
         {"name": "add_candidate", "click": "#hhAddBtnToolbar, #hhAddBtn", "wait": "#hhAddModal.open"},
+        {"name": "import_confirm", "click": "#hhImportBtn, button:has-text('Import')", "wait": "#hhImportConfirmModal.open, #hhImportConfirmModal"},
     ],
     "/hr/hiring/offer-letters": [
         {"name": "add_letter", "click": "#olAddBtn", "wait": "#olFormModal.open, #olFormModal"},
+        {"name": "connect", "click": "#olConnectBtn, button:has-text('Connect'), button:has-text('Link')", "wait": "#olConnectModal.open, #olConnectModal"},
+        {"name": "preview", "click": "button:has-text('Preview'), .ol-preview-btn", "wait": "#olPreviewModal.open, .ol-preview-backdrop.open"},
     ],
     "/hr/leave-tracker": [
         {"name": "log_leave", "click": "#ltLogLeaveBtn", "wait": "#ltLogModal"},
         {"name": "add_employee", "click": "#ltAddEmpBtn", "wait": "#ltEmpModal"},
         {"name": "add_plan", "click": "#ltAddPlanBtn", "wait": "#ltPlanModal"},
         {"name": "add_month_card", "click": "#ltAddMonthCard", "wait": "#ltAddCardModal"},
+        {"name": "person", "click": ".lt-person-card, .lt-emp-chip, [data-lt-person]", "wait": "#ltPersonModal"},
     ],
     "/hr/manpower-tracker": [
         {"name": "add_assignment", "click": "#mpAddBtn", "wait": "#mpAddModal"},
@@ -252,14 +328,16 @@ POPUPS: dict[str, list[dict[str, str]]] = {
     "/hr/pending-review": [
         {"name": "review", "click": ".review-card button, .review-card, [data-review]", "wait": "#reviewModal.show, #reviewModal.modal"},
     ],
-    "/hr/leave-application-form": [
-        {"name": "signature", "click": "[data-open-signature], .sig-open, button:has-text('Sign')", "wait": "#sigmBg, #sigBg, .sigm-modal"},
+    "/hr/gm-approval": [
+        {"name": "approval", "click": ".review-card button, .approval-card, [data-approval]", "wait": "#approvalModal.show, #approvalModal"},
     ],
     "/tickets/new": [
         {"name": "project_search", "click": "#projectSearch, #projectInput, input[name='project']", "wait": "#projectSearchDropdown, .tkt-ac-dropdown"},
     ],
     "/tickets/settings": [
         {"name": "add_project", "click": "#addProjectBtn, button:has-text('Add project'), button:has-text('New project')", "wait": "#addProjectModal, .proj-ios-modal"},
+        {"name": "project_detail", "click": ".proj-row, .tkt-project-row, button:has-text('Edit project')", "wait": "#projDetailModal, .proj-ios-modal"},
+        {"name": "email_template", "click": "#tktEmailTplBtn, button:has-text('Email template')", "wait": "#tktEmailTplModal"},
     ],
     "/procurement/purchase-requests": [
         {"name": "new_pr", "click": "#newPrBtn", "wait": "#newPrModal.show, #newPrModal"},
@@ -275,14 +353,18 @@ POPUPS: dict[str, list[dict[str, str]]] = {
     ],
     "/files/": [
         {"name": "new_folder", "click": "#filesNewFolderBtn", "wait": "#filesModalBackdrop"},
+        {"name": "confirm", "click": "button:has-text('Delete'), .files-delete-btn", "wait": "#filesConfirmBackdrop"},
     ],
     "/dochub": [
         {"name": "new_doc", "click": "#dhNewDocBtn", "wait": "#dhNewDocModal"},
         {"name": "upload", "click": "#dhUploadBtn, button:has-text('Upload')", "wait": "#dhUploadModal"},
+        {"name": "table", "click": "#dhTableBtn, button:has-text('Table')", "wait": "#dhTableModal"},
+        {"name": "access", "click": "#dhAccessBtn, button:has-text('Access'), button:has-text('Share')", "wait": "#dhAccessModal"},
     ],
     "/admin/dashboard": [
         {"name": "create_user", "js": "typeof openCreateUserModal==='function' && openCreateUserModal()", "wait": "#createUserModal.active"},
         {"name": "profile", "js": "typeof openProfileModal==='function' && openProfileModal()", "wait": "#profileModal.active"},
+        {"name": "edit_user", "click": ".admin-user-row, button:has-text('Edit'), .user-edit-btn", "wait": "#editModal.active, #editModal"},
     ],
     "/admin/devices": [
         {"name": "enroll", "click": "#enrollBtn, button:has-text('Enroll')", "wait": "#enrollModal"},
@@ -303,19 +385,31 @@ POPUPS: dict[str, list[dict[str, str]]] = {
     ],
     "/admin/team-management": [
         {"name": "add_tech", "click": "button:has-text('Add'), #addTechBtn", "wait": "#techModal, #createLoginModal"},
+        {"name": "import", "click": "#importBtn, button:has-text('Import')", "wait": "#importModal"},
+        {"name": "create_login", "click": "button:has-text('Create login'), #createLoginBtn", "wait": "#createLoginModal"},
     ],
     "/admin/mmr/": [
         {"name": "download_mode", "click": "button:has-text('Download'), #downloadBtn", "wait": "#downloadModeModal"},
         {"name": "report_settings", "click": "button:has-text('Settings'), #reportSettingsBtn", "wait": "#reportSettingsModal"},
+        {"name": "automation", "click": "button:has-text('Automation'), #automationBtn", "wait": "#automationModal"},
+        {"name": "report_folder", "click": "button:has-text('Folder'), #reportFolderBtn", "wait": "#reportFolderOverlay"},
+        {"name": "roadmap", "click": "button:has-text('Roadmap'), #roadmapBtn", "wait": "#roadmapOverlay"},
     ],
     "/inspection/form": [
         {"name": "signoff", "click": "#signoffBtn, button:has-text('Sign-off'), button:has-text('Sign off')", "wait": "#signoffModalOverlay"},
+    ],
+    "/assets/scan": [
+        {"name": "scan_overlay", "click": "#startScanBtn, button:has-text('Scan'), .scan-start", "wait": "#scanOverlay, #scanOverlay.active"},
     ],
     "/automations/": [
         {"name": "run_record", "click": "tr.auto-run-row", "wait": "#autoRunModal"},
     ],
     "/bd/email-module": [
         {"name": "group", "click": "button:has-text('Add group'), #addGroupBtn", "wait": "#groupModal"},
+        {"name": "files_picker", "click": "button:has-text('Attach'), #attachBtn", "wait": "#filesPickerModal"},
+    ],
+    "/workflow/submitted-forms": [
+        {"name": "confirm", "click": "button:has-text('Withdraw'), button:has-text('Delete draft')", "wait": "#sfConfirmModal"},
     ],
 }
 
@@ -329,6 +423,7 @@ DETAIL_POPUPS: dict[str, list[dict[str, str]]] = {
         {"name": "ops_close", "click": "#opsCloseBtn", "wait": "#opsCloseModal"},
         {"name": "sup_close", "click": "#supCloseBtn", "wait": "#supCloseModal"},
         {"name": "revoke", "click": "#revokeStageBtn", "wait": "#revokeStageModal"},
+        {"name": "email_template", "click": "#tktEmailTplBtn, button:has-text('Email template')", "wait": "#tktEmailTplModal"},
     ],
     "pr_detail": [
         {"name": "gm_review", "click": "#gmReviewBtn, button:has-text('Review')", "wait": "#gmReviewModal.show, #gmReviewModal"},
@@ -341,6 +436,14 @@ DETAIL_POPUPS: dict[str, list[dict[str, str]]] = {
     ],
     "twin": [
         {"name": "confirm", "click": "button:has-text('Open'), .twin-open-btn", "wait": "#twinConfirm, .twin-confirm-card"},
+    ],
+    "project_locations": [
+        {"name": "pin", "click": ".loc-pin, button:has-text('Pin'), #locPinBtn", "wait": "#locPinModal"},
+    ],
+    "bd": [
+        {"name": "edit", "click": "button:has-text('Edit')", "wait": "#pdEditModal.active, #pdEditModal"},
+        {"name": "notes", "click": "button:has-text('Notes')", "wait": "#pdNotesModal.active, #pdNotesModal"},
+        {"name": "signoff", "click": "button:has-text('Sign-off'), button:has-text('Sign off')", "wait": "#pdSignoffModal.active, #sigmBg"},
     ],
 }
 
@@ -490,15 +593,32 @@ def build_pages(ids: dict[str, str], skipped: list[str]) -> list[tuple[str, str,
     else:
         skipped.append("property_detail: no property")
     need("pr", "04_procurement", "pr_detail", f"/procurement/purchase-requests/{ids.get('pr', '')}")
+    need("pr", "04_procurement", "pr_receive", f"/procurement/receive/{ids.get('pr', '')}")
     need("candidate", "01_hr", "candidate_detail", f"/hr/hiring/candidates/{ids.get('candidate', '')}")
     if ids.get("hr_sub"):
         extra.append(("01_hr", "print", f"/hr/print/{ids['hr_sub']}", False))
+    need("twin_project", "03_assets", "twin_draw", f"/assets/twin/project/{ids.get('twin_project', '')}/draw")
     return pages + extra
 
 
-def shot_path(out: Path, module: str, name: str, viewport: str, zoom: int, kind: str, extra: str = "") -> Path:
+def shot_path(
+    out: Path,
+    module: str,
+    name: str,
+    viewport: str,
+    zoom: int,
+    kind: str,
+    extra: str = "",
+    gallery: bool = False,
+) -> Path:
     folder = out / module
     folder.mkdir(parents=True, exist_ok=True)
+    if gallery:
+        if extra:
+            return folder / f"{_safe(name)}__{_safe(extra)}.png"
+        if kind == "full":
+            return folder / f"{_safe(name)}.png"
+        return folder / f"{_safe(name)}__{kind}.png"
     bits = [name, viewport, f"z{zoom}", kind]
     if extra:
         bits.append(_safe(extra))
@@ -591,7 +711,15 @@ def capture_popup(page, dest: Path, spec: dict[str, str]) -> bool:
     return True
 
 
-def heuristic_popups(page, dest_dir: Path, module: str, name: str, viewport: str, captured: list[str]) -> int:
+def heuristic_popups(
+    page,
+    dest_dir: Path,
+    module: str,
+    name: str,
+    viewport: str,
+    captured: list[str],
+    gallery: bool = False,
+) -> int:
     n = 0
     try:
         handles = page.locator("button:visible").all()[:40]
@@ -632,7 +760,7 @@ def heuristic_popups(page, dest_dir: Path, module: str, name: str, viewport: str
             visible = False
         if visible:
             extra = _safe(f"btn_{text[:32]}")
-            dest = shot_path(dest_dir, module, name, viewport, 100, "view", extra)
+            dest = shot_path(dest_dir, module, name, viewport, 100, "view", extra, gallery=gallery)
             try:
                 page.screenshot(path=str(dest), full_page=False)
                 captured.append(str(dest.relative_to(dest_dir)))
@@ -645,8 +773,16 @@ def heuristic_popups(page, dest_dir: Path, module: str, name: str, viewport: str
     return n
 
 
-def capture_mobile_drawer(page, dest_dir: Path, module: str, name: str, captured: list[str]) -> None:
+def capture_mobile_drawer(
+    page,
+    dest_dir: Path,
+    module: str,
+    name: str,
+    captured: list[str],
+    gallery: bool = False,
+) -> None:
     toggles = [
+        "#lp-nav-toggle",
         "#mobileMenuToggle",
         ".dh-sidebar-toggle",
         "#hhSidebarToggle",
@@ -662,7 +798,7 @@ def capture_mobile_drawer(page, dest_dir: Path, module: str, name: str, captured
     for sel in toggles:
         if try_click(page, sel):
             page.wait_for_timeout(400)
-            dest = shot_path(dest_dir, module, name, "mobile", 100, "view", "drawer")
+            dest = shot_path(dest_dir, module, name, "mobile", 100, "view", "drawer", gallery=gallery)
             try:
                 page.screenshot(path=str(dest), full_page=False)
                 captured.append(str(dest.relative_to(dest_dir)))
@@ -684,6 +820,8 @@ def popups_for_path(path: str, name: str) -> list[dict[str, str]]:
             specs.extend(items)
     if name in DETAIL_POPUPS:
         specs.extend(DETAIL_POPUPS[name])
+    if bare in HR_FORM_PATHS or bare.rstrip("/") in HR_FORM_PATHS:
+        specs.append(dict(HR_SIGNATURE_POPUP))
     # de-dupe by name
     out: list[dict[str, str]] = []
     seen: set[str] = set()
@@ -695,6 +833,122 @@ def popups_for_path(path: str, name: str) -> list[dict[str, str]]:
     return out
 
 
+def capture_landing_sections(
+    page,
+    dest_dir: Path,
+    captured: list[str],
+    skipped: list[str],
+    gallery: bool,
+    viewport: str,
+) -> None:
+    for sec_name, sel in LANDING_SECTIONS:
+        dest = shot_path(dest_dir, "00_shell", "landing", viewport, 100, "view", sec_name, gallery=gallery)
+        if is_good_shot(dest):
+            continue
+        try:
+            loc = page.locator(sel).first
+            loc.scroll_into_view_if_needed(timeout=2500)
+            page.wait_for_timeout(350)
+            page.screenshot(path=str(dest), full_page=False)
+            captured.append(str(dest.relative_to(dest_dir)))
+            log(f"    section {sec_name}")
+        except Exception as exc:
+            skipped.append(f"landing section {sec_name}: {exc}")
+
+
+def write_gallery_html(out: Path, captured: list[str], skipped: list[str], failures: list[str]) -> None:
+    modules: dict[str, list[tuple[str, str, str]]] = {}
+    for png in sorted(out.rglob("*.png")):
+        if png.name.startswith("_") or "ERROR" in png.name:
+            continue
+        rel = png.relative_to(out)
+        module = rel.parts[0] if len(rel.parts) > 1 else "other"
+        stem = png.stem
+        if "__" in stem:
+            screen, kind = stem.split("__", 1)
+            label = kind.replace("_", " ")
+        else:
+            screen, label = stem, "page"
+        modules.setdefault(module, []).append((screen, label, str(rel).replace("\\", "/")))
+
+    nav = "".join(f'<a href="#{mod}">{mod}</a>' for mod in sorted(modules))
+    sections = []
+    for mod in sorted(modules):
+        cards = []
+        for screen, label, href in modules[mod]:
+            cards.append(
+                f'<figure class="card" data-kind="{label}">'
+                f'<a href="{href}" target="_blank" rel="noopener">'
+                f'<img src="{href}" alt="{screen} {label}" loading="lazy"></a>'
+                f"<figcaption><strong>{screen}</strong> · {label}</figcaption></figure>"
+            )
+        sections.append(
+            f'<section id="{mod}"><h2>{mod} <span>({len(modules[mod])})</span></h2>'
+            f'<div class="grid">{"".join(cards)}</div></section>'
+        )
+    skip_html = "".join(f"<li>{s}</li>" for s in skipped) or "<li>None</li>"
+    fail_html = "".join(f"<li>{s}</li>" for s in failures) or "<li>None</li>"
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kynvera mobile screenshot gallery</title>
+<style>
+  :root {{ color-scheme: light; --bg:#f6f4ef; --ink:#1a1a1a; --muted:#5c5c5c; --line:#e4dfd4; --accent:#125435; }}
+  * {{ box-sizing: border-box; }}
+  body {{ margin: 0; font-family: ui-sans-serif, system-ui, sans-serif; background: var(--bg); color: var(--ink); }}
+  header {{ position: sticky; top: 0; z-index: 2; background: #fff; border-bottom: 1px solid var(--line); padding: 1rem 1.25rem; }}
+  header h1 {{ margin: 0 0 .35rem; font-size: 1.15rem; }}
+  header p {{ margin: 0; color: var(--muted); font-size: .9rem; }}
+  nav {{ display: flex; flex-wrap: wrap; gap: .4rem .75rem; margin-top: .75rem; }}
+  nav a {{ color: var(--accent); text-decoration: none; font-size: .85rem; }}
+  main {{ max-width: 1200px; margin: 0 auto; padding: 1.25rem; }}
+  section {{ margin: 2rem 0; }}
+  h2 {{ font-size: 1.05rem; margin: 0 0 1rem; }}
+  h2 span {{ color: var(--muted); font-weight: 500; }}
+  .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }}
+  .card {{ margin: 0; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }}
+  .card img {{ display: block; width: 100%; height: 280px; object-fit: cover; object-position: top; background: #eee; }}
+  figcaption {{ padding: .55rem .7rem .7rem; font-size: .78rem; color: var(--muted); }}
+  figcaption strong {{ display: block; color: var(--ink); font-size: .85rem; }}
+  details {{ margin-top: 2rem; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.25rem; }}
+  details ul {{ margin: .5rem 0 0; padding-left: 1.2rem; color: var(--muted); font-size: .85rem; }}
+</style>
+</head>
+<body>
+<header>
+  <h1>Kynvera mobile screenshot gallery</h1>
+  <p>{sum(len(v) for v in modules.values())} screens · iPhone 14 (390×844) · organised by module</p>
+  <nav>{nav}</nav>
+</header>
+<main>
+{''.join(sections)}
+<details>
+  <summary>Skipped ({len(skipped)})</summary>
+  <ul>{skip_html}</ul>
+</details>
+<details>
+  <summary>Failures ({len(failures)})</summary>
+  <ul>{fail_html}</ul>
+</details>
+</main>
+</body>
+</html>
+"""
+    (out / "index.html").write_text(html, encoding="utf-8")
+
+
+def _selected_viewports(raw: str) -> list[tuple[str, int, int]]:
+    wanted = {p.strip().lower() for p in raw.split(",") if p.strip()}
+    if not wanted or "all" in wanted:
+        return list(VIEWPORTS)
+    found = [vp for vp in VIEWPORTS if vp[0] in wanted]
+    if not found:
+        raise SystemExit(f"Unknown viewport(s): {raw}. Use desktop,laptop,tablet,mobile or all.")
+    return found
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Full UI screenshot dump (pages, sizes, zoom, popups).")
     parser.add_argument("--base-url", default="http://127.0.0.1:5002")
@@ -704,6 +958,16 @@ def main() -> int:
     parser.add_argument("--login-password", default="Arshith&Taha@2026")
     parser.add_argument("--wait-ms", type=int, default=DEFAULT_WAIT_MS)
     parser.add_argument("--headed", action="store_true")
+    parser.add_argument(
+        "--viewports",
+        default="all",
+        help="Comma-separated: desktop,laptop,tablet,mobile or all.",
+    )
+    parser.add_argument(
+        "--gallery",
+        action="store_true",
+        help="Mobile docs gallery: simpler filenames, HTML index, popups on the selected viewport.",
+    )
     parser.add_argument(
         "--resume",
         action="store_true",
@@ -718,7 +982,9 @@ def main() -> int:
         return 1
 
     stamp = args.stamp or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    out: Path = args.out_dir / f"ui_audit_{stamp}"
+    gallery = bool(args.gallery)
+    viewports = _selected_viewports(args.viewports)
+    out: Path = args.out_dir / stamp if gallery else args.out_dir / f"ui_audit_{stamp}"
     out.mkdir(parents=True, exist_ok=True)
     if args.resume:
         for err in out.rglob("*ERROR*.png"):
@@ -744,7 +1010,11 @@ def main() -> int:
         page.set_default_timeout(8_000)
 
         def on_dialog(dialog) -> None:
-            native_dialogs.append(f"{page.url}\t{dialog.type}\t{dialog.message}")
+            try:
+                url = dialog.page.url
+            except Exception:
+                url = ""
+            native_dialogs.append(f"{url}\t{dialog.type}\t{dialog.message}")
             try:
                 dialog.dismiss()
             except Exception:
@@ -781,22 +1051,36 @@ def main() -> int:
         boot.close()
 
         pages = build_pages(ids, skipped)
-        public_first = [p for p in pages if p[2] in ("/", "/login", "/register", "/offline")]
+        public_first = [p for p in pages if p[2].split("?")[0] in PUBLIC_PATHS]
         authed = [p for p in pages if p not in public_first]
-        # Public pages: capture once logged-out via a fresh context, then authed pages.
+
+        def make_context(vp_name: str, vw: int, vh: int, logged_in: bool):
+            kw: dict[str, Any] = {
+                "storage_state": state if logged_in else None,
+                "reduced_motion": "reduce",
+            }
+            if gallery and vp_name == "mobile":
+                device = pw.devices.get("iPhone 14")
+                if device:
+                    kw = {**device, **kw}
+                else:
+                    kw["viewport"] = {"width": vw, "height": vh}
+                    kw["device_scale_factor"] = 2
+                    kw["is_mobile"] = True
+                    kw["has_touch"] = True
+            else:
+                kw["viewport"] = {"width": vw, "height": vh}
+                kw["device_scale_factor"] = 1
+            ctx = browser.new_context(**kw)
+            ctx.add_init_script(
+                "document.documentElement.style.setProperty('scroll-behavior','auto');"
+            )
+            install_api_stubs(ctx, auth_me_body)
+            return ctx
 
         def run_pass(context_pages: list[tuple[str, str, str, bool]], logged_in: bool) -> None:
-            for vp_name, vw, vh in VIEWPORTS:
-                ctx = browser.new_context(
-                    viewport={"width": vw, "height": vh},
-                    device_scale_factor=1,
-                    storage_state=state if logged_in else None,
-                    reduced_motion="reduce",
-                )
-                ctx.add_init_script(
-                    "document.documentElement.style.setProperty('scroll-behavior','auto');"
-                )
-                install_api_stubs(ctx, auth_me_body)
+            for vp_name, vw, vh in viewports:
+                ctx = make_context(vp_name, vw, vh, logged_in)
                 p = ctx.new_page()
                 p.set_default_timeout(8_000)
                 p.on("dialog", on_dialog)
@@ -809,29 +1093,39 @@ def main() -> int:
 
                 for module, name, path, is_hub in context_pages:
                     zooms = [100]
-                    if vp_name == "desktop" and is_hub:
+                    if not gallery and vp_name == "desktop" and is_hub:
                         zooms = [100, *HUB_ZOOMS]
                     for zoom in zooms:
-                        dest_full = shot_path(out, module, name, vp_name, zoom, "full")
+                        dest_full = shot_path(out, module, name, vp_name, zoom, "full", gallery=gallery)
                         dest_view = (
-                            shot_path(out, module, name, vp_name, zoom, "view")
-                            if vp_name == "desktop" and zoom == 100
+                            shot_path(out, module, name, vp_name, zoom, "view", gallery=gallery)
+                            if not gallery and vp_name == "desktop" and zoom == 100
                             else None
                         )
-                        popup_specs = popups_for_path(path, name) if vp_name == "desktop" and zoom == 100 else []
+                        capture_overlays = zoom == 100 and (gallery or vp_name in ("desktop", "mobile"))
+                        popup_specs = popups_for_path(path, name) if capture_overlays else []
                         popup_dests = [
-                            shot_path(out, module, name, vp_name, 100, "view", spec["name"])
+                            shot_path(
+                                out, module, name, vp_name, 100, "view", spec["name"], gallery=gallery
+                            )
                             for spec in popup_specs
                         ]
                         drawer_dest = (
-                            shot_path(out, module, name, "mobile", 100, "view", "drawer")
+                            shot_path(out, module, name, "mobile", 100, "view", "drawer", gallery=gallery)
                             if vp_name == "mobile" and is_hub
                             else None
                         )
                         need_page = not is_good_shot(dest_full)
                         need_popups = any(not is_good_shot(d) for d in popup_dests)
                         need_drawer = bool(drawer_dest) and not is_good_shot(drawer_dest)
-                        if args.resume and not need_page and not need_popups and not need_drawer:
+                        need_sections = gallery and path == "/" and vp_name == "mobile"
+                        if (
+                            args.resume
+                            and not need_page
+                            and not need_popups
+                            and not need_drawer
+                            and not need_sections
+                        ):
                             log(f"SKIP {vp_name} z{zoom} {path}")
                             continue
                         try:
@@ -841,7 +1135,11 @@ def main() -> int:
                             else:
                                 set_zoom(p, 100)
                             if need_page:
-                                capture_page(p, dest_full, dest_view if dest_view and not is_good_shot(dest_view) else None)
+                                capture_page(
+                                    p,
+                                    dest_full,
+                                    dest_view if dest_view and not is_good_shot(dest_view) else None,
+                                )
                                 captured.append(str(dest_full.relative_to(out)))
                                 if dest_view and is_good_shot(dest_view):
                                     captured.append(str(dest_view.relative_to(out)))
@@ -849,6 +1147,11 @@ def main() -> int:
                                 log(f"OK  {vp_name} z{zoom} {path} -> {dest_full.name}")
                             else:
                                 log(f"OK  {vp_name} z{zoom} {path} (page exists, extras)")
+
+                            if need_sections:
+                                capture_landing_sections(
+                                    p, out, captured, skipped, gallery, vp_name
+                                )
 
                             if need_popups:
                                 for spec, dest in zip(popup_specs, popup_dests):
@@ -859,13 +1162,19 @@ def main() -> int:
                                             captured.append(str(dest.relative_to(out)))
                                             counts[module] = counts.get(module, 0) + 1
                                             log(f"    popup {spec['name']}")
+                                        else:
+                                            skipped.append(f"{path} popup {spec['name']}: did not open")
                                     except Exception as exc:
                                         failures.append(f"{path} popup {spec['name']}: {exc}")
                                 if not args.resume:
-                                    heuristic_popups(p, out, module, name, vp_name, captured)
+                                    heuristic_popups(
+                                        p, out, module, name, vp_name, captured, gallery=gallery
+                                    )
 
                             if need_drawer and drawer_dest is not None:
-                                capture_mobile_drawer(p, out, module, name, captured)
+                                capture_mobile_drawer(
+                                    p, out, module, name, captured, gallery=gallery
+                                )
 
                             set_zoom(p, 100)
                             close_overlays(p)
@@ -874,7 +1183,6 @@ def main() -> int:
                             log(f"ERR {vp_name} {path}: {exc}")
                 ctx.close()
 
-        # Logged-out public pages at all viewports (no popups except login).
         run_pass(public_first, logged_in=False)
         run_pass(authed, logged_in=True)
         browser.close()
@@ -883,6 +1191,9 @@ def main() -> int:
     (out / "_skipped.txt").write_text("\n".join(skipped) + "\n", encoding="utf-8")
     (out / "_failures.txt").write_text("\n".join(failures) + "\n", encoding="utf-8")
     (out / "_native_dialogs.txt").write_text("\n".join(native_dialogs) + "\n", encoding="utf-8")
+    if gallery:
+        write_gallery_html(out, captured, skipped, failures)
+        log(f"Gallery: {out / 'index.html'}")
 
     print("\n=== UI audit capture ===", flush=True)
     print(f"Output: {out}", flush=True)

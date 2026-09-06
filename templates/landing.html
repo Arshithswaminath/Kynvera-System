@@ -107,6 +107,12 @@
             <a href="#features">Features</a>
             <a href="#modules">Modules</a>
             <a href="#audience">Who it's for</a>
+            <a href="{{ staff_login_url|default('/login') }}" class="lp-nav-auth">Sign in</a>
+            {% if allow_public_registration|default(true) %}
+            <a href="{{ staff_register_url|default('/register') }}" class="lp-nav-auth lp-nav-auth-cta">Create account</a>
+            {% else %}
+            <a href="{{ lp_talk_href }}" class="lp-nav-auth lp-nav-auth-cta">Talk to us</a>
+            {% endif %}
         </nav>
 
         <div class="lp-nav-actions">
@@ -724,14 +730,14 @@
 
     <div class="lp-inner">
         <div class="lp-footer-bottom">
-            <span class="lp-footer-copy">&copy; {{ now().year if now is defined else '2026' }} Kynvera. All operations, one platform.</span>
+            <span class="lp-footer-copy">&copy; {{ now().year if now is defined else '2026' }} Kynvera<span class="lp-footer-copy-rest">. All operations, one platform.</span></span>
             <span class="lp-footer-links">
                     <a href="/privacy">Privacy</a>
                     <a href="/terms">Terms</a>
                     {% if allow_public_registration|default(true) %}
-                    <a href="{{ staff_register_url|default('/register') }}">Create an account</a>
+                    <a href="{{ staff_register_url|default('/register') }}" class="lp-footer-auth">Create an account</a>
                     {% endif %}
-                    <a href="{{ staff_login_url|default('/login') }}">Sign in</a>
+                    <a href="{{ staff_login_url|default('/login') }}" class="lp-footer-auth">Sign in</a>
                 </span>
         </div>
     </div>

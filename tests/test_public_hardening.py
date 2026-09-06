@@ -63,9 +63,19 @@ def test_operations_host_root_serves_landing(client, app):
     try:
         response = client.get('/', headers={'Host': 'operations.kynvera.net'})
         assert response.status_code == 200
-        assert b'All your operations' in response.data
+        html = response.get_data(as_text=True)
+        assert 'All your operations' in html
+        assert 'og:image' in html
+        assert '/static/images/kynvera/og-share.jpg' in html
+        assert 'summary_large_image' in html
     finally:
         app.config['KYNVERA_MARKETING_HOSTS'] = previous
+
+
+def test_og_share_image_is_public(client):
+    response = client.get('/static/images/kynvera/og-share.jpg')
+    assert response.status_code == 200
+    assert response.mimetype == 'image/jpeg'
 
 
 def test_marketing_host_serves_landing(client, app):
