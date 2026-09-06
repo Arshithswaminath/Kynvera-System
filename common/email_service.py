@@ -27,10 +27,11 @@ BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email"
 MAILJET_SEND_URL = "https://api.mailjet.com/v3.1/send"
 
 # Verified Brevo sender for Kynvera transactional mail.
-DEFAULT_MAIL_SENDER = 'support@kynvera.net'
-# Leftover Render value: Brevo accepts the API call, then rejects the message.
+DEFAULT_MAIL_SENDER = 'support@kynvera.store'
+# Leftover From addresses: Brevo accepts the API call, then rejects the message.
 _UNVERIFIED_MAIL_SENDERS = frozenset({
     'contact@kynvera.net',
+    'support@kynvera.net',
 })
 
 # Gmail/Yahoo/Outlook DMARC rejects third-party API sends that claim these From addresses.

@@ -19,7 +19,7 @@ def _minimal_mail_app():
         MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
         MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
         MAIL_USE_TLS=os.getenv("MAIL_USE_TLS", "true").lower() == "true",
-        MAIL_DEFAULT_SENDER=os.getenv("MAIL_DEFAULT_SENDER", "support@kynvera.net"),
+        MAIL_DEFAULT_SENDER=os.getenv("MAIL_DEFAULT_SENDER", "support@kynvera.store"),
         BREVO_API_KEY=os.getenv("BREVO_API_KEY"),
         MAILJET_API_KEY=os.getenv("MAILJET_API_KEY"),
         MAILJET_SECRET_KEY=os.getenv("MAILJET_SECRET_KEY"),
