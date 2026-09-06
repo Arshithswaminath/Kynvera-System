@@ -71,19 +71,26 @@ def test_hub_config_points_home_at_marketing_apex(app, client):
 
 
 def test_operations_host_root_serves_landing(client, app):
-    previous = app.config.get('KYNVERA_MARKETING_HOSTS')
+    previous = {
+        'KYNVERA_MARKETING_HOSTS': app.config.get('KYNVERA_MARKETING_HOSTS'),
+        'ALLOW_PUBLIC_REGISTRATION': app.config.get('ALLOW_PUBLIC_REGISTRATION'),
+    }
     app.config['KYNVERA_MARKETING_HOSTS'] = 'kynvera.net,www.kynvera.net'
+    app.config['ALLOW_PUBLIC_REGISTRATION'] = True
     try:
         response = client.get('/', headers={'Host': 'operations.kynvera.net'})
-        assert response.status_code == 302
-        assert '/login' in (response.headers.get('Location') or '')
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+        assert 'All your operations' in html
+        assert 'Sign in' in html
+        assert 'Create account' in html
+        assert 'noindex' in (response.headers.get('X-Robots-Tag') or '')
         login = client.get('/login', headers={'Host': 'operations.kynvera.net'})
         assert login.status_code == 200
-        assert 'noindex' in (login.headers.get('X-Robots-Tag') or '')
         robots = client.get('/robots.txt', headers={'Host': 'operations.kynvera.net'})
         assert 'Disallow: /' in robots.get_data(as_text=True)
     finally:
-        app.config['KYNVERA_MARKETING_HOSTS'] = previous
+        app.config.update(previous)
 
 
 def test_og_share_image_is_public(client):

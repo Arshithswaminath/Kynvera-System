@@ -1666,12 +1666,9 @@ def create_app():
         """DocHub module - all users with access"""
         return render_template('dochub.html', active_page='dochub')
 
-    # Root: public landing on kynvera.net. The operations host is sign-in only.
+    # Root: public landing. On operations this is the staff entry (Sign in / Create account).
     @app.route('/')
     def index():
-        from common.kynvera_hub import is_operations_host
-        if is_operations_host():
-            return redirect('/login')
         return render_template('landing.html')
 
     # Serve generated files (downloads) - DEPRECATED in production (use cloud URLs)
