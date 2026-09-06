@@ -9,17 +9,23 @@
 <meta name="description" content="{{ lp_description }}">
 <link rel="canonical" href="{{ lp_canonical }}">
 
-{# Social cards #}
+{# Social cards — landscape 1200×630; used when sharing kynvera.net #}
+{% set lp_og_image = lp_canonical.rstrip('/') ~ url_for('static', filename='images/kynvera/og-share.jpg') %}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Kynvera">
 <meta property="og:title" content="{{ title }}">
 <meta property="og:description" content="{{ lp_description }}">
 <meta property="og:url" content="{{ lp_canonical }}">
-<meta property="og:image" content="{{ url_for('static', filename='images/kynvera/kynvera-mark-180.png', _external=True) }}">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="{{ lp_og_image }}">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Kynvera — operations platform">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{{ title }}">
 <meta name="twitter:description" content="{{ lp_description }}">
-<meta name="twitter:image" content="{{ url_for('static', filename='images/kynvera/kynvera-mark-180.png', _external=True) }}">
+<meta name="twitter:image" content="{{ lp_og_image }}">
+<meta name="twitter:image:alt" content="Kynvera — operations platform">
 
 <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
 <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}?v=3">

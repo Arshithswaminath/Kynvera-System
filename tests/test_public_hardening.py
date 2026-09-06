@@ -68,6 +68,12 @@ def test_operations_host_root_serves_landing(client, app):
         app.config['KYNVERA_MARKETING_HOSTS'] = previous
 
 
+def test_og_share_image_is_public(client):
+    response = client.get('/static/images/kynvera/og-share.jpg')
+    assert response.status_code == 200
+    assert response.mimetype == 'image/jpeg'
+
+
 def test_marketing_host_serves_landing(client, app):
     previous = {
         'KYNVERA_MARKETING_HOSTS': app.config.get('KYNVERA_MARKETING_HOSTS'),
@@ -82,6 +88,8 @@ def test_marketing_host_serves_landing(client, app):
         assert 'All your operations' in html
         assert 'https://operations.kynvera.net/login' in html
         assert '/register' not in html
+        assert 'https://kynvera.net/static/images/kynvera/og-share.jpg' in html
+        assert 'summary_large_image' in html
     finally:
         app.config.update(previous)
 
