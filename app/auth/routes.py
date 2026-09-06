@@ -320,17 +320,15 @@ def login():
 
         # MFA challenge — if enabled, require TOTP before issuing tokens
         if getattr(user, 'mfa_enabled', False) and getattr(user, 'mfa_secret', None):
-            mfa_code = (data.get('mfa_code') or data.get('otp') or '').strip()
-            if not mfa_code:
+            mfa_code = data.get('mfa_code') or data.get('otp') or ''
+            if not _normalize_totp_code(mfa_code):
                 return success_response({
                     'mfa_required': True,
                     'message': 'MFA code required',
                     'user_id': user.id,
                 }, message='MFA required')
             try:
-                import pyotp
-                totp = pyotp.TOTP(user.mfa_secret)
-                if not totp.verify(mfa_code, valid_window=1):
+                if not _totp_verify(user.mfa_secret, mfa_code):
                     log_audit(user.id, 'mfa_failed', 'user', str(user.id))
                     return error_response('Invalid MFA code', 401, 'INVALID_MFA')
             except ImportError:
@@ -719,6 +717,22 @@ def reset_password():
     return jsonify({'message': 'Password updated. You can sign in now.', 'success': True}), 200
 
 
+# ±60s so a slightly slow confirm or clock drift does not reject a valid code.
+_TOTP_VALID_WINDOW = 2
+
+
+def _normalize_totp_code(raw):
+    return ''.join(ch for ch in str(raw or '') if ch.isdigit())
+
+
+def _totp_verify(secret, raw_code, *, valid_window=_TOTP_VALID_WINDOW):
+    import pyotp
+    code = _normalize_totp_code(raw_code)
+    if len(code) != 6 or not secret:
+        return False
+    return bool(pyotp.TOTP(secret).verify(code, valid_window=valid_window))
+
+
 def _totp_otpauth_uri(user):
     import pyotp
     totp = pyotp.TOTP(user.mfa_secret)
@@ -767,12 +781,22 @@ def mfa_setup():
     user = db.session.get(User, int(get_jwt_identity()))
     if not user:
         return error_response('User not found', 404, 'USER_NOT_FOUND')
-    secret = pyotp.random_base32()
-    user.mfa_secret = secret
-    user.mfa_enabled = False
-    db.session.commit()
+    if getattr(user, 'mfa_enabled', False) and getattr(user, 'mfa_secret', None):
+        return error_response(
+            'Authenticator is already on. Turn it off before setting up a new one.',
+            400,
+            'MFA_ALREADY_ENABLED',
+        )
+    reused = bool(user.mfa_secret) and not user.mfa_enabled
+    if reused:
+        secret = user.mfa_secret
+    else:
+        secret = pyotp.random_base32()
+        user.mfa_secret = secret
+        user.mfa_enabled = False
+        db.session.commit()
+        log_audit(user.id, 'mfa_setup_started', 'user', str(user.id))
     uri = _totp_otpauth_uri(user)
-    log_audit(user.id, 'mfa_setup_started', 'user', str(user.id))
     return success_response({
         'secret': secret,
         'otpauth_uri': uri,
@@ -809,15 +833,17 @@ def mfa_qr_image():
 def mfa_enable():
     """Confirm MFA with a valid TOTP code."""
     try:
-        import pyotp
+        import pyotp  # noqa: F401
     except ImportError:
         return error_response('MFA library not installed (pyotp)', 503, 'MFA_UNAVAILABLE')
     user = db.session.get(User, int(get_jwt_identity()))
     if not user or not user.mfa_secret:
         return error_response('Run /mfa/setup first', 400, 'MFA_NOT_SETUP')
     data = request.get_json(silent=True) or {}
-    code = (data.get('mfa_code') or data.get('otp') or '').strip()
-    if not pyotp.TOTP(user.mfa_secret).verify(code, valid_window=1):
+    code = data.get('mfa_code') or data.get('otp') or ''
+    if len(_normalize_totp_code(code)) != 6:
+        return error_response('Enter the 6-digit code from the app.', 400, 'INVALID_MFA')
+    if not _totp_verify(user.mfa_secret, code):
         return error_response('Invalid MFA code', 401, 'INVALID_MFA')
     user.mfa_enabled = True
     db.session.commit()

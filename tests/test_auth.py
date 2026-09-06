@@ -508,6 +508,39 @@ class TestAuthenticatorMfa:
             assert user.get('mfa_enabled') is False
             assert 'mfa_secret' not in user
 
+    def test_setup_reuses_pending_secret(self, client, auth_headers, app):
+        with app.app_context():
+            first = client.post('/api/auth/mfa/setup', headers=auth_headers)
+            second = client.post('/api/auth/mfa/setup', headers=auth_headers)
+            assert first.status_code == 200
+            assert second.status_code == 200
+            assert (first.get_json() or {}).get('secret')
+            assert (first.get_json() or {}).get('secret') == (second.get_json() or {}).get('secret')
+
+    def test_setup_rejected_when_already_enabled(self, client, auth_headers, app):
+        with app.app_context():
+            _enroll_authenticator(client, auth_headers)
+            again = client.post('/api/auth/mfa/setup', headers=auth_headers)
+            body = again.get_json() or {}
+            assert again.status_code == 400
+            assert body.get('error_code') == 'MFA_ALREADY_ENABLED'
+
+    def test_enable_accepts_spaced_code(self, client, auth_headers, app):
+        import pyotp
+
+        with app.app_context():
+            setup = client.post('/api/auth/mfa/setup', headers=auth_headers)
+            secret = (setup.get_json() or {}).get('secret')
+            assert setup.status_code == 200
+            raw = pyotp.TOTP(secret).now()
+            enable = client.post(
+                '/api/auth/mfa/enable',
+                headers=auth_headers,
+                json={'mfa_code': raw[:3] + ' ' + raw[3:]},
+            )
+            assert enable.status_code == 200
+            assert (enable.get_json() or {}).get('mfa_enabled') is True
+
     def test_setup_enable_challenge_login_and_disable(self, client, auth_headers, app):
         import pyotp
 

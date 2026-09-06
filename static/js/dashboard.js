@@ -962,6 +962,9 @@ function loadProfileData() {
 }
 
 function displayProfileData(user) {
+  if (_mfaEnrollmentInProgress()) {
+    return;
+  }
   const profileContent = document.getElementById('profileContent');
   
   const formatDate = (dateStr) => {
@@ -3389,6 +3392,11 @@ function _mfaPanel() {
   return document.getElementById('mfaSetupPanel');
 }
 
+function _mfaEnrollmentInProgress() {
+  const panel = _mfaPanel();
+  return !!(panel && !panel.hidden && panel.querySelector('.pro-mfa-setup'));
+}
+
 function _mfaShowError(id, message) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -3399,6 +3407,11 @@ function _mfaShowError(id, message) {
 window.startMfaSetup = async function startMfaSetup() {
   const panel = _mfaPanel();
   if (!panel) return;
+  if (!panel.hidden && panel.querySelector('#mfaSetupCode')) {
+    const existing = document.getElementById('mfaSetupCode');
+    if (existing) existing.focus();
+    return;
+  }
   panel.hidden = false;
   panel.innerHTML = '<p class="pro-mfa-setup-desc">Preparing QR code…</p>';
   try {
@@ -3466,10 +3479,10 @@ window.cancelMfaSetup = function cancelMfaSetup() {
 };
 
 window.confirmMfaEnable = async function confirmMfaEnable() {
-  const code = (document.getElementById('mfaSetupCode') || {}).value || '';
+  const code = ((document.getElementById('mfaSetupCode') || {}).value || '').replace(/\D/g, '');
   const btn = document.getElementById('mfaSetupConfirmBtn');
   _mfaShowError('mfaSetupError', '');
-  if (!code.trim()) {
+  if (code.length !== 6) {
     _mfaShowError('mfaSetupError', 'Enter the 6-digit code from the app.');
     return;
   }
@@ -3478,7 +3491,7 @@ window.confirmMfaEnable = async function confirmMfaEnable() {
     const response = await fetch('/api/auth/mfa/enable', {
       method: 'POST',
       headers: _mfaAuthHeaders(),
-      body: JSON.stringify({ mfa_code: code.trim() })
+      body: JSON.stringify({ mfa_code: code })
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.success) {
