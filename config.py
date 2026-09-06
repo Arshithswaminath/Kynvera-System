@@ -125,6 +125,8 @@ TICKET_INTAKE_EMAIL = os.getenv("TICKET_INTAKE_EMAIL") or "support@kynvera.store
 
 # Application
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5002")
+# Optional HTTPS PNG for transactional emails (Cloudinary CDN is used when unset).
+EMAIL_WORDMARK_URL = (os.getenv("EMAIL_WORDMARK_URL") or "").strip()
 
 # Kynvera Hub integration (product app — not the portal)
 KYNVERA_HUB_MODE = os.getenv("KYNVERA_HUB_MODE", "false").lower() in ("1", "true", "yes")

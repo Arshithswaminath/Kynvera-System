@@ -265,15 +265,16 @@ def _send_email_brevo_http(app, recipient, subject, body, html_body, cc, attachm
     att_out = []
     for item in _iter_attachment_items(attachments):
         if item.get('inline') and item.get('cid'):
-            # Gmail strips data: URIs; Brevo transactional API does not keep CID
-            # Content-ID headers. Hosted HTTPS (or the HTML wordmark) is required.
+            # Brevo transactional API drops Content-ID, so CID images never render.
+            # The PNG is referenced by HTTPS instead (see _logo_html).
             continue
         encoded = base64.b64encode(item['data']).decode('ascii')
         att_out.append({'name': item['filename'], 'content': encoded})
     if 'cid:' in html:
+        hosted = _hosted_wordmark_url()
         html = re.sub(
             r'<img\b[^>]*src=["\']cid:[^"\']+["\'][^>]*>',
-            _html_wordmark(),
+            _img_wordmark(hosted) if hosted else _html_wordmark(),
             html,
             flags=re.I,
         )
@@ -698,14 +699,14 @@ def _html_wordmark():
 
 def _img_wordmark(src):
     return (
-        f'<img src="{_esc(src)}" alt="Kynvera" width="120" '
+        f'<img src="{_esc(src)}" alt="Kynvera" width="120" height="29" border="0" '
         'style="display:block;border:0;outline:none;text-decoration:none;'
-        'width:120px;max-width:140px;height:auto;">'
+        'width:120px;height:29px;">'
     )
 
 
 def _cloudinary_wordmark_url():
-    """Upload the wordmark once and reuse the HTTPS URL (Gmail can fetch this)."""
+    """Upload the PNG once and reuse a Cloudinary CDN URL (Gmail's proxy is fast against this)."""
     global _cloudinary_wordmark_url_cache
     if _cloudinary_wordmark_url_cache is not None:
         return _cloudinary_wordmark_url_cache
@@ -733,8 +734,11 @@ def _cloudinary_wordmark_url():
             resource_type='image',
             unique_filename=False,
             use_filename=False,
+            transformation=[{'width': 240, 'crop': 'scale', 'format': 'png'}],
         )
         url = str((res or {}).get('secure_url') or '')
+        if url and '/image/upload/' in url and '/w_240' not in url:
+            url = url.replace('/image/upload/', '/image/upload/w_240,c_scale,f_png/')
         _cloudinary_wordmark_url_cache = url
         if url:
             logger.info('Hosted email wordmark at %s', url)
@@ -752,10 +756,14 @@ def _hosted_wordmark_url():
         explicit = ''
     if _is_public_asset_base(explicit):
         return explicit.rstrip('/')
+    # Prefer Cloudinary over APP_BASE_URL: Gmail's image proxy is slow against Render.
+    cdn = _cloudinary_wordmark_url()
+    if cdn:
+        return cdn
     base = _app_base_url()
     if _is_public_asset_base(base):
         return f'{base}{_WORDMARK_STATIC}'
-    return _cloudinary_wordmark_url()
+    return ''
 
 
 def _wordmark_inline_attachment():
@@ -790,12 +798,22 @@ def _esc(value):
 
 
 def _logo_html():
-    """Coral Kynvera wordmark as HTML so it is visible as soon as the message opens.
+    """Official coral PNG wordmark from static/images/kynvera/kynvera-wordmark.png.
 
-    Remote PNG URLs load after the rest of the email. CID images are dropped by
-    Brevo, and Gmail strips data: URIs — so an inline HTML wordmark is the only
-    path that appears immediately in inbox clients.
+    Brevo cannot keep CID images, and Gmail strips data: URIs, so the PNG is
+    hosted on Cloudinary (or EMAIL_WORDMARK_URL). That CDN fetch is much faster
+    than pointing Gmail at the Render app origin. HTML text is last-resort only.
     """
+    hosted = _hosted_wordmark_url()
+    if hosted:
+        return _img_wordmark(hosted)
+    try:
+        if current_app.config.get('TESTING'):
+            return _html_wordmark()
+        if not brevo_api_key(current_app._get_current_object()) and _wordmark_path():
+            return _img_wordmark(f'cid:{_WORDMARK_CID}')
+    except Exception:
+        pass
     return _html_wordmark()
 
 

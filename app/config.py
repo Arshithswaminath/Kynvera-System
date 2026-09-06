@@ -26,6 +26,7 @@ class BaseConfig:
     
     # App settings
     APP_BASE_URL = os.environ.get('APP_BASE_URL', '')
+    EMAIL_WORDMARK_URL = (os.environ.get('EMAIL_WORDMARK_URL') or '').strip()
     MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # 100MB
     
     # Rate Limiting
