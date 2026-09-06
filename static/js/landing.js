@@ -112,4 +112,22 @@
     });
     window.addEventListener('beforeprint', revealAll);
   }
+
+  /* Legal pages: back arrow uses history when we arrived from this site. */
+  var legalBack = document.getElementById('lp-legal-back');
+  if (legalBack) {
+    legalBack.addEventListener('click', function (event) {
+      var sameOrigin = false;
+      try {
+        sameOrigin = Boolean(document.referrer) &&
+          new URL(document.referrer).origin === window.location.origin;
+      } catch (err) {
+        sameOrigin = false;
+      }
+      if (sameOrigin && window.history.length > 1) {
+        event.preventDefault();
+        window.history.back();
+      }
+    });
+  }
 })();

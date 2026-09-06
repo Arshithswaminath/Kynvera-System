@@ -11,6 +11,7 @@
   Audience: organisations evaluating Kynvera — NOT signed-in staff.
   Every capability claimed below exists in this codebase. Do not add claims
   that aren't shipped (no i18n/Arabic, no push notifications, no PKI e-signatures).
+  Do not name prospective clients or contracts on this page.
   Layout reference: airy white-panel hero + proof strip. Visual language: docs/KYNVERA_DESIGN.md.
   All styling lives in static/css/landing.css, scoped under `.landing`.
 #}
@@ -86,8 +87,9 @@
   {'label': 'Works offline on site', 'icon': '<path d="m2 2 20 20"/><path d="M5.8 5.8A6 6 0 0 0 4.6 12 3.5 3.5 0 0 0 5.5 19h11"/><path d="M9.7 4.3A6 6 0 0 1 16.1 10.2 4.5 4.5 0 0 1 19.6 16"/>'}
 ] %}
 
-{# Public marketing vs staff access: landing sells the product; /login is the link you send users. #}
+{# Public marketing never links to the staff host. Clients receive operations.kynvera.net privately. #}
 {% set lp_talk_href = 'mailto:support@kynvera.store?subject=Kynvera%20workspace' %}
+{% set lp_staff_entry = not marketing_host|default(false) %}
 
 <a class="lp-skip" href="#lp-main">Skip to content</a>
 
@@ -107,18 +109,24 @@
             <a href="#features">Features</a>
             <a href="#modules">Modules</a>
             <a href="#audience">Who it's for</a>
+            {% if lp_staff_entry %}
             <a href="{{ staff_login_url|default('/login') }}" class="lp-nav-auth">Sign in</a>
             {% if allow_public_registration|default(true) %}
             <a href="{{ staff_register_url|default('/register') }}" class="lp-nav-auth lp-nav-auth-cta">Create account</a>
+            {% endif %}
             {% else %}
             <a href="{{ lp_talk_href }}" class="lp-nav-auth lp-nav-auth-cta">Talk to us</a>
             {% endif %}
         </nav>
 
         <div class="lp-nav-actions">
+            {% if lp_staff_entry %}
             <a href="{{ staff_login_url|default('/login') }}" class="lp-link-action">Sign in</a>
             {% if allow_public_registration|default(true) %}
             <a href="{{ staff_register_url|default('/register') }}" class="lp-btn lp-btn-outline">Create account</a>
+            {% else %}
+            <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-outline">Talk to us</a>
+            {% endif %}
             {% else %}
             <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-outline">Talk to us</a>
             {% endif %}
@@ -152,16 +160,19 @@
                     on <span class="lp-h1-accent">one platform</span>.
                 </h1>
                 <p class="lp-hero-sub">
-                    Facilities management and day-to-day operations in one workspace.
-                    Tickets, inspections, assets, HR and more, keeping every team in sync.
+                    Operations application services for companies.
+                    Tickets, inspections, assets, HR and reporting in one workspace, so every team works from the same system.
                 </p>
                 <div class="lp-hero-cta">
-                    {% if allow_public_registration|default(true) %}
+                    {% if lp_staff_entry and allow_public_registration|default(true) %}
                     <a href="{{ staff_register_url|default('/register') }}" class="lp-btn lp-btn-primary lp-btn-lg">Create account</a>
+                    <a href="{{ staff_login_url|default('/login') }}" class="lp-btn lp-btn-ghost lp-btn-lg">Sign in</a>
+                    {% elif lp_staff_entry %}
+                    <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-primary lp-btn-lg">Talk to us</a>
+                    <a href="{{ staff_login_url|default('/login') }}" class="lp-btn lp-btn-ghost lp-btn-lg">Sign in</a>
                     {% else %}
                     <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-primary lp-btn-lg">Talk to us</a>
                     {% endif %}
-                    <a href="{{ staff_login_url|default('/login') }}" class="lp-btn lp-btn-ghost lp-btn-lg">Sign in</a>
                 </div>
             </div>
 
@@ -581,8 +592,8 @@
 <section class="lp-section" id="audience" aria-labelledby="lp-audience-title">
     <div class="lp-inner">
         <p class="lp-eyebrow">Who it's for</p>
-        <h2 class="lp-h2" id="lp-audience-title">Built for everyone in the chain</h2>
-        <p class="lp-lead">The same platform, scoped to what each person actually needs to do.</p>
+        <h2 class="lp-h2" id="lp-audience-title">Built for companies that run operations</h2>
+        <p class="lp-lead">The same platform, scoped to what each person in the company actually needs to do.</p>
 
         <div class="lp-tiers">
 
@@ -645,15 +656,22 @@
         <div class="lp-cta-band">
             <div class="lp-cta-copy">
                 <h2 id="lp-cta-title">Ready to run everything from one place?</h2>
+                {% if lp_staff_entry %}
                 <p>Create an account to walk through the platform, or sign in if your organisation is already set up.</p>
+                {% else %}
+                <p>Talk to us to set up a workspace for your organisation. Sign-in is issued to your team, not listed here.</p>
+                {% endif %}
             </div>
             <div class="lp-cta-actions">
-                {% if allow_public_registration|default(true) %}
+                {% if lp_staff_entry and allow_public_registration|default(true) %}
                 <a href="{{ staff_register_url|default('/register') }}" class="lp-btn lp-btn-on-coral lp-btn-lg">Create account</a>
+                <a href="{{ staff_login_url|default('/login') }}" class="lp-btn lp-btn-ghost-on-coral lp-btn-lg">Sign in</a>
+                {% elif lp_staff_entry %}
+                <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-on-coral lp-btn-lg">Talk to us</a>
+                <a href="{{ staff_login_url|default('/login') }}" class="lp-btn lp-btn-ghost-on-coral lp-btn-lg">Sign in</a>
                 {% else %}
                 <a href="{{ lp_talk_href }}" class="lp-btn lp-btn-on-coral lp-btn-lg">Talk to us</a>
                 {% endif %}
-                <a href="{{ staff_login_url|default('/login') }}" class="lp-btn lp-btn-ghost-on-coral lp-btn-lg">Sign in</a>
             </div>
         </div>
     </div>
@@ -669,7 +687,7 @@
         <div class="lp-footer-grid">
             <div class="lp-footer-brand">
                 <img class="lp-brand-wordmark" src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera">
-                <p>One platform for how your operation actually runs — the field, the office and everything that has to travel between them.</p>
+                <p>Operations application services for companies — the field, the office and everything that has to travel between them.</p>
                 <ul class="lp-footer-meta">
                     <li>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11z"/><circle cx="12" cy="10" r="2.2"/></svg>
@@ -701,12 +719,16 @@
                 <div>
                     <h3>Get started</h3>
                     <ul>
-                        {% if allow_public_registration|default(true) %}
+                        {% if lp_staff_entry and allow_public_registration|default(true) %}
                         <li><a href="{{ staff_register_url|default('/register') }}">Create an account</a></li>
                         {% endif %}
+                        {% if lp_staff_entry %}
                         <li><a href="{{ staff_login_url|default('/login') }}">Sign in</a></li>
+                        {% endif %}
                         <li><a href="{{ lp_talk_href }}">Talk to us</a></li>
+                        {% if lp_staff_entry %}
                         <li><a href="{{ staff_forgot_url|default('/forgot-password') }}">Forgot password</a></li>
+                        {% endif %}
                     </ul>
                 </div>
             </div>
@@ -734,10 +756,14 @@
             <span class="lp-footer-links">
                     <a href="/privacy">Privacy</a>
                     <a href="/terms">Terms</a>
-                    {% if allow_public_registration|default(true) %}
+                    {% if lp_staff_entry and allow_public_registration|default(true) %}
                     <a href="{{ staff_register_url|default('/register') }}" class="lp-footer-auth">Create an account</a>
                     {% endif %}
+                    {% if lp_staff_entry %}
                     <a href="{{ staff_login_url|default('/login') }}" class="lp-footer-auth">Sign in</a>
+                    {% else %}
+                    <a href="{{ lp_talk_href }}" class="lp-footer-auth">Talk to us</a>
+                    {% endif %}
                 </span>
         </div>
     </div>

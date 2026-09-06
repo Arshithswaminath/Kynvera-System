@@ -2113,3 +2113,125 @@ body.mp-page .mp-settings-view {
     font-size: 16px;
   }
 }
+
+@media (max-width: 768px) {
+  /* Full screen under the app navbar — not a dimmed popup */
+  .mp-page .hh-modal {
+    top: var(--nav-bar-h, 72px);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: calc(100vh - var(--nav-bar-h, 72px));
+    height: calc(100dvh - var(--nav-bar-h, 72px));
+    max-height: calc(100dvh - var(--nav-bar-h, 72px));
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+    z-index: 900;
+    background: #ffffff;
+  }
+
+  .mp-page .hh-modal-backdrop {
+    display: none;
+  }
+
+  .mp-page .hh-modal-panel,
+  .mp-page .hh-modal-panel.mp-link-panel {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .mp-page .hh-modal-head {
+    flex-shrink: 0;
+    justify-content: flex-start;
+    padding: 0.7rem 0.85rem 0.7rem 0.35rem;
+    border-bottom: 1px solid #ececf1;
+    gap: 0.35rem;
+  }
+
+  .mp-page .hh-modal-head h2 {
+    font-size: 1.12rem;
+    font-weight: 700;
+  }
+
+  .mp-page .hh-modal-close {
+    order: -1;
+    font-size: 0;
+    width: 44px;
+    height: 44px;
+    color: #3a3a3c;
+    flex-shrink: 0;
+  }
+
+  .mp-page .hh-modal-close::before {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 20px;
+    background: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 18l-6-6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 18l-6-6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  .mp-page .mp-import-hint,
+  .mp-page .mp-check,
+  .mp-page .mp-confirm-message {
+    padding-left: 1.1rem;
+    padding-right: 1.1rem;
+  }
+
+  .mp-page .hh-modal-panel > .mp-form {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    align-content: start;
+    padding-bottom: 0;
+  }
+
+  .mp-page .mp-link-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .mp-page .hh-modal-panel > .mp-form-actions,
+  .mp-page .hh-modal-panel .mp-form-actions,
+  .mp-page .hh-modal-panel .mp-confirm-actions,
+  .mp-page .hh-modal-panel .mp-link-actions {
+    flex-shrink: 0;
+    margin-top: auto;
+    justify-content: stretch;
+    gap: 0.55rem;
+    padding: 0.85rem 1.1rem;
+    padding-bottom: max(0.85rem, env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid #ececf1;
+    background: #fff;
+  }
+
+  .mp-page .hh-modal-panel .mp-form-actions .hh-btn,
+  .mp-page .hh-modal-panel .mp-confirm-actions .hh-btn {
+    min-height: 44px;
+  }
+
+  .mp-page .hh-modal-panel .mp-form-actions .hh-btn-primary,
+  .mp-page .hh-modal-panel .mp-form-actions .hh-btn-secondary,
+  .mp-page .hh-modal-panel .mp-confirm-actions .hh-btn {
+    flex: 1 1 auto;
+  }
+
+  .mp-page .hh-modal-panel .mp-form-actions-spacer {
+    display: none;
+  }
+
+  .mp-page .hh-modal-panel .mp-form-actions .hh-btn-ghost {
+    flex: 0 0 auto;
+  }
+}

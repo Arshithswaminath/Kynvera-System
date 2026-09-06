@@ -463,3 +463,119 @@ class TestHealthEndpoint:
         data = response.get_json()
         assert data.get('database') == 'healthy'
         assert data.get('status') == 'healthy'
+
+
+def _enroll_authenticator(client, auth_headers):
+    import pyotp
+
+    setup = client.post('/api/auth/mfa/setup', headers=auth_headers)
+    data = setup.get_json() or {}
+    assert setup.status_code == 200
+    assert data.get('success') is True
+    assert (data.get('qr_data_url') or '').startswith('data:image/png;base64,')
+    secret = data.get('secret')
+    assert secret
+    qr_png = client.get('/api/auth/mfa/qr.png', headers=auth_headers)
+    assert qr_png.status_code == 200
+    assert qr_png.data[:8] == b'\x89PNG\r\n\x1a\n'
+    enable = client.post(
+        '/api/auth/mfa/enable',
+        headers=auth_headers,
+        json={'mfa_code': pyotp.TOTP(secret).now()},
+    )
+    enabled = enable.get_json() or {}
+    assert enable.status_code == 200
+    assert enabled.get('mfa_enabled') is True
+    return secret
+
+
+class TestAuthenticatorMfa:
+    """Optional TOTP enroll, login challenge, disable, and admin reset."""
+
+    def test_login_page_asks_for_authenticator_app(self, client):
+        response = client.get('/login')
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+        assert 'Microsoft Authenticator' in html
+        assert 'Google Authenticator' in html
+        assert 'Verify code' in html
+
+    def test_me_exposes_mfa_enabled_not_secret(self, client, auth_headers, app):
+        with app.app_context():
+            response = client.get('/api/auth/me', headers=auth_headers)
+            user = (response.get_json() or {}).get('user') or {}
+            assert response.status_code == 200
+            assert user.get('mfa_enabled') is False
+            assert 'mfa_secret' not in user
+
+    def test_setup_enable_challenge_login_and_disable(self, client, auth_headers, app):
+        import pyotp
+
+        with app.app_context():
+            secret = _enroll_authenticator(client, auth_headers)
+
+            me = client.get('/api/auth/me', headers=auth_headers).get_json()
+            assert me['user']['mfa_enabled'] is True
+            assert 'mfa_secret' not in me['user']
+
+            challenged = client.post('/api/auth/login', json={
+                'username': 'testuser',
+                'password': 'TestPass123',
+            })
+            challenge = challenged.get_json() or {}
+            assert challenged.status_code == 200
+            assert challenge.get('mfa_required') is True
+            assert not challenge.get('access_token')
+
+            signed_in = client.post('/api/auth/login', json={
+                'username': 'testuser',
+                'password': 'TestPass123',
+                'mfa_code': pyotp.TOTP(secret).now(),
+            })
+            tokens = signed_in.get_json() or {}
+            assert signed_in.status_code == 200
+            assert tokens.get('access_token')
+            assert tokens.get('user', {}).get('mfa_enabled') is True
+
+            disabled = client.post(
+                '/api/auth/mfa/disable',
+                headers=auth_headers,
+                json={'password': 'TestPass123'},
+            )
+            assert disabled.status_code == 200
+            assert (disabled.get_json() or {}).get('mfa_enabled') is False
+
+            password_only = client.post('/api/auth/login', json={
+                'username': 'testuser',
+                'password': 'TestPass123',
+            })
+            after = password_only.get_json() or {}
+            assert password_only.status_code == 200
+            assert after.get('access_token')
+            assert not after.get('mfa_required')
+
+    def test_admin_reset_allows_password_only_login(
+        self, client, auth_headers, admin_auth_headers, standard_user, app
+    ):
+        with app.app_context():
+            _enroll_authenticator(client, auth_headers)
+            uid = standard_user.id
+
+            reset = client.post(
+                f'/api/admin/users/{uid}/reset-mfa',
+                headers=admin_auth_headers,
+            )
+            body = reset.get_json() or {}
+            assert reset.status_code == 200
+            assert body.get('success') is True
+            assert body.get('user', {}).get('mfa_enabled') is False
+
+            password_only = client.post('/api/auth/login', json={
+                'username': 'testuser',
+                'password': 'TestPass123',
+            })
+            after = password_only.get_json() or {}
+            assert password_only.status_code == 200
+            assert after.get('access_token')
+            assert not after.get('mfa_required')
+            assert after.get('user', {}).get('mfa_enabled') is False

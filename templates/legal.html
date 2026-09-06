@@ -8,84 +8,166 @@
     {% endif %}
     {% include 'partials/landing_head.html' %}
 </head>
-<body class="landing">
-<header class="lp-nav" id="lp-nav">
+<body class="landing lp-legal-page">
+<header class="lp-nav lp-nav--legal" id="lp-nav">
     <div class="lp-nav-inner">
-        <a class="lp-brand" href="{{ url_for('index') }}">
-            <img src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera">
-        </a>
-        <div class="lp-nav-actions">
+        <div class="lp-legal-nav-left">
+            <a class="lp-legal-back" id="lp-legal-back" href="{{ url_for('index') }}" aria-label="Back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </a>
+            {% if marketing_host|default(false) %}
+            <a href="mailto:support@kynvera.store?subject=Kynvera%20workspace" class="lp-btn lp-btn-outline">Talk to us</a>
+            {% else %}
             <a href="{{ staff_login_url|default('/login') }}" class="lp-btn lp-btn-outline">Sign in</a>
+            {% endif %}
         </div>
+        <a class="lp-brand" href="{{ url_for('index') }}" aria-label="Kynvera home">
+            <img class="lp-brand-wordmark" src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera">
+        </a>
     </div>
 </header>
 
 <main id="lp-main" class="lp-legal-wrap">
     {% if legal_page == 'terms' %}
-    <p class="lp-eyebrow">Legal</p>
-    <h1 class="lp-h2">Terms of use</h1>
-    <p class="lp-lead">These terms cover use of the Kynvera operations platform at this host, including sign-in, modules, and generated documents.</p>
+    <header class="lp-legal-intro">
+        <p class="lp-eyebrow">Legal</p>
+        <h1 class="lp-h2">Terms of use</h1>
+        <p class="lp-lead">These terms cover the Kynvera operations platform on this host — sign-in, modules, and generated documents.</p>
+    </header>
 
-    <h2>The service</h2>
-    <p>Kynvera is an operations workspace for the organisation that invited you. Access is granted by that organisation’s administrators, per person and per module. You may only use the account issued to you, and only for that organisation’s work.</p>
-
-    <h2>Your account</h2>
-    <p>Keep your password and any authenticator device private. Tell your administrator if you think the account has been misused. We may suspend access if activity looks abusive or if your organisation asks us to.</p>
-
-    <h2>Content you submit</h2>
-    <p>Inspections, tickets, HR forms, files, signatures, and other records you enter belong to the organisation that operates this workspace. Do not upload material you are not allowed to share with that organisation.</p>
-
-    <h2>Availability</h2>
-    <p>We aim to keep the service available, including an offline fallback for field use, but we do not guarantee uninterrupted access. Planned maintenance and faults can take the service down without notice.</p>
-
-    <h2>Liability</h2>
-    <p>The platform is provided for operational use as configured by your organisation. To the extent permitted by law, Kynvera is not liable for lost work, delayed approvals, or decisions made on the basis of records in the system. Your organisation’s own policies still apply to the work you do here.</p>
-
-    <h2>Changes</h2>
-    <p>These terms may be updated as the product changes. The version on this page is the current one. Continued use after a change means you accept the updated terms.</p>
-
-    <p>Questions about access or these terms should go to your organisation’s administrator.</p>
+    <ol class="lp-legal-sections">
+        <li class="lp-legal-section">
+            <h2>The service</h2>
+            <p>Kynvera is an operations workspace for the organisation that invited you.</p>
+            <ul>
+                <li>Access is granted by that organisation’s administrators, per person and per module.</li>
+                <li>Use only the account issued to you, and only for that organisation’s work.</li>
+            </ul>
+        </li>
+        <li class="lp-legal-section">
+            <h2>Your account</h2>
+            <ul>
+                <li>Keep your password and authenticator device private.</li>
+                <li>Tell your administrator if you think the account has been misused.</li>
+                <li>We may suspend access if activity looks abusive, or if your organisation asks us to.</li>
+            </ul>
+        </li>
+        <li class="lp-legal-section">
+            <h2>Content you submit</h2>
+            <p>Records you enter belong to the organisation that operates this workspace, including:</p>
+            <ul>
+                <li>Inspections, tickets, and HR forms</li>
+                <li>Files and photos</li>
+                <li>Signatures captured on a device</li>
+            </ul>
+            <p>Do not upload material you are not allowed to share with that organisation.</p>
+        </li>
+        <li class="lp-legal-section">
+            <h2>Availability</h2>
+            <ul>
+                <li>We aim to keep the service available, including an offline fallback for field use.</li>
+                <li>We do not guarantee uninterrupted access.</li>
+                <li>Planned maintenance and faults can take the service down without notice.</li>
+            </ul>
+        </li>
+        <li class="lp-legal-section">
+            <h2>Liability</h2>
+            <p>The platform is provided for operational use as configured by your organisation. To the extent permitted by law, Kynvera is not liable for lost work, delayed approvals, or decisions made on the basis of records in the system. Your organisation’s own policies still apply to the work you do here.</p>
+        </li>
+        <li class="lp-legal-section">
+            <h2>Changes</h2>
+            <p>These terms may be updated as the product changes. The version on this page is the current one. Continued use after a change means you accept the updated terms.</p>
+        </li>
+    </ol>
+    <p class="lp-legal-note">Questions about access or these terms should go to your organisation’s administrator.</p>
     {% else %}
-    <p class="lp-eyebrow">Legal</p>
-    <h1 class="lp-h2">Privacy</h1>
-    <p class="lp-lead">How this Kynvera workspace handles personal data for the organisation that operates it.</p>
+    <header class="lp-legal-intro">
+        <p class="lp-eyebrow">Legal</p>
+        <h1 class="lp-h2">Privacy</h1>
+        <p class="lp-lead">How this Kynvera workspace handles personal data for the organisation that operates it.</p>
+    </header>
 
-    <h2>Who this applies to</h2>
-    <p>This page describes the operations platform running on this host. Your organisation is the controller of staff, contractor, and site records held here. Kynvera provides the software and hosting used to process that data on the organisation’s instructions.</p>
-
-    <h2>What we process</h2>
-    <p>Depending on which modules you can access, the workspace may hold names, work emails, phone numbers, job titles, project assignments, login and audit logs (including IP address and timestamps), signatures captured on device, photos from inspections, HR form contents, and similar operational records.</p>
-
-    <h2>Why we process it</h2>
-    <p>To run the workspace: sign-in and access control, routing and approvals, generating PDF/Excel/Word output, sending notification emails, audit, and keeping the service secure. Optional two-factor sign-in stores a TOTP secret on your account.</p>
-
-    <h2>Sharing</h2>
-    <p>Records are visible to people in your organisation who have been granted the relevant module access. Hosting, email delivery, media storage, and similar processors may receive data as needed to run the service. We do not sell personal data.</p>
-
-    <h2>Retention</h2>
-    <p>Accounts and records stay until your organisation’s administrators deactivate or delete them, subject to audit and legal hold requirements they set. Password-reset links expire after one hour.</p>
-
-    <h2>Your choices</h2>
-    <p>Ask your administrator to correct your profile, reset access, or handle a deletion request. You can change your password from your profile after sign-in, or use the forgot-password page if you cannot sign in.</p>
-
-    <h2>Security</h2>
-    <p>Traffic is served over HTTPS. Actions that matter are written to an audit log. Report a suspected incident to your administrator immediately.</p>
-
-    <p>Last updated 5 September 2026.</p>
+    <ol class="lp-legal-sections">
+        <li class="lp-legal-section">
+            <h2>Who this applies to</h2>
+            <p>This page describes the operations platform running on this host. Your organisation is the controller of staff, contractor, and site records held here. Kynvera provides the software and hosting used to process that data on the organisation’s instructions.</p>
+        </li>
+        <li class="lp-legal-section">
+            <h2>What we process</h2>
+            <p>Depending on which modules you can access, the workspace may hold:</p>
+            <ul>
+                <li>Names, work emails, phone numbers, and job titles</li>
+                <li>Project assignments</li>
+                <li>Login and audit logs (IP address and timestamps)</li>
+                <li>Signatures captured on a device</li>
+                <li>Photos from inspections</li>
+                <li>HR form contents and similar operational records</li>
+            </ul>
+        </li>
+        <li class="lp-legal-section">
+            <h2>Why we process it</h2>
+            <ul>
+                <li>Sign-in and access control</li>
+                <li>Routing, approvals, and audit</li>
+                <li>Generating PDF, Excel, and Word output</li>
+                <li>Sending notification emails</li>
+                <li>Keeping the service secure</li>
+            </ul>
+            <p>Optional two-factor sign-in stores a TOTP secret on your account.</p>
+        </li>
+        <li class="lp-legal-section">
+            <h2>Sharing</h2>
+            <ul>
+                <li>Records are visible to people in your organisation who have the relevant module access.</li>
+                <li>Hosting, email delivery, media storage, and similar processors may receive data as needed to run the service.</li>
+                <li>We do not sell personal data.</li>
+            </ul>
+        </li>
+        <li class="lp-legal-section">
+            <h2>Retention</h2>
+            <p>Accounts and records stay until your organisation’s administrators deactivate or delete them, subject to audit and legal hold requirements they set. Password-reset links expire after one hour.</p>
+        </li>
+        <li class="lp-legal-section">
+            <h2>Your choices</h2>
+            <ul>
+                <li>Ask your administrator to correct your profile, reset access, or handle a deletion request.</li>
+                <li>Change your password from your profile after sign-in.</li>
+                <li>Use the forgot-password page if you cannot sign in.</li>
+            </ul>
+        </li>
+        <li class="lp-legal-section">
+            <h2>Security</h2>
+            <ul>
+                <li>Traffic is served over HTTPS.</li>
+                <li>Actions that matter are written to an audit log.</li>
+                <li>Report a suspected incident to your administrator immediately.</li>
+            </ul>
+        </li>
+    </ol>
+    <p class="lp-legal-note">Last updated 5 September 2026.</p>
     {% endif %}
 </main>
 
-<footer class="lp-footer">
+<footer class="lp-footer lp-footer--legal">
     <div class="lp-inner">
         <div class="lp-footer-bottom">
-            <span class="lp-footer-copy">&copy; {{ now().year if now is defined else '2026' }} Kynvera</span>
+            <a class="lp-footer-copy" href="{{ url_for('index') }}" aria-label="Kynvera home">
+                <img class="lp-brand-wordmark" src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera">
+            </a>
             <span class="lp-footer-links">
                 <a href="{{ url_for('privacy_page') }}">Privacy</a>
                 <a href="{{ url_for('terms_page') }}">Terms</a>
+                {% if marketing_host|default(false) %}
+                <a href="mailto:support@kynvera.store?subject=Kynvera%20workspace">Talk to us</a>
+                {% else %}
                 <a href="{{ staff_login_url|default('/login') }}">Sign in</a>
+                {% endif %}
             </span>
         </div>
     </div>
 </footer>
+<script src="{{ url_for('static', filename='js/landing.js') }}?v=3" defer></script>
 </body>
 </html>

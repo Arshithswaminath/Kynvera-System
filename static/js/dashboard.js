@@ -1056,7 +1056,8 @@ const PROFILE_ICONS = {
   biz_dev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
   reports: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 16 4-4 4 4 5-5"/></svg>',
   phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
-  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>'
 };
 
 function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDisplay, getModuleAccess, formatDate) {
@@ -1149,7 +1150,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         color: #ffffff;
         background: linear-gradient(160deg, #ff8e68 0%, #e05f36 100%);
         border: 3px solid #ffffff;
-        box-shadow: 0 6px 18px rgba(255, 142, 104, 0.28);
+        box-shadow: none;
         position: relative;
         flex-shrink: 0;
       }
@@ -1190,6 +1191,10 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         color: #8e8e93;
         line-height: 1.3;
         word-break: break-word;
+      }
+
+      .pro-rail-id {
+        min-width: 0;
       }
 
       .pro-nav {
@@ -1350,6 +1355,17 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       .pro-main-close svg {
         width: 19px;
         height: 19px;
+      }
+
+      .pro-main-close-x,
+      .pro-main-close-back {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .pro-main-close-back {
+        display: none;
       }
 
       .pro-main-body {
@@ -1550,7 +1566,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         background: linear-gradient(160deg, #ff8e68 0%, #e05f36 100%) !important;
         backdrop-filter: none;
         border: 3px solid #ffffff;
-        box-shadow: 0 6px 18px rgba(255, 142, 104, 0.28);
+        box-shadow: none;
         color: #ffffff;
       }
 
@@ -1712,14 +1728,13 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         background: #ffffff;
         border-radius: 12px;
         border: 1px solid #e5e5ea;
-        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: none;
+        transition: border-color 0.2s ease;
         min-height: 0;
       }
       
       .pro-info-item:hover {
         border-color: #d1d1d6;
-        box-shadow: 0 2px 6px rgba(16, 24, 40, 0.08);
       }
       
       .pro-info-icon {
@@ -1732,7 +1747,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         background: var(--icon-color, #ff8e68);
         color: white;
         flex-shrink: 0;
-        box-shadow: 0 2px 6px color-mix(in srgb, var(--icon-color, #ff8e68) 35%, transparent);
+        box-shadow: none;
       }
 
       .pro-info-icon svg {
@@ -1938,11 +1953,13 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       .pro-security-card {
         padding: 0.875rem;
         border-radius: 10px;
-        border: 1px solid;
+        border: 1px solid #e5e5ea;
+        background: #ffffff;
         margin-bottom: 0.625rem;
         display: flex;
         align-items: center;
         gap: 0.875rem;
+        box-shadow: none;
       }
       
       .pro-security-card.success {
@@ -2001,6 +2018,51 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       .pro-security-action {
         flex-shrink: 0;
       }
+
+      .pro-mfa-setup {
+        margin: 0 0 1.25rem;
+        padding: 1rem 1.1rem;
+        border: 1px solid #e7e5e4;
+        border-radius: 12px;
+        background: #fafaf9;
+      }
+      .pro-mfa-setup-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0 0 0.35rem;
+      }
+      .pro-mfa-setup-desc {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin: 0 0 0.85rem;
+        line-height: 1.45;
+      }
+      .pro-mfa-qr {
+        display: block;
+        width: 180px;
+        height: 180px;
+        margin: 0 auto 0.75rem;
+        background: #fff;
+        border: 1px solid #e7e5e4;
+        border-radius: 8px;
+        object-fit: contain;
+      }
+      .pro-mfa-secret {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.78rem;
+        letter-spacing: 0.06em;
+        word-break: break-all;
+        text-align: center;
+        color: #44403c;
+        margin: 0 0 0.85rem;
+      }
+      .pro-mfa-error {
+        display: none;
+        margin: 0 0 0.75rem;
+        font-size: 0.8rem;
+        color: #b91c1c;
+      }
       
       .pro-btn {
         display: inline-flex;
@@ -2013,18 +2075,18 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         border-radius: 10px;
         border: none;
         cursor: pointer;
-        transition: transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+        box-shadow: none;
       }
       
       .pro-btn-primary {
         background: linear-gradient(160deg, #ff8e68 0%, #e05f36 100%);
         color: white;
-        box-shadow: 0 3px 8px rgba(255, 142, 104, 0.28);
+        box-shadow: none;
       }
       
       .pro-btn-primary:hover {
-        transform: translateY(-0.5px);
-        box-shadow: 0 5px 12px rgba(255, 142, 104, 0.34);
+        filter: brightness(1.04);
       }
       
       .pro-btn-outline {
@@ -2056,12 +2118,11 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       .pro-btn-success {
         background: linear-gradient(160deg, #ff8e68 0%, #e05f36 100%);
         color: white;
-        box-shadow: 0 3px 8px rgba(255, 142, 104, 0.28);
+        box-shadow: none;
       }
       
       .pro-btn-success:hover {
-        transform: translateY(-0.5px);
-        box-shadow: 0 5px 12px rgba(255, 142, 104, 0.34);
+        filter: brightness(1.04);
       }
       
       /* Signature Section */
@@ -2121,60 +2182,101 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
       
       /* Two-pane stacks below this width */
-      @media (max-width: 720px) {
+      @media (max-width: 768px) {
         .pro-shell {
           flex-direction: column;
+          height: 100%;
+          max-height: 100%;
+          min-height: 0;
+        }
+        .pro-container {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          min-height: 0;
+          flex: 1;
         }
         .pro-rail {
           width: 100%;
           flex-shrink: 0;
           border-right: none;
           border-bottom: 1px solid #e5e5ea;
-          padding: 1rem 1rem 0.75rem;
+          padding: 0.85rem 1rem 0.65rem;
         }
         .pro-rail-head {
           flex-direction: row;
           align-items: center;
           text-align: left;
           gap: 0.75rem;
-          padding: 0 0 0.75rem;
+          padding: 0 0 0.7rem;
+        }
+        .pro-rail-id {
+          flex: 1;
+          min-width: 0;
         }
         .pro-rail-avatar {
-          width: 52px;
-          height: 52px;
-          font-size: 1.15rem;
+          width: 48px;
+          height: 48px;
+          font-size: 1.05rem;
           border-width: 2px;
         }
         .pro-rail-avatar::after {
-          width: 13px;
-          height: 13px;
+          width: 12px;
+          height: 12px;
         }
         .pro-nav {
           flex-direction: row;
           flex-wrap: nowrap;
           overflow-x: auto;
           gap: 0.35rem;
-          padding: 0.6rem 0 0.1rem;
+          padding: 0.35rem 0 0.15rem;
           -webkit-overflow-scrolling: touch;
           scrollbar-width: none;
         }
         .pro-nav::-webkit-scrollbar { display: none; }
         .pro-nav-item {
           width: auto;
+          flex: 1 1 0;
+          min-width: 0;
+          min-height: 44px;
           white-space: nowrap;
-          padding: 0.5rem 0.75rem;
+          padding: 0.45rem 0.4rem;
+          justify-content: center;
+          font-size: 0.75rem;
         }
 
         .pro-rail-foot { display: none; }
+        .pro-main { min-height: 0; flex: 1; }
         .pro-main-body {
-          padding: 1.1rem 1.15rem;
+          padding: 1rem;
         }
-        .pro-main-header { padding: 1.1rem 1.15rem 0.85rem; }
-        .pro-main-title { font-size: 1.15rem; }
-        .pro-main-footer { padding: 0.75rem 1.15rem; }
-        .pro-field-grid,
-        .pro-org-grid {
+        .pro-main-header { padding: 0.9rem 1rem 0.75rem; }
+        .pro-main-title { font-size: 1.08rem; }
+        .pro-main-sub { font-size: 0.78rem; }
+        .pro-main-close {
+          width: 44px;
+          height: 44px;
+        }
+        .pro-main-close-x { display: none; }
+        .pro-main-close-back {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .pro-main-footer { padding: 0.75rem 1rem; padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)); }
+        .pro-field-grid {
           grid-template-columns: 1fr;
+        }
+        .pro-org-grid {
+          grid-template-columns: 1fr 1fr;
+          gap: 0.45rem;
+        }
+        .pro-org-card {
+          padding: 0.55rem 0.6rem;
+          gap: 0.45rem;
+        }
+        .pro-org-label {
+          white-space: normal;
         }
       }
 
@@ -2568,21 +2670,23 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         <aside class="pro-rail">
           <div class="pro-rail-head">
             <div class="pro-avatar pro-rail-avatar">${getInitials()}</div>
-            <div class="pro-rail-name">${escapeHtml(user.full_name || user.username)}</div>
-            ${user.username && user.full_name && String(user.full_name).toLowerCase() !== String(user.username).toLowerCase()
-              ? `<div class="pro-rail-username">@${escapeHtml(user.username)}</div>`
-              : ''}
-            <div class="pro-rail-role">${escapeHtml(user.job_designation || getRoleDisplay())}</div>
+            <div class="pro-rail-id">
+              <div class="pro-rail-name">${escapeHtml(user.full_name || user.username)}</div>
+              ${user.username && user.full_name && String(user.full_name).toLowerCase() !== String(user.username).toLowerCase()
+                ? `<div class="pro-rail-username">@${escapeHtml(user.username)}</div>`
+                : ''}
+              <div class="pro-rail-role">${escapeHtml(user.job_designation || getRoleDisplay())}</div>
+            </div>
           </div>
-          <nav class="pro-nav">
+          <nav class="pro-nav" aria-label="Profile sections">
             <button class="pro-nav-item active" data-tab="profile" onclick="switchProfileTab('profile')">
-              <span class="pro-nav-ico">${I.user}</span><span>General Info</span>
+              <span class="pro-nav-ico">${I.user}</span><span>General</span>
             </button>
             <button class="pro-nav-item" data-tab="security" onclick="switchProfileTab('security')">
-              <span class="pro-nav-ico">${I.shield}</span><span>Security Settings</span>
+              <span class="pro-nav-ico">${I.shield}</span><span>Security</span>
             </button>
             <button class="pro-nav-item" data-tab="modules" onclick="switchProfileTab('modules')">
-              <span class="pro-nav-ico">${I.grid}</span><span>Module Access</span>
+              <span class="pro-nav-ico">${I.grid}</span><span>Access</span>
             </button>
             <button class="pro-nav-item" data-tab="signature" onclick="switchProfileTab('signature')">
               <span class="pro-nav-ico">${I.pen}</span><span>Signature</span>
@@ -2603,7 +2707,10 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
               <h2 class="pro-main-title" id="proMainTitle">General Information</h2>
               <p class="pro-main-sub" id="proMainSub">Manage your personal profile details and contact preferences.</p>
             </div>
-            <button class="pro-main-close" onclick="closeProfileModal()" aria-label="Close">${I.close}</button>
+            <button class="pro-main-close" onclick="closeProfileModal()" aria-label="Close profile">
+              <span class="pro-main-close-x">${I.close}</span>
+              <span class="pro-main-close-back">${I.back}</span>
+            </button>
           </header>
 
           <div class="pro-main-body">
@@ -2682,6 +2789,22 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
                   </button>
                 </div>
               </div>
+
+              <div class="pro-security-card ${user.mfa_enabled ? 'success' : ''}" id="mfaSecurityCard">
+                <div class="pro-security-icon">${user.mfa_enabled ? I.check : I.shield}</div>
+                <div class="pro-security-content">
+                  <div class="pro-security-title">${user.mfa_enabled ? 'Authenticator app is on' : 'Authenticator app'}</div>
+                  <div class="pro-security-desc">${user.mfa_enabled
+                    ? 'Microsoft Authenticator or Google Authenticator is required at sign-in.'
+                    : 'Optional. Scan a QR with Microsoft Authenticator or Google Authenticator.'}</div>
+                </div>
+                <div class="pro-security-action">
+                  <button type="button" class="pro-btn ${user.mfa_enabled ? 'pro-btn-outline' : 'pro-btn-primary'} pro-btn-sm" onclick="${user.mfa_enabled ? 'showMfaDisableForm()' : 'startMfaSetup()'}">
+                    ${user.mfa_enabled ? 'Turn off' : 'Set up'}
+                  </button>
+                </div>
+              </div>
+              <div id="mfaSetupPanel" hidden></div>
 
               <div class="pro-info-list pro-info-list--grid">
                 <div class="pro-info-item">
@@ -2783,7 +2906,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
 // Tab switching function
 const PROFILE_PANEL_META = {
   profile: { title: 'General Information', sub: 'Manage your personal profile details and contact preferences.' },
-  security: { title: 'Security Settings', sub: 'Review your account status and keep your password up to date.' },
+  security: { title: 'Security Settings', sub: 'Password and optional authenticator app for sign-in.' },
   modules: { title: 'Module Access', sub: 'Workspaces and tools available to your account.' },
   signature: { title: 'Signature', sub: 'Set the default signature used to sign forms automatically.' }
 };
@@ -3179,6 +3302,176 @@ window.submitChangePassword = async function() {
     errorDiv.style.display = 'block';
     submitBtn.disabled = false;
     submitBtn.innerHTML = 'Update Password';
+  }
+};
+
+function _mfaAuthHeaders() {
+  const token = localStorage.getItem('access_token');
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + (token || '')
+  };
+}
+
+function _mfaPatchLocalUser(enabled) {
+  try {
+    const raw = localStorage.getItem('user');
+    const user = raw ? JSON.parse(raw) : {};
+    user.mfa_enabled = !!enabled;
+    localStorage.setItem('user', JSON.stringify(user));
+  } catch (e) { /* ignore */ }
+}
+
+function _mfaPanel() {
+  return document.getElementById('mfaSetupPanel');
+}
+
+function _mfaShowError(id, message) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = message || '';
+  el.style.display = message ? 'block' : 'none';
+}
+
+window.startMfaSetup = async function startMfaSetup() {
+  const panel = _mfaPanel();
+  if (!panel) return;
+  panel.hidden = false;
+  panel.innerHTML = '<p class="pro-mfa-setup-desc">Preparing QR code…</p>';
+  try {
+    const response = await fetch('/api/auth/mfa/setup', {
+      method: 'POST',
+      headers: _mfaAuthHeaders()
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Could not start authenticator setup');
+    }
+    const secret = data.secret ? String(data.secret) : '';
+    panel.innerHTML = `
+      <div class="pro-mfa-setup">
+        <p class="pro-mfa-setup-title">Scan with your authenticator app</p>
+        <p class="pro-mfa-setup-desc">Open Microsoft Authenticator or Google Authenticator, add an account, and scan this QR. Then enter the 6-digit code to confirm.</p>
+        <img class="pro-mfa-qr" id="mfaQrImage" alt="Authenticator QR code" width="180" height="180">
+        <p class="pro-mfa-secret">${escapeHtml(secret)}</p>
+        <label class="pro-field" style="display:block;margin-bottom:0.75rem;">
+          <span class="pro-field-label">6-digit code</span>
+          <input type="text" class="pro-field-input" id="mfaSetupCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="000000">
+        </label>
+        <p class="pro-mfa-error" id="mfaSetupError"></p>
+        <div style="display:flex;gap:0.75rem;">
+          <button type="button" class="pro-btn pro-btn-outline" onclick="cancelMfaSetup()">Cancel</button>
+          <button type="button" class="pro-btn pro-btn-primary" id="mfaSetupConfirmBtn" onclick="confirmMfaEnable()">Confirm</button>
+        </div>
+      </div>
+    `;
+    const qrImg = document.getElementById('mfaQrImage');
+    if (qrImg) {
+      const dataUrl = data.qr_data_url ? String(data.qr_data_url) : '';
+      if (dataUrl.indexOf('data:image/') === 0) {
+        qrImg.src = dataUrl;
+      } else {
+        const qrRes = await fetch('/api/auth/mfa/qr.png?t=' + Date.now(), {
+          headers: _mfaAuthHeaders(),
+          credentials: 'include'
+        });
+        if (qrRes.ok) {
+          const blob = await qrRes.blob();
+          if (blob && blob.size && (blob.type || '').indexOf('image/') === 0) {
+            qrImg.src = URL.createObjectURL(blob);
+          }
+        }
+      }
+    }
+    const input = document.getElementById('mfaSetupCode');
+    if (input) input.focus();
+  } catch (err) {
+    panel.innerHTML = `<p class="pro-mfa-error" style="display:block">${escapeHtml(err.message || 'Setup failed')}</p>`;
+  }
+};
+
+window.cancelMfaSetup = function cancelMfaSetup() {
+  const panel = _mfaPanel();
+  if (panel) {
+    panel.hidden = true;
+    panel.innerHTML = '';
+  }
+};
+
+window.confirmMfaEnable = async function confirmMfaEnable() {
+  const code = (document.getElementById('mfaSetupCode') || {}).value || '';
+  const btn = document.getElementById('mfaSetupConfirmBtn');
+  _mfaShowError('mfaSetupError', '');
+  if (!code.trim()) {
+    _mfaShowError('mfaSetupError', 'Enter the 6-digit code from the app.');
+    return;
+  }
+  if (btn) btn.disabled = true;
+  try {
+    const response = await fetch('/api/auth/mfa/enable', {
+      method: 'POST',
+      headers: _mfaAuthHeaders(),
+      body: JSON.stringify({ mfa_code: code.trim() })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Invalid code');
+    }
+    _mfaPatchLocalUser(true);
+    if (typeof loadProfileData === 'function') loadProfileData();
+  } catch (err) {
+    _mfaShowError('mfaSetupError', err.message || 'Could not enable authenticator');
+    if (btn) btn.disabled = false;
+  }
+};
+
+window.showMfaDisableForm = function showMfaDisableForm() {
+  const panel = _mfaPanel();
+  if (!panel) return;
+  panel.hidden = false;
+  panel.innerHTML = `
+    <div class="pro-mfa-setup">
+      <p class="pro-mfa-setup-title">Turn off authenticator</p>
+      <p class="pro-mfa-setup-desc">Enter your password to remove the app. You can set it up again afterwards.</p>
+      <label class="pro-field" style="display:block;margin-bottom:0.75rem;">
+        <span class="pro-field-label">Password</span>
+        <input type="password" class="pro-field-input" id="mfaDisablePassword" autocomplete="off" data-1p-ignore="true" data-lpignore="true">
+      </label>
+      <p class="pro-mfa-error" id="mfaDisableError"></p>
+      <div style="display:flex;gap:0.75rem;">
+        <button type="button" class="pro-btn pro-btn-outline" onclick="cancelMfaSetup()">Cancel</button>
+        <button type="button" class="pro-btn pro-btn-primary" id="mfaDisableBtn" onclick="submitMfaDisable()">Turn off</button>
+      </div>
+    </div>
+  `;
+  const input = document.getElementById('mfaDisablePassword');
+  if (input) input.focus();
+};
+
+window.submitMfaDisable = async function submitMfaDisable() {
+  const password = (document.getElementById('mfaDisablePassword') || {}).value || '';
+  const btn = document.getElementById('mfaDisableBtn');
+  _mfaShowError('mfaDisableError', '');
+  if (!password) {
+    _mfaShowError('mfaDisableError', 'Password is required.');
+    return;
+  }
+  if (btn) btn.disabled = true;
+  try {
+    const response = await fetch('/api/auth/mfa/disable', {
+      method: 'POST',
+      headers: _mfaAuthHeaders(),
+      body: JSON.stringify({ password: password })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Could not turn off authenticator');
+    }
+    _mfaPatchLocalUser(false);
+    if (typeof loadProfileData === 'function') loadProfileData();
+  } catch (err) {
+    _mfaShowError('mfaDisableError', err.message || 'Could not turn off authenticator');
+    if (btn) btn.disabled = false;
   }
 };
 

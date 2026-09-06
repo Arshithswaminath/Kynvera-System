@@ -8,7 +8,20 @@ def test_robots_txt_disallows_app_shells(client):
     assert 'Disallow: /admin' in body
     assert 'Disallow: /api/' in body
     assert 'Allow: /privacy' in body
+    assert 'Allow: /favicon.ico' in body
     assert response.mimetype == 'text/plain'
+
+
+def test_favicon_ico_meets_google_search_size(client):
+    import io
+    from PIL import Image
+
+    response = client.get('/favicon.ico')
+    assert response.status_code == 200
+    assert 'image' in (response.mimetype or '')
+    icon = Image.open(io.BytesIO(response.data))
+    sizes = list(icon.ico.sizes()) if getattr(icon, 'ico', None) else [icon.size]
+    assert max(width for width, _height in sizes) >= 48
 
 
 def test_privacy_and_terms_pages(client):
@@ -62,12 +75,13 @@ def test_operations_host_root_serves_landing(client, app):
     app.config['KYNVERA_MARKETING_HOSTS'] = 'kynvera.net,www.kynvera.net'
     try:
         response = client.get('/', headers={'Host': 'operations.kynvera.net'})
-        assert response.status_code == 200
-        html = response.get_data(as_text=True)
-        assert 'All your operations' in html
-        assert 'og:image' in html
-        assert '/static/images/kynvera/og-share.jpg' in html
-        assert 'summary_large_image' in html
+        assert response.status_code == 302
+        assert '/login' in (response.headers.get('Location') or '')
+        login = client.get('/login', headers={'Host': 'operations.kynvera.net'})
+        assert login.status_code == 200
+        assert 'noindex' in (login.headers.get('X-Robots-Tag') or '')
+        robots = client.get('/robots.txt', headers={'Host': 'operations.kynvera.net'})
+        assert 'Disallow: /' in robots.get_data(as_text=True)
     finally:
         app.config['KYNVERA_MARKETING_HOSTS'] = previous
 
@@ -76,6 +90,15 @@ def test_og_share_image_is_public(client):
     response = client.get('/static/images/kynvera/og-share.jpg')
     assert response.status_code == 200
     assert response.mimetype == 'image/jpeg'
+
+
+def test_public_landing_does_not_name_prospective_clients(client):
+    html = client.get('/').get_data(as_text=True).lower()
+    assert 'ajman' not in html
+    assert 'municipality' not in html
+    assert 'fire system' not in html
+    assert 'application/ld+json' in html
+    assert 'operations application services for companies' in html
 
 
 def test_marketing_host_serves_landing(client, app):
@@ -90,13 +113,17 @@ def test_marketing_host_serves_landing(client, app):
         assert response.status_code == 200
         html = response.get_data(as_text=True)
         assert 'All your operations' in html
-        assert 'https://operations.kynvera.net/login' in html
-        assert 'https://operations.kynvera.net/register' in html
+        assert 'operations application services for companies' in html.lower()
+        assert 'operations.kynvera.net' not in html
+        assert 'Create account' not in html
+        assert 'Talk to us' in html
+        assert '/favicon.ico' in html
+        assert 'kynvera-mark-96.png' in html
     finally:
         app.config.update(previous)
 
 
-def test_marketing_only_sends_staff_paths_to_operations(client, app):
+def test_marketing_only_does_not_advertise_operations(client, app):
     previous = {
         'KYNVERA_MARKETING_ONLY': app.config.get('KYNVERA_MARKETING_ONLY'),
         'APP_BASE_URL': app.config.get('APP_BASE_URL'),
@@ -107,13 +134,14 @@ def test_marketing_only_sends_staff_paths_to_operations(client, app):
         landing = client.get('/')
         assert landing.status_code == 200
         html = landing.get_data(as_text=True)
-        assert 'https://operations.kynvera.net/login' in html
+        assert 'operations.kynvera.net' not in html
+        assert 'Talk to us' in html
         login = client.get('/login')
         assert login.status_code == 302
-        assert login.headers.get('Location') == 'https://operations.kynvera.net/login'
+        assert 'operations.kynvera.net' not in (login.headers.get('Location') or '')
         dashboard = client.get('/dashboard')
         assert dashboard.status_code == 302
-        assert dashboard.headers.get('Location') == 'https://operations.kynvera.net/login'
+        assert 'operations.kynvera.net' not in (dashboard.headers.get('Location') or '')
         health = client.get('/health')
         assert health.status_code == 200
         assert health.get_json().get('site') == 'marketing'

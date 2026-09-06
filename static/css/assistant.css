@@ -482,7 +482,8 @@ textarea.injaaz-assistant-composer-input {
 
 @media (max-width: 768px) {
   .injaaz-assistant {
-    --assistant-panel-gap: 0.35rem;
+    --assistant-panel-gap: 0;
+    --assistant-panel-top: var(--nav-bar-h, 72px);
   }
 
   .injaaz-assistant.is-open .injaaz-assistant-panel {
@@ -492,10 +493,25 @@ textarea.injaaz-assistant-composer-input {
     left: 0;
     bottom: 0;
     width: 100%;
-    max-height: none;
-    height: auto;
-    border-radius: 16px 16px 0 0;
+    height: calc(100dvh - var(--assistant-panel-top));
+    max-height: calc(100dvh - var(--assistant-panel-top));
+    border-radius: 0;
     border: none;
+    box-shadow: none;
+  }
+
+  .injaaz-assistant-header {
+    padding: 0.75rem 0.85rem;
+  }
+
+  .injaaz-assistant-messages {
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+
+  .injaaz-assistant-input-row {
+    padding: 0.65rem 0.85rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
 
   .injaaz-assistant-fab-label {

@@ -3869,33 +3869,56 @@ body.profile-modal-open {
   overscroll-behavior: none;
 }
 
-@media (max-width: 479px) {
-  /* Above .nav (1000), .mobile-menu-drawer / overlays (≤1200); keeps profile sheet off the nav bar */
+@media (max-width: 768px) {
+  /* Full screen under the nav — not a dimmed popup */
   #profileModal.contact-modal {
+    top: var(--nav-bar-h, 72px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    height: calc(100vh - var(--nav-bar-h, 72px)) !important;
+    height: calc(100dvh - var(--nav-bar-h, 72px)) !important;
+    max-height: calc(100dvh - var(--nav-bar-h, 72px)) !important;
     padding: 0 !important;
-    z-index: 10050 !important;
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    z-index: 900 !important;
+    animation: none !important;
+    overflow: hidden !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
   }
   #profileModal.contact-modal.active {
-    z-index: 10050 !important;
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    z-index: 900 !important;
+    opacity: 1;
   }
   .contact-modal-content.profile-modal-container {
     max-width: 100% !important;
     width: 100% !important;
     margin: 0 !important;
+    margin-top: 0 !important;
     border-radius: 0 !important;
-    position: fixed !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    top: calc(env(safe-area-inset-top, 0px) + 4.25rem + 4px) !important;
-    height: auto !important;
+    box-shadow: none !important;
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    top: auto !important;
+    height: 100% !important;
     min-height: 0 !important;
-    max-height: none !important;
+    max-height: 100% !important;
+    flex: 1 1 auto !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
     -webkit-overflow-scrolling: touch;
+    transform: none !important;
+    animation: none !important;
   }
   #profileModal #profileContent {
     flex: 1 !important;
@@ -3903,6 +3926,15 @@ body.profile-modal-open {
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
+  }
+  #profileModal #profileContent .pro-container,
+  #profileModal #profileContent .pro-shell {
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+  }
+  #profileModal #profileContent .pro-main {
+    min-height: 0 !important;
   }
   #profileModal .contact-modal-close {
     top: 0.5rem !important;

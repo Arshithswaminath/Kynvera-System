@@ -1301,6 +1301,38 @@ def reset_user_password(user_id):
         return error_response('Failed to reset password', status_code=500, error_code='DATABASE_ERROR')
 
 
+@admin_bp.route('/users/<int:user_id>/reset-mfa', methods=['POST'])
+@jwt_required()
+@admin_required
+def reset_user_mfa(user_id):
+    """Clear authenticator enrollment so the user can sign in with password only."""
+    try:
+        admin_id = get_jwt_identity()
+        user = User.query.get_or_404(user_id)
+        denied = _reject_unless_admin_edit_granted(user)
+        if denied:
+            return denied
+        user.mfa_enabled = False
+        user.mfa_secret = None
+        db.session.commit()
+        actor = User.query.get(admin_id)
+        log_audit(admin_id, 'mfa_reset', 'user', str(user_id), {
+            'target_user': user.username,
+            'reset_by': actor.username if actor else 'system',
+        })
+        return success_response({
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'mfa_enabled': False,
+            }
+        }, message='Authenticator reset. The user can sign in with password only, then set up a new QR from Profile.')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error('Error resetting MFA: %s', e)
+        return error_response('Failed to reset authenticator', status_code=500, error_code='DATABASE_ERROR')
+
+
 @admin_bp.route('/users/<int:user_id>/email-login-details', methods=['POST'])
 @jwt_required()
 @admin_required

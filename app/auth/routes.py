@@ -1,7 +1,7 @@
 """
 Authentication Routes - JWT-based authentication
 """
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, make_response
 from flask_jwt_extended import (
     create_access_token, create_refresh_token,
     jwt_required, get_jwt_identity, get_jwt, get_jti
@@ -719,10 +719,47 @@ def reset_password():
     return jsonify({'message': 'Password updated. You can sign in now.', 'success': True}), 200
 
 
+def _totp_otpauth_uri(user):
+    import pyotp
+    totp = pyotp.TOTP(user.mfa_secret)
+    return totp.provisioning_uri(name=user.email or user.username, issuer_name='Kynvera')
+
+
+def _totp_qr_png_bytes(otpauth_uri):
+    """PNG bytes for an otpauth:// URI. Raises if qrcode/Pillow cannot render."""
+    import io
+    import qrcode
+    from qrcode.image.pil import PilImage
+    qr = qrcode.QRCode(
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=8,
+        border=2,
+    )
+    qr.add_data(otpauth_uri)
+    qr.make(fit=True)
+    image = qr.make_image(image_factory=PilImage, fill_color='black', back_color='white')
+    buf = io.BytesIO()
+    image.save(buf, format='PNG')
+    png = buf.getvalue()
+    if not png or png[:8] != b'\x89PNG\r\n\x1a\n':
+        raise ValueError('QR renderer did not return a PNG')
+    return png
+
+
+def _totp_qr_data_url(otpauth_uri):
+    """PNG data URL for an otpauth:// URI. Empty string if qrcode is unavailable."""
+    try:
+        import base64
+        return 'data:image/png;base64,' + base64.b64encode(_totp_qr_png_bytes(otpauth_uri)).decode('ascii')
+    except Exception:
+        current_app.logger.warning('Could not render MFA QR image', exc_info=True)
+        return ''
+
+
 @auth_bp.route('/mfa/setup', methods=['POST'])
 @jwt_required()
 def mfa_setup():
-    """Begin TOTP MFA enrollment — returns otpauth URI + secret."""
+    """Begin TOTP MFA enrollment — returns otpauth URI, secret, and QR image."""
     try:
         import pyotp
     except ImportError:
@@ -734,14 +771,37 @@ def mfa_setup():
     user.mfa_secret = secret
     user.mfa_enabled = False
     db.session.commit()
-    totp = pyotp.TOTP(secret)
-    uri = totp.provisioning_uri(name=user.email or user.username, issuer_name='Kynvera')
+    uri = _totp_otpauth_uri(user)
     log_audit(user.id, 'mfa_setup_started', 'user', str(user.id))
     return success_response({
         'secret': secret,
         'otpauth_uri': uri,
+        'qr_data_url': _totp_qr_data_url(uri),
+        'qr_image_url': '/api/auth/mfa/qr.png',
         'mfa_enabled': False,
     }, message='Scan QR / enter secret, then confirm with /mfa/enable')
+
+
+@auth_bp.route('/mfa/qr.png', methods=['GET'])
+@jwt_required()
+def mfa_qr_image():
+    """PNG QR for the current pending authenticator secret (cookie or Bearer JWT)."""
+    try:
+        import pyotp  # noqa: F401
+    except ImportError:
+        return error_response('MFA library not installed (pyotp)', 503, 'MFA_UNAVAILABLE')
+    user = db.session.get(User, int(get_jwt_identity()))
+    if not user or not getattr(user, 'mfa_secret', None):
+        return error_response('Run /mfa/setup first', 400, 'MFA_NOT_SETUP')
+    try:
+        png = _totp_qr_png_bytes(_totp_otpauth_uri(user))
+    except Exception:
+        current_app.logger.warning('Could not render MFA QR image', exc_info=True)
+        return error_response('Could not render QR code', 500, 'MFA_QR_FAILED')
+    response = make_response(png)
+    response.headers['Content-Type'] = 'image/png'
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 @auth_bp.route('/mfa/enable', methods=['POST'])

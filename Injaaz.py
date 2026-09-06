@@ -940,7 +940,7 @@ def create_app():
 
     @app.before_request
     def _kynvera_marketing_only_gate():
-        """kynvera.net serves the public landing; staff paths go to operations."""
+        """kynvera.net serves the public landing; staff URLs are not advertised here."""
         if not app.config.get('KYNVERA_MARKETING_ONLY'):
             return None
         path = request.path or '/'
@@ -951,8 +951,7 @@ def create_app():
         }
         if path in public_exact or path.startswith('/static/'):
             return None
-        from common.kynvera_hub import operations_login_url
-        return redirect(operations_login_url())
+        return redirect('/')
     
     # Ensure directories exist (critical for Render deployment)
     try:
@@ -1116,11 +1115,14 @@ def create_app():
 
     @app.route('/favicon.ico')
     def favicon():
-        """Serve favicon"""
+        """Site icon at the well-known URL Googlebot fetches for Search results.
+
+        Must include a 48×48 (or multiple) size — 16/32px icons are ignored.
+        """
         return send_from_directory(
             os.path.join(app.static_folder, 'images', 'kynvera'),
-            'kynvera-mark-32.png',
-            mimetype='image/png',
+            'favicon.ico',
+            mimetype='image/x-icon',
         )
     
     @app.route('/apple-touch-icon.png')
@@ -1135,34 +1137,58 @@ def create_app():
 
     @app.route('/robots.txt')
     def robots_txt():
-        body = (
-            "User-agent: *\n"
-            "Allow: /\n"
-            "Allow: /login\n"
-            "Allow: /forgot-password\n"
-            "Allow: /reset-password\n"
-            "Allow: /privacy\n"
-            "Allow: /terms\n"
-            "Allow: /static/\n"
-            "Allow: /offline\n"
-            "Allow: /manifest.json\n"
-            "Disallow: /admin\n"
-            "Disallow: /api/\n"
-            "Disallow: /dashboard\n"
-            "Disallow: /hr\n"
-            "Disallow: /tickets\n"
-            "Disallow: /procurement\n"
-            "Disallow: /qhsi\n"
-            "Disallow: /inspection\n"
-            "Disallow: /assets\n"
-            "Disallow: /files\n"
-            "Disallow: /automations\n"
-            "Disallow: /dochub\n"
-            "Disallow: /workflow\n"
-            "Disallow: /register\n"
-            "Disallow: /logout\n"
-            "Disallow: /sso/\n"
-        )
+        from common.kynvera_hub import is_marketing_host, is_operations_host, marketing_only
+
+        if is_operations_host():
+            body = "User-agent: *\nDisallow: /\n"
+        elif marketing_only() or is_marketing_host():
+            body = (
+                "User-agent: *\n"
+                "Allow: /\n"
+                "Allow: /privacy\n"
+                "Allow: /terms\n"
+                "Allow: /static/\n"
+                "Allow: /favicon.ico\n"
+                "Allow: /apple-touch-icon.png\n"
+                "Disallow: /login\n"
+                "Disallow: /register\n"
+                "Disallow: /forgot-password\n"
+                "Disallow: /reset-password\n"
+                "Disallow: /dashboard\n"
+                "Disallow: /admin\n"
+                "Disallow: /api/\n"
+            )
+        else:
+            body = (
+                "User-agent: *\n"
+                "Allow: /\n"
+                "Allow: /login\n"
+                "Allow: /forgot-password\n"
+                "Allow: /reset-password\n"
+                "Allow: /privacy\n"
+                "Allow: /terms\n"
+                "Allow: /static/\n"
+                "Allow: /favicon.ico\n"
+                "Allow: /apple-touch-icon.png\n"
+                "Allow: /offline\n"
+                "Allow: /manifest.json\n"
+                "Disallow: /admin\n"
+                "Disallow: /api/\n"
+                "Disallow: /dashboard\n"
+                "Disallow: /hr\n"
+                "Disallow: /tickets\n"
+                "Disallow: /procurement\n"
+                "Disallow: /qhsi\n"
+                "Disallow: /inspection\n"
+                "Disallow: /assets\n"
+                "Disallow: /files\n"
+                "Disallow: /automations\n"
+                "Disallow: /dochub\n"
+                "Disallow: /workflow\n"
+                "Disallow: /register\n"
+                "Disallow: /logout\n"
+                "Disallow: /sso/\n"
+            )
         return Response(body, mimetype='text/plain')
 
     @app.route('/privacy')
@@ -1455,6 +1481,10 @@ def create_app():
         csp_header = 'Content-Security-Policy' if _csp_enforce else 'Content-Security-Policy-Report-Only'
         response.headers.setdefault(csp_header, _csp_policy)
 
+        from common.kynvera_hub import is_operations_host
+        if is_operations_host():
+            response.headers['X-Robots-Tag'] = 'noindex, nofollow'
+
         # Authenticated HTML must not sit in bfcache. Back from /login was
         # restoring the previous app page without a server round-trip.
         mimetype = (response.mimetype or '')
@@ -1636,9 +1666,12 @@ def create_app():
         """DocHub module - all users with access"""
         return render_template('dochub.html', active_page='dochub')
 
-    # Root: public landing. On kynvera-marketing, Sign in goes to operations.kynvera.net.
+    # Root: public landing on kynvera.net. The operations host is sign-in only.
     @app.route('/')
     def index():
+        from common.kynvera_hub import is_operations_host
+        if is_operations_host():
+            return redirect('/login')
         return render_template('landing.html')
 
     # Serve generated files (downloads) - DEPRECATED in production (use cloud URLs)

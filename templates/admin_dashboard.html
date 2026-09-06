@@ -30,7 +30,7 @@
   <!-- Neat-glow styles for main content only (see .container.admin-content.admin-neat-glow) -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-neat-glow.css') }}?v=39">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-manage-profile-modal.css') }}?v=24">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/injz-profile-mgmt-theme.css') }}?v=31">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/injz-profile-mgmt-theme.css') }}?v=32">
 </head>
 <body class="has-main-nav admin-dh-page admin-v2 admin-v4">
   {% set active_page = 'admin' %}
@@ -1726,6 +1726,7 @@
         mfa_disabled: 'MFA disabled',
         mfa_failed: 'MFA failed',
         mfa_setup_started: 'MFA setup started',
+        mfa_reset: 'Authenticator reset',
         database_backup: 'Database backup',
         mmr_chargeable_config: 'Chargeable rules updated',
         assistant_create_ticket_draft: 'Ticket draft created'
@@ -2112,6 +2113,7 @@
     }
 
     let passwordResetConfirmContext = null;
+    let mfaResetConfirmContext = null;
     let emailCredentialsConfirmContext = null;
 
     function ensurePortalModal(modalEl) {
@@ -2122,6 +2124,7 @@
       const ids = [
         'accessModal',
         'passwordResetConfirmModal',
+        'mfaResetConfirmModal',
         'passwordResetResultModal',
         'userActivityModal',
         'profileStatusConfirmModal',
@@ -2199,10 +2202,63 @@
       }
     }
 
+    function openMfaResetConfirmModal(userId, username) {
+      mfaResetConfirmContext = { userId, username };
+      const modal = document.getElementById('mfaResetConfirmModal');
+      if (!modal) return;
+      const intro = document.getElementById('mfaResetConfirmIntro');
+      if (intro) {
+        intro.textContent = 'Reset the authenticator app for ' + (username || 'this user')
+          + '? They will sign in with password only until they set up a new QR from Profile.';
+      }
+      ensurePortalModal(modal);
+      modal.classList.add('active');
+      syncKynOverlayLock();
+    }
+
+    function closeMfaResetConfirmModal() {
+      const modal = document.getElementById('mfaResetConfirmModal');
+      if (modal) modal.classList.remove('active');
+      mfaResetConfirmContext = null;
+      syncKynOverlayLock();
+    }
+
+    async function submitMfaResetConfirm() {
+      const ctx = mfaResetConfirmContext;
+      if (!ctx) return;
+      const userId = ctx.userId;
+      closeMfaResetConfirmModal();
+      await runAdminMfaReset(userId);
+    }
+
+    async function runAdminMfaReset(userId) {
+      try {
+        const response = await adminAuthenticatedFetch(`/api/admin/users/${userId}/reset-mfa`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        const data = await response.json().catch(() => ({}));
+        if (handleOtpRequired(data)) return;
+        if (handleUnauthorized(response)) return;
+        if (data.success) {
+          showAlert(data.message || 'Authenticator reset. The user can sign in with password only.', 'success');
+          loadUsers();
+        } else {
+          showAlert(data.error || 'Failed to reset authenticator', 'error');
+        }
+      } catch (error) {
+        console.error('Error resetting authenticator:', error);
+        showAlert('Error resetting authenticator', 'error');
+      }
+    }
+
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       const res = document.getElementById('passwordResetResultModal');
       const conf = document.getElementById('passwordResetConfirmModal');
+      const mfaConf = document.getElementById('mfaResetConfirmModal');
       const prof = document.getElementById('accessModal');
       const act = document.getElementById('userActivityModal');
       const statusConf = document.getElementById('profileStatusConfirmModal');
@@ -2212,6 +2268,8 @@
         closePasswordResetResultModal();
       } else if (conf && conf.classList.contains('active')) {
         closePasswordResetConfirmModal();
+      } else if (mfaConf && mfaConf.classList.contains('active')) {
+        closeMfaResetConfirmModal();
       } else if (otpConf && otpConf.classList.contains('active')) {
         closeAdminProfileOtpModal();
       } else if (deleteConf && deleteConf.classList.contains('active')) {
@@ -2418,6 +2476,13 @@
       const u = Array.isArray(users) ? users.find((x) => x.id === uid) : null;
       closeUserProfileModal();
       if (Number.isFinite(uid)) openPasswordResetConfirmModal(uid, u ? u.username : '');
+    }
+
+    function profileModalResetMfa() {
+      const uid = parseInt(document.getElementById('profileUserId').value, 10);
+      const u = Array.isArray(users) ? users.find((x) => x.id === uid) : null;
+      closeUserProfileModal();
+      if (Number.isFinite(uid)) openMfaResetConfirmModal(uid, u ? (u.full_name || u.username) : '');
     }
 
     function profileModalViewActivity() {
@@ -4586,6 +4651,7 @@
       initAdminScrollSpy();
       try {
         ensurePortalModal(document.getElementById('passwordResetConfirmModal'));
+        ensurePortalModal(document.getElementById('mfaResetConfirmModal'));
         ensurePortalModal(document.getElementById('passwordResetResultModal'));
         ensurePortalModal(document.getElementById('profileStatusConfirmModal'));
         ensurePortalModal(document.getElementById('profileDeleteConfirmModal'));

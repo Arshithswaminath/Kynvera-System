@@ -178,7 +178,7 @@ body.tkt-dh-page.procurement-shell .tkt-content {
 /* Charts */
 .proc-charts {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
   gap: 1rem;
   margin-bottom: 1.25rem;
   align-items: stretch;
@@ -433,10 +433,11 @@ body.tkt-dh-page.procurement-shell .tkt-content {
   background: #fff;
   color: var(--proc-ink);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-  min-width: 9.2rem;
-  max-width: 9.2rem;
+  min-width: 0;
+  width: 7.6rem;
+  max-width: 100%;
   min-height: 32px;
-  padding: 0 0.55rem;
+  padding: 0 0.5rem;
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 700;
@@ -452,10 +453,44 @@ body.tkt-dh-page.procurement-shell .tkt-content {
 .proc-month-switch-label[aria-expanded="true"] {
   box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.22);
 }
-.proc-card-break { overflow: visible; }
+.proc-card-break {
+  overflow: visible;
+  min-width: 0;
+}
+.proc-charts .proc-card-break .proc-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.proc-card-break .proc-card-head > div:first-child {
+  min-width: min(7rem, 100%);
+  flex: 1 1 7rem;
+}
 .proc-range-wrap {
   position: relative;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  min-width: 0;
+  margin-left: auto;
+}
+.proc-card-break .proc-month-switch {
+  max-width: 100%;
+  padding: 2px;
+  gap: 1px;
+}
+.proc-card-break .proc-month-switch-step {
+  width: 28px;
+  height: 28px;
+}
+.proc-card-break .proc-month-switch-label {
+  width: 6.85rem;
+  min-height: 28px;
+}
+.proc-card-break .proc-break-legend {
+  flex-wrap: wrap;
+  overflow: visible;
 }
 .proc-range-menu {
   position: absolute;
@@ -1150,6 +1185,136 @@ body.procurement-shell.proc-refill-page .proc-refill-bar {
 }
 .procurement-shell .back-link,
 .procurement-shell .back-btn { display: none; }
+
+/* Catalog / add-material / property banners: keep copy on the left.
+   Nested padding + generic mobile card rules were centering these blocks. */
+.procurement-shell .cat-hero,
+.procurement-shell .cat-hero-inner,
+.procurement-shell .page-banner {
+  text-align: left;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+.procurement-shell .cat-hero-inner {
+  margin-left: 0;
+  margin-right: 0;
+  max-width: none;
+}
+.procurement-shell .cat-hero-title,
+.procurement-shell .cat-hero-sub,
+.procurement-shell .banner-title,
+.procurement-shell .banner-sub {
+  text-align: left;
+}
+.procurement-shell .kpi-card {
+  justify-content: flex-start;
+  text-align: left;
+}
+.procurement-shell .kpi-card-copy,
+.procurement-shell .kpi-card > div:not(.kpi-card-icon) {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  margin-left: 0;
+}
+.procurement-shell .form-card-header {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+}
+.procurement-shell .form-card-header h2,
+.procurement-shell .form-card-header p,
+.procurement-shell .form-section-label,
+.procurement-shell .form-body {
+  text-align: left;
+}
+
+@media (max-width: 768px) {
+  .procurement-shell .cat-hero-inner {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .procurement-shell .cat-hero,
+  .procurement-shell .page-banner {
+    text-align: left !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+  }
+  .procurement-shell .page-banner {
+    display: flex;
+    flex-direction: column;
+  }
+  .procurement-shell .cat-hero-title,
+  .procurement-shell .cat-hero-sub,
+  .procurement-shell .banner-title,
+  .procurement-shell .banner-sub {
+    text-align: left !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    align-self: flex-start !important;
+    width: 100%;
+    max-width: none;
+  }
+  .procurement-shell .kpi-strip {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  .procurement-shell .kpi-card {
+    justify-content: flex-start !important;
+    gap: 0.55rem !important;
+    text-align: left !important;
+    padding: 0.9rem 0.75rem !important;
+  }
+  .procurement-shell .kpi-card-icon {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 1rem !important;
+  }
+  .procurement-shell .kpi-card-copy,
+  .procurement-shell .kpi-card > div:not(.kpi-card-icon) {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    text-align: left !important;
+    margin-left: 0 !important;
+  }
+  .procurement-shell .kpi-card-lbl,
+  .procurement-shell .kpi-card-val {
+    text-align: left !important;
+  }
+  .procurement-shell .form-card {
+    padding: 0 !important;
+  }
+  .procurement-shell .form-layout {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  .procurement-shell .form-card-header {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    padding: 1.1rem 1.15rem !important;
+  }
+  .procurement-shell .form-card-header > div:not(.form-card-header-icon) {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left !important;
+  }
+  .procurement-shell .form-card-header h2,
+  .procurement-shell .form-card-header p,
+  .procurement-shell .form-section-label,
+  .procurement-shell .form-body {
+    text-align: left !important;
+  }
+  .procurement-shell .form-body {
+    padding: 1.15rem !important;
+  }
+  .procurement-shell .form-section-label {
+    justify-content: flex-start !important;
+  }
+}
 
 @media (max-width: 1100px) {
   .proc-kpi-grid { grid-template-columns: repeat(2, 1fr); }
@@ -2063,8 +2228,221 @@ body.procurement-shell .modal.proc-modal .xfer-confirm-qty input[type='number'] 
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) 5.5rem 7rem auto;
   gap: 0.5rem;
-  align-items: center;
+  align-items: end;
 }
+.proc-pr-line-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  text-align: left;
+}
+.proc-pr-line-field span {
+  display: none;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--proc-muted);
+  margin-bottom: 0.3rem;
+}
+.proc-pr-line-item { min-width: 0; }
+.proc-pr-line .form-select,
+.proc-pr-line .form-control {
+  min-height: 44px;
+  width: 100%;
+}
+
+/* New purchase request: full screen under the nav on phones */
+@media (max-width: 768px) {
+  body.procurement-shell.modal-open:has(#newPrModal.show) .modal-backdrop {
+    display: none !important;
+  }
+
+  body.procurement-shell .modal.proc-modal.proc-sheet-modal#newPrModal.show {
+    display: flex !important;
+    top: var(--nav-bar-h, 72px) !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: calc(100vh - var(--nav-bar-h, 72px)) !important;
+    height: calc(100dvh - var(--nav-bar-h, 72px)) !important;
+    max-height: calc(100dvh - var(--nav-bar-h, 72px)) !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    background: #ffffff !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    z-index: 900 !important;
+  }
+
+  body.procurement-shell .modal.proc-modal.proc-sheet-modal#newPrModal .modal-dialog-centered::before {
+    display: none !important;
+    content: none !important;
+  }
+
+  body.procurement-shell .modal.proc-modal.proc-sheet-modal#newPrModal .modal-dialog {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    transform: none !important;
+  }
+
+  body.procurement-shell .modal.proc-modal.proc-sheet-modal#newPrModal .modal-content {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    border: none;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  body.procurement-shell #newPrModal .modal-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.2rem;
+    padding: 0.55rem 0.85rem 0.55rem 0.35rem;
+    border-bottom: 1px solid #ececf1;
+    text-align: left;
+  }
+
+  body.procurement-shell #newPrModal .modal-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-size: 1.12rem;
+    font-weight: 700;
+    text-align: left;
+  }
+
+  body.procurement-shell #newPrModal .btn-close {
+    order: -1;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    margin: 0;
+    opacity: 1;
+    background: none !important;
+    box-shadow: none;
+    flex-shrink: 0;
+  }
+
+  body.procurement-shell #newPrModal .btn-close::before {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 20px;
+    margin: 12px auto;
+    background: #3a3a3c;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 18l-6-6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 18l-6-6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  body.procurement-shell #newPrModal .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 1rem 1.1rem 1.25rem;
+    text-align: left;
+  }
+
+  body.procurement-shell #newPrModal .modal-footer {
+    flex-shrink: 0;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem;
+    justify-content: stretch !important;
+    align-items: stretch;
+    margin: 0;
+    padding: 0.85rem 1.1rem;
+    padding-bottom: max(0.85rem, env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid #ececf1;
+    background: #fff;
+  }
+
+  body.procurement-shell #newPrModal .modal-footer .proc-btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+    margin: 0;
+  }
+
+  body.procurement-shell #newPrModal .proc-pr-grid {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+    margin-bottom: 1.15rem;
+  }
+
+  body.procurement-shell #newPrModal .form-label {
+    display: block;
+    text-align: left;
+    margin-bottom: 0.35rem;
+  }
+
+  body.procurement-shell #newPrModal .form-select,
+  body.procurement-shell #newPrModal .form-control {
+    width: 100%;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  body.procurement-shell #newPrModal .proc-pr-lines-head {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    text-align: left;
+  }
+
+  body.procurement-shell #newPrModal .proc-pr-lines-head .proc-btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  body.procurement-shell #newPrModal .proc-pr-line {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem 0.55rem;
+    align-items: stretch;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid #ececf1;
+  }
+
+  body.procurement-shell #newPrModal .proc-pr-line-item {
+    grid-column: 1 / -1;
+  }
+
+  body.procurement-shell #newPrModal .proc-pr-line-field span {
+    display: block;
+    text-align: left !important;
+  }
+
+  body.procurement-shell #newPrModal .proc-pr-line .pr-del {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+}
+
 .proc-pr-steps {
   list-style: none;
   display: flex;
@@ -3156,11 +3534,34 @@ body.procurement-shell .proc-menu-toggle-label {
   font-size: 0.8rem;
   font-weight: 800;
 }
+body.procurement-shell .tkt-topbar-title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1 1 auto;
+  line-height: 1.15;
+}
 @media (max-width: 900px) {
+  body.procurement-shell .tkt-topbar {
+    min-height: 56px;
+    padding: 0 0.75rem 0 0.5rem;
+    align-items: center;
+  }
+  body.procurement-shell .tkt-topbar-left {
+    width: 100%;
+    align-items: center;
+    gap: 0.55rem;
+  }
   body.procurement-shell .tkt-topbar #tktDhSidebarToggle.proc-menu-toggle {
     display: inline-flex;
     background: #ff8e68;
     color: #fff;
+    height: 40px;
+    min-height: 40px;
+    padding: 0 0.7rem;
+    gap: 0.4rem;
+    line-height: 1;
+    box-sizing: border-box;
   }
   body.procurement-shell .tkt-topbar #tktDhSidebarToggle.proc-menu-toggle:hover {
     background: #f97e54;
@@ -3168,6 +3569,16 @@ body.procurement-shell .proc-menu-toggle-label {
   }
   body.procurement-shell .proc-menu-toggle-label {
     display: inline;
+    line-height: 1;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+  body.procurement-shell .tkt-topbar-title {
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+    line-height: 1.15 !important;
+    min-height: 40px;
   }
 }
 

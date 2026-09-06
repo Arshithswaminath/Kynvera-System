@@ -24,7 +24,8 @@
       background: radial-gradient(ellipse, rgba(255,255,255,0.12) 0%, transparent 68%);
       pointer-events: none;
     }
-    .cat-hero-inner { max-width: 1400px; margin: 0 auto; padding: 0 2.5rem; position: relative; z-index: 1; }
+    .cat-hero-inner { max-width: 1400px; margin: 0 auto; padding: 0 2.5rem; position: relative; z-index: 1; text-align: left; }
+    .cat-hero, .cat-hero-title, .cat-hero-sub { text-align: left; }
     .back-btn {
       display: inline-flex; align-items: center; gap:.4rem;
       color: rgba(255,255,255,.7); text-decoration: none;
@@ -44,13 +45,13 @@
       gap: 1rem; max-width: 1400px; margin: -2.5rem auto 0;
       padding: 0 2.5rem; position: relative; z-index: 10;
     }
-    @media (max-width: 900px) { .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; padding: 0 1rem; } }
-    @media (max-width: 600px) { .kpi-strip { grid-template-columns: 1fr 1fr; gap: 0.5rem; padding: 0 0.75rem; } .kpi-card { padding: 0.9rem 0.75rem; min-width: 0; } .kpi-card-icon { width: 36px; height: 36px; font-size: 1rem; } .kpi-card-lbl { font-size: 0.6rem; } .kpi-card-val { font-size: 1.35rem; } }
     .kpi-card {
       background: #fff; border-radius: 16px; padding: 1.3rem 1.5rem;
       border: 1px solid var(--border); box-shadow: 0 8px 28px rgba(0,0,0,.08);
-      display: flex; align-items: center; gap: .9rem;
+      display: flex; align-items: center; justify-content: flex-start; gap: .9rem;
+      text-align: left;
     }
+    .kpi-card-copy { flex: 1 1 auto; min-width: 0; text-align: left; }
     .kpi-card-icon {
       width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
       background: color-mix(in srgb, var(--dc) 12%, white);
@@ -60,6 +61,18 @@
     .kpi-card-val { font-size: 1.75rem; font-weight: 800; color: var(--dc); line-height: 1; }
     .kpi-card-icon-aed .kpi-currency-aed {
       font-size: 0.68rem; font-weight: 800; letter-spacing: 0.05em; color: var(--dc); line-height: 1;
+    }
+    @media (max-width: 900px) { .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; padding: 0 1rem; } }
+    @media (max-width: 768px) {
+      .cat-hero-inner { padding: 0; margin: 0; max-width: none; }
+      .kpi-strip { padding-left: 0; padding-right: 0; }
+    }
+    @media (max-width: 600px) {
+      .kpi-strip { grid-template-columns: 1fr 1fr; gap: 0.5rem; padding: 0; }
+      .kpi-card { padding: 0.9rem 0.75rem; min-width: 0; gap: 0.55rem; }
+      .kpi-card-icon { width: 36px; height: 36px; font-size: 1rem; }
+      .kpi-card-lbl { font-size: 0.6rem; }
+      .kpi-card-val { font-size: 1.35rem; }
     }
 
     /* ── Main body ── */
@@ -279,19 +292,19 @@
   <div class="kpi-strip">
     <div class="kpi-card">
       <div class="kpi-card-icon">📦</div>
-      <div><div class="kpi-card-lbl">Total Items</div><div class="kpi-card-val" id="kpiTotal">—</div></div>
+      <div class="kpi-card-copy"><div class="kpi-card-lbl">Total Items</div><div class="kpi-card-val" id="kpiTotal">—</div></div>
     </div>
     <div class="kpi-card">
       <div class="kpi-card-icon">💰</div>
-      <div><div class="kpi-card-lbl">Items with Price</div><div class="kpi-card-val" id="kpiPriced">—</div></div>
+      <div class="kpi-card-copy"><div class="kpi-card-lbl">Items with Price</div><div class="kpi-card-val" id="kpiPriced">—</div></div>
     </div>
     <div class="kpi-card">
       <div class="kpi-card-icon">🏷️</div>
-      <div><div class="kpi-card-lbl">Brands</div><div class="kpi-card-val" id="kpiBrands">—</div></div>
+      <div class="kpi-card-copy"><div class="kpi-card-lbl">Brands</div><div class="kpi-card-val" id="kpiBrands">—</div></div>
     </div>
     <div class="kpi-card">
       <div class="kpi-card-icon kpi-card-icon-aed" aria-hidden="true"><span class="kpi-currency-aed">AED</span></div>
-      <div><div class="kpi-card-lbl">Total Value (AED)</div><div class="kpi-card-val" id="kpiValue">—</div></div>
+      <div class="kpi-card-copy"><div class="kpi-card-lbl">Total Value (AED)</div><div class="kpi-card-val" id="kpiValue">—</div></div>
     </div>
   </div>
 

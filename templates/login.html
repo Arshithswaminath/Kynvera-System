@@ -39,6 +39,7 @@
             <div class="auth-field" id="mfa-field" style="display:none;">
                 <label class="auth-label" for="mfa_code">Authenticator code</label>
                 <input class="auth-input" type="text" id="mfa_code" name="mfa_code" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code">
+                <p class="auth-field-hint">Open Microsoft Authenticator or Google Authenticator and enter the 6-digit code.</p>
             </div>
 
             <button type="submit" class="auth-submit-btn" id="login-btn">
@@ -278,7 +279,7 @@
                 if (response.ok && data.mfa_required && !data.access_token) {
                     if (mfaField) mfaField.style.display = 'block';
                     mfaCodeInput?.focus();
-                    setButtonIdle('Verify MFA');
+                    setButtonIdle('Verify code');
                     return;
                 }
 

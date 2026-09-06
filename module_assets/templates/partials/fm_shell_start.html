@@ -15,8 +15,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=21">
-  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/fm-assets.css') }}?v=68">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}?v=22">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fm-assets.css') }}?v=69">
   {% if fm_head_extra is defined %}{{ fm_head_extra|safe }}{% endif %}
 </head>
 <body class="tkt-dh-page fm-assets-shell has-main-nav{% if fm_dash %} fm-dash-page{% endif %}">
@@ -34,7 +34,9 @@
     <button type="button" id="tktDhSidebarToggle" class="tkt-menu-toggle"
             aria-label="Open FM Assets menu" aria-expanded="false"
             onclick="if(typeof tktToggleMobileSidebar==='function'){tktToggleMobileSidebar();}">
-      <span aria-hidden="true">&#9776;</span>
+      <svg class="tkt-menu-toggle-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+        <path d="M4 7h16M4 12h16M4 17h16"/>
+      </svg>
       <span class="tkt-menu-toggle-label">Menu</span>
     </button>
     <h1 class="tkt-topbar-title">{{ fm_topbar_title | default('FM Assets') }}</h1>

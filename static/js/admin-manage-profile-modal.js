@@ -22,6 +22,7 @@
 
   let bindingsDone = false;
   let passwordResetConfirmContext = null;
+  let mfaResetConfirmContext = null;
   let emailCredentialsConfirmContext = null;
 
   function setProfileQuickToggleButton(tbtn, isActive) {
@@ -213,6 +214,7 @@
     const ids = [
       'accessModal',
       'passwordResetConfirmModal',
+      'mfaResetConfirmModal',
       'passwordResetResultModal',
       'userActivityModal',
       'profileStatusConfirmModal',
@@ -453,6 +455,62 @@
     const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
     closeUserProfileModal();
     if (Number.isFinite(uid)) openPasswordResetConfirmModal(uid, u ? u.username : '');
+  };
+
+  w.openMfaResetConfirmModal = function openMfaResetConfirmModal(userId, username) {
+    mfaResetConfirmContext = { userId: userId, username: username };
+    const modal = document.getElementById('mfaResetConfirmModal');
+    if (!modal) return;
+    const intro = document.getElementById('mfaResetConfirmIntro');
+    if (intro) {
+      intro.textContent = 'Reset the authenticator app for ' + (username || 'this user')
+        + '? They will sign in with password only until they set up a new QR from Profile.';
+    }
+    ensurePortalModal(modal);
+    activatePortalModal(modal);
+  };
+
+  w.closeMfaResetConfirmModal = function closeMfaResetConfirmModal() {
+    const modal = document.getElementById('mfaResetConfirmModal');
+    if (modal) modal.classList.remove('active');
+    mfaResetConfirmContext = null;
+    syncOverlayLock();
+  };
+
+  w.submitMfaResetConfirm = async function submitMfaResetConfirm() {
+    const ctx = mfaResetConfirmContext;
+    if (!ctx) return;
+    const uid = ctx.userId;
+    closeMfaResetConfirmModal();
+    await runAdminMfaReset(uid);
+  };
+
+  async function runAdminMfaReset(userId) {
+    try {
+      const response = await profileAuthenticatedFetch('/api/admin/users/' + userId + '/reset-mfa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json().catch(function () { return {}; });
+      if (handleOtpRequired(data)) return;
+      if (handleUnauthorized(response)) return;
+      if (data.success) {
+        notify(data.message || 'Authenticator reset. The user can sign in with password only.', 'success');
+        await CFG.reloadDirectory();
+      } else {
+        notify(data.error || 'Failed to reset authenticator', 'error');
+      }
+    } catch (error) {
+      console.error(error);
+      notify('Error resetting authenticator', 'error');
+    }
+  }
+
+  w.profileModalResetMfa = function profileModalResetMfa() {
+    const uid = parseInt(document.getElementById('profileUserId').value, 10);
+    const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
+    closeUserProfileModal();
+    if (Number.isFinite(uid)) openMfaResetConfirmModal(uid, u ? (u.full_name || u.username) : '');
   };
 
   w.profileModalViewActivity = function profileModalViewActivity() {
@@ -969,6 +1027,7 @@
       if (e.key !== 'Escape') return;
       const res = document.getElementById('passwordResetResultModal');
       const conf = document.getElementById('passwordResetConfirmModal');
+      const mfaConf = document.getElementById('mfaResetConfirmModal');
       const prof = document.getElementById('accessModal');
       const act = document.getElementById('userActivityModal');
       const statusConf = document.getElementById('profileStatusConfirmModal');
@@ -978,6 +1037,8 @@
         closePasswordResetResultModal();
       } else if (conf && conf.classList.contains('active')) {
         closePasswordResetConfirmModal();
+      } else if (mfaConf && mfaConf.classList.contains('active')) {
+        closeMfaResetConfirmModal();
       } else if (otpConf && otpConf.classList.contains('active')) {
         closeAdminProfileOtpModal();
       } else if (deleteConf && deleteConf.classList.contains('active')) {
@@ -1190,6 +1251,7 @@
 
     try {
       ensurePortalModal(document.getElementById('passwordResetConfirmModal'));
+      ensurePortalModal(document.getElementById('mfaResetConfirmModal'));
       ensurePortalModal(document.getElementById('passwordResetResultModal'));
       ensurePortalModal(document.getElementById('profileStatusConfirmModal'));
       ensurePortalModal(document.getElementById('profileDeleteConfirmModal'));

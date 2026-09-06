@@ -227,6 +227,9 @@
           <button type="button" class="btn admin-quick-action btn-reset" onclick="profileModalResetPassword()">
             <span class="admin-quick-action-label">Reset password</span>
           </button>
+          <button type="button" class="btn admin-quick-action btn-reset" onclick="profileModalResetMfa()">
+            <span class="admin-quick-action-label">Reset authenticator</span>
+          </button>
           <button type="button" class="btn admin-quick-action btn-activity" onclick="profileModalViewActivity()">
             <span class="admin-quick-action-label">View activity</span>
           </button>
@@ -330,6 +333,20 @@
     <div class="modal-actions">
       <button type="button" class="btn btn-cancel" onclick="closePasswordResetConfirmModal()">Cancel</button>
       <button type="button" class="btn btn-reset" onclick="submitPasswordResetConfirm()">Reset password</button>
+    </div>
+  </div>
+</div>
+
+<div id="mfaResetConfirmModal" class="modal admin-portal-modal injz-mgmt" role="dialog" aria-modal="true" aria-labelledby="mfaResetConfirmTitle"
+     onclick="if(event.target===this)closeMfaResetConfirmModal()">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title" id="mfaResetConfirmTitle">Reset authenticator?</h2>
+    </div>
+    <p id="mfaResetConfirmIntro"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-cancel" onclick="closeMfaResetConfirmModal()">Cancel</button>
+      <button type="button" class="btn btn-reset" onclick="submitMfaResetConfirm()">Reset authenticator</button>
     </div>
   </div>
 </div>

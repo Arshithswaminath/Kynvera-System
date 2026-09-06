@@ -842,6 +842,13 @@ body.hr-kynvera-queue .btn-approve:hover {
     max-height: 42vh;
   }
 
+  body.hr-kynvera-queue .hr-sign-col,
+  body.hr-kynvera-queue .gm-sign-col {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto;
+  }
+
   body.hr-kynvera-queue #reviewModal .modal-body,
   body.hr-kynvera-queue #approvalModal .modal-body {
     overflow-y: auto !important;
@@ -868,24 +875,112 @@ body.hr-kynvera-queue .btn-approve:hover {
     min-height: 44px;
   }
 
+  /* Full screen under the app navbar — not a dimmed popup */
+  body.hr-kynvera-queue.modal-open .modal-backdrop {
+    display: none !important;
+  }
+
   body.hr-kynvera-queue #reviewModal.modal.show,
   body.hr-kynvera-queue #approvalModal.modal.show {
-    padding: 0.5rem !important;
-    padding-top: max(0.5rem, env(safe-area-inset-top, 0px)) !important;
-    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px)) !important;
+    top: var(--nav-bar-h, 72px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    height: calc(100vh - var(--nav-bar-h, 72px)) !important;
+    height: calc(100dvh - var(--nav-bar-h, 72px)) !important;
+    max-height: calc(100dvh - var(--nav-bar-h, 72px)) !important;
+    padding: 0 !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    z-index: 900 !important;
+    background: #faf8f6 !important;
+    overflow: hidden !important;
   }
 
   body.hr-kynvera-queue #reviewModal .modal-dialog,
   body.hr-kynvera-queue #approvalModal .modal-dialog {
     max-width: 100% !important;
     width: 100% !important;
-    height: min(95dvh, 100%) !important;
-    max-height: 95dvh !important;
+    height: 100% !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
   }
 
   body.hr-kynvera-queue #reviewModal .modal-content,
   body.hr-kynvera-queue #approvalModal .modal-content {
-    max-height: 95dvh !important;
-    border-radius: 16px !important;
+    height: 100% !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  body.hr-kynvera-queue .hr-page-bar,
+  body.hr-kynvera-queue .gm-page-bar {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "back caption"
+      "ref ref";
+    align-items: center;
+    gap: 0.4rem 0.65rem;
+    padding: 0.55rem 0.85rem !important;
+  }
+
+  body.hr-kynvera-queue .hr-page-back,
+  body.hr-kynvera-queue .gm-page-back {
+    grid-area: back;
+  }
+
+  body.hr-kynvera-queue .hr-page-caption,
+  body.hr-kynvera-queue .gm-page-caption {
+    grid-area: caption;
+    min-width: 0;
+  }
+
+  body.hr-kynvera-queue .hr-page-ref,
+  body.hr-kynvera-queue .gm-page-ref {
+    grid-area: ref;
+    margin-left: 0 !important;
+    justify-self: stretch;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.68rem;
+  }
+
+  body.hr-kynvera-queue #reviewModal .modal-footer,
+  body.hr-kynvera-queue #approvalModal .modal-footer {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+    justify-content: stretch !important;
+    padding: 0.65rem 0.75rem max(0.65rem, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.hr-kynvera-queue #reviewModal .modal-footer > .d-flex,
+  body.hr-kynvera-queue #approvalModal .modal-footer > .d-flex {
+    display: contents !important;
+  }
+
+  body.hr-kynvera-queue #reviewModal .modal-footer .review-export-btn,
+  body.hr-kynvera-queue #approvalModal .modal-footer .gm-export-link,
+  body.hr-kynvera-queue #reviewModal .modal-footer a,
+  body.hr-kynvera-queue #approvalModal .modal-footer a {
+    min-height: 44px;
+    justify-content: center;
+    width: 100%;
+  }
+
+  /* Back in the page bar already dismisses this screen */
+  body.hr-kynvera-queue #reviewModal .modal-footer > .btn,
+  body.hr-kynvera-queue #approvalModal .modal-footer > .btn {
+    display: none !important;
+  }
+
+  body.hr-kynvera-queue .hr-preview-col,
+  body.hr-kynvera-queue .gm-preview-col {
+    max-height: min(46vh, 22rem);
   }
 }

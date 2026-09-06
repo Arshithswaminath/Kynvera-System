@@ -40,7 +40,7 @@
   </div>
 </section>
 
-<div class="modal fade proc-modal" id="newPrModal" tabindex="-1">
+<div class="modal fade proc-modal proc-sheet-modal" id="newPrModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
@@ -134,9 +134,18 @@
     wrap.className = 'proc-pr-line';
     wrap.dataset.line = String(id);
     wrap.innerHTML = `
-      <select class="form-select pr-cat">${opts}</select>
-      <input class="form-control pr-qty" type="number" min="0.01" step="0.01" value="1" aria-label="Qty">
-      <input class="form-control pr-price" type="number" min="0" step="0.01" value="0" aria-label="Unit price">
+      <label class="proc-pr-line-field proc-pr-line-item">
+        <span>Item</span>
+        <select class="form-select pr-cat">${opts}</select>
+      </label>
+      <label class="proc-pr-line-field">
+        <span>Qty</span>
+        <input class="form-control pr-qty" type="number" min="0.01" step="0.01" value="1">
+      </label>
+      <label class="proc-pr-line-field">
+        <span>Unit price</span>
+        <input class="form-control pr-price" type="number" min="0" step="0.01" value="0">
+      </label>
       <button type="button" class="proc-btn proc-btn-outline pr-del" aria-label="Remove line">Remove</button>`;
     const sel = wrap.querySelector('.pr-cat');
     const price = wrap.querySelector('.pr-price');
