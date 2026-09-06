@@ -171,6 +171,7 @@ class User(db.Model):
             'is_ticket_reporter': getattr(self, 'is_ticket_reporter', False),
             'password_changed': self.password_changed if hasattr(self, 'password_changed') else True,
             'mfa_enabled': bool(getattr(self, 'mfa_enabled', False)),
+            'mfa_configured': bool(getattr(self, 'mfa_secret', None)),
             'designation': self.designation if hasattr(self, 'designation') else None,
             'default_signature': self.default_signature if hasattr(self, 'default_signature') else None,
             'default_comment': self.default_comment if hasattr(self, 'default_comment') else None,

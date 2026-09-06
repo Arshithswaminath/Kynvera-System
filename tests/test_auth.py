@@ -506,6 +506,7 @@ class TestAuthenticatorMfa:
             user = (response.get_json() or {}).get('user') or {}
             assert response.status_code == 200
             assert user.get('mfa_enabled') is False
+            assert user.get('mfa_configured') is False
             assert 'mfa_secret' not in user
 
     def test_setup_reuses_pending_secret(self, client, auth_headers, app):
@@ -516,6 +517,84 @@ class TestAuthenticatorMfa:
             assert second.status_code == 200
             assert (first.get_json() or {}).get('secret')
             assert (first.get_json() or {}).get('secret') == (second.get_json() or {}).get('secret')
+            assert (first.get_json() or {}).get('reused') is False
+            assert (second.get_json() or {}).get('reused') is True
+
+    def test_disable_keeps_secret_and_same_qr_on_turn_on(self, client, auth_headers, app):
+        import pyotp
+        from app.models import User
+
+        with app.app_context():
+            secret = _enroll_authenticator(client, auth_headers)
+            disabled = client.post(
+                '/api/auth/mfa/disable',
+                headers=auth_headers,
+                json={'password': 'TestPass123'},
+            )
+            assert disabled.status_code == 200
+            body = disabled.get_json() or {}
+            assert body.get('mfa_enabled') is False
+            assert body.get('mfa_configured') is True
+
+            me = client.get('/api/auth/me', headers=auth_headers).get_json()
+            assert me['user']['mfa_enabled'] is False
+            assert me['user']['mfa_configured'] is True
+            assert 'mfa_secret' not in me['user']
+
+            user = User.query.filter_by(username='testuser').one()
+            assert user.mfa_secret == secret
+            assert user.mfa_enabled is False
+
+            password_only = client.post('/api/auth/login', json={
+                'username': 'testuser',
+                'password': 'TestPass123',
+            })
+            assert password_only.status_code == 200
+            assert (password_only.get_json() or {}).get('access_token')
+            assert not (password_only.get_json() or {}).get('mfa_required')
+
+            setup = client.post('/api/auth/mfa/setup', headers=auth_headers)
+            setup_body = setup.get_json() or {}
+            assert setup.status_code == 200
+            assert setup_body.get('reused') is True
+            assert setup_body.get('secret') == secret
+            assert (setup_body.get('qr_data_url') or '').startswith('data:image/png;base64,')
+
+            enable = client.post(
+                '/api/auth/mfa/enable',
+                headers=auth_headers,
+                json={'mfa_code': pyotp.TOTP(secret).now()},
+            )
+            assert enable.status_code == 200
+            assert (enable.get_json() or {}).get('mfa_enabled') is True
+            assert (enable.get_json() or {}).get('mfa_configured') is True
+
+            challenged = client.post('/api/auth/login', json={
+                'username': 'testuser',
+                'password': 'TestPass123',
+            })
+            assert (challenged.get_json() or {}).get('mfa_required') is True
+
+    def test_turn_on_after_disable_does_not_need_setup(self, client, auth_headers, app):
+        import pyotp
+        from app.models import User
+
+        with app.app_context():
+            secret = _enroll_authenticator(client, auth_headers)
+            client.post(
+                '/api/auth/mfa/disable',
+                headers=auth_headers,
+                json={'password': 'TestPass123'},
+            )
+            enable = client.post(
+                '/api/auth/mfa/enable',
+                headers=auth_headers,
+                json={'mfa_code': pyotp.TOTP(secret).now()},
+            )
+            assert enable.status_code == 200
+            assert (enable.get_json() or {}).get('mfa_enabled') is True
+            user = User.query.filter_by(username='testuser').one()
+            assert user.mfa_secret == secret
 
     def test_setup_rejected_when_already_enabled(self, client, auth_headers, app):
         with app.app_context():

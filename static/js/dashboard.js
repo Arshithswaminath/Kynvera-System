@@ -1091,6 +1091,12 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
   const reportingMgrDisp = rm
     ? `${escapeHtml(rm.full_name || rm.username || '')}${rm.email ? `<span style="display:block;font-size:0.8rem;color:#64748b;margin-top:2px;">${escapeHtml(rm.email)}</span>` : ''}`
     : '—';
+  const teamMgmtHref = user && user.id
+    ? '/admin/team-management?tool=profile&user_id=' + encodeURIComponent(String(user.id))
+    : '/admin/team-management';
+  const orgEditHintHtml = isAppAdmin(user)
+    ? 'Job title, leave, and reporting manager are changed in Admin. Go to <a class="pro-org-hint-link" href="' + teamMgmtHref + '">Admin → Team Management</a> to edit them.'
+    : 'Job title, leave balances, and reporting manager can only be changed by an administrator. Ask an administrator to update these.';
 
   return `
     <style>
@@ -1385,9 +1391,18 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         align-items: center;
         justify-content: space-between;
         gap: 0.75rem;
+        flex-wrap: wrap;
         padding: 0.85rem 1.5rem;
         border-top: 1px solid #ececf1;
         background: #ffffff;
+      }
+
+      .pro-footer-org-note {
+        flex: 1 1 12rem;
+        margin: 0;
+        font-size: 0.75rem;
+        line-height: 1.45;
+        color: #6e6e73;
       }
 
       .pro-main-footer-actions {
@@ -1505,10 +1520,22 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
 
       .pro-org-hint {
-        font-size: 0.7rem;
-        color: #aeaeb2;
+        font-size: 0.78rem;
+        color: #6e6e73;
         margin: 0.75rem 0 0;
         line-height: 1.45;
+      }
+
+      .pro-org-hint-link,
+      .pro-footer-org-note a {
+        color: #e05f36;
+        font-weight: 650;
+        text-decoration: none;
+      }
+
+      .pro-org-hint-link:hover,
+      .pro-footer-org-note a:hover {
+        text-decoration: underline;
       }
       
       /* Hero Section */
@@ -2059,6 +2086,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
 
       .pro-mfa-setup {
+        position: relative;
         margin: 0 0 1.25rem;
         padding: 1rem 1.1rem;
         border: 1px solid #e7e5e4;
@@ -2101,6 +2129,65 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         margin: 0 0 0.75rem;
         font-size: 0.8rem;
         color: #b91c1c;
+      }
+      .pro-mfa-setup.is-busy,
+      .pro-mfa-setup--busy {
+        pointer-events: none;
+      }
+      .pro-mfa-setup--busy {
+        min-height: 10.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .pro-mfa-busy {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.25rem 1rem;
+        background: rgba(250, 250, 249, 0.94);
+        border-radius: 12px;
+      }
+      .pro-mfa-setup--busy .pro-mfa-busy {
+        position: relative;
+        inset: auto;
+        background: transparent;
+        padding: 0.35rem 0.25rem;
+      }
+      .pro-mfa-busy-inner {
+        text-align: center;
+        max-width: 17rem;
+      }
+      .pro-mfa-busy-spinner {
+        display: block;
+        width: 28px;
+        height: 28px;
+        margin: 0 auto 0.8rem;
+        border: 3px solid rgba(255, 142, 104, 0.22);
+        border-top-color: #ff8e68;
+        border-radius: 50%;
+        animation: pro-mfa-spin 0.7s linear infinite;
+      }
+      .pro-mfa-busy-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0 0 0.3rem;
+      }
+      .pro-mfa-busy-detail {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin: 0;
+        line-height: 1.45;
+      }
+      @keyframes pro-mfa-spin {
+        to { transform: rotate(360deg); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .pro-mfa-busy-spinner { animation: none; }
       }
       
       .pro-btn {
@@ -2806,7 +2893,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
                     </div>
                   </div>
                 </div>
-                <p class="pro-org-hint">Job title, leave balances, and reporting manager are maintained by an administrator.</p>
+                <p class="pro-org-hint">${orgEditHintHtml}</p>
               </div>
 
               <div class="pro-member-since">
@@ -2832,16 +2919,20 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
               <div class="pro-security-card ${user.mfa_enabled ? 'success' : ''}" id="mfaSecurityCard">
                 <div class="pro-security-icon">${user.mfa_enabled ? I.check : I.shield}</div>
                 <div class="pro-security-content">
-                  <div class="pro-security-title">${user.mfa_enabled ? 'Authenticator app is on' : 'Authenticator app'}</div>
+                  <div class="pro-security-title">${user.mfa_enabled
+                    ? 'Authenticator app is on'
+                    : (user.mfa_configured ? 'Authenticator app is off' : 'Authenticator app')}</div>
                   <div class="pro-security-desc">${user.mfa_enabled
                     ? 'Microsoft Authenticator or Google Authenticator is required at sign-in.'
-                    : 'Optional. Scan a QR with Microsoft Authenticator or Google Authenticator.'}${user.email
+                    : (user.mfa_configured
+                      ? 'Turn it back on with a 6-digit code from the app you already have. This does not create a new pairing. Only an administrator can reset it completely.'
+                      : 'Optional. Scan a QR with Microsoft Authenticator or Google Authenticator.')}${user.email
                     ? ' Notices go to ' + escapeHtml(user.email) + '.'
                     : ' This account has no email, so no notice can be sent.'}</div>
                 </div>
                 <div class="pro-security-action">
-                  <button type="button" class="pro-btn ${user.mfa_enabled ? 'pro-btn-outline' : 'pro-btn-primary'} pro-btn-sm" onclick="${user.mfa_enabled ? 'showMfaDisableForm()' : 'startMfaSetup()'}">
-                    ${user.mfa_enabled ? 'Turn off' : 'Set up'}
+                  <button type="button" class="pro-btn ${user.mfa_enabled ? 'pro-btn-outline' : 'pro-btn-primary'} pro-btn-sm" onclick="${user.mfa_enabled ? 'showMfaDisableForm()' : (user.mfa_configured ? 'startMfaTurnOn()' : 'startMfaSetup()')}">
+                    ${user.mfa_enabled ? 'Turn off' : (user.mfa_configured ? 'Turn on' : 'Set up')}
                   </button>
                 </div>
               </div>
@@ -2912,6 +3003,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
           </div><!-- /.pro-main-body -->
 
           <footer class="pro-main-footer" id="proMainFooter">
+            <p class="pro-footer-org-note">${orgEditHintHtml}</p>
             <span id="profileManagedSaveHint" class="pro-save-hint"></span>
             <div class="pro-main-footer-actions">
               <button type="button" class="pro-btn pro-btn-outline" onclick="closeProfileModal()">Cancel</button>
@@ -3384,6 +3476,7 @@ function _mfaPatchLocalUser(enabled) {
     const raw = localStorage.getItem('user');
     const user = raw ? JSON.parse(raw) : {};
     user.mfa_enabled = !!enabled;
+    user.mfa_configured = true;
     localStorage.setItem('user', JSON.stringify(user));
   } catch (e) { /* ignore */ }
 }
@@ -3394,7 +3487,11 @@ function _mfaPanel() {
 
 function _mfaEnrollmentInProgress() {
   const panel = _mfaPanel();
-  return !!(panel && !panel.hidden && panel.querySelector('.pro-mfa-setup'));
+  if (!panel || panel.hidden) return false;
+  if (panel.querySelector('.pro-mfa-busy') || panel.querySelector('.is-busy') || panel.querySelector('.pro-mfa-setup--busy')) {
+    return true;
+  }
+  return !!(panel.querySelector('#mfaSetupCode') || panel.querySelector('#mfaDisablePassword'));
 }
 
 function _mfaShowError(id, message) {
@@ -3404,78 +3501,275 @@ function _mfaShowError(id, message) {
   el.style.display = message ? 'block' : 'none';
 }
 
-window.startMfaSetup = async function startMfaSetup() {
+let _mfaOp = 0;
+
+function _mfaCardActionBtn() {
+  return document.querySelector('#mfaSecurityCard .pro-security-action button');
+}
+
+function _mfaLockControls(root, lock) {
+  if (!root) return;
+  root.querySelectorAll('button, input').forEach(function (el) {
+    el.disabled = !!lock;
+  });
+}
+
+function _mfaBusyInner(title, detail) {
+  return '<div class="pro-mfa-busy-inner">'
+    + '<span class="pro-mfa-busy-spinner" aria-hidden="true"></span>'
+    + '<p class="pro-mfa-busy-title">' + escapeHtml(title) + '</p>'
+    + '<p class="pro-mfa-busy-detail">' + escapeHtml(detail) + '</p>'
+    + '</div>';
+}
+
+function _mfaShowBusy(title, detail) {
   const panel = _mfaPanel();
   if (!panel) return;
-  if (!panel.hidden && panel.querySelector('#mfaSetupCode')) {
-    const existing = document.getElementById('mfaSetupCode');
-    if (existing) existing.focus();
-    return;
-  }
   panel.hidden = false;
-  panel.innerHTML = '<p class="pro-mfa-setup-desc">Preparing QR code…</p>';
-  try {
-    const response = await fetch('/api/auth/mfa/setup', {
-      method: 'POST',
-      headers: _mfaAuthHeaders()
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.success) {
-      throw new Error(data.error || 'Could not start authenticator setup');
+  const setup = panel.querySelector('.pro-mfa-setup:not(.pro-mfa-setup--busy)');
+  if (setup) {
+    setup.classList.add('is-busy');
+    let busy = setup.querySelector('.pro-mfa-busy');
+    if (!busy) {
+      busy = document.createElement('div');
+      busy.className = 'pro-mfa-busy';
+      busy.setAttribute('role', 'status');
+      busy.setAttribute('aria-live', 'polite');
+      busy.setAttribute('aria-busy', 'true');
+      setup.appendChild(busy);
     }
-    const secret = data.secret ? String(data.secret) : '';
-    const profileEmail = await _signedInProfileEmail();
-    const noticeLine = profileEmail
-      ? ' A confirmation notice will be emailed to ' + escapeHtml(profileEmail) + '.'
-      : ' This signed-in account has no email, so no notice can be sent.';
-    panel.innerHTML = `
+    busy.innerHTML = _mfaBusyInner(title, detail);
+    _mfaLockControls(setup, true);
+  } else {
+    panel.innerHTML = '<div class="pro-mfa-setup pro-mfa-setup--busy" aria-busy="true">'
+      + '<div class="pro-mfa-busy" role="status" aria-live="polite">'
+      + _mfaBusyInner(title, detail)
+      + '</div></div>';
+  }
+  const cardBtn = _mfaCardActionBtn();
+  if (cardBtn) cardBtn.disabled = true;
+}
+
+function _mfaHideBusy() {
+  const panel = _mfaPanel();
+  const setup = panel && panel.querySelector('.pro-mfa-setup');
+  if (setup) {
+    setup.classList.remove('is-busy');
+    const busy = setup.querySelector('.pro-mfa-busy');
+    if (busy) busy.remove();
+    _mfaLockControls(setup, false);
+  }
+  const cardBtn = _mfaCardActionBtn();
+  if (cardBtn) cardBtn.disabled = false;
+}
+
+function _mfaShowDone(title, detail) {
+  const panel = _mfaPanel();
+  if (panel) {
+    panel.hidden = false;
+    panel.innerHTML = '<div class="pro-mfa-setup"><p class="pro-mfa-setup-title">'
+      + escapeHtml(title) + '</p><p class="pro-mfa-setup-desc">' + detail + '</p></div>';
+  }
+  const cardBtn = _mfaCardActionBtn();
+  if (cardBtn) cardBtn.disabled = false;
+  setTimeout(function () {
+    if (typeof loadProfileData === 'function') loadProfileData();
+  }, 1200);
+}
+
+function _mfaNoticeLine(profileEmail) {
+  return profileEmail
+    ? ' A confirmation notice will be emailed to ' + escapeHtml(profileEmail) + '.'
+    : ' This signed-in account has no email, so no notice can be sent.';
+}
+
+function _mfaPaintCodeForm(opts) {
+  const panel = _mfaPanel();
+  if (!panel) return;
+  const qrHtml = opts.showQr
+    ? '<img class="pro-mfa-qr" id="mfaQrImage" alt="Authenticator QR code" width="180" height="180">'
+      + (opts.secret ? '<p class="pro-mfa-secret">' + escapeHtml(opts.secret) + '</p>' : '')
+    : '';
+  const extra = opts.extraHtml || '';
+  panel.hidden = false;
+  panel.innerHTML = `
       <div class="pro-mfa-setup">
-        <p class="pro-mfa-setup-title">Scan with your authenticator app</p>
-        <p class="pro-mfa-setup-desc">Open Microsoft Authenticator or Google Authenticator, add an account, and scan this QR. Then enter the 6-digit code to confirm.${noticeLine}</p>
-        <img class="pro-mfa-qr" id="mfaQrImage" alt="Authenticator QR code" width="180" height="180">
-        <p class="pro-mfa-secret">${escapeHtml(secret)}</p>
+        <p class="pro-mfa-setup-title">${opts.title}</p>
+        <p class="pro-mfa-setup-desc">${opts.desc}</p>
+        ${qrHtml}
         <label class="pro-field" style="display:block;margin-bottom:0.75rem;">
           <span class="pro-field-label">6-digit code</span>
           <input type="text" class="pro-field-input" id="mfaSetupCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="000000">
         </label>
         <p class="pro-mfa-error" id="mfaSetupError"></p>
-        <div style="display:flex;gap:0.75rem;">
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
           <button type="button" class="pro-btn pro-btn-outline" onclick="cancelMfaSetup()">Cancel</button>
-          <button type="button" class="pro-btn pro-btn-primary" id="mfaSetupConfirmBtn" onclick="confirmMfaEnable()">Confirm</button>
+          <button type="button" class="pro-btn pro-btn-primary" id="mfaSetupConfirmBtn" onclick="confirmMfaEnable()">Turn on</button>
         </div>
+        ${extra}
       </div>
     `;
-    const qrImg = document.getElementById('mfaQrImage');
-    if (qrImg) {
-      const dataUrl = data.qr_data_url ? String(data.qr_data_url) : '';
-      if (dataUrl.indexOf('data:image/') === 0) {
-        qrImg.src = dataUrl;
-      } else {
-        const qrRes = await fetch('/api/auth/mfa/qr.png?t=' + Date.now(), {
-          headers: _mfaAuthHeaders(),
-          credentials: 'include'
-        });
-        if (qrRes.ok) {
-          const blob = await qrRes.blob();
-          if (blob && blob.size && (blob.type || '').indexOf('image/') === 0) {
-            qrImg.src = URL.createObjectURL(blob);
-          }
-        }
-      }
+  const cardBtn = _mfaCardActionBtn();
+  if (cardBtn) cardBtn.disabled = false;
+  const input = document.getElementById('mfaSetupCode');
+  if (input) input.focus();
+}
+
+async function _mfaFillQrImage(data, op) {
+  const qrImg = document.getElementById('mfaQrImage');
+  if (!qrImg) return;
+  const dataUrl = data && data.qr_data_url ? String(data.qr_data_url) : '';
+  if (dataUrl.indexOf('data:image/') === 0) {
+    qrImg.src = dataUrl;
+    return;
+  }
+  const qrRes = await fetch('/api/auth/mfa/qr.png?t=' + Date.now(), {
+    headers: _mfaAuthHeaders(),
+    credentials: 'include'
+  });
+  if (op !== _mfaOp) return;
+  if (qrRes.ok) {
+    const blob = await qrRes.blob();
+    if (blob && blob.size && (blob.type || '').indexOf('image/') === 0) {
+      qrImg.src = URL.createObjectURL(blob);
     }
-    const input = document.getElementById('mfaSetupCode');
-    if (input) input.focus();
+  }
+}
+
+window.startMfaTurnOn = async function startMfaTurnOn() {
+  const panel = _mfaPanel();
+  if (!panel) return;
+  if (!panel.hidden && panel.querySelector('#mfaSetupCode') && !panel.querySelector('#mfaQrImage')) {
+    const existing = document.getElementById('mfaSetupCode');
+    if (existing) existing.focus();
+    return;
+  }
+  const op = ++_mfaOp;
+  _mfaShowBusy('Turning authenticator on', 'Opening the form…');
+  try {
+    const statusRes = await fetch('/api/auth/mfa/status', { headers: _mfaAuthHeaders() });
+    const status = await statusRes.json().catch(function () { return {}; });
+    if (op !== _mfaOp) return;
+    if (!status.has_secret) {
+      return startMfaSetup(true);
+    }
+    const profileEmail = await _signedInProfileEmail();
+    if (op !== _mfaOp) return;
+    _mfaPaintCodeForm({
+      title: 'Turn authenticator on',
+      desc: 'Enter the 6-digit code from the Kynvera account already in your authenticator app. Do not add a new account.'
+        + _mfaNoticeLine(profileEmail),
+      extraHtml: '<p class="pro-mfa-setup-desc" style="margin-top:0.85rem;"><button type="button" class="pro-btn pro-btn-outline pro-btn-sm" onclick="showMfaSameQr()">New phone? Show the same QR</button></p>'
+    });
   } catch (err) {
-    panel.innerHTML = `<p class="pro-mfa-error" style="display:block">${escapeHtml(err.message || 'Setup failed')}</p>`;
+    if (op !== _mfaOp) return;
+    const cardBtn = _mfaCardActionBtn();
+    if (cardBtn) cardBtn.disabled = false;
+    panel.innerHTML = `<div class="pro-mfa-setup"><p class="pro-mfa-error" style="display:block">${escapeHtml(err.message || 'Could not open authenticator')}</p>
+      <button type="button" class="pro-btn pro-btn-outline" onclick="cancelMfaSetup()">Cancel</button></div>`;
+  }
+};
+
+window.showMfaSameQr = async function showMfaSameQr() {
+  const panel = _mfaPanel();
+  if (!panel) return;
+  const op = ++_mfaOp;
+  _mfaShowBusy('Loading QR', 'This is the same pairing. It does not create a new account.');
+  try {
+    const response = await fetch('/api/auth/mfa/setup', {
+      method: 'POST',
+      headers: _mfaAuthHeaders()
+    });
+    const data = await response.json().catch(function () { return {}; });
+    if (op !== _mfaOp) return;
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Could not load the QR code');
+    }
+    const profileEmail = await _signedInProfileEmail();
+    if (op !== _mfaOp) return;
+    _mfaPaintCodeForm({
+      title: 'Same QR as before',
+      desc: 'Scan this only on a new phone. If Kynvera is already in your app, skip the scan and enter a 6-digit code. Do not add a second account.'
+        + _mfaNoticeLine(profileEmail),
+      showQr: true,
+      secret: data.secret ? String(data.secret) : ''
+    });
+    await _mfaFillQrImage(data, op);
+  } catch (err) {
+    if (op !== _mfaOp) return;
+    _mfaHideBusy();
+    _mfaShowError('mfaSetupError', err.message || 'Could not load the QR code');
+  }
+};
+
+window.startMfaSetup = async function startMfaSetup(forceQr) {
+  const panel = _mfaPanel();
+  if (!panel) return;
+  if (!forceQr && !panel.hidden && panel.querySelector('#mfaSetupCode')) {
+    const existing = document.getElementById('mfaSetupCode');
+    if (existing) existing.focus();
+    return;
+  }
+  const op = ++_mfaOp;
+  _mfaShowBusy('Preparing authenticator', 'Loading your QR code. This can take a few seconds.');
+  try {
+    const statusRes = await fetch('/api/auth/mfa/status', { headers: _mfaAuthHeaders() });
+    const status = await statusRes.json().catch(function () { return {}; });
+    if (op !== _mfaOp) return;
+    if (!forceQr && status.has_secret && !status.mfa_enabled) {
+      return startMfaTurnOn();
+    }
+    const response = await fetch('/api/auth/mfa/setup', {
+      method: 'POST',
+      headers: _mfaAuthHeaders()
+    });
+    const data = await response.json().catch(() => ({}));
+    if (op !== _mfaOp) return;
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Could not start authenticator setup');
+    }
+    if (data.reused) {
+      const profileEmail = await _signedInProfileEmail();
+      if (op !== _mfaOp) return;
+      _mfaPaintCodeForm({
+        title: 'Turn authenticator on',
+        desc: 'Enter the 6-digit code from the Kynvera account already in your authenticator app. Do not add a new account.'
+          + _mfaNoticeLine(profileEmail),
+        extraHtml: '<p class="pro-mfa-setup-desc" style="margin-top:0.85rem;"><button type="button" class="pro-btn pro-btn-outline pro-btn-sm" onclick="showMfaSameQr()">New phone? Show the same QR</button></p>'
+      });
+      return;
+    }
+    const secret = data.secret ? String(data.secret) : '';
+    const profileEmail = await _signedInProfileEmail();
+    if (op !== _mfaOp) return;
+    _mfaPaintCodeForm({
+      title: 'Scan with your authenticator app',
+      desc: 'Open Microsoft Authenticator or Google Authenticator, add an account, and scan this QR. Then enter the 6-digit code to confirm.'
+        + _mfaNoticeLine(profileEmail),
+      showQr: true,
+      secret: secret
+    });
+    const confirmBtn = document.getElementById('mfaSetupConfirmBtn');
+    if (confirmBtn) confirmBtn.textContent = 'Confirm';
+    await _mfaFillQrImage(data, op);
+  } catch (err) {
+    if (op !== _mfaOp) return;
+    const cardBtn = _mfaCardActionBtn();
+    if (cardBtn) cardBtn.disabled = false;
+    panel.innerHTML = `<div class="pro-mfa-setup"><p class="pro-mfa-error" style="display:block">${escapeHtml(err.message || 'Setup failed')}</p>
+      <button type="button" class="pro-btn pro-btn-outline" onclick="cancelMfaSetup()">Cancel</button></div>`;
   }
 };
 
 window.cancelMfaSetup = function cancelMfaSetup() {
+  _mfaOp += 1;
   const panel = _mfaPanel();
   if (panel) {
     panel.hidden = true;
     panel.innerHTML = '';
   }
+  const cardBtn = _mfaCardActionBtn();
+  if (cardBtn) cardBtn.disabled = false;
 };
 
 window.confirmMfaEnable = async function confirmMfaEnable() {
@@ -3486,7 +3780,8 @@ window.confirmMfaEnable = async function confirmMfaEnable() {
     _mfaShowError('mfaSetupError', 'Enter the 6-digit code from the app.');
     return;
   }
-  if (btn) btn.disabled = true;
+  const op = ++_mfaOp;
+  _mfaShowBusy('Turning authenticator on', 'Checking your 6-digit code…');
   try {
     const response = await fetch('/api/auth/mfa/enable', {
       method: 'POST',
@@ -3494,22 +3789,23 @@ window.confirmMfaEnable = async function confirmMfaEnable() {
       body: JSON.stringify({ mfa_code: code })
     });
     const data = await response.json().catch(() => ({}));
+    if (op !== _mfaOp) return;
     if (!response.ok || !data.success) {
+      if (data.error_code === 'MFA_NOT_SETUP') {
+        _mfaHideBusy();
+        return startMfaSetup();
+      }
       throw new Error(data.error || 'Invalid code');
     }
     _mfaPatchLocalUser(true);
-    const panel = _mfaPanel();
-    if (panel && data.sent_to) {
-      panel.hidden = false;
-      panel.innerHTML = '<p class="pro-mfa-setup-desc">Authenticator is on. A notice was emailed to '
-        + escapeHtml(data.sent_to) + '.</p>';
-      setTimeout(function () {
-        if (typeof loadProfileData === 'function') loadProfileData();
-      }, 2500);
-    } else if (typeof loadProfileData === 'function') {
-      loadProfileData();
+    let detail = 'Sign-in will ask for a code from your authenticator app.';
+    if (data.sent_to) {
+      detail += ' A notice will be emailed to ' + escapeHtml(data.sent_to) + '.';
     }
+    _mfaShowDone('Authenticator is on', detail);
   } catch (err) {
+    if (op !== _mfaOp) return;
+    _mfaHideBusy();
     _mfaShowError('mfaSetupError', err.message || 'Could not enable authenticator');
     if (btn) btn.disabled = false;
   }
@@ -3518,15 +3814,22 @@ window.confirmMfaEnable = async function confirmMfaEnable() {
 window.showMfaDisableForm = async function showMfaDisableForm() {
   const panel = _mfaPanel();
   if (!panel) return;
-  panel.hidden = false;
+  if (!panel.hidden && panel.querySelector('#mfaDisablePassword')) {
+    const existing = document.getElementById('mfaDisablePassword');
+    if (existing) existing.focus();
+    return;
+  }
+  const op = ++_mfaOp;
+  _mfaShowBusy('Turn off authenticator', 'Opening the form. This can take a moment.');
   const profileEmail = await _signedInProfileEmail();
+  if (op !== _mfaOp) return;
   const noticeLine = profileEmail
     ? ' A notice will be emailed to ' + escapeHtml(profileEmail) + '.'
     : ' This signed-in account has no email, so no notice can be sent.';
   panel.innerHTML = `
     <div class="pro-mfa-setup">
       <p class="pro-mfa-setup-title">Turn off authenticator</p>
-      <p class="pro-mfa-setup-desc">Enter your password to remove the app. You can set it up again afterwards.${noticeLine}</p>
+      <p class="pro-mfa-setup-desc">This stops asking for a code at sign-in. Your authenticator app stays paired — turn it back on with a 6-digit code. Only an administrator can reset it completely.${noticeLine}</p>
       <label class="pro-field" style="display:block;margin-bottom:0.75rem;">
         <span class="pro-field-label">Password</span>
         <div class="pro-password-wrap">
@@ -3546,6 +3849,8 @@ window.showMfaDisableForm = async function showMfaDisableForm() {
       </div>
     </div>
   `;
+  const cardBtn = _mfaCardActionBtn();
+  if (cardBtn) cardBtn.disabled = false;
   const input = document.getElementById('mfaDisablePassword');
   if (input) input.focus();
 };
@@ -3571,7 +3876,8 @@ window.submitMfaDisable = async function submitMfaDisable() {
     _mfaShowError('mfaDisableError', 'Password is required.');
     return;
   }
-  if (btn) btn.disabled = true;
+  const op = ++_mfaOp;
+  _mfaShowBusy('Turning authenticator off', 'Checking your password…');
   try {
     const response = await fetch('/api/auth/mfa/disable', {
       method: 'POST',
@@ -3579,22 +3885,19 @@ window.submitMfaDisable = async function submitMfaDisable() {
       body: JSON.stringify({ password: password })
     });
     const data = await response.json().catch(() => ({}));
+    if (op !== _mfaOp) return;
     if (!response.ok || !data.success) {
       throw new Error(data.error || 'Could not turn off authenticator');
     }
     _mfaPatchLocalUser(false);
-    const panel = _mfaPanel();
-    if (panel && data.sent_to) {
-      panel.hidden = false;
-      panel.innerHTML = '<p class="pro-mfa-setup-desc">Authenticator is off. A notice was emailed to '
-        + escapeHtml(data.sent_to) + '.</p>';
-      setTimeout(function () {
-        if (typeof loadProfileData === 'function') loadProfileData();
-      }, 2500);
-    } else if (typeof loadProfileData === 'function') {
-      loadProfileData();
+    let detail = 'Sign-in will not ask for a code. Your authenticator app stays paired.';
+    if (data.sent_to) {
+      detail += ' A notice will be emailed to ' + escapeHtml(data.sent_to) + '.';
     }
+    _mfaShowDone('Authenticator is off', detail);
   } catch (err) {
+    if (op !== _mfaOp) return;
+    _mfaHideBusy();
     _mfaShowError('mfaDisableError', err.message || 'Could not turn off authenticator');
     if (btn) btn.disabled = false;
   }

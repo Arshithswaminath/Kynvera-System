@@ -1322,8 +1322,8 @@ def reset_user_mfa(user_id):
             'target_user': user.username,
             'reset_by': actor.username if actor else 'system',
         })
-        from common.email_service import notify_user_mfa_email
-        sent_to = notify_user_mfa_email(user, enabled=False, by_admin=True)
+        from common.email_service import notify_user_mfa_email_later
+        sent_to = notify_user_mfa_email_later(user, enabled=False, by_admin=True)
         if sent_to is True:
             sent_to = (user.email or '').strip() or None
         elif not sent_to:
@@ -1343,6 +1343,7 @@ def reset_user_mfa(user_id):
                 'username': user.username,
                 'email': user.email,
                 'mfa_enabled': False,
+                'mfa_configured': False,
             },
             'sent_to': sent_to,
             'had_mfa': had_mfa,

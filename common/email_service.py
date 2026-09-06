@@ -14,6 +14,7 @@ import logging
 import os
 import re
 import mimetypes
+import threading
 from email.message import EmailMessage
 from email.utils import formataddr
 from urllib.parse import urlparse
@@ -310,10 +311,26 @@ def _send_email_brevo_http(app, recipient, subject, body, html_body, cc, attachm
             )
             return True
         logger.error("Brevo API HTTP %s: %s", r.status_code, r.text[:4000])
+        if _brevo_blocks_this_ip(r.text):
+            logger.warning(
+                "Brevo authorised-IPs blocked this machine. Add this public IP at "
+                "https://app.brevo.com/security/authorised_ips then retry. "
+                "Render is already allowed; this only blocks local send."
+            )
         return False
     except Exception as e:
         logger.error("Brevo API request failed: %s", e, exc_info=True)
         return False
+
+
+def _brevo_blocks_this_ip(body):
+    text = (body or '').lower()
+    return (
+        'unrecognised ip' in text
+        or 'unrecognized ip' in text
+        or 'authorised_ips' in text
+        or 'authorized_ips' in text
+    )
 
 
 def _send_email_mailjet_http(
@@ -536,6 +553,100 @@ def send_email(
     return ok
 
 
+def _send_email_smtp(app, recipient, subject, body, html_body=None, cc=None, attachments=None):
+    """Send via MAIL_SERVER. Used locally when Brevo HTTPS is IP-blocked."""
+    mj = mailjet_credentials(app)
+    mail_server = app.config.get('MAIL_SERVER')
+    mail_port = app.config.get('MAIL_PORT', 587)
+    mail_user = app.config.get('MAIL_USERNAME')
+    mail_pass = app.config.get('MAIL_PASSWORD')
+    mail_use_tls = app.config.get('MAIL_USE_TLS', True)
+    mail_sender = _resolved_mail_sender(app) or mail_user or DEFAULT_MAIL_SENDER
+
+    if not mail_server or not mail_port:
+        logger.warning(
+            "Mail not configured; cannot send email "
+            "(set BREVO_API_KEY + MAIL_DEFAULT_SENDER, or Mailjet/SMTP credentials)"
+        )
+        return False
+
+    if _looks_like_mailjet_smtp_host(mail_server) and _running_on_render() and not mj:
+        logger.error(
+            "Email: Mailjet on Render needs API credentials. Set MAILJET_API_KEY + "
+            "MAILJET_SECRET_KEY + MAIL_DEFAULT_SENDER (HTTPS), or MAIL_USERNAME + "
+            "MAIL_PASSWORD with MAIL_SERVER=in-v3.mailjet.com. See docs/EMAIL_SMTP_OPTIONS.md",
+        )
+        return False
+
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    msg['From'] = formataddr(("Kynvera", str(mail_sender).strip()))
+    if isinstance(recipient, (list, tuple)):
+        msg['To'] = ', '.join(recipient)
+    else:
+        msg['To'] = recipient
+
+    if cc:
+        if isinstance(cc, (list, tuple)):
+            msg['Cc'] = ', '.join(cc)
+        else:
+            msg['Cc'] = cc
+
+    if html_body:
+        msg.set_content(body)
+        msg.add_alternative(html_body, subtype='html')
+    else:
+        msg.set_content(body)
+
+    html_part = None
+    if html_body:
+        try:
+            for part in msg.walk():
+                if part.get_content_type() == 'text/html':
+                    html_part = part
+                    break
+        except Exception:
+            html_part = None
+
+    for item in _iter_attachment_items(attachments):
+        try:
+            mime_type = item['content_type']
+            maintype, subtype = mime_type.split('/', 1)
+            if item.get('inline') and item.get('cid') and html_part is not None:
+                html_part.add_related(
+                    item['data'],
+                    maintype=maintype,
+                    subtype=subtype,
+                    cid=item['cid'],
+                )
+            else:
+                msg.add_attachment(
+                    item['data'],
+                    maintype=maintype,
+                    subtype=subtype,
+                    filename=item['filename'],
+                )
+        except Exception:
+            logger.error("Failed to attach file", exc_info=True)
+
+    if mail_use_tls:
+        context = ssl.create_default_context()
+        with SMTPIPv4(mail_server, mail_port) as server:
+            server.starttls(context=context)
+            if mail_user and mail_pass:
+                server.login(mail_user, mail_pass)
+            server.send_message(msg)
+    else:
+        context = ssl.create_default_context()
+        with SMTP_SSL_IPv4(mail_server, mail_port, context=context) as server:
+            if mail_user and mail_pass:
+                server.login(mail_user, mail_pass)
+            server.send_message(msg)
+
+    logger.info("Email sent successfully to %s", recipient)
+    return True
+
+
 def _deliver_email(recipient, subject, body, html_body=None, cc=None, attachments=None):
     """
     Send email via Brevo HTTPS, Mailjet HTTPS, or SMTP (see module docstring).
@@ -548,8 +659,16 @@ def _deliver_email(recipient, subject, body, html_body=None, cc=None, attachment
 
         brevo_key = brevo_api_key(app)
         if brevo_key:
-            return _send_email_brevo_http(
+            if _send_email_brevo_http(
                 app, recipient, subject, body, html_body, cc, attachments, brevo_key
+            ):
+                return True
+            # Render has no SMTP. Locally, fall through so a laptop can still send
+            # after Brevo authorised-IPs reject the home IP.
+            if _running_on_render():
+                return False
+            logger.warning(
+                "Brevo HTTPS failed on this machine; trying Mailjet/SMTP for local send"
             )
 
         mj = mailjet_credentials(app)
@@ -558,95 +677,7 @@ def _deliver_email(recipient, subject, body, html_body=None, cc=None, attachment
                 app, recipient, subject, body, html_body, cc, attachments, mj[0], mj[1]
             )
 
-        mail_server = app.config.get('MAIL_SERVER')
-        mail_port = app.config.get('MAIL_PORT', 587)
-        mail_user = app.config.get('MAIL_USERNAME')
-        mail_pass = app.config.get('MAIL_PASSWORD')
-        mail_use_tls = app.config.get('MAIL_USE_TLS', True)
-        mail_sender = _resolved_mail_sender(app) or mail_user or DEFAULT_MAIL_SENDER
-
-        if not mail_server or not mail_port:
-            logger.warning(
-                "Mail not configured; cannot send email "
-                "(set BREVO_API_KEY + MAIL_DEFAULT_SENDER, or Mailjet/SMTP credentials)"
-            )
-            return False
-
-        if _looks_like_mailjet_smtp_host(mail_server) and _running_on_render() and not mj:
-            logger.error(
-                "Email: Mailjet on Render needs API credentials. Set MAILJET_API_KEY + "
-                "MAILJET_SECRET_KEY + MAIL_DEFAULT_SENDER (HTTPS), or MAIL_USERNAME + "
-                "MAIL_PASSWORD with MAIL_SERVER=in-v3.mailjet.com. See docs/EMAIL_SMTP_OPTIONS.md",
-            )
-            return False
-
-        msg = EmailMessage()
-        msg['Subject'] = subject
-        msg['From'] = formataddr(("Kynvera", str(mail_sender).strip()))
-        if isinstance(recipient, (list, tuple)):
-            msg['To'] = ', '.join(recipient)
-        else:
-            msg['To'] = recipient
-
-        if cc:
-            if isinstance(cc, (list, tuple)):
-                msg['Cc'] = ', '.join(cc)
-            else:
-                msg['Cc'] = cc
-
-        if html_body:
-            msg.set_content(body)
-            msg.add_alternative(html_body, subtype='html')
-        else:
-            msg.set_content(body)
-
-        html_part = None
-        if html_body:
-            try:
-                for part in msg.walk():
-                    if part.get_content_type() == 'text/html':
-                        html_part = part
-                        break
-            except Exception:
-                html_part = None
-
-        for item in _iter_attachment_items(attachments):
-            try:
-                mime_type = item['content_type']
-                maintype, subtype = mime_type.split('/', 1)
-                if item.get('inline') and item.get('cid') and html_part is not None:
-                    html_part.add_related(
-                        item['data'],
-                        maintype=maintype,
-                        subtype=subtype,
-                        cid=item['cid'],
-                    )
-                else:
-                    msg.add_attachment(
-                        item['data'],
-                        maintype=maintype,
-                        subtype=subtype,
-                        filename=item['filename'],
-                    )
-            except Exception:
-                logger.error("Failed to attach file", exc_info=True)
-
-        if mail_use_tls:
-            context = ssl.create_default_context()
-            with SMTPIPv4(mail_server, mail_port) as server:
-                server.starttls(context=context)
-                if mail_user and mail_pass:
-                    server.login(mail_user, mail_pass)
-                server.send_message(msg)
-        else:
-            context = ssl.create_default_context()
-            with SMTP_SSL_IPv4(mail_server, mail_port, context=context) as server:
-                if mail_user and mail_pass:
-                    server.login(mail_user, mail_pass)
-                server.send_message(msg)
-
-        logger.info("Email sent successfully to %s", recipient)
-        return True
+        return _send_email_smtp(app, recipient, subject, body, html_body, cc, attachments)
 
     except Exception as e:
         logger.error("Failed to send email: %s", e, exc_info=True)
@@ -667,6 +698,10 @@ def _login_url():
 
 _WORDMARK_CID = 'kynvera-wordmark'
 _WORDMARK_STATIC = '/static/images/kynvera/kynvera-wordmark.png'
+# Inbox clients cannot fetch localhost. Live PNG on the product host.
+_DEFAULT_PUBLIC_WORDMARK_URL = (
+    'https://operations.kynvera.net/static/images/kynvera/kynvera-wordmark.png'
+)
 _cloudinary_wordmark_url_cache = None
 
 
@@ -763,7 +798,12 @@ def _hosted_wordmark_url():
     base = _app_base_url()
     if _is_public_asset_base(base):
         return f'{base}{_WORDMARK_STATIC}'
-    return ''
+    try:
+        if current_app.config.get('TESTING'):
+            return ''
+    except Exception:
+        pass
+    return _DEFAULT_PUBLIC_WORDMARK_URL
 
 
 def _wordmark_inline_attachment():
@@ -801,8 +841,9 @@ def _logo_html():
     """Official coral PNG wordmark from static/images/kynvera/kynvera-wordmark.png.
 
     Brevo cannot keep CID images, and Gmail strips data: URIs, so the PNG is
-    hosted on Cloudinary (or EMAIL_WORDMARK_URL). That CDN fetch is much faster
-    than pointing Gmail at the Render app origin. HTML text is last-resort only.
+    hosted on Cloudinary (or EMAIL_WORDMARK_URL). Local sends use the live
+    operations.kynvera.net PNG because localhost is not fetchable by inboxes.
+    HTML text is last-resort only (tests).
     """
     hosted = _hosted_wordmark_url()
     if hosted:
@@ -1145,7 +1186,7 @@ def send_mfa_disabled_email(user_email, username, *, by_admin=False, full_name=N
         next_step = 'If you did not expect this, contact your administrator immediately.'
     else:
         subject = 'Your Kynvera authenticator was turned off'
-        intro = 'The authenticator app on your Kynvera account was turned off. You can sign in with your password only until you set it up again.'
+        intro = 'The authenticator app on your Kynvera account was turned off. You can sign in with your password only. The same pairing is kept — turn it back on from Profile with a new 6-digit code, or scan the same QR on a new phone.'
         next_step = 'If you did not turn this off, contact your administrator immediately.'
     body = f"""Hello {display},
 
@@ -1223,6 +1264,33 @@ def notify_user_mfa_email(user, *, enabled, by_admin=False):
     except Exception as email_error:
         logger.warning('MFA notification email failed: %s', email_error)
         return False
+
+
+def notify_user_mfa_email_later(user, *, enabled, by_admin=False):
+    """Return the profile address immediately. Send mail in the background.
+
+    Tests send synchronously so assertions still see the mailer. Live requests
+    must not wait on Brevo/Cloudinary or the Security panel spinner hangs.
+    """
+    try:
+        if current_app.config.get('TESTING'):
+            return notify_user_mfa_email(user, enabled=enabled, by_admin=by_admin)
+    except Exception:
+        pass
+    email = (getattr(user, 'email', None) or '').strip()
+    domain = email.rsplit('@', 1)[-1].lower() if '@' in email else ''
+    if not email or domain in _NON_DELIVERABLE_EMAIL_DOMAINS:
+        return False
+    app = current_app._get_current_object()
+    user_id = int(getattr(user, 'id'))
+    def _run():
+        with app.app_context():
+            from app.models import User, db
+            target = db.session.get(User, user_id)
+            if target is not None:
+                notify_user_mfa_email(target, enabled=enabled, by_admin=by_admin)
+    threading.Thread(target=_run, daemon=True, name='kynvera-mfa-notice').start()
+    return email
 
 
 def send_admin_edit_otp_email(user_email, code, full_name=None):

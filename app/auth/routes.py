@@ -803,6 +803,8 @@ def mfa_setup():
         'qr_data_url': _totp_qr_data_url(uri),
         'qr_image_url': '/api/auth/mfa/qr.png',
         'mfa_enabled': False,
+        'mfa_configured': True,
+        'reused': reused,
     }, message='Scan QR / enter secret, then confirm with /mfa/enable')
 
 
@@ -849,15 +851,15 @@ def mfa_enable():
     db.session.commit()
     db.session.refresh(user)
     log_audit(user.id, 'mfa_enabled', 'user', str(user.id))
-    from common.email_service import notify_user_mfa_email
-    sent_to = notify_user_mfa_email(user, enabled=True)
+    from common.email_service import notify_user_mfa_email_later
+    sent_to = notify_user_mfa_email_later(user, enabled=True)
     if sent_to is True:
         sent_to = (user.email or '').strip() or None
     elif not sent_to:
         sent_to = None
     return success_response(
-        {'mfa_enabled': True, 'sent_to': sent_to},
-        message='MFA enabled' + (f'. A notice was emailed to {sent_to}' if sent_to else ''),
+        {'mfa_enabled': True, 'mfa_configured': True, 'sent_to': sent_to},
+        message='MFA enabled' + (f'. A notice will be emailed to {sent_to}' if sent_to else ''),
     )
 
 
@@ -872,19 +874,22 @@ def mfa_disable():
     if not user.check_password(password):
         return error_response('Password required to disable MFA', 401, 'INVALID_PASSWORD')
     user.mfa_enabled = False
-    user.mfa_secret = None
     db.session.commit()
     db.session.refresh(user)
     log_audit(user.id, 'mfa_disabled', 'user', str(user.id))
-    from common.email_service import notify_user_mfa_email
-    sent_to = notify_user_mfa_email(user, enabled=False)
+    from common.email_service import notify_user_mfa_email_later
+    sent_to = notify_user_mfa_email_later(user, enabled=False)
     if sent_to is True:
         sent_to = (user.email or '').strip() or None
     elif not sent_to:
         sent_to = None
     return success_response(
-        {'mfa_enabled': False, 'sent_to': sent_to},
-        message='MFA disabled' + (f'. A notice was emailed to {sent_to}' if sent_to else ''),
+        {
+            'mfa_enabled': False,
+            'mfa_configured': bool(getattr(user, 'mfa_secret', None)),
+            'sent_to': sent_to,
+        },
+        message='MFA turned off' + (f'. A notice will be emailed to {sent_to}' if sent_to else ''),
     )
 
 

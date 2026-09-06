@@ -115,6 +115,23 @@ def test_wordmark_src_skips_localhost(app):
         assert '#ff8e68' in html
 
 
+def test_live_local_send_uses_public_wordmark_png(app, monkeypatch):
+    from common import email_service as es
+
+    monkeypatch.setitem(app.config, 'TESTING', False)
+    monkeypatch.setitem(app.config, 'APP_BASE_URL', 'http://localhost:5002')
+    monkeypatch.setitem(app.config, 'EMAIL_WORDMARK_URL', '')
+    with app.app_context():
+        es._cloudinary_wordmark_url_cache = ''
+        html = es._branded_auth_html(title='Login details', greeting='Hello', paragraphs=['Hi'])
+        assert 'localhost' not in html
+        assert 'cid:kynvera-wordmark' not in html
+        assert es._DEFAULT_PUBLIC_WORDMARK_URL in html
+        assert '<img ' in html
+        assert 'alt="Kynvera"' in html
+        assert 'Kynvera</span>' not in html
+
+
 def test_wordmark_uses_official_png_when_hosted(app, monkeypatch):
     from common import email_service as es
 
@@ -491,3 +508,48 @@ def test_user_change_password_sends_notification(client, auth_headers, app, monk
     assert response.status_code == 200
     assert 'password' in captured.get('subject', '').lower()
     assert 'administrator updated' not in captured.get('body', '').lower()
+
+
+def test_brevo_blocks_this_ip_detects_authorised_ip_error():
+    from common.email_service import _brevo_blocks_this_ip
+
+    assert _brevo_blocks_this_ip(
+        '{"message":"We have detected you are using an unrecognised IP address 109.177.68.52"}'
+    )
+    assert _brevo_blocks_this_ip('https://app.brevo.com/security/authorised_ips')
+    assert not _brevo_blocks_this_ip('{"message":"invalid_parameter"}')
+
+
+def test_local_falls_back_to_smtp_when_brevo_https_fails(app, monkeypatch):
+    from common import email_service as es
+
+    monkeypatch.setattr(es, '_running_on_render', lambda: False)
+    monkeypatch.setattr(es, 'brevo_api_key', lambda app=None: 'xkeysib-test')
+    monkeypatch.setattr(es, '_send_email_brevo_http', lambda *a, **k: False)
+    monkeypatch.setattr(es, 'mailjet_credentials', lambda app=None: None)
+
+    called = {}
+
+    def _smtp(app, recipient, subject, body, html_body=None, cc=None, attachments=None):
+        called['to'] = recipient
+        return True
+
+    monkeypatch.setattr(es, '_send_email_smtp', _smtp)
+    with app.app_context():
+        assert es._deliver_email('ops@kynvera.store', 'Subject', 'Body') is True
+    assert called['to'] == 'ops@kynvera.store'
+
+
+def test_render_does_not_fall_back_when_brevo_https_fails(app, monkeypatch):
+    from common import email_service as es
+
+    monkeypatch.setattr(es, '_running_on_render', lambda: True)
+    monkeypatch.setattr(es, 'brevo_api_key', lambda app=None: 'xkeysib-test')
+    monkeypatch.setattr(es, '_send_email_brevo_http', lambda *a, **k: False)
+
+    def _smtp(*a, **k):
+        raise AssertionError('SMTP must not run on Render after Brevo failure')
+
+    monkeypatch.setattr(es, '_send_email_smtp', _smtp)
+    with app.app_context():
+        assert es._deliver_email('ops@kynvera.store', 'Subject', 'Body') is False

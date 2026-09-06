@@ -467,7 +467,7 @@
       const who = username || 'this user';
       let text = 'Reset the authenticator app for ' + who;
       if (addr) text += ' (' + addr + ')';
-      text += '? They will sign in with password only until they set up a new QR from Profile.';
+      text += '? This removes the pairing completely. They will sign in with password only until they scan a new QR from Profile.';
       if (addr) {
         text += ' A notice will be emailed to ' + addr + '.';
       } else {
