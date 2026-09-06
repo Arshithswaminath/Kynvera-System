@@ -110,7 +110,7 @@ MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
 MAIL_USERNAME = os.getenv("MAIL_USERNAME")
 MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
 MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
-MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "noreply@injaaz.com")
+MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "support@kynvera.net")
 
 # Brevo (Sendinblue) — HTTPS transactional API (preferred on Render free tier)
 BREVO_API_KEY = os.getenv("BREVO_API_KEY")

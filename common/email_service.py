@@ -26,12 +26,34 @@ logger = logging.getLogger(__name__)
 BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email"
 MAILJET_SEND_URL = "https://api.mailjet.com/v3.1/send"
 
+# Verified Brevo sender for Kynvera transactional mail.
+DEFAULT_MAIL_SENDER = 'support@kynvera.net'
+# Leftover Render value: Brevo accepts the API call, then rejects the message.
+_UNVERIFIED_MAIL_SENDERS = frozenset({
+    'contact@kynvera.net',
+})
+
 # Gmail/Yahoo/Outlook DMARC rejects third-party API sends that claim these From addresses.
 # Brevo/Mailjet often return HTTP 201, then mark the message Error in the dashboard.
 _CONSUMER_SENDER_DOMAINS = frozenset({
     'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.uk',
     'hotmail.com', 'outlook.com', 'live.com', 'icloud.com', 'me.com',
 })
+
+
+def _resolved_mail_sender(app):
+    raw = str(
+        app.config.get('MAIL_DEFAULT_SENDER') or app.config.get('MAIL_USERNAME') or ''
+    ).strip()
+    if not raw or raw.lower() in _UNVERIFIED_MAIL_SENDERS:
+        if raw:
+            logger.warning(
+                'MAIL_DEFAULT_SENDER %s is not a verified sender; using %s',
+                raw,
+                DEFAULT_MAIL_SENDER,
+            )
+        return DEFAULT_MAIL_SENDER
+    return raw
 
 
 def _api_sender_blocked_reason(mail_sender, provider):
@@ -41,7 +63,7 @@ def _api_sender_blocked_reason(mail_sender, provider):
         return None
     return (
         f'{provider} cannot send From {email}. Set MAIL_DEFAULT_SENDER to an address '
-        f'verified in {provider} on a domain you control (e.g. noreply@injaaz.ae). '
+        f'verified in {provider} on a domain you control (e.g. {DEFAULT_MAIL_SENDER}). '
         'Gmail as From is accepted by the API, then fails as Error in the provider dashboard.'
     )
 
@@ -212,7 +234,7 @@ def _iter_attachment_items(attachments):
 
 def _send_email_brevo_http(app, recipient, subject, body, html_body, cc, attachments, api_key):
     """Send via Brevo transactional REST API (HTTPS)."""
-    mail_sender = app.config.get("MAIL_DEFAULT_SENDER") or app.config.get("MAIL_USERNAME")
+    mail_sender = _resolved_mail_sender(app)
     if not mail_sender:
         logger.error("Brevo: set MAIL_DEFAULT_SENDER to a verified sender in Brevo")
         return False
@@ -291,7 +313,7 @@ def _send_email_mailjet_http(
     app, recipient, subject, body, html_body, cc, attachments, api_key, secret_key
 ):
     """Send via Mailjet REST API v3.1 (HTTPS). Works when outbound SMTP is blocked (e.g. Render free)."""
-    mail_sender = app.config.get("MAIL_DEFAULT_SENDER") or app.config.get("MAIL_USERNAME")
+    mail_sender = _resolved_mail_sender(app)
     if not mail_sender:
         logger.error("Mailjet: set MAIL_DEFAULT_SENDER to a verified sender in Mailjet")
         return False
@@ -526,7 +548,7 @@ def _deliver_email(recipient, subject, body, html_body=None, cc=None, attachment
         mail_user = app.config.get('MAIL_USERNAME')
         mail_pass = app.config.get('MAIL_PASSWORD')
         mail_use_tls = app.config.get('MAIL_USE_TLS', True)
-        mail_sender = app.config.get('MAIL_DEFAULT_SENDER', mail_user or 'noreply@injaaz.com')
+        mail_sender = _resolved_mail_sender(app) or mail_user or DEFAULT_MAIL_SENDER
 
         if not mail_server or not mail_port:
             logger.warning(

@@ -147,6 +147,31 @@ def test_brevo_replaces_cid_image_with_html_wordmark(app, monkeypatch):
     assert not captured['attachment']
 
 
+def test_brevo_remaps_unverified_contact_sender(app, monkeypatch):
+    from common import email_service as es
+
+    captured = {}
+
+    class _Resp:
+        status_code = 201
+
+        def json(self):
+            return {'messageId': 'test'}
+
+    def _post(url, json=None, headers=None, timeout=None):
+        captured['sender'] = (json or {}).get('sender')
+        return _Resp()
+
+    monkeypatch.setattr(es.requests, 'post', _post)
+    with app.app_context():
+        app.config['MAIL_DEFAULT_SENDER'] = 'contact@kynvera.net'
+        ok = es._send_email_brevo_http(
+            app, 'support@kynvera.store', 'Subject', 'Body', '<p>Hi</p>', None, None, 'test-key',
+        )
+    assert ok is True
+    assert captured['sender'] == {'name': 'Kynvera', 'email': 'support@kynvera.net'}
+
+
 def test_password_updated_email_logs_preview(app, monkeypatch):
     from app.models import EmailLog
     from common import email_service as es
