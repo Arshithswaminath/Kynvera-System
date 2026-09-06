@@ -1115,12 +1115,17 @@ def create_app():
 
     @app.route('/favicon.ico')
     def favicon():
-        """Serve favicon"""
-        return send_from_directory(
+        """Site icon at the well-known URL Googlebot fetches for Search results.
+
+        Must include a 48×48 (or multiple) size — 16/32px icons are ignored.
+        """
+        response = send_from_directory(
             os.path.join(app.static_folder, 'images', 'kynvera'),
-            'kynvera-mark-32.png',
-            mimetype='image/png',
+            'favicon.ico',
+            mimetype='image/x-icon',
         )
+        response.headers['Cache-Control'] = 'public, max-age=604800'
+        return response
     
     @app.route('/apple-touch-icon.png')
     @app.route('/apple-touch-icon-precomposed.png')
@@ -1143,6 +1148,8 @@ def create_app():
             "Allow: /privacy\n"
             "Allow: /terms\n"
             "Allow: /static/\n"
+            "Allow: /favicon.ico\n"
+            "Allow: /apple-touch-icon.png\n"
             "Allow: /offline\n"
             "Allow: /manifest.json\n"
             "Disallow: /admin\n"

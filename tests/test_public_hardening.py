@@ -8,7 +8,27 @@ def test_robots_txt_disallows_app_shells(client):
     assert 'Disallow: /admin' in body
     assert 'Disallow: /api/' in body
     assert 'Allow: /privacy' in body
+    assert 'Allow: /favicon.ico' in body
     assert response.mimetype == 'text/plain'
+
+
+def test_favicon_ico_meets_google_search_size(client):
+    import io
+    from PIL import Image
+
+    response = client.get('/favicon.ico')
+    assert response.status_code == 200
+    assert 'image' in (response.mimetype or '')
+    icon = Image.open(io.BytesIO(response.data))
+    sizes = list(icon.ico.sizes()) if getattr(icon, 'ico', None) else [icon.size]
+    assert max(width for width, _height in sizes) >= 48
+
+
+def test_landing_declares_google_favicon_sizes(client):
+    html = client.get('/').get_data(as_text=True)
+    assert 'href="/favicon.ico"' in html
+    assert 'kynvera-mark-48.png' in html
+    assert 'kynvera-mark-96.png' in html
 
 
 def test_privacy_and_terms_pages(client):
