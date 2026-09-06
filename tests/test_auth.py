@@ -579,3 +579,86 @@ class TestAuthenticatorMfa:
             assert after.get('access_token')
             assert not after.get('mfa_required')
             assert after.get('user', {}).get('mfa_enabled') is False
+
+    def test_mfa_changes_email_the_user(self, client, auth_headers, admin_auth_headers, standard_user, app, monkeypatch):
+        calls = []
+
+        def _capture(user, *, enabled, by_admin=False):
+            calls.append({
+                'email': user.email,
+                'enabled': enabled,
+                'by_admin': by_admin,
+            })
+            return True
+
+        monkeypatch.setattr('common.email_service.notify_user_mfa_email', _capture)
+
+        with app.app_context():
+            _enroll_authenticator(client, auth_headers)
+            assert any(c['enabled'] is True and c['by_admin'] is False for c in calls)
+
+            disabled = client.post(
+                '/api/auth/mfa/disable',
+                headers=auth_headers,
+                json={'password': 'TestPass123'},
+            )
+            assert disabled.status_code == 200
+            assert any(c['enabled'] is False and c['by_admin'] is False for c in calls)
+
+            _enroll_authenticator(client, auth_headers)
+            reset = client.post(
+                f'/api/admin/users/{standard_user.id}/reset-mfa',
+                headers=admin_auth_headers,
+            )
+            assert reset.status_code == 200
+            assert any(c['enabled'] is False and c['by_admin'] is True for c in calls)
+
+    def test_admin_mfa_reset_emails_fitted_profile_address(
+        self, client, auth_headers, admin_auth_headers, standard_user, app, monkeypatch
+    ):
+        from app.models import User, db
+
+        captured = {}
+
+        def _fake_disabled(user_email, username, *, by_admin=False, full_name=None):
+            captured['email'] = user_email
+            captured['username'] = username
+            captured['by_admin'] = by_admin
+            return True
+
+        monkeypatch.setattr('common.email_service.send_mfa_disabled_email', _fake_disabled)
+
+        with app.app_context():
+            _enroll_authenticator(client, auth_headers)
+            user = db.session.get(User, standard_user.id)
+            user.email = 'fitted-on-profile@kynvera.store'
+            db.session.commit()
+
+            reset = client.post(
+                f'/api/admin/users/{standard_user.id}/reset-mfa',
+                headers=admin_auth_headers,
+            )
+            body = reset.get_json() or {}
+            assert reset.status_code == 200
+            assert body.get('success') is True
+            assert captured.get('email') == 'fitted-on-profile@kynvera.store'
+            assert captured.get('by_admin') is True
+            assert body.get('sent_to') == 'fitted-on-profile@kynvera.store'
+            assert 'fitted-on-profile@kynvera.store' in (body.get('message') or '')
+
+    def test_mfa_notify_skips_example_dot_com(self, client, auth_headers, app, monkeypatch):
+        from app.models import User, db
+        from common.email_service import notify_user_mfa_email
+
+        sent = []
+        monkeypatch.setattr(
+            'common.email_service.send_mfa_enabled_email',
+            lambda *a, **k: sent.append(a) or True,
+        )
+
+        with app.app_context():
+            user = User.query.filter_by(username='testuser').one()
+            assert user.email == 'test@example.com'
+            assert notify_user_mfa_email(user, enabled=True) is False
+            assert sent == []
+

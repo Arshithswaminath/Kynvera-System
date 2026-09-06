@@ -457,14 +457,23 @@
     if (Number.isFinite(uid)) openPasswordResetConfirmModal(uid, u ? u.username : '');
   };
 
-  w.openMfaResetConfirmModal = function openMfaResetConfirmModal(userId, username) {
-    mfaResetConfirmContext = { userId: userId, username: username };
+  w.openMfaResetConfirmModal = function openMfaResetConfirmModal(userId, username, email) {
+    const addr = (email || '').trim();
+    mfaResetConfirmContext = { userId: userId, username: username, email: addr };
     const modal = document.getElementById('mfaResetConfirmModal');
     if (!modal) return;
     const intro = document.getElementById('mfaResetConfirmIntro');
     if (intro) {
-      intro.textContent = 'Reset the authenticator app for ' + (username || 'this user')
-        + '? They will sign in with password only until they set up a new QR from Profile.';
+      const who = username || 'this user';
+      let text = 'Reset the authenticator app for ' + who;
+      if (addr) text += ' (' + addr + ')';
+      text += '? They will sign in with password only until they set up a new QR from Profile.';
+      if (addr) {
+        text += ' A notice will be emailed to ' + addr + '.';
+      } else {
+        text += ' This account has no email address, so no notice can be sent.';
+      }
+      intro.textContent = text;
     }
     ensurePortalModal(modal);
     activatePortalModal(modal);
@@ -509,8 +518,18 @@
   w.profileModalResetMfa = function profileModalResetMfa() {
     const uid = parseInt(document.getElementById('profileUserId').value, 10);
     const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
+    const formEmailEl = document.getElementById('profileEmail');
+    const fittedEmail = String(
+      (formEmailEl && formEmailEl.value) || (u && u.email) || ''
+    ).trim();
+    const nameEl = document.getElementById('profileFullName');
+    const userEl = document.getElementById('profileUsername');
+    const name = (u && (u.full_name || u.username))
+      || (nameEl && nameEl.value)
+      || (userEl && userEl.value)
+      || '';
     closeUserProfileModal();
-    if (Number.isFinite(uid)) openMfaResetConfirmModal(uid, u ? (u.full_name || u.username) : '');
+    if (Number.isFinite(uid)) openMfaResetConfirmModal(uid, name, fittedEmail);
   };
 
   w.profileModalViewActivity = function profileModalViewActivity() {

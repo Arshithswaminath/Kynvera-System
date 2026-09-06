@@ -81,8 +81,11 @@ def test_account_created_email_includes_username_and_wordmark(app, monkeypatch):
         assert ok is True
         assert 'arshith' in captured['body']
         assert 'TempPass99' in captured['body']
-        assert 'https://app.kynvera.example/static/images/kynvera/kynvera-wordmark.png' in captured['html']
+        assert 'Kynvera</span>' in captured['html']
+        assert '#ff8e68' in captured['html']
+        assert 'kynvera-wordmark.png' not in captured['html']
         assert 'cid:kynvera-wordmark' not in captured['html']
+        assert '<img ' not in captured['html']
         assert 'height:8px' not in captured['html']
         assert 'Username' in captured['html']
         assert captured['attachments'] == []
@@ -104,11 +107,11 @@ def test_wordmark_src_skips_localhost(app):
         es._cloudinary_wordmark_url_cache = ''
         html = es._branded_auth_html(title='Login details', greeting='Hello', paragraphs=['Hi'])
         assert 'localhost' not in html
-        if es.brevo_api_key():
-            assert 'cid:kynvera-wordmark' not in html
-            assert 'Kynvera</span>' in html
-        else:
-            assert 'cid:kynvera-wordmark' in html
+        assert 'cid:kynvera-wordmark' not in html
+        assert 'kynvera-wordmark.png' not in html
+        assert '<img ' not in html
+        assert 'Kynvera</span>' in html
+        assert '#ff8e68' in html
 
 
 def test_brevo_replaces_cid_image_with_html_wordmark(app, monkeypatch):
@@ -207,6 +210,46 @@ def test_account_status_email_logs_preview(app, monkeypatch):
         assert ok is True
         row = EmailLog.query.filter_by(source='auth').order_by(EmailLog.id.desc()).first()
         assert row.body_preview == 'Account activated notification'
+
+
+def test_mfa_emails_log_preview_and_inline_wordmark(app, monkeypatch):
+    from app.models import EmailLog
+    from common import email_service as es
+
+    captured = {}
+
+    def _capture(recipient, subject, body, html_body=None, cc=None, attachments=None):
+        captured['subject'] = subject
+        captured['body'] = body
+        captured['html'] = html_body or ''
+        return True
+
+    monkeypatch.setattr(es, '_deliver_email', _capture)
+
+    with app.app_context():
+        ok = es.send_mfa_enabled_email('user@example.com', 'alice', full_name='Alice')
+        assert ok is True
+        assert captured['subject'] == 'Your Kynvera authenticator is on'
+        assert 'is now required' in captured['body']
+        assert 'Kynvera</span>' in captured['html']
+        assert '<img ' not in captured['html']
+        row = EmailLog.query.filter_by(source='auth').order_by(EmailLog.id.desc()).first()
+        assert row.body_preview == 'Authenticator enabled notification'
+
+        ok = es.send_mfa_disabled_email('user@example.com', 'alice', full_name='Alice')
+        assert ok is True
+        assert captured['subject'] == 'Your Kynvera authenticator was turned off'
+        row = EmailLog.query.filter_by(source='auth').order_by(EmailLog.id.desc()).first()
+        assert row.body_preview == 'Authenticator disabled notification'
+
+        ok = es.send_mfa_disabled_email(
+            'user@example.com', 'alice', by_admin=True, full_name='Alice'
+        )
+        assert ok is True
+        assert captured['subject'] == 'Your Kynvera authenticator was reset'
+        assert 'administrator reset' in captured['body']
+        row = EmailLog.query.filter_by(source='auth').order_by(EmailLog.id.desc()).first()
+        assert row.body_preview == 'Authenticator disabled notification'
 
 
 def test_email_logs_requires_admin(client, auth_headers):

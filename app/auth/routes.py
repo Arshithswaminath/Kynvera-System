@@ -821,8 +821,18 @@ def mfa_enable():
         return error_response('Invalid MFA code', 401, 'INVALID_MFA')
     user.mfa_enabled = True
     db.session.commit()
+    db.session.refresh(user)
     log_audit(user.id, 'mfa_enabled', 'user', str(user.id))
-    return success_response({'mfa_enabled': True}, message='MFA enabled')
+    from common.email_service import notify_user_mfa_email
+    sent_to = notify_user_mfa_email(user, enabled=True)
+    if sent_to is True:
+        sent_to = (user.email or '').strip() or None
+    elif not sent_to:
+        sent_to = None
+    return success_response(
+        {'mfa_enabled': True, 'sent_to': sent_to},
+        message='MFA enabled' + (f'. A notice was emailed to {sent_to}' if sent_to else ''),
+    )
 
 
 @auth_bp.route('/mfa/disable', methods=['POST'])
@@ -838,8 +848,18 @@ def mfa_disable():
     user.mfa_enabled = False
     user.mfa_secret = None
     db.session.commit()
+    db.session.refresh(user)
     log_audit(user.id, 'mfa_disabled', 'user', str(user.id))
-    return success_response({'mfa_enabled': False}, message='MFA disabled')
+    from common.email_service import notify_user_mfa_email
+    sent_to = notify_user_mfa_email(user, enabled=False)
+    if sent_to is True:
+        sent_to = (user.email or '').strip() or None
+    elif not sent_to:
+        sent_to = None
+    return success_response(
+        {'mfa_enabled': False, 'sent_to': sent_to},
+        message='MFA disabled' + (f'. A notice was emailed to {sent_to}' if sent_to else ''),
+    )
 
 
 @auth_bp.route('/mfa/status', methods=['GET'])

@@ -33,6 +33,11 @@ _UNVERIFIED_MAIL_SENDERS = frozenset({
     'contact@kynvera.net',
     'support@kynvera.net',
 })
+# RFC 2606 placeholders — Brevo blacklists these (blocked : due to blacklist user).
+_NON_DELIVERABLE_EMAIL_DOMAINS = frozenset({
+    'example.com', 'example.net', 'example.org',
+    'localhost', 'invalid',
+})
 
 # Gmail/Yahoo/Outlook DMARC rejects third-party API sends that claim these From addresses.
 # Brevo/Mailjet often return HTTP 201, then mark the message Error in the dashboard.
@@ -426,6 +431,14 @@ def _body_preview(body, source):
             or 'account was changed' in text
         ):
             return 'Password updated notification'
+        if 'authenticator' in text and (
+            'is now on' in text or 'is now required' in text or 'has been set up' in text
+        ):
+            return 'Authenticator enabled notification'
+        if 'authenticator' in text and (
+            'turned off' in text or 'was reset' in text or 'reset the authenticator' in text
+        ):
+            return 'Authenticator disabled notification'
         return 'Password reset notification'
     text = ' '.join((body or '').split())
     if len(text) > _BODY_PREVIEW_MAX:
@@ -777,17 +790,12 @@ def _esc(value):
 
 
 def _logo_html():
-    hosted = _hosted_wordmark_url()
-    if hosted:
-        return _img_wordmark(hosted)
-    try:
-        if brevo_api_key():
-            # Brevo transactional API drops CID images; Gmail also strips data: URIs.
-            return _html_wordmark()
-    except Exception:
-        pass
-    if _wordmark_path():
-        return _img_wordmark(f'cid:{_WORDMARK_CID}')
+    """Coral Kynvera wordmark as HTML so it is visible as soon as the message opens.
+
+    Remote PNG URLs load after the rest of the email. CID images are dropped by
+    Brevo, and Gmail strips data: URIs — so an inline HTML wordmark is the only
+    path that appears immediately in inbox clients.
+    """
     return _html_wordmark()
 
 
@@ -1084,6 +1092,119 @@ Kynvera
         cta_label='Sign in to Kynvera',
     )
     return _send_auth_email(user_email, subject, body, html_body)
+
+
+def send_mfa_enabled_email(user_email, username, full_name=None):
+    """Notify the user that authenticator-app MFA is now on."""
+    display = (full_name or '').strip() or username
+    subject = 'Your Kynvera authenticator is on'
+    intro = 'An authenticator app is now required to sign in to your Kynvera account.'
+    next_step = 'If you did not set this up, contact your administrator immediately.'
+    body = f"""Hello {display},
+
+{intro}
+
+{next_step}
+
+Kynvera
+"""
+    html_body = _branded_auth_html(
+        title='Authenticator on',
+        greeting=f'Hello {_esc(display)}',
+        paragraphs=[intro, next_step],
+        cta_url=_login_url(),
+        cta_label='Sign in to Kynvera',
+    )
+    return _send_auth_email(user_email, subject, body, html_body)
+
+
+def send_mfa_disabled_email(user_email, username, *, by_admin=False, full_name=None):
+    """Notify the user that authenticator-app MFA was turned off or reset."""
+    display = (full_name or '').strip() or username
+    if by_admin:
+        subject = 'Your Kynvera authenticator was reset'
+        intro = 'An administrator reset the authenticator on your Kynvera account. You can sign in with your password only, then set up a new authenticator from Profile.'
+        next_step = 'If you did not expect this, contact your administrator immediately.'
+    else:
+        subject = 'Your Kynvera authenticator was turned off'
+        intro = 'The authenticator app on your Kynvera account was turned off. You can sign in with your password only until you set it up again.'
+        next_step = 'If you did not turn this off, contact your administrator immediately.'
+    body = f"""Hello {display},
+
+{intro}
+
+{next_step}
+
+Kynvera
+"""
+    html_body = _branded_auth_html(
+        title='Authenticator off',
+        greeting=f'Hello {_esc(display)}',
+        paragraphs=[intro, next_step],
+        cta_url=_login_url(),
+        cta_label='Sign in to Kynvera',
+    )
+    return _send_auth_email(user_email, subject, body, html_body)
+
+
+def notify_user_mfa_email(user, *, enabled, by_admin=False):
+    """Email the address currently saved on that user's profile. Never raises.
+
+    Reloads the row by id so a stale in-memory email cannot be used.
+    Returns the profile email that was handed to the mailer, or False.
+    """
+    from app.models import User, db
+
+    uid = getattr(user, 'id', None)
+    target = None
+    if uid is not None:
+        try:
+            target = db.session.get(User, int(uid))
+        except Exception:
+            target = None
+    if target is None:
+        target = user
+
+    email = (getattr(target, 'email', None) or '').strip()
+    username = (
+        getattr(target, 'username', None) or getattr(user, 'username', None) or ''
+    ).strip()
+    full_name = getattr(target, 'full_name', None)
+    domain = email.rsplit('@', 1)[-1].lower() if '@' in email else ''
+    if not email:
+        logger.warning(
+            'MFA notification skipped: user_id=%s username=%s has no profile email',
+            uid,
+            username,
+        )
+        return False
+    if domain in _NON_DELIVERABLE_EMAIL_DOMAINS:
+        logger.warning(
+            'MFA notification skipped: user_id=%s username=%s profile email %s is not deliverable',
+            uid,
+            username,
+            email,
+        )
+        return False
+
+    logger.info(
+        'MFA notification to profile email %s (user_id=%s enabled=%s admin_reset=%s)',
+        email,
+        uid,
+        enabled,
+        by_admin,
+    )
+    try:
+        if enabled:
+            ok = send_mfa_enabled_email(email, username, full_name=full_name)
+        else:
+            ok = send_mfa_disabled_email(
+                email, username, by_admin=by_admin, full_name=full_name
+            )
+        return email if ok else False
+    except Exception as email_error:
+        logger.warning('MFA notification email failed: %s', email_error)
+        return False
 
 
 def send_admin_edit_otp_email(user_email, code, full_name=None):

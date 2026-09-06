@@ -1933,6 +1933,42 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         background: #ffffff;
       }
 
+      .pro-password-wrap {
+        position: relative;
+      }
+
+      .pro-password-wrap .pro-field-input {
+        padding-right: 2.75rem;
+      }
+
+      .pro-password-toggle {
+        position: absolute;
+        inset-block: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        min-width: 44px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: #8e8e93;
+        cursor: pointer;
+      }
+
+      .pro-password-toggle:hover,
+      .pro-password-toggle:focus-visible {
+        color: #1c1c1e;
+        outline: none;
+      }
+
+      .pro-password-toggle svg {
+        width: 18px;
+        height: 18px;
+        display: block;
+      }
+
       .pro-save-btn {
         margin-top: 0.48rem;
         border-radius: 999px;
@@ -2796,7 +2832,9 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
                   <div class="pro-security-title">${user.mfa_enabled ? 'Authenticator app is on' : 'Authenticator app'}</div>
                   <div class="pro-security-desc">${user.mfa_enabled
                     ? 'Microsoft Authenticator or Google Authenticator is required at sign-in.'
-                    : 'Optional. Scan a QR with Microsoft Authenticator or Google Authenticator.'}</div>
+                    : 'Optional. Scan a QR with Microsoft Authenticator or Google Authenticator.'}${user.email
+                    ? ' Notices go to ' + escapeHtml(user.email) + '.'
+                    : ' This account has no email, so no notice can be sent.'}</div>
                 </div>
                 <div class="pro-security-action">
                   <button type="button" class="pro-btn ${user.mfa_enabled ? 'pro-btn-outline' : 'pro-btn-primary'} pro-btn-sm" onclick="${user.mfa_enabled ? 'showMfaDisableForm()' : 'startMfaSetup()'}">
@@ -3313,6 +3351,31 @@ function _mfaAuthHeaders() {
   };
 }
 
+async function _signedInProfileEmail() {
+  try {
+    const response = await fetch('/api/auth/me', { headers: _mfaAuthHeaders() });
+    const data = await response.json().catch(function () { return {}; });
+    const email = data && data.user && data.user.email ? String(data.user.email).trim() : '';
+    if (email) {
+      try {
+        const raw = localStorage.getItem('user');
+        const user = raw ? JSON.parse(raw) : {};
+        user.email = email;
+        if (data.user.username) user.username = data.user.username;
+        localStorage.setItem('user', JSON.stringify(user));
+      } catch (e) { /* ignore */ }
+      return email;
+    }
+  } catch (e) { /* ignore */ }
+  try {
+    const raw = localStorage.getItem('user');
+    const user = raw ? JSON.parse(raw) : {};
+    return String(user.email || '').trim();
+  } catch (e) {
+    return '';
+  }
+}
+
 function _mfaPatchLocalUser(enabled) {
   try {
     const raw = localStorage.getItem('user');
@@ -3348,10 +3411,14 @@ window.startMfaSetup = async function startMfaSetup() {
       throw new Error(data.error || 'Could not start authenticator setup');
     }
     const secret = data.secret ? String(data.secret) : '';
+    const profileEmail = await _signedInProfileEmail();
+    const noticeLine = profileEmail
+      ? ' A confirmation notice will be emailed to ' + escapeHtml(profileEmail) + '.'
+      : ' This signed-in account has no email, so no notice can be sent.';
     panel.innerHTML = `
       <div class="pro-mfa-setup">
         <p class="pro-mfa-setup-title">Scan with your authenticator app</p>
-        <p class="pro-mfa-setup-desc">Open Microsoft Authenticator or Google Authenticator, add an account, and scan this QR. Then enter the 6-digit code to confirm.</p>
+        <p class="pro-mfa-setup-desc">Open Microsoft Authenticator or Google Authenticator, add an account, and scan this QR. Then enter the 6-digit code to confirm.${noticeLine}</p>
         <img class="pro-mfa-qr" id="mfaQrImage" alt="Authenticator QR code" width="180" height="180">
         <p class="pro-mfa-secret">${escapeHtml(secret)}</p>
         <label class="pro-field" style="display:block;margin-bottom:0.75rem;">
@@ -3418,24 +3485,46 @@ window.confirmMfaEnable = async function confirmMfaEnable() {
       throw new Error(data.error || 'Invalid code');
     }
     _mfaPatchLocalUser(true);
-    if (typeof loadProfileData === 'function') loadProfileData();
+    const panel = _mfaPanel();
+    if (panel && data.sent_to) {
+      panel.hidden = false;
+      panel.innerHTML = '<p class="pro-mfa-setup-desc">Authenticator is on. A notice was emailed to '
+        + escapeHtml(data.sent_to) + '.</p>';
+      setTimeout(function () {
+        if (typeof loadProfileData === 'function') loadProfileData();
+      }, 2500);
+    } else if (typeof loadProfileData === 'function') {
+      loadProfileData();
+    }
   } catch (err) {
     _mfaShowError('mfaSetupError', err.message || 'Could not enable authenticator');
     if (btn) btn.disabled = false;
   }
 };
 
-window.showMfaDisableForm = function showMfaDisableForm() {
+window.showMfaDisableForm = async function showMfaDisableForm() {
   const panel = _mfaPanel();
   if (!panel) return;
   panel.hidden = false;
+  const profileEmail = await _signedInProfileEmail();
+  const noticeLine = profileEmail
+    ? ' A notice will be emailed to ' + escapeHtml(profileEmail) + '.'
+    : ' This signed-in account has no email, so no notice can be sent.';
   panel.innerHTML = `
     <div class="pro-mfa-setup">
       <p class="pro-mfa-setup-title">Turn off authenticator</p>
-      <p class="pro-mfa-setup-desc">Enter your password to remove the app. You can set it up again afterwards.</p>
+      <p class="pro-mfa-setup-desc">Enter your password to remove the app. You can set it up again afterwards.${noticeLine}</p>
       <label class="pro-field" style="display:block;margin-bottom:0.75rem;">
         <span class="pro-field-label">Password</span>
-        <input type="password" class="pro-field-input" id="mfaDisablePassword" autocomplete="off" data-1p-ignore="true" data-lpignore="true">
+        <div class="pro-password-wrap">
+          <input type="password" class="pro-field-input" id="mfaDisablePassword" autocomplete="off" data-1p-ignore="true" data-lpignore="true">
+          <button type="button" class="pro-password-toggle" id="mfaDisablePasswordToggle" aria-label="Show password" aria-pressed="false" onclick="toggleMfaDisablePassword()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
       </label>
       <p class="pro-mfa-error" id="mfaDisableError"></p>
       <div style="display:flex;gap:0.75rem;">
@@ -3446,6 +3535,19 @@ window.showMfaDisableForm = function showMfaDisableForm() {
   `;
   const input = document.getElementById('mfaDisablePassword');
   if (input) input.focus();
+};
+
+window.toggleMfaDisablePassword = function toggleMfaDisablePassword() {
+  const input = document.getElementById('mfaDisablePassword');
+  const btn = document.getElementById('mfaDisablePasswordToggle');
+  if (!input || !btn) return;
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+  btn.innerHTML = show
+    ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 11 7 11 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 1 12s4 7 11 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>'
+    : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>';
 };
 
 window.submitMfaDisable = async function submitMfaDisable() {
@@ -3468,7 +3570,17 @@ window.submitMfaDisable = async function submitMfaDisable() {
       throw new Error(data.error || 'Could not turn off authenticator');
     }
     _mfaPatchLocalUser(false);
-    if (typeof loadProfileData === 'function') loadProfileData();
+    const panel = _mfaPanel();
+    if (panel && data.sent_to) {
+      panel.hidden = false;
+      panel.innerHTML = '<p class="pro-mfa-setup-desc">Authenticator is off. A notice was emailed to '
+        + escapeHtml(data.sent_to) + '.</p>';
+      setTimeout(function () {
+        if (typeof loadProfileData === 'function') loadProfileData();
+      }, 2500);
+    } else if (typeof loadProfileData === 'function') {
+      loadProfileData();
+    }
   } catch (err) {
     _mfaShowError('mfaDisableError', err.message || 'Could not turn off authenticator');
     if (btn) btn.disabled = false;

@@ -1312,21 +1312,41 @@ def reset_user_mfa(user_id):
         denied = _reject_unless_admin_edit_granted(user)
         if denied:
             return denied
+        had_mfa = bool(getattr(user, 'mfa_enabled', False) or getattr(user, 'mfa_secret', None))
         user.mfa_enabled = False
         user.mfa_secret = None
         db.session.commit()
+        db.session.refresh(user)
         actor = User.query.get(admin_id)
         log_audit(admin_id, 'mfa_reset', 'user', str(user_id), {
             'target_user': user.username,
             'reset_by': actor.username if actor else 'system',
         })
+        from common.email_service import notify_user_mfa_email
+        sent_to = notify_user_mfa_email(user, enabled=False, by_admin=True)
+        if sent_to is True:
+            sent_to = (user.email or '').strip() or None
+        elif not sent_to:
+            sent_to = None
+        message = (
+            'Authenticator reset. The user can sign in with password only, then set up a new QR from Profile.'
+        )
+        if sent_to:
+            message += f' A notice was emailed to {sent_to}.'
+        elif (user.email or '').strip():
+            message += f' Could not email {(user.email or "").strip()}.'
+        else:
+            message += ' This account has no email address, so no notice was sent.'
         return success_response({
             'user': {
                 'id': user.id,
                 'username': user.username,
+                'email': user.email,
                 'mfa_enabled': False,
-            }
-        }, message='Authenticator reset. The user can sign in with password only, then set up a new QR from Profile.')
+            },
+            'sent_to': sent_to,
+            'had_mfa': had_mfa,
+        }, message=message)
     except Exception as e:
         db.session.rollback()
         current_app.logger.error('Error resetting MFA: %s', e)
@@ -1731,11 +1751,13 @@ def update_user(user_id):
         if 'full_name' in data:
             user.full_name = data['full_name']
         if 'email' in data:
-            # Check if email is already taken
-            existing = User.query.filter_by(email=data['email']).first()
+            email = (data.get('email') or '').strip().lower()
+            if not email:
+                return jsonify({'error': 'Email is required'}), 400
+            existing = User.query.filter(func.lower(User.email) == email).first()
             if existing and existing.id != user_id:
                 return jsonify({'error': 'Email already in use'}), 400
-            user.email = data['email']
+            user.email = email
         if 'username' in data:
             # Check if username is already taken
             existing = User.query.filter_by(username=data['username']).first()
