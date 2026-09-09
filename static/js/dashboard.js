@@ -204,21 +204,14 @@ function isNavWelcomeCompact() {
   return window.matchMedia('(max-width: 600px)').matches;
 }
 
-function getNavWelcomeFirstName(user) {
-  const raw = (user && (user.full_name || user.username)) || '';
-  const trimmed = String(raw).trim();
-  if (!trimmed) return 'there';
-  return trimmed.split(/\s+/)[0];
-}
-
-/** Desktop: "Welcome, Full Name!" — phone (≤600px): "Hi, FirstName" */
+/** Desktop: "Welcome, Full Name!" — phone (≤600px): "Hi, Full Name" */
 function formatNavWelcome(user) {
-  const displayName = (user && (user.full_name || user.username)) || '';
+  const displayName = String((user && (user.full_name || user.username)) || '').trim();
   if (!displayName) {
     return isNavWelcomeCompact() ? 'Hi' : 'Kynvera';
   }
   if (isNavWelcomeCompact()) {
-    return `Hi, ${getNavWelcomeFirstName(user)}`;
+    return `Hi, ${displayName}`;
   }
   return `Welcome, ${displayName}!`;
 }
@@ -4474,6 +4467,10 @@ document.addEventListener('DOMContentLoaded', function() {
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', handleLogout);
+  }
+  const mobileDrawerLogout = document.getElementById('mobileDrawerLogout');
+  if (mobileDrawerLogout) {
+    mobileDrawerLogout.addEventListener('click', handleLogout);
   }
 });
 

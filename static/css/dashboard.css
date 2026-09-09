@@ -360,6 +360,10 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   display: none;
 }
 
+.mobile-menu-drawer-footer {
+  display: none;
+}
+
 .mobile-overlay {
   display: none;
 }
@@ -2244,6 +2248,48 @@ body.qhsi-dashboard .footer {
     flex-shrink: 0 !important;
   }
 
+  .mobile-menu-drawer-footer {
+    display: none;
+    flex: 0 0 auto !important;
+    margin: 0 !important;
+    padding: 0.85rem 1rem calc(0.85rem + env(safe-area-inset-bottom, 0px)) !important;
+    border-top: 1px solid var(--border-color, #e9eaee) !important;
+    background: #fff !important;
+  }
+
+  .mobile-drawer-logout {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 1rem;
+    border: none;
+    border-radius: 12px;
+    background: var(--primary, #ff8e68);
+    color: #fff;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(255, 142, 104, 0.2);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-drawer-logout svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .mobile-drawer-logout:hover,
+  .mobile-drawer-logout:active {
+    background: var(--primary-dark, #e05f36);
+    color: #fff;
+  }
+
   /* Save to Files — pinned under scrollable module list */
   .mobile-menu-drawer .files-menu-footer {
     flex: 0 0 auto !important;
@@ -3432,29 +3478,15 @@ body.qhsi-dashboard .footer {
     flex: 1 1 auto !important;
     min-width: 0 !important;
     align-items: center !important;
-    gap: 0.75rem !important;
+    gap: 0 !important;
     margin-right: 0 !important;
   }
 
-  .logo img {
-    flex-shrink: 0 !important;
-    height: 36px !important;
-    width: auto !important;
-  }
-
-  .logo img.logo-img-official {
-    height: 32px !important;
-    width: 32px !important;
-    border-radius: 7px !important;
-    object-fit: cover !important;
-  }
-
+  .logo img,
+  .logo img.logo-img-official,
+  .logo img.logo-img-about,
   .logo-brand {
-    display: block !important;
-    font-size: 0.8rem !important;
-    text-transform: none !important;
-    letter-spacing: 0.01em !important;
-    color: var(--logo-brand-color) !important;
+    display: none !important;
   }
 
   .logo-text {
@@ -3472,9 +3504,9 @@ body.qhsi-dashboard .footer {
   .nav-welcome,
   #welcome-text {
     display: block !important;
-    font-size: 0.9rem !important;
-    font-weight: 600 !important;
-    line-height: 1.15 !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
     text-align: left !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -3485,7 +3517,8 @@ body.qhsi-dashboard .footer {
   }
 
   .nav-welcome--compact {
-    font-size: 0.88rem !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
     letter-spacing: -0.01em;
   }
 
@@ -3524,20 +3557,18 @@ body.qhsi-dashboard .footer {
     inset: 0 !important;
   }
 
-  /* Logout: icon-only, compact */
-  .logout-btn span { display: none !important; }
-  .logout-btn {
-    padding: 0 !important;
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
-    min-height: 36px !important;
-    justify-content: center !important;
-    border-radius: 50% !important;
+  /* Phone: logout lives at the bottom of the hamburger drawer */
+  .nav-right > .logout-btn {
+    display: none !important;
   }
-  .logout-btn svg {
-    width: 20px !important;
-    height: 20px !important;
+
+  .mobile-menu-drawer-footer {
+    display: block !important;
+    margin-top: auto !important;
+  }
+
+  .mobile-menu-drawer .files-menu-footer {
+    margin-bottom: 0.5rem !important;
   }
 }
 
@@ -3653,39 +3684,28 @@ body.qhsi-dashboard .footer {
   }
   
   .logo {
-    gap: 0.75rem !important;
-  }
-  
-  .logo img {
-    height: 36px !important;
-    width: auto !important;
+    gap: 0 !important;
   }
 
-  .logo img.logo-img-official {
-    height: 32px !important;
-    width: 32px !important;
-    border-radius: 7px !important;
+  .logo img,
+  .logo img.logo-img-official,
+  .logo img.logo-img-about,
+  .logo-brand {
+    display: none !important;
   }
   
   .nav-welcome,
   #welcome-text {
-    font-size: 0.9rem !important;
+    font-size: 1rem !important;
   }
 
-  /* Logout: icon-only to save space */
-  .logout-btn span { display: none !important; }
-  .logout-btn {
-    padding: 0 !important;
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
-    min-height: 36px !important;
-    justify-content: center !important;
-    border-radius: 50% !important;
+  .nav-right > .logout-btn {
+    display: none !important;
   }
-  .logout-btn svg {
-    width: 20px !important;
-    height: 20px !important;
+
+  .mobile-menu-drawer-footer {
+    display: block !important;
+    margin-top: auto !important;
   }
 
   .mobile-menu-drawer {

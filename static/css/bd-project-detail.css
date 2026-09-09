@@ -289,20 +289,29 @@
   display:flex;align-items:center;justify-content:space-between;gap:8px;
   margin:14px 0 8px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--subtle);
 }
-.pd-quote-items-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
-.pd-quote-items{width:100%;border-collapse:collapse;font-size:13px}
-.pd-quote-items th{
-  background:var(--g800);color:#fff;text-align:left;padding:8px 8px;font-size:11px;font-weight:700;
+.pd-quote-items-wrap{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+  border:1px solid var(--line);
+  border-radius:10px;
+  max-width:100%;
 }
-.pd-quote-items td{padding:6px 6px;border-top:1px solid var(--line);vertical-align:middle}
+.pd-quote-items{width:100%;min-width:620px;border-collapse:collapse;font-size:13px}
+.pd-quote-items th{
+  background:var(--g800);color:#fff;text-align:left;padding:8px 8px;font-size:11px;font-weight:700;white-space:nowrap;
+}
+.pd-quote-items td{padding:6px 6px;border-top:1px solid var(--line);vertical-align:middle;white-space:nowrap}
 .pd-quote-items input{
   width:100%;min-height:36px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;
-  font:inherit;background:#fff;
+  font:inherit;background:#fff;box-sizing:border-box;
 }
-.pd-quote-items input[data-q-qty],
-.pd-quote-items input[data-q-price]{min-width:72px}
+.pd-quote-items input[data-q-desc]{min-width:160px}
+.pd-quote-items input[data-q-qty]{min-width:64px;width:72px}
+.pd-quote-items input[data-q-price]{min-width:108px;width:120px}
 .pd-quote-totals{
   margin-top:8px;font-size:13px;font-weight:700;color:var(--ink);text-align:right;
+  line-height:1.45;white-space:normal;overflow-wrap:anywhere;
 }
 .pd-quote-when{font-size:12px;line-height:1.45;color:var(--ink);white-space:nowrap}
 .pd-quote-when .muted{color:var(--subtle);font-size:11px}
@@ -314,3 +323,31 @@
   cursor:pointer;font-size:12px;font-weight:700;color:var(--g800);list-style:none;
 }
 .pd-quote-advanced summary::-webkit-details-marker{display:none}
+.pd-quote-advanced .pd-fld{margin-bottom:12px}
+.pd-quote-advanced .pd-fld:last-child{margin-bottom:4px}
+.pd-quote-advanced .pd-fld label{margin-bottom:8px}
+.pd-quote-advanced textarea{
+  min-height:7.5rem;
+  line-height:1.5;
+  padding:10px 12px 14px;
+  overflow-y:auto;
+  resize:vertical;
+  field-sizing:content;
+}
+
+@media(max-width:768px){
+  .pd-quote-items-head .pd-btn{min-height:40px;padding:6px 12px;font-size:13px}
+  .pd-quote-items-wrap{
+    scrollbar-width:thin;
+    padding-bottom:2px;
+  }
+  .pd-quote-items{min-width:680px}
+  .pd-quote-items th,.pd-quote-items td{padding:8px}
+  .pd-quote-items input{min-height:42px;font-size:16px;padding:8px 10px}
+  .pd-quote-items input[data-q-desc]{min-width:180px}
+  .pd-quote-items input[data-q-qty]{min-width:72px;width:80px}
+  .pd-quote-items input[data-q-price]{min-width:120px;width:132px}
+  .pd-quote-totals{text-align:left;font-size:13.5px}
+  .pd-quote-advanced{padding:10px 12px 12px}
+  .pd-quote-advanced textarea{min-height:8.25rem;font-size:16px}
+}

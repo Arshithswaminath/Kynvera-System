@@ -7,9 +7,9 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=23">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/bd-project-detail.css') }}?v=5">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bd-project-detail.css') }}?v=6">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/signature_modal.css') }}">
   <style>
 :root {
@@ -32,16 +32,18 @@
   --sh-glow:0 0 0 3px rgba(255, 142, 104, .12);
 }
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;background:var(--bg,#f7f7f9)}
+.bf-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
 body{font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden;font-size:15px;
   /* Same offset as DocHub / Files / email — hardcoded 72px+1px left a hairline under the nav. */
   --nav-offset: var(--nav-bar-h, calc(40px + 1.75rem + env(safe-area-inset-top, 0px)));
   --bf-nav-top: var(--nav-offset);
+  display:block;
 }
 body.has-main-nav{padding-top:var(--bf-nav-top)!important}
 /* Global .nav and BizFlow tabs are both white; drop the nav hairline so we
    don’t get a double line between the site header and the module bar. */
-body.has-main-nav .nav{border-bottom:none}
+body.has-main-nav .nav{border-bottom:none;box-shadow:none}
 body.has-main-nav .nav.scrolled{box-shadow:none}
 @media(max-width:768px){body{--nav-inner-h:40px}}
 @media(max-width:600px){body{--nav-inner-h:40px}}
@@ -399,26 +401,52 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
 .bf-kpi-card:nth-child(6){animation-delay:.24s}
 
 @media(max-width:900px){
-  .bf-sidebar.dh-sidebar{
-    display:flex;position:fixed;left:0;top:var(--bf-nav-top);bottom:0;height:auto;z-index:160;
-    transform:translateX(-100%);transition:transform .2s ease;box-shadow:8px 0 24px rgba(0,0,0,.12);
+  aside.bf-sidebar.dh-sidebar{
+    display:flex!important;flex-direction:column;
+    position:fixed!important;
+    left:0!important;right:auto!important;
+    top:var(--bf-nav-top)!important;
+    bottom:0!important;
+    inset:var(--bf-nav-top) auto 0 0!important;
+    width:min(86vw,280px)!important;
+    min-width:min(86vw,280px)!important;
+    height:calc(100dvh - var(--bf-nav-top))!important;
+    max-height:calc(100dvh - var(--bf-nav-top))!important;
+    min-height:calc(100dvh - var(--bf-nav-top))!important;
+    align-self:auto!important;
+    border-radius:0!important;
+    z-index:160;
+    transform:translateX(-110%);
+    transition:transform .2s ease;
+    box-shadow:8px 0 24px rgba(0,0,0,.12);
+    overflow:hidden;
   }
-  .bf-sidebar.dh-sidebar.open{transform:translateX(0)}
+  aside.bf-sidebar.dh-sidebar.open{transform:translateX(0)!important}
   .bf-main{margin-left:0}
 }
 .bf-sidebar-toggle{display:none!important}
-.bf-sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:140;backdrop-filter:blur(2px)}
+.bf-sidebar-overlay{display:none;position:fixed;left:0;right:0;bottom:0;top:var(--bf-nav-top);background:rgba(0,0,0,.35);z-index:140;backdrop-filter:blur(2px)}
 .bf-sidebar-overlay.active{display:block}
 
 /* Light FM-style drawer (overrides dochub orange/white-on-dark) */
 .bf-sidebar.dh-sidebar{
   background:#fff!important;color:var(--ink);border-right:1px solid var(--line);
   width:var(--sidebar-w);min-width:var(--sidebar-w);
+  display:flex;flex-direction:column;
 }
 .bf-sidebar.dh-sidebar::before,.bf-sidebar.dh-sidebar::after{display:none;content:none}
-.bf-sidebar .sb-brand{border-bottom:1px solid var(--line);padding:18px 16px 14px}
-.bf-sidebar .sb-brand-text .name{color:var(--ink)!important}
-.bf-sidebar .sb-brand-text .tagline{color:var(--subtle)!important;text-transform:uppercase;letter-spacing:.04em}
+.bf-sidebar .sb-brand{
+  border-bottom:1px solid var(--line);padding:14px 16px 12px;
+  text-decoration:none;color:inherit;cursor:pointer;flex-shrink:0;
+}
+.bf-sidebar a.sb-brand:hover{background:var(--g100)}
+.bf-sidebar a.sb-brand:hover .name{color:var(--accent-2)!important}
+.bf-sidebar a.sb-brand:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.bf-sidebar .sb-brand-text .name{
+  color:var(--accent)!important;font-size:1.15rem;font-weight:700;letter-spacing:-.02em;
+}
+.bf-sidebar .sb-brand-text .tagline{display:none}
+.bf-sidebar .sb-nav{flex:1 1 auto;min-height:0}
 .bf-sidebar .sb-section-label{color:var(--subtle)!important}
 .bf-sidebar .sb-nav-item{
   color:var(--ink2)!important;gap:10px;border-radius:10px;
@@ -436,7 +464,11 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
   background:#f0f1f4;color:var(--ink2);margin-left:auto;
 }
 .bf-sidebar .sb-nav-item.active .sb-badge{background:rgba(255,255,255,.25);color:#fff}
-.bf-sidebar .sb-footer{border-top:1px solid var(--line);padding:12px}
+.bf-sidebar .sb-footer{
+  border-top:1px solid var(--line);padding:12px;
+  padding-bottom:max(12px, env(safe-area-inset-bottom, 0px));
+  margin-top:auto;flex-shrink:0;
+}
 .bf-sidebar .sb-user-name{color:var(--ink)}
 .bf-sidebar .sb-user-role{color:var(--subtle)}
 .bf-sidebar .sb-avatar{background:var(--accent);color:#fff}
@@ -445,6 +477,7 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
 .bf-mod-topbar{
   display:none;align-items:center;gap:12px;min-height:52px;padding:8px 16px;
   background:#fff;border-bottom:1.5px solid var(--line);position:sticky;top:var(--bf-nav-top);z-index:50;
+  margin:0;
 }
 .bf-mod-topbar-title{margin:0;font-size:1.02rem;font-weight:600;color:var(--ink);letter-spacing:-.01em}
 .bf-menu-toggle{
@@ -456,21 +489,79 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
 .bf-menu-toggle svg{display:block;flex-shrink:0}
 
 @media(max-width:900px){
-  .bf-mod-topbar{display:flex}
-  .bf-sidebar.dh-sidebar{
-    width:min(86vw,268px)!important;min-width:min(86vw,268px)!important;
+  html{
+    height:auto!important;max-height:none!important;
+    overflow-x:clip!important;overflow-y:auto!important;
+    scroll-behavior:auto!important;
+    -webkit-overflow-scrolling:touch;
   }
+  html,body{background:var(--bg,#f7f7f9)}
+  body.has-main-nav{
+    display:block!important;
+    position:static!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    touch-action:pan-y;
+  }
+  .bf-shell,
+  .bf-main,
+  .bf-content,
+  .bf-view-section.active,
+  .bf-view-section.active > .bf-card,
+  .bf-view-section.active .bf-table-wrap,
+  .bf-view-section.active [style*="overflow"]{
+    display:block!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    flex:none!important;
+    touch-action:pan-y;
+    animation:none!important;
+    transform:none!important;
+  }
+  .bf-shell{width:100%;margin:0}
+  .bf-main{min-width:0;margin:0}
+  .bf-mod-topbar{
+    display:flex;
+    position:relative;
+    top:auto;
+    margin:0;
+    z-index:50;
+  }
+  aside.bf-sidebar.dh-sidebar{
+    width:min(86vw,280px)!important;
+    min-width:min(86vw,280px)!important;
+    height:calc(100dvh - var(--bf-nav-top))!important;
+    max-height:calc(100dvh - var(--bf-nav-top))!important;
+    min-height:calc(100dvh - var(--bf-nav-top))!important;
+    top:var(--bf-nav-top)!important;
+    bottom:0!important;
+    left:0!important;
+    border-radius:0!important;
+    pointer-events:none;
+  }
+  aside.bf-sidebar.dh-sidebar.open{pointer-events:auto}
 }
 @media(max-width:768px){
   .bf-topbar{padding:0 1rem;height:auto;min-height:52px;top:var(--bf-nav-top);flex-wrap:wrap;gap:8px;padding-top:8px;padding-bottom:8px}
   .bf-topbar-space{display:none}
-  .bf-view-tabs{padding:0 0.75rem;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:0;justify-content:flex-start}
+  .bf-view-tabs{padding:0 0.75rem;flex-wrap:nowrap;overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;gap:0;justify-content:flex-start;touch-action:pan-x pan-y}
   .bf-view-tabs::-webkit-scrollbar{display:none}
   .bf-view-tabs-inner{flex-wrap:nowrap;gap:0}
   .bf-view-tab{padding:10px 12px;font-size:13px;white-space:nowrap;flex-shrink:0}
   .bf-view-tabs-actions{flex-shrink:0}
   .bf-view-tabs-actions .bf-tb-cta{padding:7px 12px;font-size:12px}
   .bf-content{padding:0.875rem}
+  .bf-view-section.active .bf-card,
+  .bf-view-section.active .bf-table-wrap,
+  .bf-view-section.active [style*="overflow"]{
+    overflow:visible!important;
+    max-height:none!important;
+    touch-action:pan-y;
+  }
   .bf-kpi-card{padding:0.875rem}
   /* Form fields — prevent collapsed look on mobile */
   .bf-field-grid{grid-template-columns:1fr;gap:10px;margin-bottom:10px}
@@ -508,7 +599,7 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
   .bf-proj-table tbody tr{
     display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;
     padding:12px 14px;margin:0 0 10px;border:1.5px solid var(--line);border-radius:14px;
-    background:#fff;box-shadow:0 1px 3px rgba(25,27,35,.04);cursor:pointer;
+    background:#fff;box-shadow:0 1px 3px rgba(25,27,35,.04);cursor:default;touch-action:pan-y;
   }
   .bf-proj-table td{
     border:none!important;padding:0!important;width:auto!important;min-width:0!important;
@@ -528,6 +619,48 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
   .bf-closing-top,.bf-closing-meta,.bf-closing-facts,.bf-closing-end{flex-wrap:wrap}
   .bf-closing-owner{max-width:100%}
   .bf-closing-facts{row-gap:6px}
+
+  /* Closing this week — swipe sideways on a phone */
+  .bf-closing-card{overflow:hidden}
+  .bf-closing-card .bf-closing-list{
+    display:flex;
+    flex-direction:row;
+    align-items:stretch;
+    justify-content:flex-start;
+    gap:10px;
+    padding:4px 12px 12px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    scroll-snap-type:x mandatory;
+    overscroll-behavior-x:contain;
+    touch-action:pan-x pan-y;
+    scrollbar-width:none;
+  }
+  .bf-closing-card .bf-closing-list::-webkit-scrollbar{display:none}
+  .bf-closing-card .bf-closing-item{
+    flex:0 0 min(82vw, 300px);
+    width:min(82vw, 300px);
+    max-width:min(82vw, 300px);
+    margin:0;
+    scroll-snap-align:start;
+    border:1.5px solid var(--line);
+    border-radius:12px;
+    padding:12px;
+    box-sizing:border-box;
+  }
+  .bf-closing-card .bf-closing-empty{flex:1 1 auto;min-width:100%}
+  .bf-closing-card .bf-closing-name,
+  .bf-closing-card .bf-closing-co,
+  .bf-closing-card .bf-closing-next{
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .bf-closing-card .bf-closing-top,
+  .bf-closing-card .bf-closing-meta,
+  .bf-closing-card .bf-closing-end{flex-wrap:nowrap}
+  .bf-closing-card .bf-closing-facts{flex-wrap:wrap}
 }
   </style>
 </head>
@@ -541,7 +674,6 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
       <a href="#" class="sb-brand sb-brand-link sb-brand--text-only" onclick="bfSetNav(this,'dashboard');return false" aria-label="BizFlow home">
         <div class="sb-brand-text">
           <span class="name">BizFlow</span>
-          <span class="tagline">Pipeline &amp; quotations</span>
         </div>
       </a>
       <nav class="sb-nav">
@@ -755,7 +887,7 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
           <div class="bf-dash-grid">
             <div class="bf-card">
               <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Needs Attention — Stalled Deals</div><div class="bf-card-hd-sub" id="bfStalledSub">Live deals with no recent movement or past their close date</div></div></div>
-              <div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Deal</th><th>Stage</th><th>Value</th><th>Idle</th><th>Why</th></tr></thead><tbody id="bfStalledTbody"></tbody></table></div>
+              <div class="bf-table-wrap"><table class="bf-proj-table"><thead><tr><th>Deal</th><th>Stage</th><th>Value</th><th>Idle</th><th>Why</th></tr></thead><tbody id="bfStalledTbody"></tbody></table></div>
             </div>
             <div class="bf-card">
               <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Outcome Loop</div><div class="bf-card-hd-sub">Won deals promoted to ticketing</div></div></div>
@@ -766,7 +898,7 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
 
         <div class="bf-view-section" id="bf-v-projects">
           <div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Active Projects</div><div class="bf-card-hd-sub" id="bfProjectsSub">0 projects · AED 0 total value</div></div><div class="bf-card-hd-actions"><input type="file" id="bfProjectExcelInput" accept=".xlsx,.xls" style="display:none" onchange="bfImportProjectsFromExcel(this)"><button type="button" class="bf-tb-cta sm ghost" onclick="document.getElementById('bfProjectExcelInput').click()" title="Import projects from Excel"><span class="bf-ico" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.5v7.2M5.4 7.1 8 9.7l2.6-2.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 11.2V12a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 12v-.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>Import</button><button type="button" class="bf-tb-cta sm" onclick="bfOpenModal()" title="Add project"><span class="bf-ico" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 3.2v9.6M3.2 8h9.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>Add</button></div></div>
-            <div style="overflow-x:auto"><table class="bf-proj-table" id="bfProjectsTable"><thead><tr><th>Project</th><th>Status</th><th>Priority</th><th>Value</th><th>Progress</th><th>Owner</th><th>Next Action</th><th>Actions</th></tr></thead><tbody id="bfProjTbody"></tbody></table></div>
+            <div class="bf-table-wrap"><table class="bf-proj-table" id="bfProjectsTable"><thead><tr><th>Project</th><th>Status</th><th>Priority</th><th>Value</th><th>Progress</th><th>Owner</th><th>Next Action</th><th>Actions</th></tr></thead><tbody id="bfProjTbody"></tbody></table></div>
           </div>
         </div>
 
@@ -774,17 +906,17 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
           {% include 'partials/bd_project_workspace.html' %}
         </div>
 
-        <div class="bf-view-section" id="bf-v-pipeline"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Deal Pipeline</div><div class="bf-card-hd-sub">Grouped by stage with values and counts</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenModal()">＋ New Deal</button></div></div><div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Stage</th><th>Deals</th><th>Total Value</th><th>Share</th></tr></thead><tbody id="bfPipelineTbody"></tbody></table></div></div></div>
+        <div class="bf-view-section" id="bf-v-pipeline"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Deal Pipeline</div><div class="bf-card-hd-sub">Grouped by stage with values and counts</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenModal()">＋ New Deal</button></div></div><div class="bf-table-wrap"><table class="bf-proj-table"><thead><tr><th>Stage</th><th>Deals</th><th>Total Value</th><th>Share</th></tr></thead><tbody id="bfPipelineTbody"></tbody></table></div></div></div>
 
         <div class="bf-view-section" id="bf-v-followups"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">All Follow-ups</div><div class="bf-card-hd-sub">Track calls, emails and tasks</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenFollowupPrompt()">＋ Add Follow-up</button></div></div><div class="bf-fu-list" id="bfFuList"></div></div></div>
 
         <div class="bf-view-section" id="bf-v-contacts"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Key Contacts</div><div class="bf-card-hd-sub">Decision makers &amp; champions</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenContactPrompt()">＋ Add Contact</button></div></div><div class="bf-contacts-grid" id="bfContactsGrid"></div></div></div>
 
-        <div class="bf-view-section" id="bf-v-prospects"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Potential Prospects</div><div class="bf-card-hd-sub">Early-stage opportunities</div></div></div><div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Prospect</th><th>Company</th><th>Owner</th><th>Value</th><th>Next Action</th></tr></thead><tbody id="bfProspectsTbody"></tbody></table></div></div></div>
+        <div class="bf-view-section" id="bf-v-prospects"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Potential Prospects</div><div class="bf-card-hd-sub">Early-stage opportunities</div></div></div><div class="bf-table-wrap"><table class="bf-proj-table"><thead><tr><th>Prospect</th><th>Company</th><th>Owner</th><th>Value</th><th>Next Action</th></tr></thead><tbody id="bfProspectsTbody"></tbody></table></div></div></div>
 
-        <div class="bf-view-section" id="bf-v-proposals"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Proposals</div><div class="bf-card-hd-sub">In-progress proposal and negotiation deals</div></div></div><div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Project</th><th>Stage</th><th>Priority</th><th>Value</th><th>Progress</th></tr></thead><tbody id="bfProposalsTbody"></tbody></table></div></div></div>
+        <div class="bf-view-section" id="bf-v-proposals"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Proposals</div><div class="bf-card-hd-sub">In-progress proposal and negotiation deals</div></div></div><div class="bf-table-wrap"><table class="bf-proj-table"><thead><tr><th>Project</th><th>Stage</th><th>Priority</th><th>Value</th><th>Progress</th></tr></thead><tbody id="bfProposalsTbody"></tbody></table></div></div></div>
 
-        <div class="bf-view-section" id="bf-v-quotations"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Quotations</div><div class="bf-card-hd-sub">Each quote is created from a project · submit for e-sign approval, attach LPO</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px;background:#fff;color:var(--g800);border:1.5px solid var(--g300)" onclick="bfGoCreateQuoteFromProjects()">Create from Projects →</button></div></div><div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Quote #</th><th>Project</th><th>Company</th><th>Status</th><th>Total</th><th>Actions</th></tr></thead><tbody id="bfQuotesTbody"></tbody></table></div></div></div>
+        <div class="bf-view-section" id="bf-v-quotations"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Quotations</div><div class="bf-card-hd-sub">Each quote is created from a project · submit for e-sign approval, attach LPO</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px;background:#fff;color:var(--g800);border:1.5px solid var(--g300)" onclick="bfGoCreateQuoteFromProjects()">Create from Projects →</button></div></div><div class="bf-table-wrap"><table class="bf-proj-table"><thead><tr><th>Quote #</th><th>Project</th><th>Company</th><th>Status</th><th>Total</th><th>Actions</th></tr></thead><tbody id="bfQuotesTbody"></tbody></table></div></div></div>
 
         <div class="bf-view-section" id="bf-v-analytics"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Analytics</div><div class="bf-card-hd-sub">Forecast, funnel, stalled deals, and outcome loop</div></div></div><div id="bfAnalyticsBody" style="padding:22px;color:var(--ink2)"></div></div></div>
         <input type="file" id="bfLpoFileInput" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xlsx,.xls,.txt" style="display:none" onchange="bfLpoFileChosen(this)">
@@ -883,7 +1015,7 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
   <script src="{{ url_for('static', filename='signature_pad.umd.min.js') }}"></script>
   <script src="{{ url_for('static', filename='js/signature_modal.js') }}"></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=43"></script>
   <script src="{{ url_for('static', filename='js/bd-project-detail.js') }}?v=4"></script>
   <script>
 (function(){
@@ -1128,11 +1260,11 @@ function renderAnalytics(){
     </div>
     <div class="bf-analytics-block bf-card">
       <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Conversion funnel</div><div class="bf-card-hd-sub">Live deals by stage · win rate ${funnel.win_rate!=null?funnel.win_rate:bdStats.win_rate||0}%</div></div></div>
-      <div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Stage</th><th>Deals</th><th>Value</th><th>Win prob</th></tr></thead><tbody>${funnelRows}</tbody></table></div>
+      <div class="bf-table-wrap"><table class="bf-proj-table"><thead><tr><th>Stage</th><th>Deals</th><th>Value</th><th>Win prob</th></tr></thead><tbody>${funnelRows}</tbody></table></div>
     </div>
     <div class="bf-analytics-block bf-card">
       <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Needs attention — stalled deals</div><div class="bf-card-hd-sub">${st.count||0} deal(s) idle or past close date</div></div></div>
-      <div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Deal</th><th>Stage</th><th>Value</th><th>Idle</th><th>Why</th></tr></thead><tbody>${stalledHtml}</tbody></table></div>
+      <div class="bf-table-wrap"><table class="bf-proj-table"><thead><tr><th>Deal</th><th>Stage</th><th>Value</th><th>Idle</th><th>Why</th></tr></thead><tbody>${stalledHtml}</tbody></table></div>
     </div>
     <div class="bf-analytics-block bf-card">
       <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Outcome loop</div><div class="bf-card-hd-sub">Won deals promoted to ticketing</div></div></div>
@@ -2252,11 +2384,21 @@ window.bfDeleteContact=bfDeleteContact;
 window.bfDeleteProject=bfDeleteProject;
 window.loadBDData=loadBDData;
 
+function bfSyncNavOffset(){
+  const nav=document.querySelector('.nav');
+  if(!nav)return;
+  const h=Math.max(0,Math.round(nav.getBoundingClientRect().bottom));
+  if(h>0){
+    document.body.style.setProperty('--bf-nav-top',h+'px');
+    document.body.style.setProperty('--nav-offset',h+'px');
+  }
+}
 function bfToggleMobileSidebar(){
   const sb=document.getElementById('bfSidebar');
   const ov=document.getElementById('bfSidebarOverlay');
   const btn=document.getElementById('bfSidebarToggle');
   if(!sb)return;
+  bfSyncNavOffset();
   sb.classList.toggle('open');
   const open=sb.classList.contains('open');
   if(ov) ov.classList.toggle('active',open);
@@ -2272,6 +2414,17 @@ function bfCloseMobileSidebar(){
 }
 window.bfToggleMobileSidebar=bfToggleMobileSidebar;
 window.bfCloseMobileSidebar=bfCloseMobileSidebar;
+window.addEventListener('resize',bfSyncNavOffset,{passive:true});
+window.addEventListener('load',bfSyncNavOffset);
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',function(){
+    bfSyncNavOffset();
+    requestAnimationFrame(bfSyncNavOffset);
+  });
+}else{
+  bfSyncNavOffset();
+  requestAnimationFrame(bfSyncNavOffset);
+}
 
 function bfOpenProjectFromQuery(){
   try{

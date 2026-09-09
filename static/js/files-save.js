@@ -418,7 +418,9 @@
     var modEl = card.querySelector('.files-menu-footer-mod');
     if (modEl) modEl.textContent = label;
 
-    drawer.appendChild(card);
+    var drawerFooter = document.getElementById('mobileMenuDrawerFooter');
+    if (drawerFooter) drawer.insertBefore(card, drawerFooter);
+    else drawer.appendChild(card);
   }
 
   function closeMobileMenuIfOpen() {
