@@ -184,4 +184,4 @@ def test_landing_has_public_signup(client, app):
     assert '/terms' in html
     assert '/forgot-password' in html
     assert 'Talk to us' in html
-    assert 'mailto:support@kynvera.store' in html
+    assert 'mailto:contact@kynvera.net' in html

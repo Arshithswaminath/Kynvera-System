@@ -110,7 +110,7 @@ MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
 MAIL_USERNAME = os.getenv("MAIL_USERNAME")
 MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
 MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
-MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "support@kynvera.store")
+MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "contact@kynvera.net")
 
 # Brevo (Sendinblue) — HTTPS transactional API (preferred on Render free tier)
 BREVO_API_KEY = os.getenv("BREVO_API_KEY")
@@ -121,7 +121,7 @@ MAILJET_SECRET_KEY = os.getenv("MAILJET_SECRET_KEY")
 
 # Ticket email intake (Mailjet Parse API webhook)
 TICKET_INBOUND_WEBHOOK_SECRET = os.getenv("TICKET_INBOUND_WEBHOOK_SECRET")
-TICKET_INTAKE_EMAIL = os.getenv("TICKET_INTAKE_EMAIL") or "support@kynvera.store"
+TICKET_INTAKE_EMAIL = os.getenv("TICKET_INTAKE_EMAIL") or "contact@kynvera.net"
 
 # Application
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5002")

@@ -1,0 +1,44 @@
+{# Digital visiting card — opened from “Who built this?” #}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/builder-card.css') }}?v=1">
+
+<div class="kv-builder-modal" id="kvBuilderModal" hidden role="dialog" aria-modal="true" aria-labelledby="kvBuilderTitle">
+  <div class="kv-builder-backdrop" data-close-builder-card></div>
+  <div class="kv-builder-panel">
+    <button type="button" class="kv-builder-close" data-close-builder-card aria-label="Close visiting card">&times;</button>
+    <p class="kv-builder-hint" id="kvBuilderTitle">Tap the card to flip</p>
+    <div class="kv-card-scene">
+      <button type="button" class="kv-card" id="kvBuilderCard" aria-pressed="false" aria-label="Flip visiting card">
+        <span class="kv-card-inner">
+          <span class="kv-card-face kv-card-front">
+            <img
+              src="{{ url_for('static', filename='images/kynvera/builder-card-front.jpg') }}"
+              alt="Kynvera skyline visiting card"
+              width="1400"
+              height="788"
+              decoding="async">
+            <span class="kv-card-shine" aria-hidden="true"></span>
+          </span>
+          <span class="kv-card-face kv-card-back">
+            <span class="kv-card-back-inner">
+              <img
+                src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}"
+                alt=""
+                class="kv-card-wordmark"
+                width="160"
+                height="40">
+              <span class="kv-card-name">Arshith Swaminath</span>
+              <span class="kv-card-role">Product Developer</span>
+              <span class="kv-card-place">Ajman</span>
+              <span class="kv-card-mail">arshithswaminathp@gmail.com</span>
+            </span>
+            <span class="kv-card-shine" aria-hidden="true"></span>
+          </span>
+        </span>
+      </button>
+    </div>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/builder-card.js') }}?v=1" defer></script>

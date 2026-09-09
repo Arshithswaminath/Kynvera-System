@@ -387,9 +387,9 @@ class TestEmailIntakeTemplate:
         res = client.get('/tickets/settings', headers=admin_auth_headers)
         assert res.status_code == 200
         html = res.get_data(as_text=True)
-        assert 'support@kynvera.store' in html
+        assert 'contact@kynvera.net' in html
         assert 'tickets@intake.injaaz.com' not in html
-        assert 'mailto:support@kynvera.store' in html
+        assert 'mailto:contact@kynvera.net' in html
 
     def test_ticket_list_has_email_template_info(self, client, admin_auth_headers):
         res = client.get('/tickets/list', headers=admin_auth_headers)
@@ -397,7 +397,7 @@ class TestEmailIntakeTemplate:
         html = res.get_data(as_text=True)
         assert 'tktEmailTplModal' in html
         assert 'tkt-email-tpl-open' in html
-        assert 'support@kynvera.store' in html
+        assert 'contact@kynvera.net' in html
         assert '[Project Name] Category - Priority - Short title' in html
 
 

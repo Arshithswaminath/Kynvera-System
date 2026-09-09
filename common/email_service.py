@@ -28,10 +28,10 @@ BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email"
 MAILJET_SEND_URL = "https://api.mailjet.com/v3.1/send"
 
 # Verified Brevo sender for Kynvera transactional mail.
-DEFAULT_MAIL_SENDER = 'support@kynvera.store'
+DEFAULT_MAIL_SENDER = 'contact@kynvera.net'
 # Leftover From addresses: Brevo accepts the API call, then rejects the message.
 _UNVERIFIED_MAIL_SENDERS = frozenset({
-    'contact@kynvera.net',
+    'support@kynvera.store',
     'support@kynvera.net',
 })
 # RFC 2606 placeholders — Brevo blacklists these (blocked : due to blacklist user).

@@ -246,13 +246,13 @@ def test_brevo_remaps_unverified_contact_sender(app, monkeypatch):
 
     monkeypatch.setattr(es.requests, 'post', _post)
     with app.app_context():
-        for bad_sender in ('contact@kynvera.net', 'support@kynvera.net'):
+        for bad_sender in ('support@kynvera.store', 'support@kynvera.net'):
             app.config['MAIL_DEFAULT_SENDER'] = bad_sender
             ok = es._send_email_brevo_http(
                 app, 'ops@example.com', 'Subject', 'Body', '<p>Hi</p>', None, None, 'test-key',
             )
             assert ok is True
-            assert captured['sender'] == {'name': 'Kynvera', 'email': 'support@kynvera.store'}
+            assert captured['sender'] == {'name': 'Kynvera', 'email': 'contact@kynvera.net'}
 
 
 def test_password_updated_email_logs_preview(app, monkeypatch):
