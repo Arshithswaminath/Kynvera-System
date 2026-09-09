@@ -50,9 +50,46 @@
       return !modal.hidden;
     }
 
+    function prefersReducedMotion() {
+      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+
+    function canTrackPointer() {
+      return window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    }
+
+    function resetTilt() {
+      card.classList.remove('is-tracking');
+      card.classList.add('is-untilting');
+      card.style.setProperty('--kv-tilt-x', '0deg');
+      card.style.setProperty('--kv-tilt-y', '0deg');
+      card.style.setProperty('--kv-scale', '1');
+      card.style.setProperty('--kv-shine-x', '50%');
+      card.style.setProperty('--kv-shine-y', '50%');
+    }
+
+    function trackPointer(e) {
+      if (!isOpen() || prefersReducedMotion() || !canTrackPointer()) return;
+      var rect = card.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      var px = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      var py = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+      var tiltX = (0.5 - py) * 12;
+      var tiltY = (px - 0.5) * 16;
+      if (card.classList.contains('is-flipped')) tiltY = -tiltY;
+      card.classList.remove('is-untilting');
+      card.classList.add('is-tracking');
+      card.style.setProperty('--kv-tilt-x', tiltX.toFixed(2) + 'deg');
+      card.style.setProperty('--kv-tilt-y', tiltY.toFixed(2) + 'deg');
+      card.style.setProperty('--kv-scale', '1.03');
+      card.style.setProperty('--kv-shine-x', (px * 100).toFixed(2) + '%');
+      card.style.setProperty('--kv-shine-y', (py * 100).toFixed(2) + '%');
+    }
+
     function setFlipped(on) {
       card.classList.toggle('is-flipped', !!on);
       card.setAttribute('aria-pressed', on ? 'true' : 'false');
+      resetTilt();
     }
 
     function clearPin() {
@@ -108,6 +145,9 @@
     modal.querySelectorAll('[data-close-builder-card]').forEach(function (el) {
       el.addEventListener('click', closeCard);
     });
+
+    card.addEventListener('pointermove', trackPointer);
+    card.addEventListener('pointerleave', resetTilt);
 
     card.addEventListener('click', function (e) {
       e.preventDefault();

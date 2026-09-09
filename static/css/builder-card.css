@@ -152,6 +152,11 @@ html.kv-builder-open body {
 }
 
 .kv-card {
+  --kv-tilt-x: 0deg;
+  --kv-tilt-y: 0deg;
+  --kv-scale: 1;
+  --kv-shine-x: 50%;
+  --kv-shine-y: 50%;
   display: block;
   width: 100%;
   height: 100%;
@@ -163,9 +168,25 @@ html.kv-builder-open body {
   border-radius: 20px;
   outline: none;
   box-shadow: 0 28px 64px rgba(0, 0, 0, 0.22);
+  transform: rotateX(var(--kv-tilt-x)) rotateY(var(--kv-tilt-y)) scale(var(--kv-scale));
+  transform-style: preserve-3d;
+  transition: box-shadow 0.25s ease;
   -webkit-appearance: none;
   appearance: none;
   -webkit-tap-highlight-color: transparent;
+  will-change: transform;
+}
+
+.kv-card.is-untilting {
+  transition: transform 0.45s cubic-bezier(0.22, 0.8, 0.28, 1), box-shadow 0.45s ease;
+}
+
+.kv-card.is-tracking {
+  transition: none;
+}
+
+.kv-card:hover {
+  box-shadow: 0 34px 72px rgba(80, 32, 14, 0.28), 0 18px 40px rgba(0, 0, 0, 0.22);
 }
 
 .kv-card:focus,
@@ -236,25 +257,30 @@ html.kv-builder-open body {
   top: 0;
   right: 0;
   bottom: 0;
-  z-index: 1;
+  z-index: 3;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
   width: min(54%, 19rem);
   padding: 7% 7% 8% 2%;
-  color: #fffaf7;
+  color: #fae0c2;
   text-align: left;
   font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif);
 }
 
 .kv-card-wordmark {
   display: block;
+  width: 7.4rem;
   height: 20px;
-  width: auto;
   margin-bottom: 1.15rem;
-  filter: brightness(0) invert(1);
-  opacity: 0.96;
+  padding: 0;
+  border: 0;
+  background-color: #fae0c2;
+  -webkit-mask: url("../images/kynvera/kynvera-wordmark.png") left center / contain no-repeat;
+  mask: url("../images/kynvera/kynvera-wordmark.png") left center / contain no-repeat;
+  filter: none;
+  opacity: 1;
 }
 
 .kv-card-name {
@@ -262,6 +288,7 @@ html.kv-builder-open body {
   font-weight: 750;
   letter-spacing: -0.038em;
   line-height: 1.08;
+  color: #fae0c2;
 }
 
 .kv-card-role,
@@ -270,7 +297,8 @@ html.kv-builder-open body {
   font-weight: 650;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  opacity: 0.88;
+  color: #fae0c2;
+  opacity: 0.92;
 }
 
 .kv-card-role {
@@ -286,7 +314,8 @@ html.kv-builder-open body {
   width: 2.1rem;
   height: 1px;
   margin: 0.95rem 0 0.85rem;
-  background: rgba(255, 250, 247, 0.55);
+  background: #fae0c2;
+  opacity: 0.7;
 }
 
 .kv-card-mail {
@@ -295,16 +324,77 @@ html.kv-builder-open body {
   letter-spacing: 0.01em;
   line-height: 1.35;
   word-break: break-word;
+  color: #fae0c2;
   opacity: 0.95;
 }
 
 .kv-card-shine {
-  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(
+    420px circle at var(--kv-shine-x) var(--kv-shine-y),
+    rgba(255, 248, 236, 0.5) 0%,
+    rgba(250, 224, 194, 0.16) 26%,
+    transparent 58%
+  );
+  opacity: 0;
+  mix-blend-mode: soft-light;
+  transition: opacity 0.22s ease;
+}
+
+.kv-card:hover .kv-card-shine,
+.kv-card.is-tracking .kv-card-shine {
+  opacity: 1;
+}
+
+.kv-card-gleam {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    115deg,
+    transparent 34%,
+    rgba(255, 250, 240, 0.34) 48%,
+    transparent 62%
+  );
+  background-size: 220% 100%;
+  background-position: 120% 0;
+  animation: kv-card-gleam 5.2s ease-in-out infinite;
+  mix-blend-mode: soft-light;
+}
+
+.kv-card:hover .kv-card-gleam,
+.kv-card.is-tracking .kv-card-gleam {
+  animation-duration: 1.7s;
+}
+
+@keyframes kv-card-gleam {
+  0% { background-position: 120% 0; }
+  55%, 100% { background-position: -45% 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .kv-card,
+  .kv-card.is-untilting,
+  .kv-card.is-tracking {
+    transform: none;
+    transition: none;
+  }
+
   .kv-card-inner {
     transition: none;
+  }
+
+  .kv-card-gleam,
+  .kv-card-shine {
+    animation: none;
+    background: none;
+    opacity: 0;
   }
 }
 
@@ -319,6 +409,7 @@ html.kv-builder-open body {
   }
 
   .kv-card-wordmark {
+    width: 6.1rem;
     height: 16px;
     margin-bottom: 0.7rem;
   }
