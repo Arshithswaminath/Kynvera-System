@@ -327,6 +327,51 @@
   }
 
   let profileSigPad = null;
+  let profileSignatureSaved = false;
+
+  function paintSavedSignaturePreview(dataUrl) {
+    const img = document.getElementById('profileSignaturePreview');
+    if (!img) return;
+    if (!dataUrl) {
+      img.removeAttribute('src');
+      img.hidden = true;
+      return;
+    }
+    const api = w.KynveraSignatureDisplay || w.InjaazSignatureDisplay;
+    const apply = function (src) {
+      img.src = src || dataUrl;
+      img.hidden = false;
+    };
+    if (api && typeof api.trimSignatureBounds === 'function') {
+      api.trimSignatureBounds(dataUrl).then(apply);
+    } else {
+      apply(dataUrl);
+    }
+  }
+
+  function setProfileSignatureSavedUi(saved) {
+    profileSignatureSaved = !!(saved && profileSignatureDataUrl);
+    const block = document.getElementById('profileSignatureBlock');
+    const hint = document.getElementById('profileSignatureSaveHint');
+    const clearBtn = document.getElementById('profileSignatureClear');
+    if (block) block.classList.toggle('is-saved', profileSignatureSaved);
+    if (hint) {
+      if (profileSignatureSaved) {
+        hint.textContent = 'Signature saved.';
+        hint.classList.add('is-saved');
+      } else {
+        hint.textContent = 'Draw with mouse or finger, then Save signature.';
+        hint.classList.remove('is-saved');
+      }
+    }
+    if (clearBtn) clearBtn.textContent = profileSignatureSaved ? 'Clear sign' : 'Clear';
+    if (profileSigPad) {
+      if (profileSignatureSaved && typeof profileSigPad.off === 'function') profileSigPad.off();
+      else if (!profileSignatureSaved && typeof profileSigPad.on === 'function') profileSigPad.on();
+    }
+    if (profileSignatureSaved) paintSavedSignaturePreview(profileSignatureDataUrl);
+    else paintSavedSignaturePreview('');
+  }
 
   function captureProfileSignaturePad() {
     if (profileSigPad && !profileSigPad.isEmpty()) {
@@ -371,7 +416,42 @@
     return profileSigPad;
   }
 
-  w.clearProfileSignaturePreview = function clearProfileSignaturePreview() {
+  w.clearProfileSignaturePreview = async function clearProfileSignaturePreview() {
+    const wasSaved = profileSignatureSaved;
+    if (wasSaved) {
+      if (w.AdminEditOtp && w.AdminEditOtp.isLocked()) {
+        notify('This administrator account is locked to prevent unconfirmed profile, password, or access changes. Verify the one-time code first.', 'error');
+        return;
+      }
+      const userId = document.getElementById('profileUserId') && document.getElementById('profileUserId').value;
+      if (!userId) return;
+      const btn = document.getElementById('profileSignatureClear');
+      if (btn) btn.disabled = true;
+      try {
+        const response = await profileAuthenticatedFetch('/api/admin/users/' + userId, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ default_signature: null }),
+        });
+        const data = await response.json().catch(function () { return {}; });
+        if (handleOtpRequired(data)) return;
+        if (handleUnauthorized(response)) return;
+        if (!(response.ok && data.success)) {
+          notify((data && (data.error || data.message)) || 'Failed to clear signature', 'error');
+          return;
+        }
+        const list = directoryUsers();
+        const u = list.find(function (x) { return Number(x.id) === Number(userId); });
+        if (u) u.default_signature = null;
+      } catch (err) {
+        console.error(err);
+        notify('Error clearing signature', 'error');
+        return;
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
     profileSignatureDataUrl = '';
     const f = document.getElementById('profileSignatureFile');
     if (f) f.value = '';
@@ -381,23 +461,25 @@
       img.hidden = true;
     }
     if (profileSigPad) {
+      if (typeof profileSigPad.on === 'function') profileSigPad.on();
       profileSigPad.clear();
       resizeProfileSignaturePad();
     }
     syncProfileSignatureFileName();
+    setProfileSignatureSavedUi(false);
+    if (wasSaved) {
+      notify('Signature cleared. Draw or upload a new one, then save.', 'success');
+    }
   };
 
   function updateProfileSignaturePreview() {
     const img = document.getElementById('profileSignaturePreview');
     const hasPad = !!document.getElementById('adminProfileSignaturePad');
-    if (img) {
-      if (profileSignatureDataUrl && !hasPad) {
-        img.src = profileSignatureDataUrl;
-        img.hidden = false;
-      } else {
-        img.src = profileSignatureDataUrl || '';
-        img.hidden = true;
-      }
+    if (profileSignatureSaved && profileSignatureDataUrl) {
+      paintSavedSignaturePreview(profileSignatureDataUrl);
+    } else if (img) {
+      img.removeAttribute('src');
+      img.hidden = true;
     }
     if (hasPad) {
       ensureProfileSignaturePad();
@@ -435,7 +517,8 @@
         const list = directoryUsers();
         const u = list.find(function (x) { return Number(x.id) === Number(userId); });
         if (u) u.default_signature = profileSignatureDataUrl;
-        notify(data.message || 'Signature saved', 'success');
+        setProfileSignatureSavedUi(true);
+        notify(data.message || 'Signature saved. It will be used when this person signs forms.', 'success');
       } else {
         notify((data && (data.error || data.message)) || 'Failed to save signature', 'error');
       }
@@ -1010,7 +1093,11 @@
     if (sigFileEl) sigFileEl.value = '';
     updateProfileSignaturePreview();
     syncProfileSignatureFileName();
-    setTimeout(function () { ensureProfileSignaturePad(); }, 80);
+    setProfileSignatureSavedUi(!!profileSignatureDataUrl);
+    setTimeout(function () {
+      ensureProfileSignaturePad();
+      setProfileSignatureSavedUi(!!profileSignatureDataUrl);
+    }, 80);
 
     const tbtn = document.getElementById('profileQuickToggleBtn');
     setProfileQuickToggleButton(tbtn, user.is_active);

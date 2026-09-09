@@ -210,7 +210,13 @@
       display: grid !important;
       grid-template-columns: 1fr 1fr;
       gap: 0.45rem 0.85rem !important;
-      align-items: stretch;
+      align-items: start;
+    }
+    .admin-profile-module-col {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      min-width: 0;
     }
     @media (max-width: 560px) {
       .admin-profile-module-grid { grid-template-columns: 1fr; }
@@ -222,23 +228,22 @@
       gap: 0.55rem;
       border-radius: 12px;
       border: 1px solid rgba(148, 163, 184, 0.35);
-      background: #ffffff;
+      background: #eef0f2;
+      box-shadow: none;
       cursor: pointer;
-      transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+      transition: border-color 0.18s, background 0.18s;
     }
     .admin-profile-module-grid .checkbox-item[hidden] {
       display: none !important;
     }
     .admin-profile-module-grid .checkbox-item:hover {
-      border-color: rgba(255, 142, 104, 0.45);
-      background: #fffaf8;
-      box-shadow: 0 3px 12px rgba(255, 142, 104, 0.08);
+      border-color: #d8dee4;
+      background: #eef0f2;
     }
     .admin-profile-module-grid .checkbox-item:has(> input:checked),
     .admin-profile-module-grid .checkbox-item.bd-access-card:has(input:checked) {
       border-color: #e05f36;
       background: linear-gradient(135deg, #ff8e68 0%, #f97e54 55%, #e05f36 100%);
-      box-shadow: 0 8px 18px rgba(224, 95, 54, 0.28);
       color: #fff;
     }
     .admin-profile-module-grid .checkbox-item:has(> input:checked) span,
@@ -657,12 +662,65 @@
     .admin-otp-password-row {
       display: flex;
       gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
+      align-items: stretch;
+      flex-wrap: nowrap;
     }
-    .admin-otp-password-row .form-control {
-      flex: 1 1 180px;
+    .admin-otp-password-field {
+      display: flex;
+      align-items: stretch;
+      flex: 1 1 auto;
       min-width: 0;
+      overflow: hidden;
+      border: 1.5px solid var(--injz-pm-line, #e9eaee);
+      border-radius: 10px;
+      background: var(--injz-pm-fill, #fafafb);
+    }
+    .admin-otp-password-field:focus-within {
+      border-color: var(--injz-pm-green, #ff8e68);
+      box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.12);
+    }
+    .admin-otp-password-row .form-control,
+    .admin-otp-password-field .form-control {
+      flex: 1 1 auto;
+      width: auto;
+      min-width: 0;
+      display: block;
+      border: none;
+      box-shadow: none;
+      background: transparent;
+      border-radius: 0;
+      padding-right: 0.35rem;
+      box-sizing: border-box;
+    }
+    .admin-otp-password-toggle {
+      position: static;
+      flex: 0 0 40px;
+      width: 40px;
+      min-width: 40px;
+      min-height: 0;
+      height: auto;
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      color: #8a7e78;
+      cursor: pointer;
+      box-shadow: none;
+    }
+    .admin-otp-password-toggle:hover,
+    .admin-otp-password-toggle:focus-visible {
+      color: #e05f36;
+      background: transparent;
+      outline: none;
+    }
+    .admin-otp-password-toggle svg {
+      width: 18px;
+      height: 18px;
+      display: block;
     }
     .admin-otp-password-btn {
       flex: 0 0 auto;

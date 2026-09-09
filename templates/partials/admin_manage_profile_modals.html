@@ -28,7 +28,12 @@
         <p class="admin-otp-password-lead" id="profileAdminOtpHintPasswordLead">If a code cannot be sent, verify with your admin login password.</p>
         <label class="form-label" for="profileAdminOtpHintPassword">Your admin password</label>
         <div class="admin-otp-password-row">
-          <input type="password" id="profileAdminOtpHintPassword" class="form-control" autocomplete="current-password" spellcheck="false">
+          <div class="admin-otp-password-field">
+            <input type="password" id="profileAdminOtpHintPassword" class="form-control" autocomplete="current-password" spellcheck="false">
+            <button type="button" class="admin-otp-password-toggle" id="profileAdminOtpHintPasswordToggle" aria-label="Show password" aria-pressed="false" onclick="toggleAdminOtpPasswordVisibility('hint')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
           <button type="button" class="btn injz-mgmt-btn-submit admin-otp-password-btn" id="profileAdminOtpHintPasswordUnlockBtn" onclick="unlockAdminProfileWithPassword('hint')">Verify</button>
         </div>
       </div>
@@ -136,70 +141,74 @@
         <h3>Module access</h3>
         <p class="admin-profile-module-note" id="profileModuleNote" hidden></p>
         <div class="checkbox-group admin-profile-module-grid" id="profileModuleAccess">
-          <label class="checkbox-item" for="accessInspection">
-            <input type="checkbox" id="accessInspection" name="access_inspection">
-            <span>Inspection</span>
-          </label>
-          <div class="checkbox-item bd-access-card" id="accessHrItem">
-            <label class="bd-access-top" for="accessHr">
-              <input type="checkbox" id="accessHr" name="access_hr">
-              <span>HR module</span>
+          <div class="admin-profile-module-col">
+            <label class="checkbox-item" for="accessInspection">
+              <input type="checkbox" id="accessInspection" name="access_inspection">
+              <span>Inspection</span>
             </label>
-            <div class="bd-access-subs" aria-label="HR module options">
-              <label class="bd-access-sub" for="accessHiring">
-                <input type="checkbox" id="accessHiring" name="access_hiring">
-                Hiring trackers (docs, leave, manpower)
-              </label>
-            </div>
-          </div>
-          <label class="checkbox-item" for="accessProcurement">
-            <input type="checkbox" id="accessProcurement" name="access_procurement_module">
-            <span>Procurement module</span>
-          </label>
-          <div class="checkbox-item bd-access-card" id="accessBdItem">
-            <label class="bd-access-top" for="accessBusinessDev">
-              <input type="checkbox" id="accessBusinessDev" name="access_business_development">
-              <span>Business development</span>
+            <label class="checkbox-item" for="accessProcurement">
+              <input type="checkbox" id="accessProcurement" name="access_procurement_module">
+              <span>Procurement module</span>
             </label>
-            <div class="bd-access-subs" aria-label="Business development options">
-              <label class="bd-access-sub" for="accessSalesManager">
-                <input type="checkbox" id="accessSalesManager" name="access_sales_manager">
-                Sales manager (all pipelines)
-              </label>
-              <label class="bd-access-sub" for="accessQuotations">
-                <input type="checkbox" id="accessQuotations" name="access_quotations">
-                Prepare quotations
-              </label>
-            </div>
+            <label class="checkbox-item" for="accessDocHub">
+              <input type="checkbox" id="accessDocHub" name="can_access_dochub">
+              <span>Document hub</span>
+            </label>
+            <label class="checkbox-item" for="accessSubmittedForms">
+              <input type="checkbox" id="accessSubmittedForms" name="access_submitted_forms">
+              <span>Submitted forms module (HR + inspection)</span>
+            </label>
+            <label class="checkbox-item" for="isTicketReporter">
+              <input type="checkbox" id="isTicketReporter" name="is_ticket_reporter">
+              <span>Designated ticket reporter (appears in "Reported By" list)</span>
+            </label>
+            <label class="checkbox-item" hidden style="display:none !important">
+              <input type="checkbox" id="accessQhsi" name="access_qhsi">
+              <span>QHSE module (quality, health, safety &amp; environment)</span>
+            </label>
           </div>
-          <label class="checkbox-item" for="accessDocHub">
-            <input type="checkbox" id="accessDocHub" name="can_access_dochub">
-            <span>Document hub</span>
-          </label>
-          <label class="checkbox-item" for="accessReportGen">
-            <input type="checkbox" id="accessReportGen" name="access_report_generation">
-            <span>Report generation</span>
-          </label>
-          <label class="checkbox-item" for="accessSubmittedForms">
-            <input type="checkbox" id="accessSubmittedForms" name="access_submitted_forms">
-            <span>Submitted forms module (HR + inspection)</span>
-          </label>
-          <label class="checkbox-item" for="accessTicketing">
-            <input type="checkbox" id="accessTicketing" name="access_ticketing">
-            <span>Service tickets</span>
-          </label>
-          <label class="checkbox-item" for="isTicketReporter">
-            <input type="checkbox" id="isTicketReporter" name="is_ticket_reporter">
-            <span>Designated ticket reporter (appears in "Reported By" list)</span>
-          </label>
-          <label class="checkbox-item" hidden style="display:none !important">
-            <input type="checkbox" id="accessQhsi" name="access_qhsi">
-            <span>QHSE module (quality, health, safety &amp; environment)</span>
-          </label>
-          <label class="checkbox-item" for="accessFiles">
-            <input type="checkbox" id="accessFiles" name="access_files">
-            <span>Files module (exports + Google Drive sync)</span>
-          </label>
+          <div class="admin-profile-module-col">
+            <div class="checkbox-item bd-access-card" id="accessHrItem">
+              <label class="bd-access-top" for="accessHr">
+                <input type="checkbox" id="accessHr" name="access_hr">
+                <span>HR module</span>
+              </label>
+              <div class="bd-access-subs" aria-label="HR module options">
+                <label class="bd-access-sub" for="accessHiring">
+                  <input type="checkbox" id="accessHiring" name="access_hiring">
+                  Hiring trackers (docs, leave, manpower)
+                </label>
+              </div>
+            </div>
+            <div class="checkbox-item bd-access-card" id="accessBdItem">
+              <label class="bd-access-top" for="accessBusinessDev">
+                <input type="checkbox" id="accessBusinessDev" name="access_business_development">
+                <span>Business development</span>
+              </label>
+              <div class="bd-access-subs" aria-label="Business development options">
+                <label class="bd-access-sub" for="accessSalesManager">
+                  <input type="checkbox" id="accessSalesManager" name="access_sales_manager">
+                  Sales manager (all pipelines)
+                </label>
+                <label class="bd-access-sub" for="accessQuotations">
+                  <input type="checkbox" id="accessQuotations" name="access_quotations">
+                  Prepare quotations
+                </label>
+              </div>
+            </div>
+            <label class="checkbox-item" for="accessReportGen">
+              <input type="checkbox" id="accessReportGen" name="access_report_generation">
+              <span>Report generation</span>
+            </label>
+            <label class="checkbox-item" for="accessTicketing">
+              <input type="checkbox" id="accessTicketing" name="access_ticketing">
+              <span>Service tickets</span>
+            </label>
+            <label class="checkbox-item" for="accessFiles">
+              <input type="checkbox" id="accessFiles" name="access_files">
+              <span>Files module (exports + Google Drive sync)</span>
+            </label>
+          </div>
         </div>
       </div>
       <div class="admin-profile-section admin-profile-section--defaults">
@@ -209,19 +218,21 @@
             <label class="form-label" for="profileDefaultComment">Default approval comment</label>
             <textarea id="profileDefaultComment" class="form-control" rows="6" placeholder="Optional notes after “Signed &amp; Verified — Your Name”"></textarea>
           </div>
-          <div class="form-group admin-profile-defaults-signature">
+          <div class="form-group admin-profile-defaults-signature" id="profileSignatureBlock">
             <label class="form-label" for="adminProfileSignaturePad">Signature</label>
             <div class="admin-profile-sig-pad-wrap" id="adminProfileSignaturePadWrap">
               <canvas id="adminProfileSignaturePad" width="400" height="132" aria-label="Draw signature"></canvas>
+              <img id="profileSignaturePreview" class="admin-profile-sig-preview" alt="Saved signature" hidden>
             </div>
-            <p class="admin-profile-hint">Draw with mouse or finger, then Save signature.</p>
-            <label class="kyn-file-pick" for="profileSignatureFile">
-              <input type="file" id="profileSignatureFile" class="kyn-file-pick-input" accept="image/*">
-              <span class="kyn-file-pick-btn">Choose file</span>
-              <span class="kyn-file-pick-name is-empty" id="profileSignatureFileName">No file chosen</span>
-            </label>
-            <p class="admin-profile-hint">Or upload a PNG or JPG, max ~400KB.</p>
-            <img id="profileSignaturePreview" class="admin-profile-sig-preview" alt="Signature preview" hidden>
+            <p class="admin-profile-hint" id="profileSignatureSaveHint">Draw with mouse or finger, then Save signature.</p>
+            <div class="admin-profile-sig-edit" id="profileSignatureEdit">
+              <label class="kyn-file-pick" for="profileSignatureFile">
+                <input type="file" id="profileSignatureFile" class="kyn-file-pick-input" accept="image/*">
+                <span class="kyn-file-pick-btn">Choose file</span>
+                <span class="kyn-file-pick-name is-empty" id="profileSignatureFileName">No file chosen</span>
+              </label>
+              <p class="admin-profile-hint">Or upload a PNG or JPG, max ~400KB.</p>
+            </div>
             <div class="admin-profile-quick admin-profile-sig-toolbar">
               <button type="button" class="btn btn-outline-secondary" id="profileSignatureClear" onclick="clearProfileSignaturePreview()">Clear</button>
               <button type="button" class="btn admin-profile-email-creds" id="profileSignatureSave" onclick="saveProfileSignature()">Save signature</button>
@@ -304,7 +315,12 @@
     <div class="admin-otp-password-fallback admin-otp-password-fallback--modal">
       <p class="admin-otp-password-lead">Didn’t get the email? Verify with your admin login password.</p>
       <label class="form-label" for="profileAdminOtpPassword">Your admin password</label>
-      <input type="password" id="profileAdminOtpPassword" class="form-control" autocomplete="current-password" spellcheck="false">
+      <div class="admin-otp-password-field">
+        <input type="password" id="profileAdminOtpPassword" class="form-control" autocomplete="current-password" spellcheck="false">
+        <button type="button" class="admin-otp-password-toggle" id="profileAdminOtpPasswordToggle" aria-label="Show password" aria-pressed="false" onclick="toggleAdminOtpPasswordVisibility('modal')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
     </div>
     <div class="modal-actions">
       <button type="button" class="btn btn-cancel" onclick="closeAdminProfileOtpModal()">Cancel</button>

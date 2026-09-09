@@ -259,6 +259,8 @@
       profileAdminOtpPassword: true,
       profileAdminOtpHintPassword: true,
       profileAdminOtpHintPasswordUnlockBtn: true,
+      profileAdminOtpHintPasswordToggle: true,
+      profileAdminOtpPasswordToggle: true,
     };
     form.querySelectorAll('input, select, textarea').forEach(function (el) {
       if (keepEnabled[el.id]) return;
@@ -474,6 +476,33 @@
     notify('Enter the 6-digit code from the email, or your admin password if you did not get it.', 'error');
   };
 
+  w.toggleAdminOtpPasswordVisibility = function toggleAdminOtpPasswordVisibility(source) {
+    const inputId = source === 'modal' ? 'profileAdminOtpPassword' : 'profileAdminOtpHintPassword';
+    const toggleId = source === 'modal' ? 'profileAdminOtpPasswordToggle' : 'profileAdminOtpHintPasswordToggle';
+    setAdminOtpPasswordVisible(inputId, toggleId, null);
+  };
+
+  const OTP_EYE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const OTP_EYE_OFF = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 11 7 11 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 1 12s4 7 11 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>';
+
+  function setAdminOtpPasswordVisible(inputId, toggleId, visible) {
+    const input = document.getElementById(inputId);
+    const toggle = document.getElementById(toggleId);
+    if (!input) return;
+    const show = visible == null ? input.type === 'password' : !!visible;
+    input.type = show ? 'text' : 'password';
+    if (toggle) {
+      toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      toggle.setAttribute('aria-pressed', show ? 'true' : 'false');
+      toggle.innerHTML = show ? OTP_EYE_OFF : OTP_EYE;
+    }
+  }
+
+  function resetAdminOtpPasswordFields() {
+    setAdminOtpPasswordVisible('profileAdminOtpHintPassword', 'profileAdminOtpHintPasswordToggle', false);
+    setAdminOtpPasswordVisible('profileAdminOtpPassword', 'profileAdminOtpPasswordToggle', false);
+  }
+
   w.unlockAdminProfileWithPassword = async function unlockAdminProfileWithPassword(source) {
     const uid = currentUser && currentUser.id;
     if (!uid) return;
@@ -496,6 +525,7 @@
         return;
       }
       if (input) input.value = '';
+      resetAdminOtpPasswordFields();
       w.closeAdminProfileOtpModal();
       notify(data.message || 'Editing unlocked.', 'success');
       showUnlocked(data.grant_expires_at);

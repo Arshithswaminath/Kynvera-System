@@ -38,11 +38,12 @@ def test_database_backup_download(client, admin_auth_headers, app):
         assert row.environment == 'local'
 
 
-def test_browse_users_read_only(client, admin_auth_headers, admin_user):
+def test_browse_users_can_edit_hides_secrets(client, admin_auth_headers, admin_user):
     response = client.get('/api/admin/database/tables/users', headers=admin_auth_headers)
     assert response.status_code == 200
     data = response.get_json()
-    assert data.get('read_only') is True
+    assert data.get('read_only') is False
+    assert data.get('can_edit') is True
     assert data.get('table') == 'users'
     assert data.get('total') >= 1
     assert data.get('rows')

@@ -213,6 +213,11 @@
     .modules-grid--grain .module-card .card-body {
       position: relative;
       z-index: 1;
+      display: flex;
+      flex-direction: column;
+      height: auto;
+      color: inherit;
+      text-decoration: none;
     }
     .modules-grid--grain .module-card:hover {
       border: none;
@@ -236,10 +241,17 @@
     .modules-grid--grain .module-description {
       color: rgba(255, 255, 255, 0.95);
       font-weight: 600;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: calc(0.865rem * 1.6 * 2);
+      margin-bottom: 1.25rem;
     }
     .modules-grid--grain .module-arrow {
       color: #fff;
       font-weight: 700;
+      margin-top: 0;
     }
     .modules-grid--grain .module-card:hover .module-icon {
       background: rgba(255, 255, 255, 0.3);
@@ -247,30 +259,6 @@
     .modules-grid--grain .module-card:hover .module-icon svg,
     .modules-grid--grain .module-card:hover .module-arrow {
       stroke: #fff;
-      color: #fff;
-    }
-    .modules-grid--grain .module-card .card-body {
-      display: block;
-      color: inherit;
-      text-decoration: none;
-    }
-    .modules-grid--grain .module-sublink {
-      position: relative;
-      z-index: 1;
-      display: inline-flex;
-      align-items: center;
-      margin: -0.15rem 1.15rem 1.05rem;
-      padding: 0.38rem 0.8rem;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.22);
-      color: #fff;
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.01em;
-      text-decoration: none;
-    }
-    .modules-grid--grain .module-sublink:hover {
-      background: rgba(255, 255, 255, 0.34);
       color: #fff;
     }
     
@@ -322,9 +310,13 @@
         color: #fff !important;
         font-weight: 800 !important;
       }
+      .modules-grid--grain .module-card .card-body {
+        height: auto !important;
+      }
       .modules-grid--grain .module-card .module-description {
         color: rgba(255, 255, 255, 0.92) !important;
         font-weight: 600 !important;
+        -webkit-line-clamp: 2 !important;
       }
       .modules-grid--grain .module-card .module-icon {
         background: rgba(255, 255, 255, 0.22) !important;
@@ -335,6 +327,7 @@
       .modules-grid--grain .module-card .module-arrow {
         background: rgba(255, 255, 255, 0.22) !important;
         color: #fff !important;
+        margin-top: 0 !important;
       }
       .hr-wf-grid {
         grid-template-columns: 1fr !important;
@@ -755,16 +748,15 @@
             <span class="module-arrow">Open Tracker <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
           </div>
         </a>
-        <div class="module-card">
-          <a href="/hr/employee-list" class="card-body">
+        <a href="/hr/employee-list" class="module-card">
+          <div class="card-body">
             <span class="module-number">Staff &mdash; Directory</span>
             <div class="module-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg></div>
             <h2 class="module-title">Employee List</h2>
             <p class="module-description">Search the staff directory by Emp ID or name. Add people from hiring from inside this module.</p>
             <span class="module-arrow">Open Directory <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
-          </a>
-          <a href="/hr/employee-from-hiring" class="module-sublink">From hiring</a>
-        </div>
+          </div>
+        </a>
         <a href="/hr/manpower-tracker" class="module-card">
           <div class="card-body">
             <span class="module-number">Manpower &mdash; Board</span>

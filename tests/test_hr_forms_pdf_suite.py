@@ -107,16 +107,20 @@ def test_hr_pdf_readable_and_contains_form_title(form_type):
 def test_hr_pdf_contains_branding_and_generated_footer(form_type):
     """
     Header/footer must be present. Uses substring checks only — no layout geometry changes.
-    Accepts either 'Kynvera Facility Management' (body) or footer time stamp.
+    Wordmark extracts as 'Kynvera'; footer may use 'KYNVERA'. Legacy INJAAZ still accepted.
     """
     from module_hr.pdf_service import generate_hr_pdf
 
     buf = BytesIO()
     assert generate_hr_pdf(_submission(form_type), buf)[0]
     text = _extract_all_text(buf.getvalue())
-    assert "Kynvera Facility Management" in text or "INJAAZ" in text, (
-        f"{form_type}: missing header branding"
+    branded = (
+        "Kynvera" in text
+        or "KYNVERA" in text
+        or "Kynvera Facility Management" in text
+        or "INJAAZ" in text
     )
+    assert branded, f"{form_type}: missing header branding"
     assert "Generated" in text, f"{form_type}: missing 'Generated' footer"
     assert "Dubai" in text, f"{form_type}: missing Dubai footer"
 

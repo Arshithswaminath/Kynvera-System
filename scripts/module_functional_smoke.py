@@ -6,7 +6,8 @@ Usage (server must already be running, typically ./run on :5002):
   CHECK_BASE_URL=http://127.0.0.1:5002 ./venv/bin/python scripts/module_functional_smoke.py
 
 Credentials: CHECK_USERNAME / CHECK_PASSWORD, or DEFAULT_ADMIN_USERNAME /
-DEFAULT_ADMIN_PASSWORD from .env. No live email, Drive, or Cloudinary calls.
+DEFAULT_ADMIN_PASSWORD from .env. If the account has MFA, set CHECK_MFA_CODE
+or CHECK_MFA_SECRET (TOTP). No live email, Drive, or Cloudinary calls.
 
 Outputs:
   smoke_artifacts/<YYYYMMDD_HHMMSS>/   gitignored binaries + 00_summary.json
@@ -221,6 +222,80 @@ def _rel(path: Path) -> str:
         return str(path)
 
 
+def _is_live_target() -> bool:
+    host = (BASE or "").lower()
+    return "kynvera.net" in host or "onrender.com" in host
+
+
+def _report_tag() -> str:
+    return "prod" if _is_live_target() else "local"
+
+
+def _multipart_xlsx(file_bytes: bytes, filename: str, extra_fields: dict | None = None) -> tuple[bytes, str]:
+    boundary = "----injaazSmokeImport"
+    parts: list[bytes] = []
+    for key, value in (extra_fields or {}).items():
+        parts.extend(
+            [
+                f"--{boundary}\r\n".encode(),
+                f'Content-Disposition: form-data; name="{key}"\r\n\r\n'.encode(),
+                str(value).encode(),
+                b"\r\n",
+            ]
+        )
+    parts.extend(
+        [
+            f"--{boundary}\r\n".encode(),
+            f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'.encode(),
+            b"Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\r\n\r\n",
+            file_bytes,
+            b"\r\n",
+            f"--{boundary}--\r\n".encode(),
+        ]
+    )
+    return b"".join(parts), f"multipart/form-data; boundary={boundary}"
+
+
+def post_xlsx_import(
+    module: str,
+    path: str,
+    file_bytes: bytes,
+    filename: str,
+    *,
+    extra_fields: dict | None = None,
+    allowed=(200, 201),
+    warn_on=(400, 422),
+    name: str | None = None,
+) -> bool:
+    name = name or f"POST {path}"
+    raw_body, ctype = _multipart_xlsx(file_bytes, filename, extra_fields)
+    status, raw, resp_ctype, ms = http(
+        "POST",
+        path,
+        token=TOKEN,
+        raw_body=raw_body,
+        content_type=ctype,
+        timeout=90,
+    )
+    payload = _json_payload(raw) if raw[:1] in (b"{", b"[") or "json" in (resp_ctype or "").lower() else {"_bytes": len(raw)}
+    detail = f"HTTP {status}: {str(payload)[:160]}"
+    if status in allowed:
+        record(module, name, True, detail, ms=ms)
+        return True
+    if status in warn_on:
+        record(module, name, False, detail, warn=True, ms=ms)
+        return False
+    record(module, name, False, detail, ms=ms)
+    return False
+
+
+def _fetch_xlsx(path: str) -> bytes | None:
+    status, raw, _ctype, _ms = http("GET", path, token=TOKEN, timeout=90)
+    if status == 200 and raw.startswith(XLSX_MAGIC):
+        return raw
+    return None
+
+
 # ── sections ────────────────────────────────────────────────────────────────
 
 
@@ -246,19 +321,64 @@ def section_shell():
         record("shell", "auth credentials", False, "Set CHECK_USERNAME/CHECK_PASSWORD or DEFAULT_ADMIN_* in .env")
         return False
 
+    def _extract_token(payload: dict) -> str | None:
+        data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+        tokens = payload.get("tokens") if isinstance(payload.get("tokens"), dict) else {}
+        data_tokens = data.get("tokens") if isinstance(data.get("tokens"), dict) else {}
+        return (
+            payload.get("access_token")
+            or payload.get("token")
+            or data.get("access_token")
+            or data.get("token")
+            or tokens.get("access_token")
+            or tokens.get("access")
+            or data_tokens.get("access_token")
+            or data_tokens.get("access")
+        )
+
+    def _mfa_pending(payload: dict) -> bool:
+        data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+        return bool(payload.get("mfa_required") or data.get("mfa_required"))
+
+    def _mfa_code() -> str:
+        code = (os.environ.get("CHECK_MFA_CODE") or "").strip()
+        if code:
+            return code
+        secret = (os.environ.get("CHECK_MFA_SECRET") or "").replace(" ", "").strip()
+        if not secret:
+            return ""
+        try:
+            import pyotp
+        except ImportError:
+            return ""
+        return str(pyotp.TOTP(secret).now())
+
     global TOKEN
-    st, raw, _c, ms = http("POST", "/api/auth/login", body={"username": username, "password": password})
+    login_body = {"username": username, "password": password}
+    st, raw, _c, ms = http("POST", "/api/auth/login", body=login_body)
     login = _json_payload(raw)
     if st != 200:
         record("shell", "POST /api/auth/login", False, f"HTTP {st}: {str(login)[:160]}", ms=ms)
         return False
-    TOKEN = (
-        login.get("access_token")
-        or login.get("token")
-        or (login.get("data") or {}).get("access_token")
-        or (login.get("tokens") or {}).get("access_token")
-        or (login.get("tokens") or {}).get("access")
-    )
+    if _mfa_pending(login):
+        code = _mfa_code()
+        if not code:
+            record(
+                "shell",
+                "POST /api/auth/login",
+                False,
+                "MFA required — set CHECK_MFA_CODE or CHECK_MFA_SECRET",
+                ms=ms,
+            )
+            return False
+        login_body["mfa_code"] = code
+        st, raw, _c, ms = http("POST", "/api/auth/login", body=login_body)
+        login = _json_payload(raw)
+        if st != 200:
+            record("shell", "POST /api/auth/login (MFA)", False, f"HTTP {st}: {str(login)[:160]}", ms=ms)
+            return False
+        record("shell", "POST /api/auth/login (MFA)", True, "TOTP accepted", ms=ms)
+    TOKEN = _extract_token(login if isinstance(login, dict) else {})
     record("shell", "POST /api/auth/login", bool(TOKEN), "token present" if TOKEN else f"keys={list(login.keys())}", ms=ms)
     if not TOKEN:
         return False
@@ -824,6 +944,148 @@ def section_assistant():
     )
 
 
+def section_notifications():
+    print("\n=== 12) Notifications ===")
+    api_json("notifications", "GET", "/hr/api/notifications", warn_on=(403, 404))
+    api_json("notifications", "GET", "/hr/api/notifications/unread-count", warn_on=(403, 404))
+    page("notifications", "/admin/email-notifications")
+    api_json("notifications", "GET", "/api/admin/email-logs", warn_on=(403, 404))
+    api_json("notifications", "GET", "/api/admin/notification-config", warn_on=(403, 404))
+
+    ok, _st, users_payload = api_json("notifications", "GET", "/api/admin/users", warn_on=(403, 404))
+    uid = None
+    if ok and isinstance(users_payload, dict):
+        rows = (
+            users_payload.get("users")
+            or users_payload.get("data")
+            or users_payload.get("items")
+            or []
+        )
+        if isinstance(rows, list):
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                if (row.get("role") or "").lower() == "admin":
+                    uid = row.get("id")
+                    break
+            if uid is None and rows and isinstance(rows[0], dict):
+                uid = rows[0].get("id")
+    if uid:
+        api_json(
+            "notifications",
+            "GET",
+            f"/api/admin/users/{uid}/edit-otp/status",
+            name="GET edit-otp/status (no send)",
+            warn_on=(403, 404),
+        )
+    else:
+        record("notifications", "GET edit-otp/status (no send)", False, "no admin user id", warn=True)
+
+
+def section_imports():
+    print("\n=== 13) Excel imports (local only) ===")
+    if _is_live_target():
+        record(
+            "imports",
+            "Excel import POSTs",
+            True,
+            "skipped on live — would mutate production data",
+        )
+        return
+
+    hiring = _fetch_xlsx("/hr/api/hiring/export") or _fetch_xlsx("/hr/api/hiring/import-template")
+    if hiring:
+        post_xlsx_import(
+            "imports",
+            "/hr/api/hiring/import",
+            hiring,
+            "hiring_import.xlsx",
+            extra_fields={"preview": "1"},
+            name="POST /hr/api/hiring/import (preview)",
+        )
+    else:
+        record("imports", "POST /hr/api/hiring/import (preview)", False, "no hiring xlsx to POST", warn=True)
+
+    leave = _fetch_xlsx("/hr/api/leave-tracker/export") or _fetch_xlsx("/hr/api/leave-tracker/template")
+    if leave:
+        post_xlsx_import(
+            "imports",
+            "/hr/api/leave-tracker/import",
+            leave,
+            "leave_tracker.xlsx",
+            name="POST /hr/api/leave-tracker/import",
+        )
+    else:
+        record("imports", "POST /hr/api/leave-tracker/import", False, "no leave xlsx to POST", warn=True)
+
+    manpower = _fetch_xlsx("/hr/api/manpower/export") or _fetch_xlsx("/hr/api/manpower/template")
+    if manpower:
+        post_xlsx_import(
+            "imports",
+            "/hr/api/manpower/import",
+            manpower,
+            "manpower.xlsx",
+            extra_fields={"replace": "0"},
+            name="POST /hr/api/manpower/import",
+        )
+    else:
+        record("imports", "POST /hr/api/manpower/import", False, "no manpower xlsx to POST", warn=True)
+
+    qhsi = _fetch_xlsx("/qhsi/api/staff-compliance/import-template")
+    if qhsi:
+        post_xlsx_import(
+            "imports",
+            "/qhsi/api/staff-compliance/import",
+            qhsi,
+            "qhsi_staff.xlsx",
+            name="POST /qhsi/api/staff-compliance/import",
+        )
+    else:
+        record("imports", "POST /qhsi/api/staff-compliance/import", False, "no QHSE template", warn=True)
+
+    procurement = _fetch_xlsx("/procurement/api/sample-excel")
+    if procurement:
+        post_xlsx_import(
+            "imports",
+            "/procurement/api/import-excel",
+            procurement,
+            "procurement_sample.xlsx",
+            name="POST /procurement/api/import-excel",
+        )
+    else:
+        record("imports", "POST /procurement/api/import-excel", False, "no procurement sample", warn=True)
+
+    pid = None
+    _ok, _st, proj_payload = api_json(
+        "imports",
+        "GET",
+        "/tickets/api/settings/projects",
+        name="GET projects for location import",
+        warn_on=(403, 404),
+    )
+    projects = proj_payload.get("projects") or [] if isinstance(proj_payload, dict) else []
+    if projects and isinstance(projects[0], dict):
+        pid = projects[0].get("id")
+    loc_xlsx = None
+    loc_path = None
+    if pid:
+        loc_path = f"/tickets/api/settings/projects/{pid}/locations/import"
+        loc_xlsx = _fetch_xlsx(f"/tickets/api/settings/projects/{pid}/locations/export")
+    if loc_xlsx is None:
+        loc_xlsx = _fetch_xlsx("/tickets/api/settings/locations/excel-template")
+        loc_path = "/tickets/api/settings/standalone/locations/import"
+    if loc_xlsx and loc_path:
+        post_xlsx_import(
+            "imports",
+            loc_path,
+            loc_xlsx,
+            "locations.xlsx",
+            name=f"POST {loc_path}",
+        )
+    else:
+        record("imports", "POST locations import", False, "no location xlsx to POST", warn=True)
+
+
 def write_reports() -> None:
     summary = {
         "base": BASE,
@@ -901,10 +1163,15 @@ def write_reports() -> None:
         lines.append(f"| {r['status']} | {r['module']} | {r['name']} | {r['ms']:.0f} | {detail} |")
     lines.append("")
 
-    report_path = ROOT / "docs" / "smoke" / "LAST_RUN.md"
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text("\n".join(lines), encoding="utf-8")
+    report_dir = ROOT / "docs" / "smoke"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    text = "\n".join(lines)
+    report_path = report_dir / "LAST_RUN.md"
+    tagged_path = report_dir / f"LAST_RUN.{_report_tag()}.md"
+    report_path.write_text(text, encoding="utf-8")
+    tagged_path.write_text(text, encoding="utf-8")
     print(f"\nWrote {report_path.relative_to(ROOT)}")
+    print(f"Wrote {tagged_path.relative_to(ROOT)}")
     print(f"Wrote { (OUT / '00_summary.json').relative_to(ROOT) }")
 
 
@@ -939,6 +1206,8 @@ def main() -> int:
     section_admin()
     section_files()
     section_assistant()
+    section_notifications()
+    section_imports()
 
     write_reports()
     print("\n" + "=" * 60)

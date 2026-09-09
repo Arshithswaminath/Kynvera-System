@@ -91,9 +91,10 @@ class TestJobCatalog:
         expected = {row['slug'] for row in JOB_CATALOG}
         assert expected <= set(jobs)
 
-    def test_coming_soon_not_runnable(self, client, admin_auth_headers):
+    def test_linked_mmr_job_is_not_runnable(self, client, admin_auth_headers):
+        """Report Generation stays linked/unimplemented in this hub."""
         response = client.post(
-            '/automations/api/jobs/procurement_daily_excel/run',
+            '/automations/api/jobs/mmr_daily_excel/run',
             headers=admin_auth_headers,
         )
         assert response.status_code == 400

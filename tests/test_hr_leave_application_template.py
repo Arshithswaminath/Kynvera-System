@@ -77,9 +77,9 @@ def _leave_application_form_data_with_mgmt_chain():
     return fd
 
 
-# Strings taken from a real export (`leave_application_reference.pdf`) — section headers and trail.
+# Shared section headers / trail. Branding and layout version differ between
+# the checked-in reference PDF (legacy) and current generated PDFs.
 LEAVE_APPLICATION_LAYOUT_MARKERS = [
-    "Kynvera Facility Management",
     "Leave Application Form",
     "DETAILS OF LEAVE",
     "Type of Leave",
@@ -98,7 +98,6 @@ LEAVE_APPLICATION_LAYOUT_MARKERS = [
     "(HR pool)",
     "Generated",
     "Dubai",
-    f"PDF layout {HR_PDF_LAYOUT_VERSION}",
 ]
 
 
@@ -125,6 +124,8 @@ def test_generated_leave_application_pdf_matches_layout_markers():
     text = _extract_pdf_text(buf.getvalue())
     missing = [m for m in LEAVE_APPLICATION_LAYOUT_MARKERS if m not in text]
     assert not missing, f"Generated PDF missing markers: {missing[:12]}"
+    assert "Kynvera" in text or "KYNVERA" in text, "Generated PDF missing Kynvera branding"
+    assert f"PDF layout {HR_PDF_LAYOUT_VERSION}" in text
 
     r = PdfReader(BytesIO(buf.getvalue()))
     assert len(r.pages) >= 2, "Leave Application with management chain should span at least two pages"

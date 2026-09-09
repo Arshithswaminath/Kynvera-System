@@ -50,17 +50,22 @@ def chain_users(app):
         tech = _mk(f"tech_{tag}", "technician", reporting_manager_id=sup.id)
         emp = _mk(f"emp_{tag}", "employee")
         db.session.commit()
-
-        yield {
-            "tech": tech,
-            "sup": sup,
-            "om": om,
-            "gm": gm,
-            "hr": hr,
-            "emp": emp,
+        ids = {
+            "tech": tech.id,
+            "sup": sup.id,
+            "om": om.id,
+            "gm": gm.id,
+            "hr": hr.id,
+            "emp": emp.id,
         }
 
-        # Cleanup
+        yield {key: db.session.get(User, uid) for key, uid in ids.items()}
+
+        for uid in created:
+            obj = db.session.get(User, uid)
+            if obj is not None:
+                obj.reporting_manager_id = None
+        db.session.commit()
         for uid in created:
             obj = db.session.get(User, uid)
             if obj is not None:
@@ -340,7 +345,10 @@ def test_ui_context_technician_descriptor(app, chain_users):
     from module_hr.hr_management_chain import get_mgmt_chain_ui_context
 
     with app.app_context():
-        ctx = get_mgmt_chain_ui_context(chain_users["tech"])
+        from app.models import db, User
+
+        tech = db.session.get(User, chain_users["tech"].id)
+        ctx = get_mgmt_chain_ui_context(tech)
         assert ctx["success"] is True
         assert ctx["lane"] == "technician"
         assert ctx["setup_error"] is None

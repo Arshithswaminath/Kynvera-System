@@ -1,6 +1,7 @@
 {# HR trackers sidebar (Hiring + Leave + Manpower + Employee List)
    Expects: user, hiring_active ('documents' | 'offer_letters' | 'dashboard' | 'leave_tracker' | 'leave_repeat_sick' | 'leave_sick_trends' | 'manpower' | 'employee_list' | 'employee_from_hiring')
-   Shared order: HR Module → Hiring Docs → Manpower Tracker → Leave Tracker → Employee List
+   Shared order: Hiring Docs → Manpower Tracker → Leave Tracker → Employee List
+   Brand “HR module” links to the HR dashboard.
 #}
 {% set _parts = (user.full_name or user.username or '')|trim %}
 {% set _words = _parts.split() %}
@@ -14,23 +15,6 @@
 {% set employee_section = active == 'employee_list' %}
 {% set employee_from_hiring_section = active == 'employee_from_hiring' %}
 {% set hiring_section = not leave_section and not manpower_section and not directory_section %}
-{% if leave_section %}
-  {% set brand_name = 'Leave Tracker' %}
-  {% set brand_tag = 'HR · Sick & Annual' %}
-  {% set brand_href = '/hr/leave-tracker' %}
-{% elif manpower_section %}
-  {% set brand_name = 'Manpower Tracker' %}
-  {% set brand_tag = 'HR · Vacancies' %}
-  {% set brand_href = '/hr/manpower-tracker' %}
-{% elif directory_section %}
-  {% set brand_name = 'Employee List' %}
-  {% set brand_tag = 'HR · Directory' %}
-  {% set brand_href = '/hr/employee-list' %}
-{% else %}
-  {% set brand_name = 'Hiring Docs' %}
-  {% set brand_tag = 'HR · Onboarding' %}
-  {% set brand_href = '/hr/hiring' %}
-{% endif %}
 {% set efh_count = employee_from_hiring_pending_count() if employee_from_hiring_pending_count is defined else employee_from_hiring_count|default(0) %}
 
 <div class="hh-overlay" id="hhSidebarOverlay" onclick="hhCloseSidebar()" aria-hidden="true"></div>
@@ -38,22 +22,14 @@
   <span aria-hidden="true">&#9776;</span>
   <span class="hh-sidebar-toggle-label">Menu</span>
 </button>
-<aside class="hh-sidebar hh-nav-will-animate" id="hhSidebar" aria-label="{{ brand_name }} menu">
-  <a href="{{ brand_href }}" class="hh-brand" aria-label="{{ brand_name }} home">
+<aside class="hh-sidebar hh-nav-will-animate" id="hhSidebar" aria-label="HR menu">
+  <a href="/hr/" class="hh-brand" aria-label="HR module dashboard">
     <div class="hh-brand-text">
-      <span class="name">{{ brand_name }}</span>
-      <span class="tag">{{ brand_tag }}</span>
+      <span class="name">HR module</span>
     </div>
   </a>
 
   <nav class="hh-nav">
-    <a href="/hr/" class="hh-nav-item{% if active == 'dashboard' %} active{% endif %}">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 8.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 016 20.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25A2.25 2.25 0 0113.5 8.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/>
-      </svg>
-      HR Module
-    </a>
-
     {# 1) Hiring Docs #}
     <div class="hh-nav-group{% if hiring_section %} is-open{% endif %}">
       <a href="/hr/hiring" class="hh-nav-item{% if hiring_section %} active{% endif %}" id="hhSidebarHiring">

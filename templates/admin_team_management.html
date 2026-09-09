@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}?v=3">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-manage-profile-modal.css') }}?v=26">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-manage-profile-modal.css') }}?v=32">
   <style>
   /* ── Design tokens ─────────────────────────────────────────────────────── */
   :root {
@@ -787,7 +787,7 @@
   /* ── Responsive table scroll ─────────────────────────────────────────────── */
   .tm-table-scroll { overflow-x: auto; }
   </style>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/injz-profile-mgmt-theme.css') }}?v=36">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/injz-profile-mgmt-theme.css') }}?v=44">
 </head>
 <body class="has-main-nav">
   {% include 'partials/main_navbar.html' with context %}
@@ -1215,9 +1215,10 @@
   <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=41"></script>
   <script>window.FILES_SAVE_MODULE = 'technicians'; window.FILES_SAVE_MODULE_LABEL = 'Team Management — Staff';</script>
   <script src="{{ url_for('static', filename='js/files-save.js') }}?v=17"></script>
+  <script src="{{ url_for('static', filename='js/signature_display.js') }}?v=2"></script>
   <script src="{{ url_for('static', filename='signature_pad.umd.min.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/admin-edit-otp.js') }}?v=14"></script>
-  <script src="{{ url_for('static', filename='js/admin-manage-profile-modal.js') }}?v=19"></script>
+  <script src="{{ url_for('static', filename='js/admin-edit-otp.js') }}?v=15"></script>
+  <script src="{{ url_for('static', filename='js/admin-manage-profile-modal.js') }}?v=22"></script>
 
   <script>
   /* ═══════════════════════════════════════════════════════════════════════
@@ -1355,6 +1356,8 @@
       else title = 'Could not complete';
     } else if (/deactivat/i.test(raw)) title = 'Account deactivated';
     else if (/activat/i.test(raw)) title = 'Account activated';
+    else if (/signatur/i.test(raw) && /clear/i.test(raw)) title = 'Signature cleared';
+    else if (/signatur/i.test(raw)) title = 'Signature saved';
     else if (/password/i.test(raw)) title = 'Password updated';
     else if (/deleted/i.test(raw)) title = 'User deleted';
     else if (/created|imported/i.test(raw)) title = 'Done';
@@ -1366,7 +1369,7 @@
     }
     el.setAttribute('role', 'status');
     el.setAttribute('aria-live', 'polite');
-    document.body.appendChild(el);
+    (document.documentElement || document.body).appendChild(el);
 
     const check = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 9.5 17 19 7"/></svg>';
     const warn = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5h.01"/></svg>';
