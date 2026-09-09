@@ -111,6 +111,17 @@ def _get_claude_client():
     return _claude_client
 
 
+def _claude_messages_create(client, **kwargs):
+    """Some Claude models/SDKs reject temperature; retry without it."""
+    try:
+        return client.messages.create(**kwargs)
+    except TypeError as exc:
+        if 'temperature' in kwargs and 'temperature' in str(exc):
+            kwargs.pop('temperature', None)
+            return client.messages.create(**kwargs)
+        raise
+
+
 def _generate_claude(user_content: str) -> str:
     from flask import current_app
     client = _get_claude_client()
@@ -119,7 +130,8 @@ def _generate_claude(user_content: str) -> str:
         return ''
 
     model = current_app.config.get('ASSISTANT_LLM_MODEL', 'claude-haiku-4-5')
-    response = client.messages.create(
+    response = _claude_messages_create(
+        client,
         model=model,
         max_tokens=600,
         system=SYSTEM_PROMPT,
@@ -258,7 +270,8 @@ def _raw_completion(system_prompt: str, user_content: str, model: str = None, ma
     client = _get_claude_client()
     if not client:
         raise StructuredLLMError('Claude client unavailable — check ANTHROPIC_API_KEY')
-    response = client.messages.create(
+    response = _claude_messages_create(
+        client,
         model=model,
         max_tokens=max_tokens,
         system=system_prompt,
@@ -437,7 +450,7 @@ def _generate_claude_tools(system_prompt, messages, tools, model, max_tokens) ->
     claude_tools = _claude_tools(tools)
     if claude_tools:
         kwargs['tools'] = claude_tools
-    response = client.messages.create(**kwargs)
+    response = _claude_messages_create(client, **kwargs)
 
     text_parts = []
     tool_calls = []
