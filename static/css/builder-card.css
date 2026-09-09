@@ -235,35 +235,41 @@ html.kv-builder-open body {
 }
 
 .kv-card-back {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(11.5rem, 0.8fr);
+  align-items: stretch;
   background: #ee9c7d;
   transform: rotateY(180deg);
 }
 
 .kv-card-back-art {
+  grid-column: 1 / -1;
+  grid-row: 1;
   position: absolute;
   inset: 0;
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: left bottom;
+  object-position: left center;
   border: 0;
   outline: none;
   pointer-events: none;
 }
 
 .kv-card-back-inner {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
   z-index: 3;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  width: min(54%, 19rem);
-  padding: 7% 7% 8% 2%;
+  width: auto;
+  max-width: none;
+  inset: auto;
+  padding: 8% 8% 8% 4%;
   color: #fae0c2;
   text-align: left;
   font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif);
@@ -271,9 +277,9 @@ html.kv-builder-open body {
 
 .kv-card-wordmark {
   display: block;
-  width: 7.4rem;
-  height: 20px;
-  margin-bottom: 1.15rem;
+  width: 6.4rem;
+  height: 18px;
+  margin: 0 0 1rem;
   padding: 0;
   border: 0;
   background-color: #fae0c2;
@@ -284,45 +290,49 @@ html.kv-builder-open body {
 }
 
 .kv-card-name {
-  font-size: clamp(1.28rem, 3.6vw, 1.85rem);
+  display: block;
+  max-width: 100%;
+  font-size: clamp(1.12rem, 2.9vw, 1.48rem);
   font-weight: 750;
   letter-spacing: -0.038em;
-  line-height: 1.08;
+  line-height: 1.12;
   color: #fae0c2;
 }
 
 .kv-card-role,
 .kv-card-place {
-  font-size: 0.68rem;
+  font-size: clamp(0.58rem, 1.35vw, 0.7rem);
   font-weight: 650;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #fae0c2;
   opacity: 0.92;
 }
 
 .kv-card-role {
-  margin-top: 0.45rem;
+  margin-top: 0.55rem;
 }
 
 .kv-card-place {
-  margin-top: 0.12rem;
+  margin-top: 0.18rem;
 }
 
 .kv-card-rule {
   display: block;
-  width: 2.1rem;
+  width: 1.85rem;
   height: 1px;
-  margin: 0.95rem 0 0.85rem;
+  margin: 0.85rem 0 0.75rem;
   background: #fae0c2;
   opacity: 0.7;
 }
 
 .kv-card-mail {
-  font-size: clamp(0.68rem, 1.7vw, 0.84rem);
+  display: block;
+  max-width: 100%;
+  font-size: clamp(0.62rem, 1.45vw, 0.78rem);
   font-weight: 600;
   letter-spacing: 0.01em;
-  line-height: 1.35;
+  line-height: 1.3;
   word-break: break-word;
   color: #fae0c2;
   opacity: 0.95;
@@ -409,14 +419,18 @@ html.kv-builder-open body {
   }
 
   .kv-card-wordmark {
-    width: 6.1rem;
-    height: 16px;
+    width: 5.4rem;
+    height: 15px;
     margin-bottom: 0.7rem;
   }
 
+  .kv-card-back {
+    grid-template-columns: minmax(0, 1.05fr) minmax(9.5rem, 0.95fr);
+  }
+
   .kv-card-back-inner {
-    width: min(58%, 16rem);
-    padding: 6% 6% 7% 1.5%;
+    width: auto;
+    padding: 7% 7% 7% 3%;
   }
 
   .kv-card-mail {
