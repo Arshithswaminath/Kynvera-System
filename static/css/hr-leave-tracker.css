@@ -2022,6 +2022,89 @@ a.lt-stat-btn:visited {
   margin-top: 0.5rem;
 }
 
+.lt-modal-card.lt-import-card {
+  width: min(520px, 100%);
+}
+
+.lt-import-modes {
+  margin: 0 0 0.75rem;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.lt-import-modes-label {
+  margin: 0 0 0.15rem;
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hh-muted, #5c616e);
+}
+
+.lt-import-mode {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0.85rem 0.95rem 0.95rem;
+  border: 1px solid var(--hh-border, #e9eaee);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.lt-import-mode input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lt-import-mode:hover {
+  border-color: rgba(255, 142, 104, 0.45);
+}
+
+.lt-import-mode:has(input:checked) {
+  border-color: var(--hh-brand, #ff8e68);
+  background: #fff8f5;
+  box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.12);
+}
+
+.lt-import-mode-replace:has(input:checked) {
+  border-color: #ea580c;
+  background: #fff7ed;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.1);
+}
+
+.lt-import-mode-kicker {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hh-muted, #5c616e);
+}
+
+.lt-import-mode:has(input:checked) .lt-import-mode-kicker {
+  color: #c2410c;
+}
+
+.lt-import-mode strong {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--hh-text, #191b23);
+}
+
+.lt-import-mode-copy {
+  color: var(--hh-muted, #5c616e);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 .lt-actions {
   display: flex;
   gap: 0.35rem;
@@ -2147,4 +2230,155 @@ a.lt-stat-btn:visited {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+}
+
+.lt-export-wrap {
+  position: relative;
+  display: inline-flex;
+  z-index: 4;
+}
+
+.lt-export-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.lt-export-chevron {
+  width: 11px;
+  height: 7px;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.lt-export-toggle[aria-expanded="true"] .lt-export-chevron {
+  transform: rotate(180deg);
+}
+
+.lt-export-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1400;
+  min-width: 272px;
+  max-width: min(92vw, 320px);
+  padding: 0.9rem;
+  background: #fff;
+  border: 1px solid var(--hh-border, #e9eaee);
+  border-radius: 12px;
+  box-shadow: 0 14px 36px rgba(28, 32, 40, 0.14);
+}
+
+.lt-export-menu[hidden] {
+  display: none !important;
+}
+
+.lt-export-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hh-muted, #5c616e);
+}
+
+.lt-export-opt {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 36px;
+  margin: 0 0 0.15rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--hh-text, #1c2028);
+  cursor: pointer;
+}
+
+.lt-export-opt:hover {
+  background: var(--hh-brand-soft, #fff4ef);
+}
+
+.lt-export-opt input {
+  accent-color: var(--hh-brand, #ff8e68);
+  margin: 0;
+}
+
+.lt-export-year-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0.55rem 0 0.35rem;
+}
+
+.lt-export-year-row[hidden],
+.lt-export-months[hidden],
+.lt-export-hint[hidden] {
+  display: none !important;
+}
+
+.lt-export-field-label {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--hh-muted, #5c616e);
+}
+
+.lt-export-year-row .hh-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
+  padding: 0 2.1rem 0 0.7rem;
+  line-height: 36px;
+}
+
+.lt-export-months {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin: 0.55rem 0 0.35rem;
+}
+
+.lt-export-month {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  margin: 0;
+  padding: 0.2rem 0.15rem;
+  border: 1px solid var(--hh-border, #e9eaee);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--hh-brand, #ff8e68);
+  font-size: 0.75rem;
+  font-weight: 650;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lt-export-month input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lt-export-month:hover,
+.lt-export-month:has(input:checked) {
+  background: var(--hh-brand-soft, #fff4ef);
+  border-color: var(--hh-brand, #ff8e68);
+}
+
+.lt-export-hint {
+  margin: 0.2rem 0 0.55rem;
+  font-size: 0.75rem;
+  color: var(--hh-muted, #5c616e);
+}
+
+.lt-export-go {
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.45rem;
 }

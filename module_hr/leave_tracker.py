@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from calendar import monthrange
 from datetime import date, datetime, timedelta
 from typing import Optional
 
@@ -17,6 +18,7 @@ from sqlalchemy.orm import joinedload
 
 from app.models import (
     LEAVE_COMPANIES,
+    LEAVE_ALL_MONTHS,
     LEAVE_SICK_ALERT_WARNING,
     LEAVE_SICK_ENTITLEMENT,
     LEAVE_TRACKER_MONTH_LABELS,
@@ -48,6 +50,7 @@ from module_hr.leave_excel import (
     build_staff_workbook,
     import_leave_workbook,
     import_staff_workbook,
+    matching_leave_log,
     seed_employees_from_staff_list,
     split_plan_days_by_month,
 )
@@ -62,6 +65,91 @@ STAFF_LIST_BUNDLED = os.path.join(
 
 PERIODS_MIN_YEAR = LEAVE_TRACKER_YEAR
 PERIODS_MAX_YEAR = 2035
+
+
+def _month_end(year: int, month: int) -> date:
+    return date(year, month, monthrange(year, month)[1])
+
+
+def _clamp_export_year(raw) -> int:
+    try:
+        year = int(raw)
+    except (TypeError, ValueError):
+        year = LEAVE_TRACKER_YEAR
+    return max(PERIODS_MIN_YEAR, min(PERIODS_MAX_YEAR, year))
+
+
+def _parse_export_months(raw: Optional[str]) -> list[int]:
+    months: list[int] = []
+    for part in (raw or '').split(','):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            month = int(part)
+        except ValueError:
+            continue
+        if 1 <= month <= 12 and month not in months:
+            months.append(month)
+    months.sort()
+    return months
+
+
+def _overlaps_selected_months(start: Optional[date], end: Optional[date], year: int, months: list[int]) -> bool:
+    if not start:
+        return False
+    end = end or start
+    for month in months:
+        month_start = date(year, month, 1)
+        month_end = _month_end(year, month)
+        if end >= month_start and start <= month_end:
+            return True
+    return False
+
+
+def _parse_export_scope():
+    scope = (request.args.get('scope') or 'full').strip().lower()
+    if scope not in ('full', 'year', 'months'):
+        scope = 'full'
+    year = _clamp_export_year(request.args.get('year') or LEAVE_TRACKER_YEAR)
+    months = _parse_export_months(request.args.get('months'))
+    if scope == 'year':
+        return {
+            'scope': 'year',
+            'year': year,
+            'months': list(LEAVE_ALL_MONTHS),
+            'window_start': date(year, 1, 1),
+            'window_end': date(year, 12, 31),
+            'month_filter': None,
+        }
+    if scope == 'months':
+        if not months:
+            return None
+        return {
+            'scope': 'months',
+            'year': year,
+            'months': months,
+            'window_start': date(year, months[0], 1),
+            'window_end': _month_end(year, months[-1]),
+            'month_filter': months,
+        }
+    return {
+        'scope': 'full',
+        'year': LEAVE_TRACKER_YEAR,
+        'months': list(LEAVE_ALL_MONTHS),
+        'window_start': LEAVE_WINDOW_START,
+        'window_end': LEAVE_WINDOW_END,
+        'month_filter': None,
+    }
+
+
+def _export_filename(spec: dict) -> str:
+    if spec['scope'] == 'year':
+        return f'leave_tracker_{spec["year"]}.xlsx'
+    if spec['scope'] == 'months':
+        labels = [LEAVE_TRACKER_MONTH_LABELS[m].lower() for m in spec['months']]
+        return f'leave_tracker_{spec["year"]}_{"_".join(labels)}.xlsx'
+    return 'leave_tracker_full.xlsx'
 
 
 def _parse_ymd(raw: Optional[str]) -> Optional[date]:
@@ -1230,6 +1318,12 @@ def register_leave_tracker_routes(hr_bp):
         if parsed is False or parsed is None or parsed <= 0:
             parsed = float(cal_days)
 
+        if matching_leave_log(emp.id, leave_type, leave_date, end_date, parsed):
+            return error_response(
+                'This leave is already logged for that employee and date range',
+                status_code=409,
+            )
+
         log = LeaveLog(
             employee_id=emp.id,
             leave_type=leave_type,
@@ -1557,6 +1651,12 @@ def register_leave_tracker_routes(hr_bp):
         if err:
             return err
         _ensure_migrated()
+        spec = _parse_export_scope()
+        if spec is None:
+            return error_response('Select at least one month to export', status_code=400)
+        window_start = spec['window_start']
+        window_end = spec['window_end']
+        log_end = func.coalesce(LeaveLog.end_date, LeaveLog.leave_date)
         employees = (
             LeaveEmployee.query.filter_by(active=True)
             .options(joinedload(LeaveEmployee.usage))
@@ -1566,8 +1666,8 @@ def register_leave_tracker_routes(hr_bp):
         plans = (
             LeavePlan.query.options(joinedload(LeavePlan.employee))
             .filter(
-                LeavePlan.start_date <= LEAVE_WINDOW_END,
-                LeavePlan.end_date >= LEAVE_WINDOW_START,
+                LeavePlan.start_date <= window_end,
+                LeavePlan.end_date >= window_start,
             )
             .order_by(LeavePlan.start_date.asc())
             .all()
@@ -1575,20 +1675,42 @@ def register_leave_tracker_routes(hr_bp):
         logs = (
             LeaveLog.query.options(joinedload(LeaveLog.employee))
             .filter(
-                LeaveLog.leave_date >= LEAVE_WINDOW_START,
-                LeaveLog.leave_date <= LEAVE_WINDOW_END,
+                LeaveLog.leave_date <= window_end,
+                log_end >= window_start,
             )
             .order_by(LeaveLog.leave_date.asc(), LeaveLog.id.asc())
             .all()
         )
-        buf = build_leave_workbook(employees, plans, logs)
-        filename = f'leave_tracker_{LEAVE_TRACKER_YEAR}_aug_dec.xlsx'
-        return send_file(
+        month_filter = spec.get('month_filter')
+        if month_filter:
+            year = spec['year']
+            logs = [
+                log
+                for log in logs
+                if _overlaps_selected_months(log.leave_date, log.effective_end(), year, month_filter)
+            ]
+            plans = [
+                plan
+                for plan in plans
+                if _overlaps_selected_months(plan.start_date, plan.end_date, year, month_filter)
+            ]
+        buf = build_leave_workbook(
+            employees,
+            plans,
+            logs,
+            year=spec['year'],
+            months=spec['months'],
+        )
+        filename = _export_filename(spec)
+        response = send_file(
             buf,
             as_attachment=True,
             download_name=filename,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         )
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['X-Export-Filename'] = filename
+        return response
 
     @hr_bp.route('/api/leave-tracker/import', methods=['POST'])
     @jwt_required()
@@ -1599,8 +1721,11 @@ def register_leave_tracker_routes(hr_bp):
         f = request.files.get('file')
         if not f or not f.filename:
             return error_response('file is required', status_code=400)
+        replace = (request.form.get('replace') or request.args.get('replace') or '').strip().lower() in (
+            '1', 'true', 'yes',
+        )
         try:
-            result = import_leave_workbook(f)
+            result = import_leave_workbook(f, replace=replace)
         except Exception as e:
             logger.exception('Leave tracker import failed')
             return error_response(f'Import failed: {e}', status_code=400)

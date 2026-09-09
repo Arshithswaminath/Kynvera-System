@@ -361,7 +361,7 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
 }
 
 .mobile-menu-drawer-footer {
-  display: none;
+  display: none !important;
 }
 
 .mobile-overlay {
@@ -2248,8 +2248,9 @@ body.qhsi-dashboard .footer {
     flex-shrink: 0 !important;
   }
 
+  /* Desktop: never show the drawer logout; header logout stays in the top bar */
   .mobile-menu-drawer-footer {
-    display: none;
+    display: none !important;
     flex: 0 0 auto !important;
     margin: 0 !important;
     padding: 0.85rem 1rem calc(0.85rem + env(safe-area-inset-bottom, 0px)) !important;
@@ -3298,32 +3299,16 @@ body.qhsi-dashboard .footer {
     user-select: auto !important;
   }
   
-  /* Logout - compact on mobile */
-  .nav-right .logout-btn {
-    font-size: 0.8rem !important;
-    padding: 0 !important;
-    min-height: 36px !important;
-    min-width: 36px !important;
-    width: 36px !important;
-    height: 36px !important;
-    flex-shrink: 0 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    border-radius: 50% !important;
-    background: transparent !important;
-    border: none !important;
-    color: var(--text-dark) !important;
-    box-shadow: none !important;
-  }
-
-  .logout-btn svg {
-    width: 20px !important;
-    height: 20px !important;
-  }
-
-  .logout-btn span {
+  /* Tablet/phone: logout is only in the hamburger drawer, not the top bar */
+  .nav-right .logout-btn,
+  .nav-right > .logout-btn {
     display: none !important;
+  }
+
+  .mobile-menu-drawer-footer,
+  .mobile-menu-drawer-footer[hidden] {
+    display: block !important;
+    margin-top: auto !important;
   }
   
   /* Module cards - compact grid on mobile.
@@ -3562,7 +3547,8 @@ body.qhsi-dashboard .footer {
     display: none !important;
   }
 
-  .mobile-menu-drawer-footer {
+  .mobile-menu-drawer-footer,
+  .mobile-menu-drawer-footer[hidden] {
     display: block !important;
     margin-top: auto !important;
   }
@@ -3703,7 +3689,8 @@ body.qhsi-dashboard .footer {
     display: none !important;
   }
 
-  .mobile-menu-drawer-footer {
+  .mobile-menu-drawer-footer,
+  .mobile-menu-drawer-footer[hidden] {
     display: block !important;
     margin-top: auto !important;
   }

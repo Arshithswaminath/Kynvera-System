@@ -2416,26 +2416,162 @@
     });
   }
 
+  function exportDownloadName(scope, year, months) {
+    if (scope === 'year') return 'leave_tracker_' + year + '.xlsx';
+    if (scope === 'months') {
+      var slugs = (months || []).map(function (m) {
+        return String(MONTH_LABELS[m] || m).toLowerCase();
+      });
+      return 'leave_tracker_' + year + '_' + slugs.join('_') + '.xlsx';
+    }
+    return 'leave_tracker_full.xlsx';
+  }
+
   function downloadExport() {
-    fetch('/hr/api/leave-tracker/export', {
+    var scope = exportScope();
+    var year = ($('ltExportYear') && $('ltExportYear').value) || String(state.openYear || BASE_YEAR);
+    var params = new URLSearchParams();
+    params.set('scope', scope);
+    if (scope !== 'full') params.set('year', year);
+    var months = [];
+    if (scope === 'months') {
+      months = selectedExportMonths();
+      if (!months.length) {
+        showImportResult('Select at least one month to export.', true);
+        return;
+      }
+      params.set('months', months.join(','));
+    }
+    var filename = exportDownloadName(scope, year, months);
+    var go = $('ltExportGo');
+    if (go) {
+      go.disabled = true;
+      go.textContent = 'Downloading…';
+    }
+    fetch('/hr/api/leave-tracker/export?' + params.toString(), {
       credentials: 'same-origin',
       headers: authHeaders(),
     })
       .then(function (r) {
         if (!r.ok) throw new Error('Export failed');
+        var hinted = r.headers.get('X-Export-Filename');
+        if (hinted) filename = hinted;
         return r.blob();
       })
       .then(function (blob) {
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'leave_tracker_2026_aug_dec.xlsx';
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         a.remove();
+        closeExportMenu();
       })
       .catch(function (err) {
         showImportResult(err.message, true);
+      })
+      .then(function () {
+        if (go) {
+          go.disabled = false;
+          go.textContent = 'Download';
+        }
       });
+  }
+
+  function exportScope() {
+    var checked = document.querySelector('input[name="ltExportScope"]:checked');
+    return (checked && checked.value) || 'full';
+  }
+
+  function selectedExportMonths() {
+    var out = [];
+    var wrap = $('ltExportMonths');
+    if (!wrap) return out;
+    Array.prototype.forEach.call(wrap.querySelectorAll('input[type="checkbox"]:checked'), function (cb) {
+      var month = parseInt(cb.value, 10);
+      if (month) out.push(month);
+    });
+    return out;
+  }
+
+  function fillExportYearSelect() {
+    var sel = $('ltExportYear');
+    if (!sel) return;
+    var current = String(sel.value || state.openYear || BASE_YEAR);
+    var html = '';
+    for (var y = BASE_YEAR; y <= 2035; y++) {
+      html += '<option value="' + y + '"' + (String(y) === current ? ' selected' : '') + '>' + y + '</option>';
+    }
+    sel.innerHTML = html;
+  }
+
+  function fillExportMonths() {
+    var wrap = $('ltExportMonths');
+    if (!wrap || wrap.dataset.ready === '1') return;
+    var html = '';
+    for (var m = 1; m <= 12; m++) {
+      html +=
+        '<label class="lt-export-month">' +
+        '<input type="checkbox" value="' +
+        m +
+        '">' +
+        '<span>' +
+        (MONTH_LABELS[m] || m) +
+        '</span>' +
+        '</label>';
+    }
+    wrap.innerHTML = html;
+    wrap.dataset.ready = '1';
+  }
+
+  function presetExportMonths() {
+    var year = parseInt(($('ltExportYear') && $('ltExportYear').value) || state.openYear || BASE_YEAR, 10);
+    var period = monthsForYear(year);
+    var openM = Number(state.openMonth);
+    var wrap = $('ltExportMonths');
+    if (!wrap) return;
+    Array.prototype.forEach.call(wrap.querySelectorAll('input[type="checkbox"]'), function (cb) {
+      var month = parseInt(cb.value, 10);
+      cb.checked = period.indexOf(month) >= 0 || month === openM;
+    });
+  }
+
+  function syncExportFields() {
+    var scope = exportScope();
+    var yearRow = $('ltExportYearRow');
+    var months = $('ltExportMonths');
+    var hint = $('ltExportHint');
+    if (yearRow) yearRow.hidden = scope === 'full';
+    if (months) months.hidden = scope !== 'months';
+    if (hint) hint.hidden = scope !== 'months';
+  }
+
+  function closeExportMenu() {
+    var menu = $('ltExportMenu');
+    var btn = $('ltExportBtn');
+    if (menu) menu.hidden = true;
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+
+  function openExportMenu() {
+    fillExportYearSelect();
+    fillExportMonths();
+    presetExportMonths();
+    syncExportFields();
+    var menu = $('ltExportMenu');
+    var btn = $('ltExportBtn');
+    if (menu) menu.hidden = false;
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+  }
+
+  function toggleExportMenu(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    var menu = $('ltExportMenu');
+    if (!menu || !menu.hidden) closeExportMenu();
+    else openExportMenu();
   }
 
   function downloadTemplate() {
@@ -2460,9 +2596,54 @@
       });
   }
 
-  function uploadImport(file) {
+  var pendingImportFile = null;
+  var importBusy = false;
+
+  function importModeIsReplace() {
+    var checked = document.querySelector('#ltImportModal input[name="ltImportMode"]:checked');
+    return !!(checked && checked.value === 'replace');
+  }
+
+  function syncImportConfirm() {
+    var btn = $('ltImportConfirm');
+    if (!btn) return;
+    btn.disabled = !pendingImportFile || importBusy;
+    btn.textContent = importBusy ? 'Importing…' : 'Import';
+    btn.className = 'hh-btn ' + (importModeIsReplace() ? 'hh-btn-danger' : 'hh-btn-primary');
+  }
+
+  function closeImportModal() {
+    pendingImportFile = null;
+    importBusy = false;
+    var modal = $('ltImportModal');
+    if (modal) modal.hidden = true;
+    if ($('ltImportFile')) $('ltImportFile').value = '';
+    var merge = document.querySelector('#ltImportModal input[name="ltImportMode"][value="merge"]');
+    if (merge) merge.checked = true;
+    syncImportConfirm();
+  }
+
+  function openImportModal(file) {
+    pendingImportFile = file || null;
+    var nameEl = $('ltImportFileName');
+    if (nameEl) {
+      nameEl.textContent = pendingImportFile
+        ? 'File: ' + pendingImportFile.name + '. Choose whether to add it to current data, or wipe leave records and load it.'
+        : 'Choose whether to add this file to current data, or wipe leave records and load it.';
+    }
+    var merge = document.querySelector('#ltImportModal input[name="ltImportMode"][value="merge"]');
+    if (merge) merge.checked = true;
+    if ($('ltImportModal')) $('ltImportModal').hidden = false;
+    syncImportConfirm();
+  }
+
+  function uploadImport(file, replace) {
+    if (!file || importBusy) return;
+    importBusy = true;
+    syncImportConfirm();
     var fd = new FormData();
     fd.append('file', file);
+    if (replace) fd.append('replace', '1');
     fetch('/hr/api/leave-tracker/import', {
       method: 'POST',
       credentials: 'same-origin',
@@ -2478,11 +2659,29 @@
         });
       })
       .then(function (data) {
+        var wiped = data.wiped || {};
+        var prefix = data.replaced
+          ? 'Replaced leave data'
+          : 'Added to present data';
+        if (data.replaced && (wiped.logs || wiped.plans || wiped.usage || wiped.staff)) {
+          prefix +=
+            ' (cleared ' +
+            (wiped.logs || 0) +
+            ' logs, ' +
+            (wiped.plans || 0) +
+            ' plans' +
+            (wiped.staff ? ', ' + wiped.staff + ' staff' : '') +
+            ')';
+        }
         showImportResult(
-          'Imported — staff +' +
+          prefix +
+            ' — staff +' +
             (data.created || 0) +
             ', logs +' +
             (data.logs_created || 0) +
+            (data.logs_skipped
+              ? ', skipped ' + data.logs_skipped + ' already logged'
+              : '') +
             ', monthly adj ' +
             (data.usage_updates || 0) +
             (data.errors && data.errors.length ? '; issues: ' + data.errors.slice(0, 3).join('; ') : '')
@@ -2493,9 +2692,12 @@
               ' new people are on the main roster and appear in every month with 0 used. Set annual entitlement where needed.'
           );
         }
+        closeImportModal();
         refreshAll();
       })
       .catch(function (err) {
+        importBusy = false;
+        syncImportConfirm();
         showImportResult(err.message, true);
       });
   }
@@ -2784,7 +2986,21 @@
     document.addEventListener('focusout', onCellBlur);
     document.addEventListener('keydown', onCellKey);
 
-    $('ltExportBtn') && $('ltExportBtn').addEventListener('click', downloadExport);
+    $('ltExportBtn') && $('ltExportBtn').addEventListener('click', toggleExportMenu);
+    $('ltExportGo') && $('ltExportGo').addEventListener('click', downloadExport);
+    document.querySelectorAll('input[name="ltExportScope"]').forEach(function (radio) {
+      radio.addEventListener('change', syncExportFields);
+    });
+    document.addEventListener('click', function (e) {
+      var wrap = $('ltExportWrap');
+      if (!wrap || wrap.contains(e.target)) return;
+      closeExportMenu();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      closeExportMenu();
+      if ($('ltImportModal') && !$('ltImportModal').hidden) closeImportModal();
+    });
     $('ltTemplateBtn') && $('ltTemplateBtn').addEventListener('click', downloadTemplate);
     $('ltImportBtn') &&
       $('ltImportBtn').addEventListener('click', function () {
@@ -2792,9 +3008,20 @@
       });
     $('ltImportFile') &&
       $('ltImportFile').addEventListener('change', function () {
-        if (this.files && this.files[0]) uploadImport(this.files[0]);
-        this.value = '';
+        if (this.files && this.files[0]) openImportModal(this.files[0]);
+        else this.value = '';
       });
+    $('ltImportConfirm') &&
+      $('ltImportConfirm').addEventListener('click', function () {
+        if (!pendingImportFile) return;
+        uploadImport(pendingImportFile, importModeIsReplace());
+      });
+    document.querySelectorAll('input[name="ltImportMode"]').forEach(function (radio) {
+      radio.addEventListener('change', syncImportConfirm);
+    });
+    document.querySelectorAll('[data-close-import-modal]').forEach(function (el) {
+      el.addEventListener('click', closeImportModal);
+    });
 
     $('ltSeedBtn') &&
       $('ltSeedBtn').addEventListener('click', function (e) {

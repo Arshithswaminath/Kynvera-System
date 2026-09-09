@@ -15,6 +15,8 @@ from openpyxl.styles import Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
+from sqlalchemy import or_
+
 from app.models import (
     LEAVE_COMPANIES,
     LEAVE_SICK_ALERT_CRITICAL,
@@ -30,8 +32,10 @@ from app.models import (
     LEAVE_TYPES,
     LeaveEmployee,
     LeaveLog,
+    LeaveMonthlyUsage,
     LeavePlan,
     db,
+    months_touched_by_range,
     recompute_monthly_usage,
 )
 from common.datetime_utils import utc_now_naive
@@ -258,34 +262,120 @@ def _set_usage(employee: LeaveEmployee, leave_type: str, month: int, days: Optio
     recompute_monthly_usage(employee.id, leave_type, year, month)
 
 
+def _normalized_log_end(leave_date: date, end_date: Optional[date]) -> Optional[date]:
+    if end_date is None or end_date == leave_date:
+        return None
+    return end_date
+
+
+def matching_leave_log(
+    employee_id: int,
+    leave_type: str,
+    leave_date: date,
+    end_date: Optional[date],
+    days: float,
+) -> Optional[LeaveLog]:
+    """Return an existing log with the same person, type, dates, and day count."""
+    end = _normalized_log_end(leave_date, end_date)
+    query = LeaveLog.query.filter(
+        LeaveLog.employee_id == employee_id,
+        LeaveLog.leave_type == leave_type,
+        LeaveLog.leave_date == leave_date,
+    )
+    if end is None:
+        query = query.filter(or_(LeaveLog.end_date.is_(None), LeaveLog.end_date == leave_date))
+    else:
+        query = query.filter(LeaveLog.end_date == end)
+    want = round(float(days), 4)
+    for lg in query.all():
+        if round(float(lg.days or 0), 4) == want:
+            return lg
+    return None
+
+
+def dedupe_identical_leave_logs() -> int:
+    """Keep the oldest row when the same leave was imported/logged more than once."""
+    logs = LeaveLog.query.order_by(LeaveLog.id.asc()).all()
+    seen: dict[tuple, int] = {}
+    removed = 0
+    touched: set[tuple] = set()
+    for lg in logs:
+        end = lg.end_date or lg.leave_date
+        key = (
+            lg.employee_id,
+            lg.leave_type,
+            lg.leave_date,
+            end,
+            round(float(lg.days or 0), 4),
+        )
+        if key in seen:
+            touched.add((lg.employee_id, lg.leave_type, lg.leave_date, end))
+            db.session.delete(lg)
+            removed += 1
+        else:
+            seen[key] = lg.id
+    if removed:
+        db.session.flush()
+        for emp_id, leave_type, start, end in touched:
+            for y, m in months_touched_by_range(start, end):
+                recompute_monthly_usage(emp_id, leave_type, y, m)
+    return removed
+
+
+def _normalize_export_months(months) -> tuple[int, ...]:
+    out: list[int] = []
+    for raw in months or ():
+        try:
+            m = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= m <= 12 and m not in out:
+            out.append(m)
+    return tuple(sorted(out)) or tuple(LEAVE_TRACKER_MONTHS)
+
+
 def build_leave_workbook(
     employees: list[LeaveEmployee],
     plans: Optional[list[LeavePlan]] = None,
     logs: Optional[list[LeaveLog]] = None,
+    year: int = LEAVE_TRACKER_YEAR,
+    months=None,
 ) -> BytesIO:
     """Export Sick, Annual, Staff, Plans, and Leave Log sheets with formulas + CF."""
+    export_year = int(year or LEAVE_TRACKER_YEAR)
+    export_months = _normalize_export_months(months)
+    month_headers = [LEAVE_TRACKER_MONTH_LABELS[m] for m in export_months]
+    sick_headers = (
+        'Emp ID', 'Name', 'Designation', 'Company',
+        *month_headers, 'Used', 'Remaining', 'Alert',
+    )
+    annual_headers = (
+        'Emp ID', 'Name', 'Designation', 'Company', 'Entitlement',
+        *month_headers, 'Used', 'Remaining',
+    )
+
     wb = Workbook()
 
     # ── Sick Leave ──────────────────────────────────────────────────────────
     ws = wb.active
     ws.title = 'Sick Leave'
-    ws.append(list(SICK_HEADERS))
-    _style_header(ws, len(SICK_HEADERS))
+    ws.append(list(sick_headers))
+    _style_header(ws, len(sick_headers))
 
     first_month_col = 5
-    used_col = first_month_col + len(LEAVE_TRACKER_MONTHS)
+    used_col = first_month_col + len(export_months)
     rem_col = used_col + 1
     alert_col = rem_col + 1
 
     for i, emp in enumerate(employees, start=2):
-        sick_map = emp.usage_map('sick')
+        sick_map = emp.usage_map('sick', export_year, export_months)
         row_vals = [
             emp.emp_id,
             emp.full_name,
             emp.designation or '',
             emp.company or '',
         ]
-        for m in LEAVE_TRACKER_MONTHS:
+        for m in export_months:
             d = sick_map.get(m)
             row_vals.append(d if d is not None else None)
         ws.append(row_vals + [None, None, None])
@@ -305,7 +395,7 @@ def build_leave_workbook(
 
     last_row = max(2, len(employees) + 1)
     used_range = f'{get_column_letter(used_col)}2:{get_column_letter(used_col)}{last_row}'
-    row_range = f'A2:L{last_row}'
+    row_range = f'A2:{get_column_letter(alert_col)}{last_row}'
     ws.conditional_formatting.add(
         row_range,
         FormulaRule(
@@ -343,14 +433,14 @@ def build_leave_workbook(
 
     # ── Annual Leave ────────────────────────────────────────────────────────
     ws_a = wb.create_sheet('Annual Leave')
-    ws_a.append(list(ANNUAL_HEADERS))
-    _style_header(ws_a, len(ANNUAL_HEADERS))
+    ws_a.append(list(annual_headers))
+    _style_header(ws_a, len(annual_headers))
     a_first_month = 6
-    a_used_col = a_first_month + len(LEAVE_TRACKER_MONTHS)
+    a_used_col = a_first_month + len(export_months)
     a_rem_col = a_used_col + 1
 
     for i, emp in enumerate(employees, start=2):
-        annual_map = emp.usage_map('annual')
+        annual_map = emp.usage_map('annual', export_year, export_months)
         row_vals = [
             emp.emp_id,
             emp.full_name,
@@ -358,7 +448,7 @@ def build_leave_workbook(
             emp.company or '',
             emp.annual_entitlement if emp.annual_entitlement is not None else None,
         ]
-        for m in LEAVE_TRACKER_MONTHS:
+        for m in export_months:
             d = annual_map.get(m)
             row_vals.append(d if d is not None else None)
         ws_a.append(row_vals + [None, None])
@@ -780,18 +870,43 @@ def import_staff_workbook(file_storage) -> dict[str, Any]:
     }
 
 
-def import_leave_workbook(file_storage) -> dict[str, Any]:
+def wipe_leave_tracker_records(*, wipe_staff: bool = False) -> dict[str, int]:
+    """Bulk-delete leave tracker rows. Children first — query.delete() does not cascade."""
+    deleted = {
+        'logs': int(LeaveLog.query.delete(synchronize_session=False) or 0),
+        'plans': int(LeavePlan.query.delete(synchronize_session=False) or 0),
+        'usage': int(LeaveMonthlyUsage.query.delete(synchronize_session=False) or 0),
+        'staff': 0,
+    }
+    if wipe_staff:
+        deleted['staff'] = int(LeaveEmployee.query.delete(synchronize_session=False) or 0)
+    db.session.flush()
+    db.session.expire_all()
+    return deleted
+
+
+def import_leave_workbook(file_storage, *, replace: bool = False) -> dict[str, Any]:
     """
     Import Staff + Leave Log (preferred) and/or monthly Sick/Annual sheets.
     Accepts the official Injaaz "Leave Log" sheet (or "Leave Logs") and
     creates dated entries that recompute staff master months.
+
+    replace=True wipes logs, plans, and monthly usage first. Staff is also
+    wiped when the workbook includes a Staff sheet, so a full export can
+    reload cleanly. Leave-log-only files keep the current roster.
     """
     wb = load_workbook(file_storage, data_only=False)
     created = 0
     updated = 0
     usage_updates = 0
     logs_created = 0
+    logs_skipped = 0
     errors: list[str] = []
+    wiped = {'logs': 0, 'plans': 0, 'usage': 0, 'staff': 0}
+
+    if replace:
+        wipe_staff = 'Staff' in wb.sheetnames
+        wiped = wipe_leave_tracker_records(wipe_staff=wipe_staff)
 
     by_emp = {e.emp_id.strip().upper(): e for e in LeaveEmployee.query.all()}
 
@@ -912,6 +1027,9 @@ def import_leave_workbook(file_storage) -> dict[str, Any]:
                 if 'notes' in col and col['notes'] < len(row) and row[col['notes']]:
                     notes = str(row[col['notes']]).strip()
                 if notes.lower().startswith('example'):
+                    continue
+                if matching_leave_log(emp.id, lt, leave_date, end_date, days):
+                    logs_skipped += 1
                     continue
                 if 'approved' in col and col['approved'] < len(row) and row[col['approved']]:
                     appr = str(row[col['approved']]).strip()
@@ -1059,13 +1177,18 @@ def import_leave_workbook(file_storage) -> dict[str, Any]:
                 ))
                 plans_created += 1
 
+    removed = dedupe_identical_leave_logs()
     db.session.commit()
     return {
         'created': created,
         'updated': updated,
         'usage_updates': usage_updates,
         'logs_created': logs_created,
+        'logs_skipped': logs_skipped,
+        'logs_deduped': removed,
         'plans_created': plans_created,
+        'replaced': bool(replace),
+        'wiped': wiped,
         'errors': errors[:50],
     }
 

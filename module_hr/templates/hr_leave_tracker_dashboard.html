@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=146">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-leave-tracker.css') }}?v=54">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-leave-tracker.css') }}?v=56">
   {% set active_page = 'hr' %}
 </head>
 <body class="hh-page lt-page">
@@ -77,9 +77,36 @@
           <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="ltTemplateBtn" title="Download blank Leave Log template">
             Template
           </button>
-          <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="ltExportBtn" title="Export Excel">
-            Export
-          </button>
+          <div class="lt-export-wrap" id="ltExportWrap">
+            <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm lt-export-toggle" id="ltExportBtn" aria-expanded="false" aria-haspopup="true" aria-controls="ltExportMenu" title="Export Excel">
+              Export
+              <svg class="lt-export-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8" fill="none" aria-hidden="true">
+                <path d="M1.5 1.75L6 6.25L10.5 1.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <div class="lt-export-menu" id="ltExportMenu" hidden role="menu">
+              <p class="lt-export-title">Export Excel</p>
+              <label class="lt-export-opt">
+                <input type="radio" name="ltExportScope" value="full" checked>
+                <span>Full</span>
+              </label>
+              <label class="lt-export-opt">
+                <input type="radio" name="ltExportScope" value="year">
+                <span>Year</span>
+              </label>
+              <label class="lt-export-opt">
+                <input type="radio" name="ltExportScope" value="months">
+                <span>Months</span>
+              </label>
+              <div class="lt-export-year-row" id="ltExportYearRow" hidden>
+                <label class="lt-export-field-label" for="ltExportYear">Year</label>
+                <select id="ltExportYear" class="hh-select" aria-label="Export year"></select>
+              </div>
+              <div class="lt-export-months" id="ltExportMonths" hidden></div>
+              <p class="lt-export-hint" id="ltExportHint" hidden>Click one month, or several.</p>
+              <button type="button" class="hh-btn hh-btn-primary hh-btn-sm lt-export-go" id="ltExportGo">Download</button>
+            </div>
+          </div>
           <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="ltImportBtn" title="Import Excel (Leave Log template or full workbook)">
             Import
           </button>
@@ -529,11 +556,38 @@
     </div>
   </div>
 
+  <div class="lt-modal" id="ltImportModal" hidden>
+    <div class="lt-modal-backdrop" data-close-import-modal></div>
+    <div class="lt-modal-card lt-import-card" role="dialog" aria-labelledby="ltImportTitle" aria-describedby="ltImportFileName" aria-modal="true">
+      <h2 id="ltImportTitle">Import Excel</h2>
+      <p class="lt-hint" id="ltImportFileName">Choose whether to add this file to current data, or wipe leave records and load it.</p>
+      <fieldset class="lt-import-modes" role="radiogroup" aria-label="How to apply this workbook">
+        <legend class="lt-import-modes-label">How should this import work?</legend>
+        <label class="lt-import-mode">
+          <input type="radio" name="ltImportMode" value="merge" checked>
+          <span class="lt-import-mode-kicker">Recommended</span>
+          <strong>Add to present data</strong>
+          <span class="lt-import-mode-copy">Keep current staff, logs, and plans. New rows from this file are added. Matching leave logs are skipped.</span>
+        </label>
+        <label class="lt-import-mode lt-import-mode-replace">
+          <input type="radio" name="ltImportMode" value="replace">
+          <span class="lt-import-mode-kicker">Replace</span>
+          <strong>Wipe and load this file</strong>
+          <span class="lt-import-mode-copy">Remove all leave logs, plans, and monthly usage, then load this Excel. The staff list is kept unless the file also has a Staff sheet.</span>
+        </label>
+      </fieldset>
+      <div class="lt-modal-actions">
+        <button type="button" class="hh-btn hh-btn-secondary" data-close-import-modal>Cancel</button>
+        <button type="button" class="hh-btn hh-btn-primary" id="ltImportConfirm">Import</button>
+      </div>
+    </div>
+  </div>
+
   <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
   <script>window.FILES_SAVE_MODULE = 'leave'; window.FILES_SAVE_MODULE_LABEL = 'Leave Tracker';</script>
   <script src="{{ url_for('static', filename='js/files-save.js') }}?v=17"></script>
-  <script src="{{ url_for('static', filename='js/hr-leave-tracker.js') }}?v=40"></script>
+  <script src="{{ url_for('static', filename='js/hr-leave-tracker.js') }}?v=44"></script>
 </body>
 </html>
