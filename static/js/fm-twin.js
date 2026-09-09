@@ -473,7 +473,7 @@
       <ul class="twin-list">${ticketRows}</ul>
       <div class="twin-pin-actions">
         ${firstAsset ? `<a class="fm-btn fm-btn-primary" href="${raiseUrl(firstAsset)}">Raise work order</a>` : (editMode ? '' : `<span class="fm-muted">Link an asset to raise a work order.</span>`)}
-        ${canWrite && !firstAsset ? `<a class="fm-btn fm-btn-outline" href="${esc(pinAddHref)}">Add asset</a>` : ''}
+        ${canWrite && !firstAsset ? `<a class="fm-btn fm-btn-outline" href="${esc(pinAddHref)}">Add new asset</a>` : ''}
         ${editMode ? `<button type="button" class="fm-btn fm-btn-outline twin-btn-danger" id="removePinBtn">Remove pin</button>` : ''}
       </div>
     `;
