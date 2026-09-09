@@ -48,7 +48,8 @@
       setFlipped(false);
       modal.hidden = false;
       document.body.style.overflow = 'hidden';
-      card.focus();
+      var closeBtn = modal.querySelector('.kv-builder-close');
+      if (closeBtn) closeBtn.focus();
     }
 
     function closeCard() {
