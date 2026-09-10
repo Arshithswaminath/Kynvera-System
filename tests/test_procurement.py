@@ -1561,6 +1561,11 @@ class TestPrDocuments:
             sent = _send_quotations(client, admin_auth_headers, pr_id)
             assert sent.get_json()['request']['status'] == 'gm_review'
             assert mocked.called
+            html = mocked.call_args.kwargs.get('html_body') or ''
+            assert 'Kynvera</span>' in html
+            assert 'All operations. One platform.' in html
+            assert '#ff8e68' in html
+            assert '<pre' not in html
         gm = client.post(
             f'/procurement/api/purchase-requests/{pr_id}/approve',
             headers=admin_auth_headers, json={},
@@ -1684,6 +1689,10 @@ class TestPrDocuments:
             assert sent.status_code == 200, sent.get_json()
             assert mocked.called
             assert not mocked.call_args.kwargs.get('attachments')
+            html = mocked.call_args.kwargs.get('html_body') or ''
+            assert 'Kynvera</span>' in html
+            assert 'All operations. One platform.' in html
+            assert '<pre' not in html
         client.put('/procurement/api/email-templates', headers=admin_auth_headers, json={
             'event_key': 'quotation_approved',
             'to_emails': 'ops@example.com',
@@ -1699,6 +1708,10 @@ class TestPrDocuments:
             attached = mocked.call_args.kwargs.get('attachments') or []
             assert len(attached) >= 1
             assert all(p.lower().endswith('.pdf') for p in attached)
+            html = mocked.call_args.kwargs.get('html_body') or ''
+            assert 'Kynvera</span>' in html
+            assert 'All operations. One platform.' in html
+            assert '<pre' not in html
 
     def test_cannot_send_quotations_without_file(self, client, admin_auth_headers):
         cat_id = _catalog_item(client, admin_auth_headers, unit_price=10)

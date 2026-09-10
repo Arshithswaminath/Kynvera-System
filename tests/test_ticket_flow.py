@@ -397,3 +397,42 @@ class TestLocationMapModal:
         assert pin['base_unit'] == 'AHU-1'
         with app.app_context():
             _purge_ticket(tid)
+
+
+class TestTicketEmails:
+    def test_completion_and_invoice_html_use_kynvera_card(self, app, admin_user):
+        from unittest.mock import patch
+
+        from app.models import User
+        from module_ticketing.routes import _send_completion_emails, _send_invoice_emails
+
+        tid = _make_ticket(
+            app, reporter_id=admin_user.id, project='Mail Site',
+            ticket_id='TKT-MAIL-CARD', status='closed',
+            assigned_to_id=admin_user.id,
+        )
+        captured = []
+
+        def fake_send(recipient, subject, body, html_body=None, **kwargs):
+            captured.append(html_body or '')
+            return True
+
+        def fake_pdf(ticket, materials, manpower, buf):
+            buf.write(b'%PDF-fake')
+
+        with app.app_context():
+            ticket = Ticket.query.filter_by(ticket_id=tid).first()
+            closer = db.session.get(User, admin_user.id)
+            with patch('common.email_service.send_email', side_effect=fake_send), \
+                 patch('module_ticketing.ticket_invoice_builder.build_invoice_pdf', fake_pdf):
+                _send_completion_emails(ticket, closer)
+                _send_invoice_emails(ticket)
+            _purge_ticket(tid)
+
+        assert captured
+        for html in captured:
+            assert 'Kynvera</span>' in html
+            assert 'All operations. One platform.' in html
+            assert '#ff8e68' in html
+        assert any('Work order completed' in html for html in captured)
+        assert any('Work order invoice' in html for html in captured)

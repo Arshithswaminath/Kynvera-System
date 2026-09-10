@@ -606,8 +606,14 @@ class TestSendEmail:
     ):
         from common import email_service as es
 
+        captured = {}
+
+        def fake_deliver(recipient, subject, body, html_body=None, cc=None, attachments=None):
+            captured['html'] = html_body or ''
+            return True
+
         monkeypatch.setattr(es, 'is_email_configured', lambda app=None: True)
-        monkeypatch.setattr(es, '_deliver_email', lambda *a, **k: True)
+        monkeypatch.setattr(es, '_deliver_email', fake_deliver)
 
         response = client.post('/admin/mmr/api/send-email', headers=admin_auth_headers, json={
             'to': 'dennis@injaaz.ae',
@@ -617,6 +623,11 @@ class TestSendEmail:
         })
         assert response.status_code == 200, response.get_json()
         assert response.get_json()['success'] is True
+        html = captured.get('html') or ''
+        assert 'Kynvera</span>' in html
+        assert 'All operations. One platform.' in html
+        assert '#ff8e68' in html
+        assert 'CAFM report' in html
 
         # Cycle should now be completed (moved to history) and the next upload starts fresh.
         cycles = client.get('/admin/mmr/api/cycles', headers=admin_auth_headers).get_json()

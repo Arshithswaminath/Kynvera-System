@@ -197,6 +197,9 @@ class TestHrDailyRun:
         assert 'Hiring' in html
         assert 'Leave' in html
         assert 'Manpower' in html
+        assert 'Kynvera</span>' in html
+        assert 'All operations. One platform.' in html
+        assert '#ff8e68' in html
         assert len(kwargs.get('attachments') or []) == 3
         sync_item.assert_not_called()
 
@@ -239,6 +242,8 @@ class TestHrDailyRun:
         assert all(str(a.get('filename') or '').endswith('.xlsx') for a in attached)
         html = send_email.call_args.kwargs.get('html_body') or ''
         assert 'PDF' not in html
+        assert 'Kynvera</span>' in html
+        assert 'All operations. One platform.' in html
 
     def test_run_now_respects_selected_modules(self, client, app, admin_auth_headers):
         _reset_hr_job(app, to_emails='backup@example.com', export_modules='hiring')
@@ -262,6 +267,8 @@ class TestHrDailyRun:
         html = send_email.call_args.kwargs.get('html_body') or ''
         assert 'Hiring' in html
         assert 'Manpower' not in html
+        assert 'Kynvera</span>' in html
+        assert 'All operations. One platform.' in html
 
     def test_drive_failure_does_not_fail_job(self, app):
         from app.automations.runner import run_job

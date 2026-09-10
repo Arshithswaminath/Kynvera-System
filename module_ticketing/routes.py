@@ -1127,6 +1127,12 @@ def _notify_new_draft_ticket(ticket: Ticket):
         _notify_user(uid, title, body, ntype='ticket_draft', ticket_id=ticket.ticket_id)
 
 
+def _ticket_mail_url(ticket: Ticket) -> str:
+    from common.email_service import public_app_url
+    tid = getattr(ticket, 'ticket_id', None) or ''
+    return public_app_url(f'/tickets/{tid}') if tid else public_app_url('/tickets')
+
+
 def _send_ticket_email(subject: str, recipients: list, body_html: str, attachments: list | None = None, related_id: str | None = None):
     """Best-effort email via common email_service."""
     try:
@@ -3816,29 +3822,38 @@ def _send_completion_emails(ticket: Ticket, closed_by: User):
             ticket.assigned_to.email if ticket.assigned_to else None,
         ] + admin_emails)))
 
+        from html import escape as html_escape
+        from common.email_service import branded_details_html, branded_kynvera_html
+
         subject = f'[Injaaz] Work Order Closed — {ticket.ticket_id}'
-        body = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1e3a5f;">Work Order Completed</h2>
-          <p>Ticket <strong>{ticket.ticket_id}</strong> has been closed.</p>
-          <table style="width:100%; border-collapse:collapse; font-size:14px;">
-            <tr><td style="padding:6px; font-weight:bold; width:140px;">Title</td><td style="padding:6px;">{ticket.title}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Project</td><td style="padding:6px;">{ticket.project}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Service Group</td><td style="padding:6px;">{ticket.service_group}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Category</td><td style="padding:6px;">{ticket.category}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Priority</td><td style="padding:6px;">{ticket.priority.upper()}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Reported by</td><td style="padding:6px;">{ticket.reporter.full_name if ticket.reporter else 'N/A'}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Assigned to</td><td style="padding:6px;">{ticket.assigned_to.full_name if ticket.assigned_to else 'N/A'}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Location</td><td style="padding:6px;">{' / '.join(filter(None, [ticket.property_name, ticket.zone, ticket.sub_zone, ticket.base_unit]))}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Total Cost</td><td style="padding:6px;">AED {ticket.total_cost or 0:.2f}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Closed by</td><td style="padding:6px;">{ticket.close_signed_by} ({ticket.close_signed_role})</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Closed at</td><td style="padding:6px;">{to_gst(ticket.closed_at).strftime('%d %b %Y %H:%M') if ticket.closed_at else 'N/A'} (GST)</td></tr>
-          </table>
-          {"<p><strong>Closing notes:</strong> " + ticket.close_notes + "</p>" if ticket.close_notes else ""}
-          <hr style="margin-top:20px;"/>
-          <p style="font-size:12px; color:#888;">This is an automated notification from Kynvera.</p>
-        </div>
-        """
+        location = ' / '.join(filter(None, [ticket.property_name, ticket.zone, ticket.sub_zone, ticket.base_unit]))
+        closed_at = to_gst(ticket.closed_at).strftime('%d %b %Y %H:%M') if ticket.closed_at else 'N/A'
+        rows = [
+            ('Ticket', ticket.ticket_id),
+            ('Title', ticket.title or ''),
+            ('Project', ticket.project or ''),
+            ('Service group', ticket.service_group or ''),
+            ('Category', ticket.category or ''),
+            ('Priority', (ticket.priority or '').upper()),
+            ('Reported by', ticket.reporter.full_name if ticket.reporter else 'N/A'),
+            ('Assigned to', ticket.assigned_to.full_name if ticket.assigned_to else 'N/A'),
+            ('Location', location),
+            ('Total cost', f'AED {ticket.total_cost or 0:.2f}'),
+            ('Closed by', f'{ticket.close_signed_by} ({ticket.close_signed_role})' if ticket.close_signed_by else 'N/A'),
+            ('Closed at', f'{closed_at} (GST)'),
+        ]
+        paragraphs = [
+            f'Ticket <strong>{html_escape(ticket.ticket_id)}</strong> has been closed.'
+        ]
+        if ticket.close_notes:
+            paragraphs.append(f'Closing notes: {html_escape(ticket.close_notes)}')
+        body = branded_kynvera_html(
+            greeting='Work order completed',
+            paragraphs=paragraphs,
+            extra_html=branded_details_html(rows),
+            cta_url=_ticket_mail_url(ticket),
+            cta_label='Open ticket',
+        )
         _send_ticket_email(subject, recipients, body, related_id=ticket.ticket_id)
     except Exception as exc:
         logger.warning("Failed to send completion emails: %s", exc)
@@ -3895,23 +3910,28 @@ def _send_invoice_emails(ticket: Ticket):
 
         amount = ticket.selling_price if ticket.selling_price is not None else ticket.actual_price
         subject = f'[Injaaz] Invoice — Work Order {ticket.ticket_id}'
-        body = f"""
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1e3a5f;">Work Order Invoice</h2>
-          <p>Please find attached the invoice for the completed and approved work order below.</p>
-          <table style="width:100%; border-collapse:collapse; font-size:14px;">
-            <tr><td style="padding:6px; font-weight:bold; width:160px;">Ticket</td><td style="padding:6px;">{ticket.ticket_id}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Title</td><td style="padding:6px;">{ticket.title}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Project</td><td style="padding:6px;">{ticket.project}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Location</td><td style="padding:6px;">{' / '.join(filter(None, [ticket.property_name, ticket.zone, ticket.sub_zone, ticket.base_unit]))}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Invoice Total</td><td style="padding:6px;">AED {amount or 0:.2f}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Approved by</td><td style="padding:6px;">{ticket.ops_close_signed_by or ticket.close_signed_by or 'N/A'}{(' (' + (ticket.ops_close_signed_role or ticket.close_signed_role or '') + ')') if (ticket.ops_close_signed_role or ticket.close_signed_role) else ''}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Closed at</td><td style="padding:6px;">{to_gst(ticket.closed_at).strftime('%d %b %Y %H:%M') if ticket.closed_at else 'N/A'} (GST)</td></tr>
-          </table>
-          <hr style="margin-top:20px;"/>
-          <p style="font-size:12px; color:#888;">This is an automated notification from Kynvera.</p>
-        </div>
-        """
+        location = ' / '.join(filter(None, [ticket.property_name, ticket.zone, ticket.sub_zone, ticket.base_unit]))
+        closed_at = to_gst(ticket.closed_at).strftime('%d %b %Y %H:%M') if ticket.closed_at else 'N/A'
+        approver = ticket.ops_close_signed_by or ticket.close_signed_by or 'N/A'
+        role = ticket.ops_close_signed_role or ticket.close_signed_role or ''
+        from common.email_service import branded_details_html, branded_kynvera_html
+        body = branded_kynvera_html(
+            greeting='Work order invoice',
+            paragraphs=[
+                'Please find attached the invoice for the completed and approved work order below.',
+            ],
+            extra_html=branded_details_html([
+                ('Ticket', ticket.ticket_id),
+                ('Title', ticket.title or ''),
+                ('Project', ticket.project or ''),
+                ('Location', location),
+                ('Invoice total', f'AED {amount or 0:.2f}'),
+                ('Approved by', f'{approver} ({role})' if role else approver),
+                ('Closed at', f'{closed_at} (GST)'),
+            ]),
+            cta_url=_ticket_mail_url(ticket),
+            cta_label='Open ticket',
+        )
         attachments = [{
             'content': pdf_bytes,
             'filename': f'{ticket.ticket_id}_invoice.pdf',

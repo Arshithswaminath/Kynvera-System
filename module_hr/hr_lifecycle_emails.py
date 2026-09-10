@@ -10,7 +10,7 @@ from html import escape as html_escape
 from flask import Flask, has_request_context, request
 
 from app.models import User, Submission, db
-from common.email_service import branded_kynvera_html, is_email_configured, send_email
+from common.email_service import branded_details_html, branded_kynvera_html, is_email_configured, send_email
 
 
 FORM_TITLES = {
@@ -95,26 +95,6 @@ def current_step_label(submission: Submission) -> str:
     return wf.replace("_", " ").title() or "Review"
 
 
-def _details_html(rows: list[tuple[str, str]]) -> str:
-    cells = []
-    for label, value in rows:
-        cells.append(
-            "<tr>"
-            f'<td style="padding:7px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;'
-            f'letter-spacing:.04em;text-transform:uppercase;color:#8a7e78;width:38%;">{html_escape(label)}</td>'
-            f'<td style="padding:7px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;'
-            f'font-weight:600;color:#191b23;">{html_escape(value)}</td>'
-            "</tr>"
-        )
-    return (
-        '<table cellpadding="0" cellspacing="0" border="0" width="100%" '
-        'style="margin:8px 0 16px 0;background-color:#fff8f5;border:1px solid #fde4d8;'
-        'border-radius:12px;"><tr><td style="padding:14px 16px;">'
-        f'<table width="100%" cellpadding="0" cellspacing="0" border="0">{"".join(cells)}</table>'
-        "</td></tr></table>"
-    )
-
-
 def _send(
     app: Flask,
     recipient: User | None,
@@ -143,7 +123,7 @@ def _send(
     html = branded_kynvera_html(
         greeting=greeting_line,
         paragraphs=paragraphs,
-        extra_html=_details_html(rows),
+        extra_html=branded_details_html(rows),
         cta_url=cta_url,
         cta_label=cta_label,
     )
