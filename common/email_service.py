@@ -776,6 +776,65 @@ def branded_kynvera_html(*, greeting, paragraphs, extra_html='', cta_url='', cta
     )
 
 
+def branded_details_html(rows):
+    """Peach label/value box used inside the Kynvera card."""
+    cells = []
+    for label, value in rows or []:
+        if label is None and value is None:
+            continue
+        if value is None or str(value).strip() == '':
+            continue
+        cells.append(
+            '<tr>'
+            f'<td style="padding:7px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;'
+            f'letter-spacing:.04em;text-transform:uppercase;color:#8a7e78;width:38%;">{_esc(label)}</td>'
+            f'<td style="padding:7px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;'
+            f'font-weight:600;color:#191b23;">{_esc(value)}</td>'
+            '</tr>'
+        )
+    if not cells:
+        return ''
+    return (
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%" '
+        'style="margin:8px 0 16px 0;background-color:#fff8f5;border:1px solid #fde4d8;'
+        'border-radius:12px;"><tr><td style="padding:14px 16px;">'
+        f'<table width="100%" cellpadding="0" cellspacing="0" border="0">{"".join(cells)}</table>'
+        '</td></tr></table>'
+    )
+
+
+def branded_freeform_html(
+    message,
+    *,
+    greeting='Hello,',
+    sender_name='',
+    cta_url='',
+    cta_label='Open Kynvera',
+):
+    """Wrap a staff-written plain-text message in the Kynvera card."""
+    text = _esc(message or '').replace('\n', '<br>')
+    extra = branded_details_html([('Sent by', sender_name)]) if sender_name else ''
+    return branded_kynvera_html(
+        greeting=_esc(greeting),
+        paragraphs=[text],
+        extra_html=extra,
+        cta_url=cta_url,
+        cta_label=cta_label,
+    )
+
+
+def public_app_url(path=''):
+    """Absolute in-app URL for mail CTAs, or empty when APP_BASE_URL is unset."""
+    base = _app_base_url()
+    if not base:
+        return ''
+    if not path:
+        return base
+    if not str(path).startswith('/'):
+        path = '/' + str(path)
+    return base + path
+
+
 def _branded_auth_html(*, title, greeting, paragraphs, extra_html='', cta_url='', cta_label='Sign in'):
     """Outlook-safe Kynvera card with the coral wordmark (no header bar)."""
     del title

@@ -26,7 +26,7 @@ from app.models import (
     db,
 )
 from common.datetime_utils import naive_utc_isoformat_z, utc_now_naive
-from common.email_service import is_email_configured, send_email
+from common.email_service import branded_freeform_html, is_email_configured, public_app_url, send_email
 from module_files import service as files_service
 
 logger = logging.getLogger(__name__)
@@ -628,9 +628,13 @@ def _html_body(message, user=None):
     signature_name = ''
     if user:
         signature_name = user.full_name or user.username or ''
-    escaped = (message or '').replace('\n', '<br>')
-    sent_by = f'<p><strong>Sent by:</strong> {signature_name}<br>Kynvera Team</p>' if signature_name else '<p>Kynvera Team</p>'
-    return f'<html><body><p>{escaped}</p>{sent_by}</body></html>'
+    return branded_freeform_html(
+        message,
+        greeting='Hello,',
+        sender_name=signature_name,
+        cta_url=public_app_url(),
+        cta_label='Open Kynvera',
+    )
 
 
 def _text_body(message, user=None):

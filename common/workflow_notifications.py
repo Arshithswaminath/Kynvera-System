@@ -8,10 +8,10 @@ Subject lines and body copy are intentionally left as clear placeholders
 so they can be finalised without touching code.
 """
 from __future__ import annotations
-from datetime import datetime
 from flask import current_app
 from app.models import User, db
-from common.email_service import send_email
+from common.email_service import branded_details_html, branded_kynvera_html, send_email
+from html import escape as html_escape
 
 
 # ─── Display helpers ──────────────────────────────────────────────────────────
@@ -79,16 +79,6 @@ def _submitter_email(submission) -> str | None:
 
 # ─── HTML email builder ───────────────────────────────────────────────────────
 
-_STATUS_COLOUR = {
-    'submitted':    '#2563eb',
-    'approved':     '#16a34a',
-    'completed':    '#16a34a',
-    'rejected':     '#dc2626',
-    'pending':      '#d97706',
-    'signed':       '#7c3aed',
-}
-
-
 def _html_email(
     *,
     title: str,
@@ -98,178 +88,16 @@ def _html_email(
     cta_url: str = '',
     cta_label: str = 'Open in Kynvera',
 ) -> str:
-    """
-    Outlook-safe HTML email (table-based layout, VML button, bgcolor attributes).
-    Tested against Outlook 2007/2010/2013/2016 Word rendering engine.
-    """
-    accent = _STATUS_COLOUR.get(status_type, '#ff8e68')
-    now_str = datetime.now().strftime('%d %b %Y, %H:%M')
-
-    # Details rows — alternating row shading works in all Outlook versions
-    rows_html = ''
-    for i, (label, value) in enumerate(rows):
-        bg = ' bgcolor="#f8fafc"' if i % 2 == 0 else ''
-        rows_html += (
-            f'<tr{bg}>'
-            f'<td width="160" valign="top" style="padding:8px 12px 8px 0;font-family:Arial,Helvetica,sans-serif;'
-            f'font-size:13px;color:#64748b;border-bottom:1px solid #e2e8f0;">{label}</td>'
-            f'<td valign="top" style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;'
-            f'font-size:13px;color:#1e293b;font-weight:bold;border-bottom:1px solid #e2e8f0;">{value}</td>'
-            f'</tr>'
-        )
-
-    # CTA button — VML rectangle so it renders in Outlook, plain <a> for everyone else
-    cta_html = ''
-    if cta_url:
-        cta_html = f'''
-<tr>
-  <td align="left" style="padding:24px 32px 0 32px;">
-    <!--[if mso]>
-    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"
-                 xmlns:w="urn:schemas-microsoft-com:office:word"
-                 href="{cta_url}"
-                 style="height:38px;v-text-anchor:middle;width:200px;"
-                 arcsize="8%"
-                 strokecolor="{accent}"
-                 fillcolor="{accent}">
-      <w:anchorlock/>
-      <center style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;">{cta_label}</center>
-    </v:roundrect>
-    <![endif]-->
-    <!--[if !mso]><!-->
-    <table cellpadding="0" cellspacing="0" border="0">
-      <tr>
-        <td align="center" bgcolor="{accent}" style="padding:0;">
-          <a href="{cta_url}"
-             style="display:inline-block;background-color:{accent};color:#ffffff;
-                    font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;
-                    text-decoration:none;padding:10px 24px;border:1px solid {accent};">
-            {cta_label}
-          </a>
-        </td>
-      </tr>
-    </table>
-    <!--<![endif]-->
-  </td>
-</tr>'''
-
-    return f'''<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!--[if gte mso 9]>
-  <xml>
-    <o:OfficeDocumentSettings>
-      <o:AllowPNG/>
-      <o:PixelsPerInch>96</o:PixelsPerInch>
-    </o:OfficeDocumentSettings>
-  </xml>
-  <![endif]-->
-  <style type="text/css">
-    body, table, td {{ font-family: Arial, Helvetica, sans-serif; }}
-    img {{ border: 0; display: block; }}
-    table {{ border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }}
-  </style>
-</head>
-<body style="margin:0;padding:0;background-color:#f1f5f9;" bgcolor="#f1f5f9">
-
-<!--[if mso]><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center"><![endif]-->
-<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f1f5f9"
-       style="background-color:#f1f5f9;">
-  <tr>
-    <td align="center" valign="top" style="padding:32px 16px;">
-
-      <!-- Email card — 600px wide -->
-      <table width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff"
-             style="background-color:#ffffff;width:600px;max-width:600px;border:1px solid #e2e8f0;">
-
-        <!-- ── Header ── -->
-        <tr>
-          <td bgcolor="#ff8e68" style="background-color:#ff8e68;padding:18px 32px;">
-            <table width="100%" cellpadding="0" cellspacing="0" border="0">
-              <tr>
-                <td style="font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:bold;
-                           color:#ffffff;letter-spacing:-0.5px;">Kynvera</td>
-                <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;
-                           color:#ffcdb8;">Workflow Notification</td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- ── Status badge ── -->
-        <tr>
-          <td style="padding:24px 32px 0 32px;">
-            <table cellpadding="0" cellspacing="0" border="0">
-              <tr>
-                <td bgcolor="{accent}" style="background-color:{accent};padding:4px 12px;">
-                  <span style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;
-                               color:#ffffff;text-transform:uppercase;letter-spacing:1px;">{status_label}</span>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- ── Title ── -->
-        <tr>
-          <td style="padding:12px 32px 0 32px;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:bold;
-                      color:#0f172a;line-height:1.4;">{title}</p>
-          </td>
-        </tr>
-
-        <!-- ── Divider ── -->
-        <tr>
-          <td style="padding:16px 32px 0 32px;">
-            <table width="100%" cellpadding="0" cellspacing="0" border="0">
-              <tr><td height="1" bgcolor="#e2e8f0" style="background-color:#e2e8f0;font-size:0;line-height:0;">&nbsp;</td></tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- ── Details table ── -->
-        <tr>
-          <td style="padding:8px 32px 0 32px;">
-            <table width="100%" cellpadding="0" cellspacing="0" border="0">
-              {rows_html}
-            </table>
-          </td>
-        </tr>
-
-        <!-- ── CTA button ── -->
-        {cta_html}
-
-        <!-- ── Bottom divider ── -->
-        <tr>
-          <td style="padding:24px 32px 0 32px;">
-            <table width="100%" cellpadding="0" cellspacing="0" border="0">
-              <tr><td height="1" bgcolor="#e2e8f0" style="background-color:#e2e8f0;font-size:0;line-height:0;">&nbsp;</td></tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- ── Footer ── -->
-        <tr>
-          <td bgcolor="#f8fafc" style="background-color:#f8fafc;padding:16px 32px 20px 32px;">
-            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#94a3b8;line-height:1.6;">
-              Sent automatically by <strong style="color:#64748b;">Kynvera Workflow</strong> on {now_str}.<br>
-              Do not reply to this email.
-            </p>
-          </td>
-        </tr>
-
-      </table>
-      <!-- /Email card -->
-
-    </td>
-  </tr>
-</table>
-<!--[if mso]></td></tr></table><![endif]-->
-
-</body>
-</html>'''
+    """Kynvera transactional card — same layout as auth / HR lifecycle mail."""
+    del status_type
+    detail_rows = [('Status', status_label)] + list(rows or [])
+    return branded_kynvera_html(
+        greeting=html_escape(title),
+        paragraphs=[],
+        extra_html=branded_details_html(detail_rows),
+        cta_url=cta_url,
+        cta_label=cta_label,
+    )
 
 
 def _plain_text(title: str, rows: list[tuple[str, str]], cta_url: str = '') -> str:

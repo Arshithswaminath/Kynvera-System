@@ -111,6 +111,12 @@ def test_submit_emails_submitter_and_reporting_manager(client, app, visa_chain_u
     assert "Reporting manager" in action["html"]
     assert f"/hr/mgmt-sign/{sid}" in action["html"]
     assert "Kynvera" in confirm["html"]
+    assert "Kynvera</span>" in confirm["html"]
+    assert "All operations. One platform." in confirm["html"]
+    assert "#ff8e68" in confirm["html"]
+    assert "#fff8f5" in action["html"]
+    assert "Kynvera</span>" in action["html"]
+    assert "All operations. One platform." in action["html"]
 
 
 def test_rm_sign_emails_submitter_and_gm(client, app, visa_chain_users, capture_hr_mail):
@@ -149,3 +155,8 @@ def test_rm_sign_emails_submitter_and_gm(client, app, visa_chain_users, capture_
     assert "Action required" in gm_mail["subject"]
     assert "General manager" in gm_mail["html"]
     assert f"/hr/mgmt-sign/{sid}" in gm_mail["html"]
+    assert "Kynvera</span>" in gm_mail["html"]
+    assert "All operations. One platform." in gm_mail["html"]
+    assert "#ff8e68" in gm_mail["html"]
+    assert "Kynvera</span>" in progress["html"]
+    assert "All operations. One platform." in progress["html"]

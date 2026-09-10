@@ -11,7 +11,7 @@ from flask import current_app, url_for
 from werkzeug.utils import secure_filename
 
 from app.models import db
-from common.email_service import send_email
+from common.email_service import branded_details_html, branded_kynvera_html, public_app_url, send_email
 from config import UPLOADS_DIR
 from module_procurement.models import (
     EMAIL_EVENT_KEYS,
@@ -430,9 +430,20 @@ def send_pr_event_email(pr: ProcPurchaseRequest, event_key: str, *, approve_url=
     body = _fill((row.body if row and (row.body or '').strip() else defaults['body']), ctx)
     if 'Kynvera' not in body:
         body = body.rstrip() + '\n\n—\nKynvera Procurement'
-    html = '<pre style="font-family:inherit;white-space:pre-wrap;">' + (
-        body.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-    ) + '</pre>'
+    intro = (body.split('\n\n', 1)[0] or defaults['label']).strip()
+    html = branded_kynvera_html(
+        greeting=defaults['label'],
+        paragraphs=[intro.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')],
+        extra_html=branded_details_html([
+            ('Request', ctx.get('pr_id')),
+            ('Property', ctx.get('property')),
+            ('Total', ctx.get('total')),
+            ('Status', ctx.get('status')),
+            ('Supplier', ctx.get('supplier')),
+        ]),
+        cta_url=approve_url or public_app_url('/procurement'),
+        cta_label='Review and approve' if approve_url else 'Open procurement',
+    )
     attach_on = True if row is None else row.attach_pdf is not False
     if not attach_on:
         paths = []

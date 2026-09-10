@@ -328,12 +328,7 @@ def send_email_to_gm():
 
     signature = f"\n\nSent by: {user.full_name or user.username}\nKynvera Team"
     body = f"{message}{signature}"
-    html_body = (
-        "<html><body>"
-        f"<p>{message.replace(chr(10), '<br>')}</p>"
-        f"<p><strong>Sent by:</strong> {user.full_name or user.username}<br>Kynvera Team</p>"
-        "</body></html>"
-    )
+    html_body = ea._html_body(message, user)
 
     related_bits = list(submission_ids)
     if file_item_ids:

@@ -1862,26 +1862,31 @@ def build_mmr_email_bodies(intro_body: str, df: pd.DataFrame) -> tuple[str, str 
     if not html_tables:
         html_tables = format_chargeable_summary_html_for_email(df)
 
-    html_body = None
+    intro_escaped = intro_for_html.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
+    from common.email_service import branded_kynvera_html, public_app_url
+    extra_parts = []
     if html_tables:
-        intro_escaped = intro_for_html.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
-        html_body = (
-            f'<!DOCTYPE html><html><head><meta charset="utf-8"></head>'
-            f'<body style="font-family:Arial,sans-serif;font-size:12px;color:#333">'
-            f'<p style="margin:0 0 12px 0;line-height:1.5">{intro_escaped}</p>'
-            f'{html_tables}'
-            f'<p style="margin:12px 0 8px 0;font-size:10px;color:#666;font-style:italic">'
-            f'* This is computer generated, please cross check at least once.</p>'
-            f'<p style="margin:0">For full information, please refer to the attached Excel file.</p>'
-            f'</body></html>'
+        extra_parts.append(html_tables)
+        extra_parts.append(
+            '<p style="margin:12px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;'
+            'color:#8a7e78;font-style:italic">'
+            '* This is computer generated, please cross check at least once.</p>'
         )
-        plain = intro
-        plain += '\n\nFor full information, please refer to the attached Excel file.'
-    else:
-        plain = intro
-        if chargeable_summary:
-            plain = (plain + '\n\n' + chargeable_summary).rstrip()
-        plain = (plain + '\n\nFor full information, please refer to the attached Excel file.').rstrip()
+    extra_parts.append(
+        '<p style="margin:8px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#5c616e;">'
+        'For full information, please refer to the attached Excel file.</p>'
+    )
+    html_body = branded_kynvera_html(
+        greeting='CAFM report',
+        paragraphs=[intro_escaped],
+        extra_html=''.join(extra_parts),
+        cta_url=public_app_url('/admin/mmr'),
+        cta_label='Open Report Generation',
+    )
+    plain = intro
+    if not html_tables and chargeable_summary:
+        plain = (plain + '\n\n' + chargeable_summary).rstrip()
+    plain = (plain + '\n\nFor full information, please refer to the attached Excel file.').rstrip()
 
     return plain, html_body
 

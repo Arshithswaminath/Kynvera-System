@@ -128,6 +128,7 @@ def test_upload_and_linked_file_resolve_attaches_bytes(client, app, bd_users, mo
 
     def fake_deliver(recipient, subject, body, html_body=None, cc=None, attachments=None):
         captured['attachments'] = attachments
+        captured['html'] = html_body or ''
         return True
 
     monkeypatch.setattr(es, 'is_email_configured', lambda app=None: True)
@@ -154,6 +155,11 @@ def test_upload_and_linked_file_resolve_attaches_bytes(client, app, bd_users, mo
 
     ran = client.post(f'/bd/email-module/automations/{auto_id}/run', headers=bd_users['a'])
     assert ran.status_code == 200, ran.get_json()
+    html = captured.get('html') or ''
+    assert 'Kynvera</span>' in html
+    assert 'All operations. One platform.' in html
+    assert '#ff8e68' in html
+    assert 'See attached' in html
     atts = captured.get('attachments') or []
     assert atts
     first = atts[0]
@@ -320,10 +326,16 @@ def test_send_once_still_logs_bd_email(client, app, admin_auth_headers, monkeypa
     from app.models import EmailLog
     from common import email_service as es
 
+    captured = {}
+
+    def fake_deliver(recipient, subject, body, html_body=None, cc=None, attachments=None):
+        captured['html'] = html_body or ''
+        return True
+
     monkeypatch.setattr(es, 'is_email_configured', lambda app=None: True)
     monkeypatch.setattr('app.bd.email_automation.is_email_configured', lambda app=None: True)
     monkeypatch.setattr('app.bd.routes.is_email_configured', lambda app=None: True)
-    monkeypatch.setattr(es, '_deliver_email', lambda *a, **k: True)
+    monkeypatch.setattr(es, '_deliver_email', fake_deliver)
 
     response = client.post('/bd/email-module/send', json={
         'to': 'gm@example.com',
@@ -332,6 +344,11 @@ def test_send_once_still_logs_bd_email(client, app, admin_auth_headers, monkeypa
     }, headers=admin_auth_headers)
     assert response.status_code == 200, response.get_json()
     assert response.get_json().get('success') is True
+    html = captured.get('html') or ''
+    assert 'Kynvera</span>' in html
+    assert 'All operations. One platform.' in html
+    assert '#ff8e68' in html
+    assert 'Please review' in html
 
     with app.app_context():
         row = EmailLog.query.filter_by(source='bd_email', subject='One shot').order_by(EmailLog.id.desc()).first()

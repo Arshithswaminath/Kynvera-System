@@ -528,6 +528,44 @@ def test_brevo_blocks_this_ip_detects_authorised_ip_error():
     assert not _brevo_blocks_this_ip('{"message":"invalid_parameter"}')
 
 
+def test_workflow_html_uses_kynvera_card(app):
+    from common.workflow_notifications import _html_email
+
+    with app.app_context():
+        html = _html_email(
+            title='New HVAC & MEP Form Submitted',
+            status_label='New Submission',
+            rows=[('Module', 'HVAC & MEP'), ('Site / Project', 'Test')],
+            cta_url='https://operations.kynvera.net/workflow/pending-reviews',
+        )
+    assert 'Kynvera</span>' in html
+    assert 'All operations. One platform.' in html
+    assert '#ff8e68' in html
+    assert '#fff8f5' in html
+    assert 'Workflow Notification' not in html
+    assert 'HVAC &amp; MEP' in html
+    assert 'New Submission' in html
+
+
+def test_branded_details_and_freeform_use_kynvera_card(app):
+    from common.email_service import branded_details_html, branded_freeform_html
+
+    with app.app_context():
+        box = branded_details_html([('Request', 'PR-1'), ('Total', 'AED 10')])
+        html = branded_freeform_html(
+            'Please review\nthe attached file',
+            sender_name='BD Alpha',
+            cta_url='https://operations.kynvera.net',
+        )
+    assert '#fff8f5' in box
+    assert 'PR-1' in box
+    assert 'Kynvera</span>' in html
+    assert 'All operations. One platform.' in html
+    assert '#ff8e68' in html
+    assert 'Please review<br>the attached file' in html
+    assert 'BD Alpha' in html
+
+
 def test_local_falls_back_to_smtp_when_brevo_https_fails(app, monkeypatch):
     from common import email_service as es
 
