@@ -291,6 +291,90 @@ def test_account_status_email_logs_preview(app, monkeypatch):
         assert row.body_preview == 'Account activated notification'
 
 
+def test_profile_updated_email_logs_preview_and_lists_changes(app, monkeypatch):
+    from app.models import EmailLog
+    from common import email_service as es
+
+    captured = {}
+
+    def _capture(recipient, subject, body, html_body=None, cc=None, attachments=None):
+        captured.setdefault('sends', []).append({
+            'to': recipient,
+            'subject': subject,
+            'body': body,
+            'html': html_body or '',
+        })
+        return True
+
+    monkeypatch.setattr(es, '_deliver_email', _capture)
+
+    with app.app_context():
+        ok = es.send_profile_updated_email(
+            'user@example.com',
+            'alice',
+            changes=[
+                ('Full name', 'Alice → Alice Smith'),
+                ('Signature', 'Updated'),
+            ],
+            full_name='Alice Smith',
+            changed_by='Test Admin',
+        )
+        assert ok is True
+        assert len(captured['sends']) == 1
+        send = captured['sends'][0]
+        assert send['subject'] == 'Your Kynvera profile was updated'
+        assert 'Full name: Alice → Alice Smith' in send['body']
+        assert 'Signature: Updated' in send['body']
+        assert 'data:image' not in send['body']
+        assert 'data:image' not in send['html']
+        row = EmailLog.query.filter_by(source='auth').order_by(EmailLog.id.desc()).first()
+        assert row is not None
+        assert row.body_preview == 'Profile updated notification'
+
+
+def test_profile_updated_email_notifies_previous_address(app, monkeypatch):
+    from app.models import EmailLog
+    from common import email_service as es
+
+    captured = []
+
+    def _capture(recipient, subject, body, html_body=None, cc=None, attachments=None):
+        captured.append({'to': recipient, 'subject': subject, 'body': body})
+        return True
+
+    monkeypatch.setattr(es, '_deliver_email', _capture)
+
+    with app.app_context():
+        ok = es.send_profile_updated_email(
+            'new@example.com',
+            'alice',
+            changes=[('Email', 'old@example.com → new@example.com')],
+            full_name='Alice',
+            changed_by='Test Admin',
+            previous_email='old@example.com',
+        )
+        assert ok is True
+        assert [item['to'] for item in captured] == ['new@example.com', 'old@example.com']
+        assert captured[1]['subject'] == 'Your Kynvera email address was changed'
+        assert 'new@example.com' in captured[1]['body']
+        previews = [
+            row.body_preview
+            for row in EmailLog.query.filter_by(source='auth').order_by(EmailLog.id.asc()).all()[-2:]
+        ]
+        assert previews == ['Profile updated notification', 'Email address changed notification']
+
+
+def test_profile_updated_email_skips_empty_changes(app, monkeypatch):
+    from common import email_service as es
+
+    monkeypatch.setattr(
+        es, '_deliver_email', lambda *a, **k: (_ for _ in ()).throw(AssertionError('should not send'))
+    )
+
+    with app.app_context():
+        assert es.send_profile_updated_email('user@example.com', 'alice', changes=[]) is False
+
+
 def test_mfa_emails_log_preview_and_inline_wordmark(app, monkeypatch):
     from app.models import EmailLog
     from common import email_service as es

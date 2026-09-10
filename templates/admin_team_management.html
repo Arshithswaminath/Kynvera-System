@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
   {% include 'partials/caveat_font.html' %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}?v=3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}?v=4">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-manage-profile-modal.css') }}?v=32">
@@ -64,6 +64,11 @@
   body.has-main-nav {
     --tm-nav-h: var(--nav-bar-h, calc(40px + 1.75rem + env(safe-area-inset-top, 0px)));
     padding-top: var(--tm-nav-h);
+    animation: tmPageReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes tmPageReveal {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   /* ── Layout ─────────────────────────────────────────────────────────────── */
@@ -373,18 +378,69 @@
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1rem;
     align-items: stretch;
+    transition: opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .tm-staff-card {
     background: var(--tm-card);
     border: 1.5px solid var(--tm-line);
     border-radius: 16px;
     padding: 1.1rem 1.15rem 1rem;
-    transition: box-shadow .18s, border-color .18s, transform .18s;
+    transition: box-shadow .18s, border-color .18s, transform .18s, opacity .22s;
     position: relative;
     display: flex;
     flex-direction: column;
     height: 100%;
     min-height: 0;
+  }
+  .tm-staff-grid.is-refreshing {
+    opacity: 0.42;
+    transition: opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+  }
+  .tm-staff-grid.is-boot > .tm-staff-card:not(.tm-staff-skel) {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  .tm-staff-grid.is-entering > .tm-staff-card:not(.tm-staff-skel) {
+    animation: tmCardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--tm-stagger, 0ms);
+  }
+  .tm-staff-skel {
+    min-height: 168px;
+    pointer-events: none;
+    border-style: dashed;
+    background:
+      linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(245,250,247,.9) 48%, rgba(255,255,255,0) 100%),
+      var(--tm-card);
+    background-size: 220% 100%;
+    animation: tmSkel 1.15s ease-in-out infinite;
+  }
+  .tm-kpi-card {
+    animation: tmCardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .tm-kpi-strip .tm-kpi-card:nth-child(1) { animation-delay: 0.04s; }
+  .tm-kpi-strip .tm-kpi-card:nth-child(2) { animation-delay: 0.09s; }
+  .tm-kpi-strip .tm-kpi-card:nth-child(3) { animation-delay: 0.14s; }
+  .tm-kpi-strip .tm-kpi-card:nth-child(4) { animation-delay: 0.19s; }
+  @keyframes tmCardIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes tmSkel {
+    0% { background-position: 120% 0; }
+    100% { background-position: -120% 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body.has-main-nav { animation: none; }
+    .tm-staff-grid.is-boot > .tm-staff-card,
+    .tm-staff-grid.is-entering > .tm-staff-card,
+    .tm-kpi-card,
+    .tm-staff-skel {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+    .tm-staff-grid.is-refreshing { opacity: 1; transition: none; }
   }
   .tm-staff-card--interactive {
     cursor: pointer;
@@ -933,10 +989,10 @@
           </button>
         </div>
         <div class="tm-staff-grid" id="staffGrid">
-          <div class="tm-empty-state" style="grid-column:1/-1;">
-            <div class="tm-spinner" style="border-top-color:var(--tm-green);border-color:rgba(18,84,53,.15);width:28px;height:28px;margin:0 auto .75rem;"></div>
-            <p>Loading staff…</p>
-          </div>
+          <div class="tm-staff-card tm-staff-skel" aria-hidden="true"></div>
+          <div class="tm-staff-card tm-staff-skel" aria-hidden="true"></div>
+          <div class="tm-staff-card tm-staff-skel" aria-hidden="true"></div>
+          <div class="tm-staff-card tm-staff-skel" aria-hidden="true"></div>
         </div>
       </div>
 
@@ -1514,7 +1570,7 @@
     const rows = Array.isArray(raw) ? raw : [];
     _allAdminUsersRaw = rows;
     _staffData = rows.filter(_isStaffRosterRow);
-    renderStaff(_staffData);
+    await renderStaff(_staffData, { animate: true });
     document.getElementById('sbStaffCount').textContent = _staffData.length;
     document.getElementById('tabStaffCount').textContent = _staffData.length;
     document.getElementById('kpiStaff').textContent = _staffData.length;
@@ -1530,16 +1586,74 @@
       const matchStat = !status || (status === 'active' ? u.is_active : !u.is_active);
       return matchQ && matchRole && matchStat;
     });
-    renderStaff(filtered);
+    renderStaff(filtered, { animate: false });
   }
 
-  function renderStaff(list) {
-    const grid = document.getElementById('staffGrid');
-    if (!list.length) {
-      grid.innerHTML = `<div class="tm-empty-state" style="grid-column:1/-1;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="48" height="48"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 1 1 5.25 0Z"/></svg><h3>No system users found</h3><p>Try adjusting your search or filters, or create a system user.</p></div>`;
+  function tmPrefersReducedMotion() {
+    try {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function tmPlayStaffEntrance(grid) {
+    if (!grid) return;
+    const cards = grid.querySelectorAll('.tm-staff-card:not(.tm-staff-skel)');
+    if (!cards.length || tmPrefersReducedMotion()) {
+      grid.classList.remove('is-boot', 'is-entering', 'is-refreshing');
       return;
     }
-    grid.innerHTML = list.map((u, idx) => {
+    cards.forEach(function (card, i) {
+      card.style.setProperty('--tm-stagger', (28 + i * 38) + 'ms');
+    });
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        grid.classList.remove('is-boot');
+        grid.classList.add('is-entering');
+      });
+    });
+    const doneMs = 28 + Math.max(0, cards.length - 1) * 38 + 520;
+    clearTimeout(grid._tmEnterTimer);
+    grid._tmEnterTimer = setTimeout(function () {
+      grid.classList.remove('is-entering');
+      cards.forEach(function (card) { card.style.removeProperty('--tm-stagger'); });
+    }, doneMs);
+  }
+
+  async function tmSwapStaffGrid(html, animate) {
+    const grid = document.getElementById('staffGrid');
+    if (!grid) return;
+    const motion = !!animate && !tmPrefersReducedMotion();
+    const hadCards = !!grid.querySelector('.tm-staff-card:not(.tm-staff-skel)');
+    if (hadCards && motion) {
+      grid.classList.add('is-refreshing');
+      await new Promise(function (resolve) { setTimeout(resolve, 180); });
+    }
+    if (motion) {
+      grid.classList.add('is-boot');
+      grid.classList.remove('is-entering');
+    }
+    grid.classList.remove('is-refreshing');
+    grid.innerHTML = html;
+    if (motion) tmPlayStaffEntrance(grid);
+    else {
+      grid.classList.remove('is-boot', 'is-entering');
+    }
+  }
+
+  async function renderStaff(list, opts) {
+    const animate = !opts || opts.animate !== false;
+    const grid = document.getElementById('staffGrid');
+    if (!list.length) {
+      const empty = `<div class="tm-empty-state" style="grid-column:1/-1;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="48" height="48"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 1 1 5.25 0Z"/></svg><h3>No system users found</h3><p>Try adjusting your search or filters, or create a system user.</p></div>`;
+      if (grid) {
+        grid.classList.remove('is-boot', 'is-entering', 'is-refreshing');
+        grid.innerHTML = empty;
+      }
+      return;
+    }
+    const html = list.map((u) => {
       const mods = Object.entries(MODULE_LABELS).filter(([k]) => u.role === 'admin' || u[k]).map(([,v]) => `<span class="tm-mod-chip">${v}</span>`).join('');
       const roleBadge = u.role === 'admin' ? 'admin' : (u.designation === 'supervisor' || u.designation === 'operations_manager' || u.designation === 'general_manager' ? 'manager' : 'user');
       const statusDot = u.is_active ? '' : ' inactive';
@@ -1576,6 +1690,7 @@
           </div>
         </div>`;
     }).join('');
+    await tmSwapStaffGrid(html, animate);
   }
 
   /* ═══════════════════════════════════════════════════════════════════════

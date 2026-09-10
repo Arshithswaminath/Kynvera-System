@@ -438,6 +438,10 @@ def _body_preview(body, source):
             return 'Account activated notification'
         if 'account has been deactivated' in text:
             return 'Account deactivated notification'
+        if 'profile was updated' in text or 'the following details were changed' in text:
+            return 'Profile updated notification'
+        if 'email address on your kynvera account was changed' in text:
+            return 'Email address changed notification'
         if 'password has been reset' in text or 'temporary password is:' in text:
             return 'Password reset notification'
         if (
@@ -976,6 +980,115 @@ Kynvera
         cta_label='Sign in to Kynvera',
     )
     return _send_auth_email(user_email, subject, body, html_body)
+
+
+def send_profile_updated_email(
+    user_email,
+    username,
+    *,
+    changes,
+    full_name=None,
+    changed_by=None,
+    previous_email=None,
+):
+    """Notify the user that an admin changed profile fields. Never includes passwords or signature data."""
+    rows = [
+        (label, value)
+        for label, value in (changes or [])
+        if label and value not in (None, '')
+    ]
+    if not rows:
+        return False
+
+    display = (full_name or '').strip() or username
+    actor = (changed_by or '').strip()
+    intro = (
+        f'{actor} updated your Kynvera profile.'
+        if actor else
+        'An administrator updated your Kynvera profile.'
+    )
+    next_step = 'If you did not expect these changes, contact your administrator immediately.'
+    subject = 'Your Kynvera profile was updated'
+
+    change_lines = '\n'.join(f'{label}: {value}' for label, value in rows)
+    body = f"""Hello {display},
+
+{intro}
+
+The following details were changed:
+
+{change_lines}
+
+{next_step}
+
+Kynvera
+"""
+    extra = branded_details_html(rows)
+    extra += (
+        f'<p style="margin:12px 0 0 0;font-family:Arial,Helvetica,sans-serif;'
+        f'font-size:15px;line-height:1.55;color:#1c1917;">{_esc(next_step)}</p>'
+    )
+    html_body = _branded_auth_html(
+        title='Profile updated',
+        greeting=f'Hello {_esc(display)}',
+        paragraphs=[_esc(intro), 'The following details were changed:'],
+        extra_html=extra,
+        cta_url=_login_url(),
+        cta_label='Sign in to Kynvera',
+    )
+
+    sent = _send_auth_email(user_email, subject, body, html_body)
+
+    old_email = (previous_email or '').strip()
+    new_email = (user_email or '').strip()
+    if old_email and new_email and old_email.lower() != new_email.lower():
+        try:
+            send_email_address_changed_email(
+                old_email,
+                username,
+                new_email=new_email,
+                full_name=full_name,
+                changed_by=changed_by,
+            )
+        except Exception as email_error:
+            logger.warning('Previous-email profile notice failed: %s', email_error)
+    return sent
+
+
+def send_email_address_changed_email(
+    old_email, username, *, new_email, full_name=None, changed_by=None
+):
+    """Security notice to the previous address when an admin changes a user's email."""
+    display = (full_name or '').strip() or username
+    actor = (changed_by or '').strip()
+    intro = (
+        f'{actor} changed the email address on your Kynvera account.'
+        if actor else
+        'An administrator changed the email address on your Kynvera account.'
+    )
+    subject = 'Your Kynvera email address was changed'
+    body = f"""Hello {display},
+
+{intro}
+
+The email address on your Kynvera account was changed to: {new_email}
+
+If you did not expect this, contact your administrator immediately.
+
+Kynvera
+"""
+    html_body = _branded_auth_html(
+        title='Email address changed',
+        greeting=f'Hello {_esc(display)}',
+        paragraphs=[
+            _esc(intro),
+            'If you did not expect this, contact your administrator immediately.',
+        ],
+        extra_html=branded_details_html([('New email', new_email)]),
+        cta_url=_login_url(),
+        cta_label='Sign in to Kynvera',
+    )
+    return _send_auth_email(old_email, subject, body, html_body)
 
 
 def send_account_status_email(user_email, username, *, is_active, full_name=None):

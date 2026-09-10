@@ -18,12 +18,14 @@
   }
 }
 
-/* Page load – soft fade in */
+/* Page load – opacity only. Transform on <body> makes position:fixed
+   descendants attach to the body and reads as a jump on refresh. */
 body {
-  animation: pageFade 0.28s var(--ease-out) forwards;
+  animation: pageFade 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* pageFade's transform makes position:fixed descendants attach to <body>. */
+/* Keep body untransformed while overlays are open so position:fixed
+   overlays stay viewport-anchored. */
 html:has(.sig-modal-bg.open) body,
 html:has(.success-bg.show) body,
 html:has(.success-overlay.show) body,
@@ -139,14 +141,8 @@ tr,
 .animate-in-delay-4 { animation-delay: 0.24s; }
 
 @keyframes pageFade {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes fadeInUp {

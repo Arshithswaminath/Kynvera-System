@@ -431,6 +431,205 @@ def _resolve_reporting_manager_id(raw_mid, exclude_user_id):
     return mid
 
 
+_PROFILE_SNAPSHOT_ATTRS = (
+    'full_name', 'email', 'username', 'role', 'designation',
+    'default_signature', 'default_comment', 'employment_start_date',
+    'job_designation', 'annual_leave_days', 'other_leave_days',
+    'reporting_manager_id',
+    'access_hvac', 'access_civil', 'access_cleaning',
+    'access_hr', 'access_hiring', 'access_procurement_module',
+    'access_business_development', 'access_sales_manager', 'access_quotations',
+    'access_report_generation', 'access_submitted_forms', 'access_ticketing',
+    'access_qhsi', 'access_files', 'is_ticket_reporter',
+)
+_PROFILE_TEXT_LABELS = (
+    ('full_name', 'Full name'),
+    ('email', 'Email'),
+    ('username', 'Username'),
+    ('job_designation', 'Job title'),
+    ('default_comment', 'Default approval comment'),
+)
+_PROFILE_ROLE_LABELS = {'admin': 'Admin', 'user': 'User'}
+_PROFILE_DESIGNATION_LABELS = {
+    None: 'None',
+    '': 'None',
+    'supervisor': 'Supervisor',
+    'operations_manager': 'Operations manager',
+    'business_development': 'Business development',
+    'procurement': 'Procurement',
+    'general_manager': 'General manager',
+    'hr_manager': 'HR manager',
+    'employee': 'Employee',
+    'technician': 'Technician',
+    'admin': 'Admin',
+}
+_PROFILE_ACCESS_LABELS = (
+    ('access_hr', 'HR module'),
+    ('access_hiring', 'Hiring trackers'),
+    ('access_procurement_module', 'Procurement module'),
+    ('access_business_development', 'Business development'),
+    ('access_sales_manager', 'Sales manager'),
+    ('access_quotations', 'Prepare quotations'),
+    ('access_report_generation', 'Report generation'),
+    ('access_submitted_forms', 'Submitted forms'),
+    ('access_ticketing', 'Service tickets'),
+    ('access_qhsi', 'QHSE module'),
+    ('access_files', 'Files module'),
+    ('is_ticket_reporter', 'Ticket reporter'),
+)
+
+
+def _snapshot_user_profile(user):
+    return {attr: getattr(user, attr, None) for attr in _PROFILE_SNAPSHOT_ATTRS}
+
+
+def _blank_profile_text(value):
+    if value is None:
+        return None
+    if isinstance(value, str):
+        text = value.strip()
+        return text or None
+    return value
+
+
+def _clip_profile_email_value(value, limit=180):
+    text = str(value or '')
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1] + '…'
+
+
+def _manager_profile_label(user_id):
+    if not user_id:
+        return 'None'
+    try:
+        manager = db.session.get(User, int(user_id))
+    except (TypeError, ValueError):
+        return 'None'
+    if manager is None:
+        return 'None'
+    return (manager.full_name or manager.username or f'User {user_id}').strip() or 'None'
+
+
+def _format_profile_value(attr, value):
+    if attr == 'role':
+        return _PROFILE_ROLE_LABELS.get(value, value or 'None')
+    if attr == 'designation':
+        return _PROFILE_DESIGNATION_LABELS.get(value, value or 'None')
+    if attr == 'employment_start_date':
+        if not value:
+            return 'None'
+        return value.isoformat() if hasattr(value, 'isoformat') else str(value)
+    if attr in ('annual_leave_days', 'other_leave_days'):
+        return 'None' if value is None else str(value)
+    if attr == 'reporting_manager_id':
+        return _manager_profile_label(value)
+    if attr == 'default_signature':
+        return 'Set' if value else 'None'
+    text = _blank_profile_text(value)
+    return 'None' if text is None else _clip_profile_email_value(text)
+
+
+def _profile_values_equal(attr, before, after):
+    if attr == 'default_signature':
+        return (before or '') == (after or '')
+    if attr in (
+        'access_hvac', 'access_civil', 'access_cleaning',
+        'access_hr', 'access_hiring', 'access_procurement_module',
+        'access_business_development', 'access_sales_manager', 'access_quotations',
+        'access_report_generation', 'access_submitted_forms', 'access_ticketing',
+        'access_qhsi', 'access_files', 'is_ticket_reporter',
+    ):
+        return bool(before) == bool(after)
+    if attr in ('annual_leave_days', 'other_leave_days', 'reporting_manager_id', 'employment_start_date'):
+        return before == after
+    return _blank_profile_text(before) == _blank_profile_text(after)
+
+
+def _append_profile_change(rows, label, before, after):
+    if before == after:
+        return
+    rows.append((label, f'{before} → {after}'))
+
+
+def _diff_user_profile(before, after):
+    """Human-readable field diffs for the profile-updated email. Never includes passwords or signature data."""
+    rows = []
+    for attr, label in _PROFILE_TEXT_LABELS:
+        if not _profile_values_equal(attr, before.get(attr), after.get(attr)):
+            _append_profile_change(
+                rows,
+                label,
+                _format_profile_value(attr, before.get(attr)),
+                _format_profile_value(attr, after.get(attr)),
+            )
+    if not _profile_values_equal('role', before.get('role'), after.get('role')):
+        _append_profile_change(
+            rows, 'Role',
+            _format_profile_value('role', before.get('role')),
+            _format_profile_value('role', after.get('role')),
+        )
+    if not _profile_values_equal('designation', before.get('designation'), after.get('designation')):
+        _append_profile_change(
+            rows, 'Designation',
+            _format_profile_value('designation', before.get('designation')),
+            _format_profile_value('designation', after.get('designation')),
+        )
+    if not _profile_values_equal(
+        'employment_start_date',
+        before.get('employment_start_date'),
+        after.get('employment_start_date'),
+    ):
+        _append_profile_change(
+            rows, 'Employment start date',
+            _format_profile_value('employment_start_date', before.get('employment_start_date')),
+            _format_profile_value('employment_start_date', after.get('employment_start_date')),
+        )
+    for attr, label in (
+        ('annual_leave_days', 'Annual leave days'),
+        ('other_leave_days', 'Other leave days'),
+    ):
+        if not _profile_values_equal(attr, before.get(attr), after.get(attr)):
+            _append_profile_change(
+                rows, label,
+                _format_profile_value(attr, before.get(attr)),
+                _format_profile_value(attr, after.get(attr)),
+            )
+    if not _profile_values_equal(
+        'reporting_manager_id',
+        before.get('reporting_manager_id'),
+        after.get('reporting_manager_id'),
+    ):
+        _append_profile_change(
+            rows, 'Reporting manager',
+            _format_profile_value('reporting_manager_id', before.get('reporting_manager_id')),
+            _format_profile_value('reporting_manager_id', after.get('reporting_manager_id')),
+        )
+    sig_before = before.get('default_signature')
+    sig_after = after.get('default_signature')
+    if not _profile_values_equal('default_signature', sig_before, sig_after):
+        if sig_before and not sig_after:
+            rows.append(('Signature', 'Removed'))
+        elif sig_after and not sig_before:
+            rows.append(('Signature', 'Added'))
+        else:
+            rows.append(('Signature', 'Updated'))
+
+    insp_before = bool(before.get('access_hvac') or before.get('access_civil') or before.get('access_cleaning'))
+    insp_after = bool(after.get('access_hvac') or after.get('access_civil') or after.get('access_cleaning'))
+    if insp_before != insp_after:
+        _append_profile_change(rows, 'Inspection', 'On' if insp_before else 'Off', 'On' if insp_after else 'Off')
+
+    for attr, label in _PROFILE_ACCESS_LABELS:
+        if not _profile_values_equal(attr, before.get(attr), after.get(attr)):
+            _append_profile_change(
+                rows, label,
+                'On' if before.get(attr) else 'Off',
+                'On' if after.get(attr) else 'Off',
+            )
+    return rows
+
+
 def _resolve_operations_manager_id(raw_mid, exclude_user_id):
     """Admin-assigned operations manager; must be an active user with operations_manager designation."""
     if raw_mid is None:
@@ -1752,6 +1951,9 @@ def update_user(user_id):
         denied = _reject_unless_admin_edit_granted(user, promoting_to_admin=promoting)
         if denied:
             return denied
+
+        before_profile = _snapshot_user_profile(user)
+        previous_email = (user.email or '').strip()
         
         # Update allowed fields
         if 'full_name' in data:
@@ -1880,12 +2082,17 @@ def update_user(user_id):
                 password_updated = True
         
         db.session.commit()
+
+        actor = User.query.get(admin_id) if admin_id else None
+        actor_name = ((actor.full_name or actor.username) if actor else None) or 'system'
         
         # Log the action
         log_audit(admin_id, 'update_user', 'user', str(user_id), {
             'target_user': user.username,
-            'changed_by': User.query.get(admin_id).username if admin_id else 'system'
+            'changed_by': actor.username if actor else 'system'
         })
+
+        profile_changes = _diff_user_profile(before_profile, _snapshot_user_profile(user))
 
         email_sent = False
         if password_updated and user.email:
@@ -1897,14 +2104,33 @@ def update_user(user_id):
             except Exception as email_error:
                 current_app.logger.warning('Password updated email failed: %s', email_error)
 
+        profile_email_sent = False
+        if profile_changes and user.email:
+            try:
+                from common.email_service import send_profile_updated_email
+                profile_email_sent = send_profile_updated_email(
+                    user.email,
+                    user.username,
+                    changes=profile_changes,
+                    full_name=user.full_name,
+                    changed_by=actor_name,
+                    previous_email=previous_email,
+                )
+            except Exception as email_error:
+                current_app.logger.warning('Profile updated email failed: %s', email_error)
+
         message = 'User updated successfully'
-        if password_updated and email_sent:
+        if password_updated and email_sent and profile_email_sent:
+            message += '. A password-updated email was sent. The user was emailed about the other changes.'
+        elif password_updated and email_sent:
             message += '. A password-updated email was sent.'
+        elif profile_email_sent:
+            message += '. The user was emailed about the changes.'
         
         return jsonify({
             'success': True,
             'message': message,
-            'email_sent': email_sent,
+            'email_sent': email_sent or profile_email_sent,
             'user': _admin_user_dict(user)
         }), 200
     except Exception as e:

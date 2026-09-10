@@ -117,6 +117,7 @@ def main() -> int:
             send_mfa_enabled_email,
             send_password_reset_email,
             send_password_updated_email,
+            send_profile_updated_email,
         )
         from common.email_service import send_email as _raw_send
 
@@ -222,6 +223,20 @@ def main() -> int:
                 "Admin edit OTP",
                 wrap_auth(send_admin_edit_otp_email),
                 (to_addr, "000000", "Live Email Tester"),
+            ),
+            (
+                "Profile updated",
+                wrap_auth(lambda: send_profile_updated_email(
+                    to_addr,
+                    "live-email-test",
+                    changes=[
+                        ('Full name', 'Live Tester → Live Email Tester'),
+                        ('Role', 'User → Admin'),
+                    ],
+                    full_name="Live Email Tester",
+                    changed_by="Test Admin",
+                )),
+                (),
             ),
         ]
         for label, fn, fn_args in checks:
