@@ -49,24 +49,30 @@ def init_database():
         )
         
         if not admin:
+            password = (os.environ.get('DEFAULT_ADMIN_PASSWORD') or '').strip()
+            if not password:
+                print("\n[ERROR] No admin user and DEFAULT_ADMIN_PASSWORD is unset.")
+                print("        Set DEFAULT_ADMIN_PASSWORD and re-run this script.")
+                return
             print("\nCreating default admin user...")
             admin = User(
                 username='Kynvera',
                 email='admin@injaaz.com',
                 full_name='System Administrator',
                 role='admin',
-                is_active=True
+                is_active=True,
+                password_changed=False,
             )
-            admin.set_password('Arshith&Taha@2026')
-            
+            admin.set_password(password)
+
             db.session.add(admin)
             db.session.commit()
-            
-            print("✅ Default admin user created!")
+
+            print("Default admin user created.")
             print("   Username: Kynvera")
-            print("   Password: Arshith&Taha@2026")
+            print("   Password: (from DEFAULT_ADMIN_PASSWORD — change it after first sign-in)")
         else:
-            print("\nℹ️  Admin user already exists, skipping creation")
+            print("\nAdmin user already exists, skipping creation")
         
         print("\n✅ Database initialization complete!")
         print("\nYou can now run the application with: python Injaaz.py")

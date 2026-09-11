@@ -64,7 +64,7 @@
           <div class="form-group admin-profile-password-wrap" style="margin-bottom:0;grid-column:1/-1;">
             <label class="form-label" for="profilePassword">Password</label>
             <div class="admin-profile-password-row">
-              <input type="password" id="profilePassword" class="form-control admin-profile-password-input" autocomplete="new-password" spellcheck="false" placeholder="No password on file for admin view">
+              <input type="password" id="profilePassword" class="form-control admin-profile-password-input" autocomplete="new-password" spellcheck="false" placeholder="Set a new password, or email a reset">
               <button type="button" class="btn admin-profile-password-btn" id="profilePasswordToggle" aria-label="Show password">Show</button>
               <button type="button" class="btn admin-profile-password-btn" id="profilePasswordCopy" aria-label="Copy password">Copy</button>
             </div>
@@ -72,7 +72,7 @@
               <button type="button" class="btn admin-profile-email-creds" id="profilePasswordSave" onclick="saveProfilePassword()">Save password</button>
               <button type="button" class="btn admin-profile-email-creds" id="profileEmailCredentialsBtn" onclick="profileModalEmailCredentials()">Email the user</button>
             </div>
-            <p class="admin-profile-hint admin-profile-password-hint" id="profilePasswordHint">Admin view only. Edit, then Save password to change.</p>
+            <p class="admin-profile-hint admin-profile-password-hint" id="profilePasswordHint">Passwords cannot be recovered. Save a new one here, or email a one-time reset. Show and Copy work after you set or generate it.</p>
           </div>
         </div>
       </div>
@@ -335,7 +335,7 @@
     <div class="modal-header">
       <h2 class="modal-title" id="emailCredentialsConfirmTitle">Email login details?</h2>
     </div>
-    <p id="emailCredentialsConfirmIntro"></p>
+    <p id="emailCredentialsConfirmIntro">A new temporary password will be shown once here and emailed to the user. Their current password will stop working.</p>
     <div class="modal-actions">
       <button type="button" class="btn btn-cancel" onclick="closeEmailCredentialsConfirmModal()">Cancel</button>
       <button type="button" class="btn injz-mgmt-btn-submit" id="emailCredentialsConfirmBtn" onclick="submitEmailCredentialsConfirm()">Send email</button>
@@ -382,7 +382,7 @@
       <label class="form-label" for="passwordResetResultValue">Temporary password</label>
       <input type="text" id="passwordResetResultValue" class="form-control" readonly autocomplete="off" spellcheck="false">
     </div>
-    <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 1rem;line-height:1.4;">Users may be asked to change this after sign-in. You can override this value for all resets with the <code>ADMIN_RESET_PASSWORD</code> environment variable.</p>
+    <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 1rem;line-height:1.4;">This one-time password is not stored. The user must change it after sign-in. Copy it now if you need to share it in person.</p>
     <div class="modal-actions">
       <button type="button" class="btn btn-secondary" onclick="copyPasswordResetResult()">Copy</button>
       <button type="button" class="btn btn-primary injz-mgmt-btn-submit" onclick="closePasswordResetResultModal()">Done</button>

@@ -1942,11 +1942,12 @@ def _process_inbound_email_intake(intake: dict):
 @ticketing_bp.route('/api/inbound-email/<secret_token>', methods=['POST'])
 def inbound_email_webhook(secret_token):
     """Mailjet Parse API webhook target. No JWT — a long random secret in the URL path."""
+    from common.security import secrets_equal
     configured_secret = (
         current_app.config.get('TICKET_INBOUND_WEBHOOK_SECRET')
         or os.environ.get('TICKET_INBOUND_WEBHOOK_SECRET')
     )
-    if not configured_secret or secret_token != configured_secret:
+    if not secrets_equal(secret_token, configured_secret or ''):
         abort(404)
 
     payload = request.get_json(silent=True) or {}

@@ -1,98 +1,80 @@
 """
-Admin-visible password helpers.
+Password helpers for admin-created accounts and first-time login.
 
-Passwords are stored as bcrypt hashes; existing hashes cannot be reversed.
-We populate `User.admin_visible_password` by:
-  - set_password() on create/reset/change
-  - successful login (captures the password the user typed)
-  - backfill: match known defaults/secrets against the hash (one-time / startup)
+Passwords are stored only as bcrypt hashes. We never persist plaintext.
+Admin reset / registration issues a one-time temporary password in the API
+response and (when mail is configured) by email; the user must change it.
 """
 from __future__ import annotations
 
-import os
 import logging
+import os
+import secrets
+import string
 
 logger = logging.getLogger(__name__)
 
 
-def password_backfill_candidates():
-    """Plaintext candidates to try against password_hash (env + app defaults)."""
-    seen = set()
-    out = []
+def generate_temporary_password(length: int = 16) -> str:
+    """Random password that satisfies validate_password (8+, upper, lower, digit)."""
+    if length < 12:
+        length = 12
+    alphabet = string.ascii_letters + string.digits
+    while True:
+        chars = [
+            secrets.choice(string.ascii_lowercase),
+            secrets.choice(string.ascii_uppercase),
+            secrets.choice(string.digits),
+        ]
+        chars.extend(secrets.choice(alphabet) for _ in range(length - 3))
+        secrets.SystemRandom().shuffle(chars)
+        return ''.join(chars)
 
-    def add(value):
-        v = (value or '').strip()
-        if v and v not in seen:
-            seen.add(v)
-            out.append(v)
 
-    for key in (
-        'ADMIN_RESET_PASSWORD',
-        'ADMIN_RESET_PASSWORD_DEFAULT',
-        'SEED_TEAM_PASSWORD',
-        'DEFAULT_ADMIN_PASSWORD',
-        'HR_MANAGER_PASSWORD',
-        'PROCUREMENT_MANAGER_PASSWORD',
-    ):
-        add(os.environ.get(key))
-
-    add(os.environ.get('ADMIN_RESET_PASSWORD_DEFAULT', 'ChangeMeNow!@#'))
-    add('DemoTech2026!')
-    add('Injaaz@123')
-    add('Admin@123')
-    add('Arshith&Taha@2026')
-    return out
+def require_env_password(name: str = 'DEFAULT_ADMIN_PASSWORD') -> str:
+    """Return a required password env var, or raise. Never falls back to a source default."""
+    value = (os.environ.get(name) or '').strip()
+    if not value:
+        raise RuntimeError(
+            f'{name} must be set. Refusing to use a password embedded in source.'
+        )
+    return value
 
 
 def get_default_registration_password():
-    """Default password for self-registration and admin-created accounts without an explicit password."""
+    """One-time password for self-registration when the client does not supply one."""
     explicit = (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip()
     if explicit:
         return explicit
-    return os.environ.get('ADMIN_RESET_PASSWORD_DEFAULT', 'ChangeMeNow!@#')
+    return generate_temporary_password()
 
 
 def capture_admin_visible_password(user, plaintext: str) -> None:
-    """Store plaintext for admin Manage profile when we know it (e.g. login)."""
-    if not plaintext or not hasattr(user, 'admin_visible_password'):
-        return
-    user.admin_visible_password = plaintext
+    """No-op keeper for call sites. Plaintext is never stored."""
+    if user is not None and hasattr(user, 'admin_visible_password'):
+        user.admin_visible_password = None
 
 
-def backfill_admin_visible_passwords():
-    """
-    For users missing admin_visible_password, try known defaults against bcrypt hash.
-    Returns counts: updated, skipped (no candidate matched).
-    """
+def wipe_admin_visible_passwords():
+    """Clear any leftover plaintext copies. Returns how many rows were cleared."""
     from app.models import db, User
 
     if not hasattr(User, 'admin_visible_password'):
-        return {'updated': 0, 'skipped': 0}
-
-    candidates = password_backfill_candidates()
-    updated = 0
-    skipped = 0
+        return {'cleared': 0}
 
     rows = User.query.filter(
-        (User.admin_visible_password.is_(None)) | (User.admin_visible_password == '')
+        User.admin_visible_password.isnot(None),
+        User.admin_visible_password != '',
     ).all()
-
     for user in rows:
-        matched = False
-        for pw in candidates:
-            try:
-                if user.check_password(pw):
-                    user.admin_visible_password = pw
-                    updated += 1
-                    matched = True
-                    break
-            except Exception:
-                continue
-        if not matched:
-            skipped += 1
-
-    if updated:
+        user.admin_visible_password = None
+    if rows:
         db.session.commit()
-        logger.info('Backfilled admin_visible_password for %s user(s)', updated)
+        logger.info('Cleared leftover admin_visible_password for %s user(s)', len(rows))
+    return {'cleared': len(rows)}
 
-    return {'updated': updated, 'skipped': skipped}
+
+def backfill_admin_visible_passwords():
+    """Legacy name: wipe plaintext copies instead of filling them from known defaults."""
+    stats = wipe_admin_visible_passwords()
+    return {'updated': 0, 'skipped': 0, 'cleared': stats.get('cleared', 0)}

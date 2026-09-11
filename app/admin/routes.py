@@ -166,7 +166,10 @@ def _generate_otp_code():
 
 
 def _otp_hmac_key():
-    return str(current_app.config.get('SECRET_KEY') or 'kynvera-otp').encode('utf-8')
+    secret = current_app.config.get('SECRET_KEY') or current_app.config.get('JWT_SECRET_KEY')
+    if not secret:
+        raise RuntimeError('SECRET_KEY is required to hash admin OTP codes')
+    return str(secret).encode('utf-8')
 
 
 def _hash_otp_code(code):
@@ -993,29 +996,27 @@ def mmr_chargeable_preview():
         return error_response('Failed to resolve chargeable preview', status_code=500, error_code='DATABASE_ERROR')
 
 
-# Admin-triggered password reset fallback. Override via env var in production so
-# the literal default below is never used to hand out accounts.
-DEFAULT_ADMIN_RESET_PASSWORD = os.environ.get('ADMIN_RESET_PASSWORD_DEFAULT', 'ChangeMeNow!@#')
+# Temporary passwords are generated per account. ADMIN_RESET_PASSWORD is no longer a shared default.
 
 
 @admin_bp.route('/users/backfill-passwords', methods=['POST'])
 @jwt_required()
 @admin_required
 def backfill_user_passwords():
-    """Try to fill admin_visible_password for accounts using known defaults (hash match only)."""
+    """Clear leftover plaintext password copies. Kept for older admin UI buttons."""
     try:
-        from common.password_admin import backfill_admin_visible_passwords
-        stats = backfill_admin_visible_passwords()
+        from common.password_admin import wipe_admin_visible_passwords
+        stats = wipe_admin_visible_passwords()
         return success_response(
             stats,
             message=(
-                f"Backfill complete: {stats['updated']} password(s) recorded, "
-                f"{stats['skipped']} still unknown (user must log in once, or use Reset password)."
+                f"Cleared stored plaintext passwords for {stats.get('cleared', 0)} account(s). "
+                "Use Reset password to issue a one-time temporary password."
             ),
         )
     except Exception as e:
-        current_app.logger.error(f"Password backfill error: {e}", exc_info=True)
-        return error_response('Password backfill failed', status_code=500, error_code='DATABASE_ERROR')
+        current_app.logger.error(f"Password wipe error: {e}", exc_info=True)
+        return error_response('Password cleanup failed', status_code=500, error_code='DATABASE_ERROR')
 
 
 @admin_bp.route('/users', methods=['GET'])
@@ -1073,15 +1074,14 @@ def create_user_admin():
             return error_response('Email already in use', status_code=409, error_code='DUPLICATE_EMAIL')
 
         raw_pw = (data.get('password') or '').strip()
-        temp_password = raw_pw or (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip() or DEFAULT_ADMIN_RESET_PASSWORD
         if raw_pw:
             ok, msg = validate_password(raw_pw)
             if not ok:
                 return error_response(msg, status_code=400, error_code='WEAK_PASSWORD')
+            temp_password = raw_pw
         else:
-            ok, msg = validate_password(temp_password)
-            if not ok:
-                temp_password = DEFAULT_ADMIN_RESET_PASSWORD
+            from common.password_admin import generate_temporary_password
+            temp_password = generate_temporary_password()
 
         user = User(username=username, email=email, full_name=full_name, role='user')
         if data.get('role') == 'admin':
@@ -1445,7 +1445,7 @@ def admin_edit_otp_unlock_with_password(user_id):
 @jwt_required()
 @admin_required
 def reset_user_password(user_id):
-    """Reset user password to the standard admin default (Injaaz@123, or ADMIN_RESET_PASSWORD) and email when configured."""
+    """Reset the user's password to a one-time random value and email it when configured."""
     try:
         admin_id = get_jwt_identity()
         user = User.query.get_or_404(user_id)
@@ -1453,8 +1453,8 @@ def reset_user_password(user_id):
         if denied:
             return denied
         
-        raw_reset = (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip()
-        temp_password = raw_reset or DEFAULT_ADMIN_RESET_PASSWORD
+        from common.password_admin import generate_temporary_password
+        temp_password = generate_temporary_password()
         user.set_password(temp_password)
         user.password_changed = False  # Force password change on next login
         
@@ -1562,7 +1562,7 @@ def reset_user_mfa(user_id):
 @jwt_required()
 @admin_required
 def email_user_login_details(user_id):
-    """Email the stored username and password to the user's address."""
+    """Issue a new temporary password and email username + password to the user."""
     try:
         admin_id = get_jwt_identity()
         user = User.query.get(user_id)
@@ -1574,13 +1574,21 @@ def email_user_login_details(user_id):
         email = (user.email or '').strip()
         if not email:
             return error_response('This account has no email address.', status_code=400, error_code='VALIDATION_ERROR')
-        password = (getattr(user, 'admin_visible_password', None) or '').strip()
-        if not password:
-            return error_response(
-                'No password on file for admin view. Reset password or save a new password first.',
-                status_code=400,
-                error_code='VALIDATION_ERROR',
-            )
+        payload = request.get_json(silent=True) or {}
+        raw_pw = (payload.get('password') or '').strip() if isinstance(payload, dict) else ''
+        if raw_pw:
+            from app.auth.routes import validate_password
+            ok, msg = validate_password(raw_pw)
+            if not ok:
+                return error_response(msg, status_code=400, error_code='VALIDATION_ERROR')
+            password = raw_pw
+            user.password_changed = True
+        else:
+            from common.password_admin import generate_temporary_password
+            password = generate_temporary_password()
+            user.password_changed = False
+        user.set_password(password)
+        db.session.commit()
 
         from common.email_service import send_login_details_email
         try:
@@ -1596,16 +1604,23 @@ def email_user_login_details(user_id):
         log_audit(admin_id, 'email_login_details', 'user', str(user_id), {
             'target_user': user.username,
             'email_sent': bool(email_sent),
+            'admin_supplied_password': bool(raw_pw),
         })
+        response_data = {
+            'email': email,
+            'temp_password': password,
+        }
         if not email_sent:
-            return error_response(
-                'Could not send the email. Check mail settings and try again.',
-                status_code=502,
-                error_code='EMAIL_FAILED',
+            response_data['warning'] = (
+                'Email delivery failed. Temporary password returned in this response (admin only).'
+            )
+            return success_response(
+                response_data,
+                message='A new temporary password was set. Email delivery failed — password returned in the response.',
             )
         return success_response(
-            {'email': email},
-            message=f'Login details were emailed to {email}.',
+            response_data,
+            message=f'A new temporary password was emailed to {email}. Copy it here if you also need to share it in person.',
         )
     except Exception as e:
         current_app.logger.error('Error emailing login details: %s', e, exc_info=True)
@@ -5473,15 +5488,14 @@ def _create_linked_technician_login(data, *, full_name, email, phone, joining_da
         raise ValueError('Email already in use')
 
     raw_pw = (data.get('password') or data.get('login_password') or '').strip()
-    temp_password = raw_pw or (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip() or DEFAULT_ADMIN_RESET_PASSWORD
     if raw_pw:
         ok, msg = validate_password(raw_pw)
         if not ok:
             raise ValueError(msg)
+        temp_password = raw_pw
     else:
-        ok, msg = validate_password(temp_password)
-        if not ok:
-            temp_password = DEFAULT_ADMIN_RESET_PASSWORD
+        from common.password_admin import generate_temporary_password
+        temp_password = generate_temporary_password()
 
     user = User(
         username=username,

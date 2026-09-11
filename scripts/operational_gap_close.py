@@ -417,8 +417,11 @@ def main() -> int:
     admin_pass = (
         os.environ.get('DEFAULT_ADMIN_PASSWORD')
         or os.environ.get('CHECK_PASSWORD')
-        or 'Arshith&Taha@2026'
+        or ''
     )
+    if not admin_pass:
+        print('Set CHECK_PASSWORD or DEFAULT_ADMIN_PASSWORD')
+        return 1
 
     print(f'\n=== Operational gap-close → {base} ===')
 

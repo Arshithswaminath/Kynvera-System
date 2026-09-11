@@ -5,7 +5,13 @@
 (function (w) {
   'use strict';
 
-  const DEFAULT_RESET_DISPLAY_PASSWORD = 'Injaaz@123';
+  const DEFAULT_RESET_DISPLAY_PASSWORD = '';
+  const PASSWORD_HINT_EMPTY =
+    'Passwords cannot be recovered. Save a new one here, or email a one-time reset. Show and Copy work after you set or generate it.';
+  const PASSWORD_HINT_ISSUED =
+    'This one-time password is shown here only. It is not stored. Copy it now if you also need to share it in person.';
+  const PASSWORD_HINT_SAVED =
+    'Password saved. It is not stored for later viewing. Copy it now, or email it to the user.';
 
   const CFG = {
     notify: function (msg, type, persist) {
@@ -39,24 +45,16 @@
     const el = document.getElementById('profilePassword');
     const hint = document.getElementById('profilePasswordHint');
     if (!el) return;
-    const stored = user && user.admin_visible_password ? String(user.admin_visible_password) : '';
-    el.value = stored;
-    el.placeholder = stored ? '' : 'No password on file for admin view';
-    el.dataset.storedPassword = stored;
+    el.value = '';
+    el.placeholder = 'Set a new password, or email a reset';
+    el.dataset.storedPassword = '';
     el.type = 'password';
     const toggle = document.getElementById('profilePasswordToggle');
-    if (toggle) toggle.textContent = 'Show';
-    if (hint) {
-      if (stored) {
-        hint.textContent = 'Stored for admin reference. Edit, then Save password to change.';
-      } else if (user && user.password_changed) {
-        hint.textContent =
-          'This account already has a login password, but it was never saved for admin view (e.g. set before this feature or by the user). Use Reset password in Quick actions, or enter a new password here and Save password — you cannot recover the old one from the database.';
-      } else {
-        hint.textContent =
-          'No password stored for admin view yet. Enter one and Save password, or use Reset password in Quick actions.';
-      }
+    if (toggle) {
+      toggle.textContent = 'Show';
+      toggle.setAttribute('aria-label', 'Show password');
     }
+    if (hint) hint.textContent = PASSWORD_HINT_EMPTY;
   }
 
   function profilePasswordPayload() {
@@ -89,7 +87,7 @@
   w.copyProfilePassword = function copyProfilePassword() {
     const el = document.getElementById('profilePassword');
     if (!el || !el.value.trim()) {
-      notify('No password to copy', 'error');
+      notify('No password to copy yet. Save a new password or email a reset first.', 'error');
       return;
     }
     const v = el.value;
@@ -110,16 +108,28 @@
     }
   };
 
-  function markProfilePasswordSaved(password) {
+  function markProfilePasswordIssued(password, hintText) {
     const el = document.getElementById('profilePassword');
     const hint = document.getElementById('profilePasswordHint');
     const saved = String(password || '');
     if (el) {
       el.value = saved;
       el.dataset.storedPassword = saved;
-      el.placeholder = saved ? '' : 'No password on file for admin view';
+      el.placeholder = saved ? '' : 'Set a new password, or email a reset';
+      if (saved) {
+        el.type = 'text';
+        const toggle = document.getElementById('profilePasswordToggle');
+        if (toggle) {
+          toggle.textContent = 'Hide';
+          toggle.setAttribute('aria-label', 'Hide password');
+        }
+      }
     }
-    if (hint) hint.textContent = 'Stored for admin reference. Edit, then Save password to change.';
+    if (hint) hint.textContent = hintText || PASSWORD_HINT_ISSUED;
+  }
+
+  function markProfilePasswordSaved(password) {
+    markProfilePasswordIssued(password, PASSWORD_HINT_SAVED);
   }
 
   w.saveProfilePassword = async function saveProfilePassword() {
@@ -152,9 +162,7 @@
       if (handleOtpRequired(data)) return;
       if (handleUnauthorized(response)) return;
       if (response.ok && data.success) {
-        const saved = (data.user && data.user.admin_visible_password != null)
-          ? data.user.admin_visible_password
-          : payload.password;
+        const saved = payload.password;
         patchDirectoryUserPassword(userId, saved);
         markProfilePasswordSaved(saved);
         notify(data.message || 'Password saved', 'success');
@@ -539,7 +547,7 @@
     const intro = document.getElementById('passwordResetConfirmIntro');
     if (intro) {
       intro.textContent = 'Reset the password for ' + (username || 'this user')
-        + '? The temporary password will be shown next.';
+        + '? A one-time password will be shown next and emailed if mail is configured.';
     }
     ensurePortalModal(modal);
     activatePortalModal(modal);
@@ -578,6 +586,7 @@
       if (data.success) {
         const pw = data.temp_password || DEFAULT_RESET_DISPLAY_PASSWORD;
         patchDirectoryUserPassword(userId, pw);
+        markProfilePasswordIssued(pw, PASSWORD_HINT_ISSUED);
         openPasswordResetResultModal(username, pw);
       } else {
         notify(data.error || 'Failed to reset password', 'error');
@@ -594,7 +603,8 @@
     ensurePortalModal(modal);
     const intro = document.getElementById('passwordResetResultIntro');
     if (intro) {
-      intro.textContent = 'The account password for "' + username + '" has been reset. Share the password below securely with the user.';
+      intro.textContent = 'The account password for "' + username
+        + '" has been reset. Copy it below if you need to share it in person. An email is sent when mail is configured.';
     }
     const inp = document.getElementById('passwordResetResultValue');
     if (inp) inp.value = password || '';
@@ -692,7 +702,6 @@
   w.profileModalResetPassword = function profileModalResetPassword() {
     const uid = parseInt(document.getElementById('profileUserId').value, 10);
     const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
-    closeUserProfileModal();
     if (Number.isFinite(uid)) openPasswordResetConfirmModal(uid, u ? u.username : '');
   };
 
@@ -879,31 +888,28 @@
     const email = currentProfileEmail();
     const pwEl = document.getElementById('profilePassword');
     const typed = pwEl && pwEl.value ? pwEl.value.trim() : '';
-    const stored = pwEl && pwEl.dataset.storedPassword ? pwEl.dataset.storedPassword.trim() : '';
     if (!email) {
       notify('This account has no email address.', 'error');
       return;
     }
-    if (typed && stored && typed !== stored) {
-      notify('Save the new password first, then email login details.', 'error');
-      return;
-    }
-    if (!stored) {
-      notify('No password on file for admin view. Reset password or save a new password first.', 'error');
-      return;
-    }
     const name = (u && (u.full_name || u.username)) || 'this user';
-    openEmailCredentialsConfirmModal(uid, name, email);
+    openEmailCredentialsConfirmModal(uid, name, email, typed);
   };
 
-  function openEmailCredentialsConfirmModal(userId, name, email) {
-    emailCredentialsConfirmContext = { userId: userId };
+  function openEmailCredentialsConfirmModal(userId, name, email, typedPassword) {
+    emailCredentialsConfirmContext = {
+      userId: userId,
+      password: typedPassword || '',
+    };
     const modal = document.getElementById('emailCredentialsConfirmModal');
     if (!modal) return;
     const intro = document.getElementById('emailCredentialsConfirmIntro');
     if (intro) {
-      intro.textContent = 'Send the username and stored password for ' + name
-        + ' to ' + email + '?';
+      intro.textContent = typedPassword
+        ? ('Save this password and email it to ' + name + ' at ' + email
+          + '? Their current password will stop working.')
+        : ('Issue a new temporary password for ' + name + ' and email it to ' + email
+          + '? You will also see it once here. Their current password will stop working.');
     }
     ensurePortalModal(modal);
     activatePortalModal(modal);
@@ -920,16 +926,24 @@
     const ctx = emailCredentialsConfirmContext;
     if (!ctx) return;
     const userId = ctx.userId;
+    const supplied = (ctx.password || '').trim();
     closeEmailCredentialsConfirmModal();
     try {
+      const body = supplied ? { password: supplied } : {};
       const response = await profileAuthenticatedFetch('/api/admin/users/' + userId + '/email-login-details', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       });
       const data = await response.json().catch(function () { return {}; });
       if (handleOtpRequired(data)) return;
       if (handleUnauthorized(response)) return;
       if (response.ok && data.success) {
+        const pw = data.temp_password || supplied;
+        if (pw) {
+          patchDirectoryUserPassword(userId, pw);
+          markProfilePasswordIssued(pw, PASSWORD_HINT_ISSUED);
+        }
         notify(data.message || 'Login details were emailed.', 'success');
       } else {
         notify(data.error || data.message || 'Could not send the email.', 'error');
@@ -1421,9 +1435,7 @@
           const roleIsAdmin = document.getElementById('profileRole').value === 'admin';
           const okPut = response.ok && data.success;
           if (okPut) {
-            if (data.user && data.user.admin_visible_password != null) {
-              patchDirectoryUserPassword(userId, data.user.admin_visible_password);
-            } else if (payload.password) {
+            if (payload.password) {
               patchDirectoryUserPassword(userId, payload.password);
             }
             if (!roleIsAdmin) {

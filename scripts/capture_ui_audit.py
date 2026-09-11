@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -960,7 +961,10 @@ def main() -> int:
     parser.add_argument("--out-dir", type=Path, default=ROOT / "screenshots")
     parser.add_argument("--stamp", default=None)
     parser.add_argument("--login-user", default="Kynvera")
-    parser.add_argument("--login-password", default="Arshith&Taha@2026")
+    parser.add_argument(
+        "--login-password",
+        default=os.environ.get("CHECK_PASSWORD") or os.environ.get("DEFAULT_ADMIN_PASSWORD") or "",
+    )
     parser.add_argument("--wait-ms", type=int, default=DEFAULT_WAIT_MS)
     parser.add_argument("--headed", action="store_true")
     parser.add_argument(

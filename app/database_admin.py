@@ -23,8 +23,8 @@ from sqlalchemy import inspect, text
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.sql.sqltypes import String, Text
 
-
 from app.models import DatabaseBackup, db
+from common.password_admin import generate_temporary_password
 
 logger = logging.getLogger(__name__)
 
@@ -338,16 +338,15 @@ def module_table_counts():
 _TABLE_NAME_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 _HIDDEN_COLUMNS = {
     'password_hash', 'mfa_secret', 'refresh_token_enc', 'key_hash', 'secret',
-    'token_jti',
+    'token_jti', 'admin_visible_password',
 }
 _HIDDEN_SUFFIXES = ('_hash', '_secret', '_enc')
-# Still show admin_visible_password — it is the same field Manage profile already shows admins.
-_SHOW_EVEN_IF_HIDDEN_NAME = {'admin_visible_password'}
+_SHOW_EVEN_IF_HIDDEN_NAME = set()
 
 PREFERRED_COLUMNS = {
     'users': [
         'id', 'username', 'email', 'full_name', 'role', 'designation',
-        'is_active', 'last_login', 'admin_visible_password', 'phone', 'created_at',
+        'is_active', 'last_login', 'phone', 'created_at',
     ],
     'sessions': ['id', 'user_id', 'expires_at', 'is_revoked', 'created_at'],
     'audit_logs': ['id', 'user_id', 'action', 'resource_type', 'resource_id', 'created_at'],
@@ -796,7 +795,7 @@ def insert_row(table_name, fields, actor_id=None):
             raise BrowseError(f'{meta["label"]} is required.')
     obj = cls()
     if table_name == 'users' and 'admin_visible_password' in coerced:
-        pwd = coerced.pop('admin_visible_password') or 'ChangeMe123'
+        pwd = coerced.pop('admin_visible_password') or generate_temporary_password()
         if hasattr(obj, 'set_password'):
             obj.set_password(str(pwd))
         if 'password_changed' in col_names and 'password_changed' not in coerced:

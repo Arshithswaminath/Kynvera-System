@@ -93,9 +93,10 @@ class User(db.Model):
     )
 
     def set_password(self, password):
-        """Hash and set password; keep admin-visible copy for Manage profile."""
+        """Hash and set password. Never persist plaintext."""
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
-        self.admin_visible_password = password
+        if hasattr(self, 'admin_visible_password'):
+            self.admin_visible_password = None
     
     def check_password(self, password):
         """Verify password against hash"""
@@ -208,7 +209,7 @@ class User(db.Model):
         else:
             data['operations_manager'] = None
         if include_sensitive:
-            data['admin_visible_password'] = getattr(self, 'admin_visible_password', None)
+            data['password_stored'] = False
         return data
     
     def to_client_dict(self):

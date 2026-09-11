@@ -24,7 +24,7 @@ In your Render dashboard, ensure these environment variables are set:
 5. **CLOUDINARY_API_KEY** - Set manually
 6. **CLOUDINARY_API_SECRET** - Set manually
 7. **FLASK_ENV** - Set to `production`
-8. **DEFAULT_ADMIN_PASSWORD** (Optional) - Set a secure password for default admin
+8. **DEFAULT_ADMIN_PASSWORD** (Required on first boot if no admin exists) - Set a unique admin password
 
 ### **Step 2: Database Schema Setup**
 
@@ -139,9 +139,8 @@ python scripts/create_migration_add_user_columns.py
      - `sessions`
 
 3. **Default Admin Creation:**
-   - Creates admin user if it doesn't exist
-   - Uses `DEFAULT_ADMIN_PASSWORD` env var or generates random password
-   - Logs password at CRITICAL level (check logs!)
+   - Creates admin user only if it doesn't exist **and** `DEFAULT_ADMIN_PASSWORD` is set
+   - The process refuses a source-code fallback password
 
 4. **Missing Columns:**
    - Permission columns need to be added via migration script
@@ -152,8 +151,7 @@ python scripts/create_migration_add_user_columns.py
 ## 🔐 **Security Notes**
 
 1. **Default Admin Password:**
-   - If `DEFAULT_ADMIN_PASSWORD` is not set, a random password is generated
-   - Check Render logs (CRITICAL level) to find it
+   - Must be set in `DEFAULT_ADMIN_PASSWORD` on first boot (or via `scripts/create_default_admin.py`)
    - **Change it immediately after first login!**
 
 2. **Database Security:**

@@ -11,6 +11,11 @@
   <div class="proc-doc-approve {% if ok %}is-ok{% else %}is-bad{% endif %}">
     <h1>{{ title }}</h1>
     <p>{{ message }}</p>
+    {% if pending_confirm %}
+    <form method="post" action="{{ url_for('procurement_module.doc_approve_page', token=token) }}" style="margin-top:1.25rem;">
+      <button type="submit" class="btn btn-primary">Approve</button>
+    </form>
+    {% endif %}
   </div>
 </body>
 </html>

@@ -127,8 +127,11 @@ def main() -> int:
     password = (
         os.environ.get('DEFAULT_ADMIN_PASSWORD')
         or os.environ.get('CHECK_PASSWORD')
-        or 'Arshith&Taha@2026'
+        or ''
     )
+    if not password:
+        print('Set CHECK_PASSWORD or DEFAULT_ADMIN_PASSWORD')
+        return 1
 
     print(f'\n=== Operational smoke test → {base} ===\n')
 

@@ -33,7 +33,7 @@ USER = os.environ.get("CHECK_USERNAME") or os.environ.get("DEFAULT_ADMIN_USERNAM
 PASSWORD = (
     os.environ.get("CHECK_PASSWORD")
     or os.environ.get("DEFAULT_ADMIN_PASSWORD")
-    or "Arshith&Taha@2026"
+    or ""
 )
 
 

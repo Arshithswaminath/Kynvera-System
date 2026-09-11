@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import re
 import sys
 import time
@@ -20,8 +21,8 @@ from datetime import date
 import requests
 
 BASE = "http://127.0.0.1:5002"
-USER = "Kynvera"
-PASS = "Arshith&Taha@2026"
+USER = os.environ.get("CHECK_USERNAME") or os.environ.get("DEFAULT_ADMIN_USERNAME") or "Kynvera"
+PASS = os.environ.get("CHECK_PASSWORD") or os.environ.get("DEFAULT_ADMIN_PASSWORD") or ""
 TAG = f"QA-APP-{date.today().isoformat()}"
 SUF = uuid.uuid4().hex[:6]
 

@@ -518,21 +518,32 @@ def test_email_login_details_endpoint_sends(client, admin_auth_headers, standard
 
     with app.app_context():
         user = User.query.filter_by(username='testuser').one()
-        user.admin_visible_password = 'StoredPass99'
-        db.session.commit()
         uid = user.id
 
     response = client.post(f'/api/admin/users/{uid}/email-login-details', headers=admin_auth_headers)
     assert response.status_code == 200
     data = response.get_json()
     assert data.get('success') is True
+    assert data.get('temp_password')
     assert 'test@example.com' in (data.get('message') or '')
-    assert 'StoredPass99' in captured['body']
     assert 'testuser' in captured['body']
+    assert data['temp_password'] in captured['body']
+    assert 'StoredPass99' not in captured.get('body', '')
+    with app.app_context():
+        user = User.query.filter_by(username='testuser').one()
+        assert not (user.admin_visible_password or '')
 
 
-def test_email_login_details_requires_stored_password(client, admin_auth_headers, standard_user, app):
+def test_email_login_details_issues_new_password_without_stored_copy(
+    client, admin_auth_headers, standard_user, app, monkeypatch
+):
     from app.models import User, db
+    from common import email_service as es
+
+    def _capture(recipient, subject, body, html_body=None, cc=None, attachments=None):
+        return True
+
+    monkeypatch.setattr(es, '_deliver_email', _capture)
 
     with app.app_context():
         user = User.query.filter_by(username='testuser').one()
@@ -541,10 +552,47 @@ def test_email_login_details_requires_stored_password(client, admin_auth_headers
         uid = user.id
 
     response = client.post(f'/api/admin/users/{uid}/email-login-details', headers=admin_auth_headers)
-    assert response.status_code == 400
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload.get('success') is True
+    assert payload.get('temp_password')
+    with app.app_context():
+        user = User.query.filter_by(username='testuser').one()
+        assert not (user.admin_visible_password or '')
+        assert user.check_password(payload['temp_password'])
+
+
+def test_email_login_details_can_send_admin_chosen_password(
+    client, admin_auth_headers, standard_user, app, monkeypatch
+):
+    from app.models import User
+    from common import email_service as es
+
+    captured = {}
+
+    def _capture(recipient, subject, body, html_body=None, cc=None, attachments=None):
+        captured['body'] = body
+        return True
+
+    monkeypatch.setattr(es, '_deliver_email', _capture)
+
+    chosen = 'ChosenReset99'
+    uid = standard_user.id
+    response = client.post(
+        f'/api/admin/users/{uid}/email-login-details',
+        headers=admin_auth_headers,
+        json={'password': chosen},
+    )
+    assert response.status_code == 200
     data = response.get_json()
-    assert data.get('success') is False
-    assert 'password' in (data.get('error') or '').lower()
+    assert data.get('success') is True
+    assert data.get('temp_password') == chosen
+    assert chosen in captured.get('body', '')
+    with app.app_context():
+        user = User.query.get(uid)
+        assert user.check_password(chosen)
+        assert user.password_changed is True
+        assert not (user.admin_visible_password or '')
 
 
 def test_email_login_details_requires_admin(client, auth_headers, standard_user):

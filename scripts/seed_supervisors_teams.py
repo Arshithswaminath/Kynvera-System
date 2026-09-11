@@ -65,7 +65,7 @@ def seed_supervisors_teams(password=None):
             sup.is_active = True
             if not sup.full_name:
                 sup.full_name = sup_name
-            if not getattr(sup, 'admin_visible_password', None):
+            if not getattr(sup, 'password_hash', None):
                 sup.set_password(password)
 
         uname_tech = f'demo_{tech_slug}'
@@ -90,7 +90,7 @@ def seed_supervisors_teams(password=None):
             tech_user.is_active = True
             if not tech_user.full_name:
                 tech_user.full_name = tech_full
-            if not getattr(tech_user, 'admin_visible_password', None):
+            if not getattr(tech_user, 'password_hash', None):
                 tech_user.set_password(password)
 
         pair = TicketSupervisorTeam.query.filter_by(

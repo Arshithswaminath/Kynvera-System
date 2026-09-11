@@ -5,6 +5,7 @@ Requires the app on http://127.0.0.1:5002 and Playwright Chromium.
 """
 from __future__ import annotations
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -15,8 +16,8 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "screenshots" / "marketing_desktop"
 BASE = "http://127.0.0.1:5002"
-USER = "Kynvera"
-PASS = "Arshith&Taha@2026"
+USER = os.environ.get("CHECK_USERNAME") or os.environ.get("DEFAULT_ADMIN_USERNAME") or "Kynvera"
+PASS = os.environ.get("CHECK_PASSWORD") or os.environ.get("DEFAULT_ADMIN_PASSWORD") or ""
 W, H = 1440, 900
 SCALE = 2
 NAV_MS = 30_000

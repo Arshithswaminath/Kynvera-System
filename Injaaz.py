@@ -483,19 +483,18 @@ def create_app():
                         except Exception as e:
                             logger.warning(f"Could not add missing columns (non-critical): {e}")
 
-                    # Populate admin_visible_password for existing accounts when we can match a known default.
+                    # Never keep recoverable plaintext passwords in the users table.
                     if 'admin_visible_password' in [col['name'] for col in inspector.get_columns('users')]:
                         try:
-                            from common.password_admin import backfill_admin_visible_passwords
-                            stats = backfill_admin_visible_passwords()
-                            if stats.get('updated'):
+                            from common.password_admin import wipe_admin_visible_passwords
+                            stats = wipe_admin_visible_passwords()
+                            if stats.get('cleared'):
                                 logger.info(
-                                    "Admin password backfill: %s updated, %s still unknown (login or reset will fill)",
-                                    stats['updated'],
-                                    stats['skipped'],
+                                    "Cleared leftover admin_visible_password for %s user(s)",
+                                    stats['cleared'],
                                 )
-                        except Exception as backfill_err:
-                            logger.warning(f"Admin password backfill skipped: {backfill_err}")
+                        except Exception as wipe_err:
+                            logger.warning(f"Admin password wipe skipped: {wipe_err}")
 
                 if 'bd_projects' in inspector.get_table_names():
                     bd_cols = {col['name'] for col in inspector.get_columns('bd_projects')}
@@ -803,24 +802,30 @@ def create_app():
                         or User.query.filter_by(username='admin').first()
                     )
                     if not admin:
-                        logger.info("Creating default admin user...")
-                        admin = User(
-                            username=default_admin_username,
-                            email=os.environ.get('DEFAULT_ADMIN_EMAIL', 'admin@injaaz.com'),
-                            full_name=os.environ.get('DEFAULT_ADMIN_FULL_NAME', 'System Administrator'),
-                            role='admin',
-                            is_active=True,
-                            access_hvac=True,
-                            access_civil=True,
-                            access_cleaning=True
-                        )
-                        # Use environment variable for default password, or the local default
-                        default_password = os.environ.get('DEFAULT_ADMIN_PASSWORD') or 'Arshith&Taha@2026'
-                        admin.set_password(default_password)
-                        admin.password_changed = True
-                        db.session.add(admin)
-                        db.session.commit()
-                        logger.info("✅ Default admin user created (username=%s)", default_admin_username)
+                        default_password = (os.environ.get('DEFAULT_ADMIN_PASSWORD') or '').strip()
+                        if not default_password:
+                            logger.error(
+                                "No admin user exists and DEFAULT_ADMIN_PASSWORD is unset. "
+                                "Refusing to create an admin with a source-code password. "
+                                "Set DEFAULT_ADMIN_PASSWORD and restart, or run scripts/create_default_admin.py."
+                            )
+                        else:
+                            logger.info("Creating default admin user...")
+                            admin = User(
+                                username=default_admin_username,
+                                email=os.environ.get('DEFAULT_ADMIN_EMAIL', 'admin@injaaz.com'),
+                                full_name=os.environ.get('DEFAULT_ADMIN_FULL_NAME', 'System Administrator'),
+                                role='admin',
+                                is_active=True,
+                                access_hvac=True,
+                                access_civil=True,
+                                access_cleaning=True
+                            )
+                            admin.set_password(default_password)
+                            admin.password_changed = False
+                            db.session.add(admin)
+                            db.session.commit()
+                            logger.info("✅ Default admin user created (username=%s)", default_admin_username)
                     else:
                         logger.info("✅ Admin user already exists")
                 except Exception as admin_create_error:
@@ -985,6 +990,12 @@ def create_app():
         if path in public_exact or path.startswith('/static/'):
             return None
         return redirect('/')
+
+    @app.before_request
+    def _reject_cookie_only_mutations():
+        """Block CSRF via JWT cookies on POST/PUT/PATCH/DELETE. Bearer header still works."""
+        from common.security import cookie_only_mutation_blocked
+        return cookie_only_mutation_blocked()
     
     # Ensure directories exist (critical for Render deployment)
     try:

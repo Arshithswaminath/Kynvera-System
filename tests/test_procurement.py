@@ -1595,6 +1595,14 @@ class TestPrDocuments:
             db.session.commit()
         page = client.get(f'/procurement/doc-approve/{raw}')
         assert page.status_code == 200
+        assert b'Approve this request' in page.data
+        detail = client.get(
+            f'/procurement/api/purchase-requests/{pr_id}',
+            headers=admin_auth_headers,
+        ).get_json()
+        assert detail['documents']['quotation']['status'] != 'approved'
+        confirm = client.post(f'/procurement/doc-approve/{raw}')
+        assert confirm.status_code == 200
         detail = client.get(
             f'/procurement/api/purchase-requests/{pr_id}',
             headers=admin_auth_headers,

@@ -10,6 +10,7 @@ Usage (app must already be running):
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -72,7 +73,7 @@ def main() -> int:
     p = argparse.ArgumentParser(description="Capture HR form UIs, form-wise")
     p.add_argument("--base-url", default="http://127.0.0.1:5002")
     p.add_argument("--user", default="Arshith")
-    p.add_argument("--password", default="Arshith&Taha@2026")
+    p.add_argument("--password", default=os.environ.get("CHECK_PASSWORD") or os.environ.get("DEFAULT_ADMIN_PASSWORD") or "")
     p.add_argument("--out-dir", default="")
     p.add_argument("--headed", action="store_true")
     args = p.parse_args()

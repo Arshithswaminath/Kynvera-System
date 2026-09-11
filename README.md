@@ -26,10 +26,10 @@ Run the setup script to automate the entire setup process:
    npm install
    ```
 3. **Configure environment**: Create `.env` file (see [SETUP.md](SETUP.md) for template)
-4. **Initialize database**: `python scripts\init_db.py`
+4. **Initialize database**: `DEFAULT_ADMIN_PASSWORD='your-password' python scripts/init_db.py`
 5. **Start application**: `python Injaaz.py` or `.\start.bat`
 6. **Access**: Open http://localhost:5000
-   - Default login: `Kynvera` / `Arshith&Taha@2026`
+   - First admin: username `Kynvera` with the password you set in `DEFAULT_ADMIN_PASSWORD`
 
 ## 📚 Documentation
 

@@ -66,7 +66,7 @@ Or use the batch file:
 1. Open browser: http://localhost:5000
 2. Login with:
    - **Username:** `Kynvera`
-   - **Password:** `Arshith&Taha@2026`
+   - **Password:** the value of `DEFAULT_ADMIN_PASSWORD` in your `.env`
 
 ## 📋 Prerequisites Checklist
 

@@ -143,9 +143,9 @@ python scripts\init_db.py
 
 This will:
 - Create all necessary database tables
-- Create a default admin user with credentials:
+- Create a default admin user when `DEFAULT_ADMIN_PASSWORD` is set:
   - Username: `Kynvera`
-  - Password: `Arshith&Taha@2026`
+  - Password: the value of `DEFAULT_ADMIN_PASSWORD` (change it after first sign-in)
 
 ### Step 7: Start the Application
 
@@ -167,9 +167,8 @@ The application will start on `http://localhost:5000`
 
 1. Open your browser and go to: `http://localhost:5000`
 2. You should see the login page
-3. Login with the default admin credentials:
+3. Login with the admin credentials you set in `DEFAULT_ADMIN_PASSWORD`:
    - Username: `Kynvera`
-   - Password: `Arshith&Taha@2026`
 
 ---
 

@@ -332,12 +332,16 @@ def login():
                     log_audit(user.id, 'mfa_failed', 'user', str(user.id))
                     return error_response('Invalid MFA code', 401, 'INVALID_MFA')
             except ImportError:
-                current_app.logger.error('pyotp not installed — MFA check skipped')
+                current_app.logger.error('pyotp not installed — MFA cannot be verified')
+                return error_response(
+                    'Multi-factor authentication is unavailable on this server',
+                    503,
+                    'MFA_UNAVAILABLE',
+                )
             except Exception as exc:
                 current_app.logger.error('MFA verify error: %s', exc)
                 return error_response('MFA verification failed', 401, 'INVALID_MFA')
 
-        # Admin override: keep plaintext copy for Manage profile when user signs in.
         from common.password_admin import capture_admin_visible_password
         capture_admin_visible_password(user, password)
         

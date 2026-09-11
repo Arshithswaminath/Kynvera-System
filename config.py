@@ -93,7 +93,7 @@ JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=_jwt_access_hours)
 JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=_jwt_refresh_days)
 # JWT Cookie Settings - Enable cookie-based authentication for HTML links
 JWT_TOKEN_LOCATION = ['headers', 'cookies']  # Read from both headers and cookies
-JWT_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"  # HTTPS only in production
+# Production defaults to Secure cookies (HTTPS). Set SESSION_COOKIE_SECURE=false only for local HTTP.
 JWT_COOKIE_HTTPONLY = True  # Prevent XSS attacks
 JWT_COOKIE_SAMESITE = 'Lax'  # CSRF protection
 JWT_ACCESS_COOKIE_NAME = 'access_token_cookie'
@@ -137,8 +137,8 @@ KYNVERA_FIRE_APP_URL = (os.getenv("KYNVERA_FIRE_APP_URL") or "").rstrip("/")
 KYNVERA_MUNICIPALITY_APP_URL = (os.getenv("KYNVERA_MUNICIPALITY_APP_URL") or "").rstrip("/")
 # Display name shown as a tag under the mobile menu bar (e.g. Kynvera, Fire)
 KYNVERA_APP_NAME = (os.getenv("KYNVERA_APP_NAME") or "Kynvera").strip()
-# Public self-serve signup. Set ALLOW_PUBLIC_REGISTRATION=false to close it.
-ALLOW_PUBLIC_REGISTRATION = os.getenv("ALLOW_PUBLIC_REGISTRATION", "true").lower() in ("1", "true", "yes")
+# Public self-serve signup. Default closed; set ALLOW_PUBLIC_REGISTRATION=true to open it.
+ALLOW_PUBLIC_REGISTRATION = os.getenv("ALLOW_PUBLIC_REGISTRATION", "false").lower() in ("1", "true", "yes")
 
 # Kynvera Assistant — optional LLM for natural chat (RAG over knowledge base)
 # Provider: "claude" (default, Anthropic) or "openai"
@@ -155,7 +155,13 @@ ASSISTANT_LLM_ENABLED = (
 )
 
 # Security
-SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
+if FLASK_ENV == "production":
+    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "true").lower() not in (
+        "false", "0", "no", "off",
+    )
+else:
+    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
+JWT_COOKIE_SECURE = SESSION_COOKIE_SECURE
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 

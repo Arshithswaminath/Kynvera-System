@@ -84,7 +84,7 @@ def _ensure_user(*, username, email, full_name, role='user', designation=None, *
         for key, val in access.items():
             if key.startswith('access_') and not getattr(user, key, False):
                 setattr(user, key, val)
-        if not user.admin_visible_password:
+        if not user.password_hash:
             user.set_password(DEMO_PASSWORD)
         return user
     user = User(

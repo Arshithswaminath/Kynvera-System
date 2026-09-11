@@ -198,6 +198,13 @@ def doc_approve_page(token):
             ok=True, title='Already approved',
             message=f'{pr.public_id} {doc.kind.replace("_", " ")} is already approved.',
         )
+    if request.method == 'GET':
+        return render_template(
+            'procurement_doc_approve.html',
+            ok=True, pending_confirm=True, token=token,
+            title='Approve this request?',
+            message=f'{pr.public_id} {doc.kind.replace("_", " ")} is waiting for your approval.',
+        )
     try:
         pr_docs.approve_document(doc, approver='finance:email')
         if pr.requested_by_id and doc.kind == 'quotation' and pr.status == 'approved':

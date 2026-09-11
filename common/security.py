@@ -3,6 +3,7 @@ Security utilities: rate limiting, CSRF protection, input sanitization
 """
 import os
 import re
+import hmac
 from functools import wraps
 from flask import request, jsonify, current_app
 from werkzeug.security import safe_join
@@ -188,3 +189,62 @@ def check_cloudinary_configured():
     api_secret = os.environ.get('CLOUDINARY_API_SECRET')
     
     return all([cloud_name, api_key, api_secret])
+
+
+# Cookie-authenticated HTML GETs stay allowed. Cross-site forms cannot set
+# Authorization, so mutating requests without a Bearer header are rejected
+# even if an access cookie is present.
+_MUTATING_METHODS = frozenset({'POST', 'PUT', 'PATCH', 'DELETE'})
+_COOKIE_MUTATION_EXEMPT_EXACT = frozenset({
+    '/api/auth/login',
+    '/api/auth/register',
+    '/api/auth/forgot-password',
+    '/api/auth/reset-password',
+    '/api/auth/refresh',
+    '/api/auth/logout',
+    '/logout',
+})
+_COOKIE_MUTATION_EXEMPT_PREFIXES = (
+    '/tickets/api/inbound-email/',
+    '/procurement/doc-approve/',
+)
+
+
+def secrets_equal(given: str, expected: str) -> bool:
+    """Constant-time compare that never raises on length mismatch."""
+    given = str(given or '')
+    expected = str(expected or '')
+    if not expected:
+        return False
+    if len(given) != len(expected):
+        hmac.compare_digest(expected, expected)
+        return False
+    return hmac.compare_digest(given, expected)
+
+
+def cookie_only_mutation_blocked():
+    """Return a 401 response if this mutating request is cookie-auth only."""
+    if request.method not in _MUTATING_METHODS:
+        return None
+    path = request.path or ''
+    if path in _COOKIE_MUTATION_EXEMPT_EXACT:
+        return None
+    if any(path.startswith(prefix) for prefix in _COOKIE_MUTATION_EXEMPT_PREFIXES):
+        return None
+    auth = (request.headers.get('Authorization') or '').strip()
+    if auth.lower().startswith('bearer '):
+        return None
+    cookie_name = current_app.config.get('JWT_ACCESS_COOKIE_NAME', 'access_token_cookie')
+    if request.cookies.get(cookie_name):
+        logger.warning(
+            'SECURITY_EVENT: cookie-only mutation blocked path=%s method=%s ip=%s',
+            path,
+            request.method,
+            request.remote_addr,
+        )
+        return jsonify({
+            'success': False,
+            'error': 'Authorization header required',
+            'error_code': 'CSRF_COOKIE_BLOCKED',
+        }), 401
+    return None

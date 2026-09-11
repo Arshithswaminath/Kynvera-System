@@ -1251,7 +1251,7 @@ Kynvera
 
 
 def send_login_details_email(user_email, username, password, full_name=None):
-    """Admin-triggered email with username and the stored password. Redacted in email logs."""
+    """Admin-triggered email with username and a one-time password. Redacted in email logs."""
     display = (full_name or '').strip() or username
     login_url = _login_url()
     subject = 'Your Kynvera login details'

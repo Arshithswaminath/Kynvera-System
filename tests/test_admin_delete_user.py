@@ -157,11 +157,13 @@ def test_list_users_omits_email_intake_account(client, admin_auth_headers, app):
     from tests.factories import make_user
 
     with app.app_context():
-        make_user(
-            username='email_intake',
-            email='email-intake@injaaz.system',
-            full_name='Email Intake (System)',
-        )
+        existing = User.query.filter_by(username='email_intake').first()
+        if not existing:
+            make_user(
+                username='email_intake',
+                email='email-intake@injaaz.system',
+                full_name='Email Intake (System)',
+            )
 
     response = client.get('/api/admin/users', headers=admin_auth_headers)
     assert response.status_code == 200
