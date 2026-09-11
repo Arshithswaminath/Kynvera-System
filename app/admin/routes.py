@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy import or_, func
 from sqlalchemy.exc import IntegrityError
 from app.models import (
-    db, User, AuditLog, AdminEditOtp, Device, BDProject, BDFollowUp, BDContact, BDActivity,
+    db, User, AuditLog, AdminEditOtp, Device, DeviceHandover, BDProject, BDFollowUp, BDContact, BDActivity,
     DocHubAccess, MmrChargeableConfig, NotificationConfig, EmailLog, AdminPersonalProject, AdminPersonalProgressStep,
     Technician, KnowledgeBaseEntry, DatabaseBackup,
     Quotation, QuotationItem, TicketProject,
@@ -3037,13 +3037,27 @@ def _normalize_device_excel_column_name(value):
     cleaned = ''.join(ch if ch.isalnum() else ' ' for ch in raw)
     return ' '.join(cleaned.split())
 
+
+def _queue_device_audit(user_id, action, resource_id, details=None):
+    db.session.add(AuditLog(
+        user_id=user_id,
+        action=action,
+        resource_type='device',
+        resource_id=str(resource_id) if resource_id is not None else None,
+        ip_address=request.remote_addr,
+        user_agent=request.headers.get('User-Agent'),
+        details=details,
+    ))
+
+
 @admin_bp.route('/devices', methods=['GET'])
 @jwt_required()
 @admin_required
 def list_devices():
-    """Get all registered devices"""
+    """Get registered devices, optionally filtered."""
     try:
-        devices = Device.query.order_by(Device.created_at.desc()).all()
+        from module_devices.service import filter_devices_query
+        devices = filter_devices_query().all()
         devices_data = [d.to_dict() for d in devices]
         return success_response({
             'devices': devices_data,
@@ -3060,54 +3074,78 @@ def list_devices():
 def create_device():
     """Enroll a new device"""
     try:
+        from module_devices.service import apply_device_payload
+
         data = request.get_json() or {}
         name = (data.get('name') or '').strip()
-        device_type = (data.get('device_type') or 'Laptop').strip()
-        os = (data.get('os') or 'Windows 11').strip()
-        user_email = (data.get('assigned_user_email') or '').strip()
-        serial = (data.get('serial_or_asset_tag') or '').strip()
-
         if not name:
             return error_response('Device name is required', status_code=400, error_code='VALIDATION_ERROR')
 
-        assigned_user_id = None
-        if user_email:
-            user = User.query.filter_by(email=user_email).first()
-            if user:
-                assigned_user_id = user.id
-
-        # Generate unique device_id
-        import random
-        existing_ids = {d.device_id for d in Device.query.with_entities(Device.device_id).all()}
-        for _ in range(50):
-            dev_id = 'DEV-' + str(random.randint(1000, 9999))
-            if dev_id not in existing_ids:
-                break
-        else:
-            dev_id = 'DEV-' + str(random.randint(10000, 99999))
-
-        device = Device(
-            device_id=dev_id,
-            name=name,
-            device_type=device_type,
-            os=os,
-            status='idle',
-            health=random.randint(80, 100),
-            assigned_user_id=assigned_user_id,
-            serial_or_asset_tag=serial or None,
-            last_active_at=utc_now_naive()
-        )
+        admin_id = get_jwt_identity()
+        device = apply_device_payload(Device(), data, creating=True)
         db.session.add(device)
+        db.session.flush()
+        _queue_device_audit(admin_id, 'device_enroll', device.device_id, {
+            'name': device.name,
+            'device_pk': device.id,
+        })
         db.session.commit()
 
         return success_response({
             'device': device.to_dict(),
-            'message': f'Device "{name}" enrolled successfully'
+            'message': f'Device "{device.name}" enrolled successfully'
         }, status_code=201)
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error creating device: {str(e)}", exc_info=True)
         return error_response('Failed to enroll device', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/devices/<int:id>', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_device(id):
+    """Get one device."""
+    try:
+        device = Device.query.get(id)
+        if not device:
+            return error_response('Device not found', status_code=404, error_code='NOT_FOUND')
+        return success_response({'device': device.to_dict()})
+    except Exception as e:
+        current_app.logger.error(f"Error getting device: {str(e)}", exc_info=True)
+        return error_response('Failed to fetch device', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/devices/<int:id>', methods=['PATCH', 'PUT'])
+@jwt_required()
+@admin_required
+def update_device(id):
+    """Update an enrolled device."""
+    try:
+        from module_devices.service import apply_device_payload
+
+        device = Device.query.get(id)
+        if not device:
+            return error_response('Device not found', status_code=404, error_code='NOT_FOUND')
+        data = request.get_json() or {}
+        if 'name' in data and not (data.get('name') or '').strip():
+            return error_response('Device name is required', status_code=400, error_code='VALIDATION_ERROR')
+        admin_id = get_jwt_identity()
+        apply_device_payload(device, data, creating=False)
+        _queue_device_audit(admin_id, 'device_update', device.device_id, {
+            'name': device.name,
+            'device_pk': device.id,
+            'fields': sorted(data.keys()),
+        })
+        db.session.commit()
+        return success_response({
+            'device': device.to_dict(),
+            'message': f'Device "{device.name}" updated',
+        })
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating device: {str(e)}", exc_info=True)
+        return error_response('Failed to update device', status_code=500, error_code='DATABASE_ERROR')
 
 
 @admin_bp.route('/devices/<int:id>', methods=['DELETE'])
@@ -3116,8 +3154,16 @@ def create_device():
 def delete_device(id):
     """Remove a device"""
     try:
-        device = Device.query.get_or_404(id)
+        device = Device.query.get(id)
+        if not device:
+            return error_response('Device not found', status_code=404, error_code='NOT_FOUND')
         name = device.name
+        code = device.device_id
+        admin_id = get_jwt_identity()
+        _queue_device_audit(admin_id, 'device_delete', code, {
+            'name': name,
+            'device_pk': device.id,
+        })
         db.session.delete(device)
         db.session.commit()
         return success_response({'message': f'Device "{name}" removed successfully'})
@@ -3146,6 +3192,146 @@ def device_stats():
     except Exception as e:
         current_app.logger.error(f"Error getting device stats: {str(e)}", exc_info=True)
         return error_response('Failed to get statistics', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/devices/kpis', methods=['GET'])
+@jwt_required()
+@admin_required
+def device_kpis():
+    """Executive / analytics payload for Device Management."""
+    try:
+        from module_devices.service import compute_device_kpis
+        return success_response({'kpis': compute_device_kpis()})
+    except Exception as e:
+        current_app.logger.error(f"Error getting device KPIs: {str(e)}", exc_info=True)
+        return error_response('Failed to get statistics', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/devices/map-points', methods=['GET'])
+@jwt_required()
+@admin_required
+def device_map_points():
+    """Devices with coordinates (own pin or building fallback)."""
+    try:
+        from module_devices.service import device_map_points as _map_points
+        points = _map_points()
+        return success_response({'points': points, 'count': len(points)})
+    except Exception as e:
+        current_app.logger.error(f"Error getting device map points: {str(e)}", exc_info=True)
+        return error_response('Failed to get map points', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/devices/compliance', methods=['GET'])
+@jwt_required()
+@admin_required
+def device_compliance():
+    """Inventory-derived compliance buckets."""
+    try:
+        from module_devices.service import compute_compliance
+        return success_response(compute_compliance())
+    except Exception as e:
+        current_app.logger.error(f"Error getting device compliance: {str(e)}", exc_info=True)
+        return error_response('Failed to get compliance', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/devices/audit', methods=['GET'])
+@jwt_required()
+@admin_required
+def device_audit():
+    """Device enroll/update/delete/import logs plus custody handovers."""
+    try:
+        logs = (
+            AuditLog.query
+            .filter(AuditLog.resource_type == 'device')
+            .order_by(AuditLog.created_at.desc())
+            .limit(200)
+            .all()
+        )
+        user_ids = {row.user_id for row in logs if row.user_id}
+        users = {u.id: u for u in User.query.filter(User.id.in_(user_ids)).all()} if user_ids else {}
+        payload = []
+        for row in logs:
+            item = row.to_dict()
+            actor = users.get(row.user_id)
+            item['user_name'] = actor.full_name if actor else None
+            item['user_email'] = actor.email if actor else None
+            payload.append(item)
+        handovers = (
+            DeviceHandover.query
+            .order_by(DeviceHandover.handover_at.desc())
+            .limit(100)
+            .all()
+        )
+        return success_response({
+            'logs': payload,
+            'handovers': [h.to_dict() for h in handovers],
+            'count': len(payload),
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error getting device audit: {str(e)}", exc_info=True)
+        return error_response('Failed to get audit log', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/devices/overview', methods=['GET'])
+@jwt_required()
+@admin_required
+def device_overview():
+    """Period-scoped dashboard widgets (week / month / all)."""
+    try:
+        from module_devices.service import compute_overview
+        period = (request.args.get('range') or 'week').strip().lower()
+        if period not in ('week', 'month', 'all'):
+            period = 'week'
+        return success_response({
+            'overview': compute_overview(
+                period,
+                year=request.args.get('year'),
+                month=request.args.get('month'),
+            )
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error getting device overview: {str(e)}", exc_info=True)
+        return error_response('Failed to get overview', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/devices/narrative', methods=['GET'])
+@jwt_required()
+@admin_required
+def device_narrative():
+    """Short optional Claude summary for the analytics page."""
+    try:
+        from module_devices.service import compute_device_kpis
+        kpis = compute_device_kpis()
+        try:
+            from module_assistant.llm import generate_structured, StructuredLLMError, is_llm_enabled
+        except ImportError:
+            return success_response({'narrative': None})
+        if not is_llm_enabled():
+            return success_response({'narrative': None})
+        system_prompt = (
+            'You write one-line fleet summaries for an IT device inventory dashboard. '
+            'Respond with at most two short factual sentences in third person. '
+            'Never use first person, never ask questions, never offer help, '
+            'never mention missing data beyond a plain statement of the numbers. '
+            'Example tone: "Fleet health is 82%, with two laptops offline at Tower A."'
+        )
+        user_content = (
+            f"Fleet facts:\n{json.dumps(kpis, default=str)}\n\n"
+            'Return JSON: {"narrative": "<max two sentences>"}'
+        )
+        try:
+            result = generate_structured(
+                system_prompt, user_content,
+                {'required': ['narrative'], 'properties': {'narrative': str}},
+            )
+            narrative = (result.get('narrative') or '').strip()[:400] or None
+        except StructuredLLMError as exc:
+            current_app.logger.warning('Device narrative failed: %s', exc)
+            narrative = None
+        return success_response({'narrative': narrative})
+    except Exception as e:
+        current_app.logger.error(f"Error getting device narrative: {str(e)}", exc_info=True)
+        return success_response({'narrative': None})
 
 
 @admin_bp.route('/devices/import-excel', methods=['POST'])
@@ -3215,6 +3401,18 @@ def import_devices_excel():
             'serial number': 'serial_or_asset_tag',
             'asset tag': 'serial_or_asset_tag',
             'serial or asset tag': 'serial_or_asset_tag',
+            'building': 'building',
+            'site': 'building',
+            'location': 'building',
+            'latitude': 'latitude',
+            'lat': 'latitude',
+            'longitude': 'longitude',
+            'lng': 'longitude',
+            'lon': 'longitude',
+            'comment': 'device_comment',
+            'notes': 'device_comment',
+            'asset owner': 'asset_owner_name',
+            'owner': 'asset_owner_name',
         }
 
         canonical_to_original = {}
@@ -3270,6 +3468,15 @@ def import_devices_excel():
         errors = []
 
         import random
+        from module_devices.service import apply_device_payload
+
+        def unique_device_id():
+            for _ in range(80):
+                candidate = 'DEV-' + str(random.randint(1000, 9999))
+                if candidate not in existing_ids:
+                    return candidate
+            return 'DEV-' + str(random.randint(10000, 99999))
+
         for idx, row in df.iterrows():
             try:
                 name = str(cell(row, 'name', '')).strip()
@@ -3285,44 +3492,45 @@ def import_devices_excel():
                 serial = str(cell(row, 'serial_or_asset_tag', '')).strip()
                 if serial.lower() == 'nan':
                     serial = ''
+                building = str(cell(row, 'building', '')).strip()
+                if building.lower() == 'nan':
+                    building = ''
 
                 dup_key = f"{name.lower()}|{serial.lower()}"
                 if dup_key in existing_keys:
                     skipped_duplicates += 1
                     continue
 
-                assigned_user_id = None
-                if user_email and user_email.lower() != 'nan':
-                    matched_user = User.query.filter_by(email=user_email).first()
-                    if matched_user:
-                        assigned_user_id = matched_user.id
-
-                # Generate unique device_id
-                for _ in range(80):
-                    dev_id = 'DEV-' + str(random.randint(1000, 9999))
-                    if dev_id not in existing_ids:
-                        break
-                else:
-                    dev_id = 'DEV-' + str(random.randint(10000, 99999))
-                existing_ids.add(dev_id)
-
-                device = Device(
-                    device_id=dev_id,
-                    name=name,
-                    device_type=device_type,
-                    os=os,
-                    status=status,
-                    health=health,
-                    assigned_user_id=assigned_user_id,
-                    serial_or_asset_tag=serial or None,
-                    last_active_at=utc_now_naive()
-                )
+                payload = {
+                    'name': name,
+                    'device_type': device_type,
+                    'os': os,
+                    'status': status,
+                    'health': health,
+                    'assigned_user_email': user_email if user_email.lower() != 'nan' else '',
+                    'serial_or_asset_tag': serial,
+                    'building': building,
+                    'latitude': cell(row, 'latitude', ''),
+                    'longitude': cell(row, 'longitude', ''),
+                    'device_comment': str(cell(row, 'device_comment', '')).strip(),
+                    'asset_owner_name': str(cell(row, 'asset_owner_name', '')).strip(),
+                }
+                device = apply_device_payload(Device(), payload, creating=True)
+                if not device.device_id or device.device_id in existing_ids:
+                    device.device_id = unique_device_id()
+                existing_ids.add(device.device_id)
                 db.session.add(device)
                 existing_keys.add(dup_key)
                 imported += 1
             except Exception as row_error:
                 errors.append(f"Row {idx + 2}: {row_error}")
 
+        admin_id = get_jwt_identity()
+        _queue_device_audit(admin_id, 'device_import', None, {
+            'imported': imported,
+            'skipped_duplicates': skipped_duplicates,
+            'skipped_empty': skipped_empty,
+        })
         db.session.commit()
         return success_response({
             'imported': imported,

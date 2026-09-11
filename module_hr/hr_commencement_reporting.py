@@ -20,6 +20,7 @@ from module_hr.hr_management_chain import (
     MGMT_CHAIN_KEY,
     _active_hr_signers,
     _active_users_with_designation,
+    mgmt_step_display_label,
     user_allowed_to_sign_step,
 )
 from module_hr.hr_routed_signoffs import _build_signer_slots
@@ -190,7 +191,7 @@ def resolve_commencement_reporting_to(
         step = find_mgmt_step_for_user(steps, rt_uid)
         meta["mode"] = "dual_role"
         meta["chain_step_key"] = (step or {}).get("key")
-        meta["chain_step_label"] = (step or {}).get("pdf_label") or "management approver"
+        meta["chain_step_label"] = mgmt_step_display_label(step, default="management approver")
         data[REPORTING_TO_SIGNOFF_KEY] = meta
         data.pop("reporting_to_signature", None)
         data.pop("reporting_sign_date", None)

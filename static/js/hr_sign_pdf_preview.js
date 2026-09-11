@@ -108,8 +108,12 @@
     });
   }
 
-  async function fetchPdfBuffer(submissionId, token) {
+  async function fetchPdfBuffer(submissionId, token, previewComment) {
     var pdfPath = '/hr/download-pdf/' + encodeURIComponent(submissionId) + '?inline=1';
+    var note = String(previewComment || '').trim();
+    if (note) {
+      pdfPath += '&preview_comment=' + encodeURIComponent(note.slice(0, 400));
+    }
     var pdfRes = await fetch(pdfPath, { credentials: 'include', cache: 'no-store' });
     if (!pdfRes.ok) {
       if (!token) throw new Error('Sign in required to load preview.');
@@ -230,13 +234,30 @@
       revokeBlob();
       clearDomPreview();
     },
+    watchCommentField: function (el, reload) {
+      if (!el || el.dataset.hrPdfCommentWatch === '1' || typeof reload !== 'function') return;
+      el.dataset.hrPdfCommentWatch = '1';
+      var timer = null;
+      function kick() {
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+          reload();
+        }, 450);
+      }
+      el.addEventListener('input', kick);
+      el.addEventListener('blur', function () {
+        clearTimeout(timer);
+        reload();
+      });
+    },
     /**
      * @param {{
      *   submissionId: string,
      *   token: string | null,
      *   gen: number,
      *   isStale: (gen: number) => boolean,
-     *   errMessage?: string
+     *   errMessage?: string,
+     *   previewComment?: string
      * }} opts
      */
     load: async function load(opts) {
@@ -273,7 +294,7 @@
       if (zw0) zw0.style.display = 'none';
 
       try {
-        var buf = await fetchPdfBuffer(submissionId, token);
+        var buf = await fetchPdfBuffer(submissionId, token, opts.previewComment);
         if (isStale()) return;
 
         await waitUntilPreviewReady(isStale);

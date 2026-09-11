@@ -35,6 +35,7 @@ from module_hr.hr_management_chain import (
     WF_MGMT_GM,
     has_management_chain,
     pending_management_step_for_user,
+    user_is_hr_head,
     user_mgmt_chain_completed_step,
 )
 
@@ -117,7 +118,7 @@ def _hr_early_mgmt_signoff_closes_submitter_grace(form_data: dict) -> bool:
         if not isinstance(st, dict):
             continue
         if str(st.get("wf") or "") == WF_MGMT_HR:
-            continue  # HR (head office) sign-off does not end employee grace earlier
+            continue  # HR sign-off does not end employee grace earlier
         if _hr_signature_blob_non_empty(st.get("signature")):
             return True
     return False
@@ -994,11 +995,9 @@ def _user_sees_org_wide_submissions(user, scope: str) -> bool:
     if _user_role_lower(user) == 'admin':
         return True
     if scope in ('all', 'hr'):
-        if _user_desig_lower(user) == 'hr_manager':
+        if _user_desig_lower(user) in ('hr_manager', 'hr'):
             return True
         if _user_desig_lower(user) == 'general_manager':
-            return True
-        if getattr(user, 'access_hr', False):
             return True
     return False
 
@@ -1862,7 +1861,7 @@ def get_my_trail():
                 if _s.id not in _seen_ids:
                     _seen_ids.add(_s.id)
                     hr_pending_rows.append(_s)
-        elif designation in ('hr_manager',) or getattr(user, 'access_hr', False):
+        elif user_is_hr_head(user):
             hr_pending_rows = (
                 Submission.query.options(*list_opts)
                 .filter(_filter_hr(),
@@ -1881,9 +1880,13 @@ def get_my_trail():
             )
 
         def _hr_awaiting_this_user(sub):
+            if sub.user_id == user.id and _user_role_lower(user) != 'admin':
+                return False
             fd = sub.form_data if isinstance(sub.form_data, dict) else {}
             if has_management_chain(fd):
-                return bool(pending_management_step_for_user(fd, sub.workflow_status, user))
+                return bool(pending_management_step_for_user(
+                    fd, sub.workflow_status, user, submitter_id=sub.user_id
+                ))
             return True
 
         hr_pending_rows = [s for s in hr_pending_rows if _hr_awaiting_this_user(s)]
@@ -1925,7 +1928,7 @@ def get_my_trail():
                 .order_by(Submission.updated_at.desc())
                 .all()
             )
-        elif designation in ('hr_manager',) or getattr(user, 'access_hr', False):
+        elif user_is_hr_head(user):
             hr_reviewed_rows = (
                 Submission.query.options(*list_opts)
                 .filter(_filter_hr(),

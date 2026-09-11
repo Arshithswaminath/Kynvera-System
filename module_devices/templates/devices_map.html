@@ -1,0 +1,153 @@
+{% set fm_page_title = 'Device map' %}
+{% set fm_topbar_title = 'Device map' %}
+{% set fm_head_extra %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+{% endset %}
+{% include 'partials/dm_shell_start.html' %}
+
+  <header class="fm-header">
+    <div>
+      <p>Pins colored by health / status. Devices need coordinates or a building that matches a mapped site.</p>
+    </div>
+    <div class="fm-header-actions">
+      <a class="fm-btn fm-btn-outline" href="{{ url_for('devices_bp.devices_analytics') }}">Analytics</a>
+    </div>
+  </header>
+  <p class="fm-muted" id="mapHint">Loading map points…</p>
+  <div class="fm-gis-split">
+    <div class="fm-gis-map" id="fmMap"></div>
+    <aside class="fm-gis-list" aria-label="Devices on the map">
+      <div class="fm-gis-list-head">
+        <h2>Devices</h2>
+        <span id="fmGisCount">—</span>
+      </div>
+      <div class="fm-gis-list-body" id="fmGisList"></div>
+    </aside>
+  </div>
+
+{% set fm_scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+function pinColor(d) {
+  if ((d.status || '') === 'offline' || (d.health != null && d.health < 55)) return '#b42318';
+  if ((d.status || '') === 'update' || (d.health != null && d.health < 80)) return '#b54708';
+  if ((d.status || '') === 'online') return '#17663a';
+  return '#ff8e68';
+}
+function pinChip(d) {
+  if ((d.status || '') === 'offline' || (d.health != null && d.health < 55)) return { cls: 'crit', label: 'Critical' };
+  if ((d.status || '') === 'update' || (d.health != null && d.health < 80)) return { cls: 'warn', label: 'Watch' };
+  if ((d.status || '') === 'online') return { cls: 'ok', label: 'Online' };
+  return { cls: 'ok', label: 'Idle' };
+}
+(async function () {
+  const map = L.map('fmMap', {
+    zoomAnimation: true,
+    markerZoomAnimation: false,
+    fadeAnimation: true,
+  }).setView([25.2048, 55.2708], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap',
+  }).addTo(map);
+  window.addEventListener('resize', () => map.invalidateSize());
+  const hint = document.getElementById('mapHint');
+  const listEl = document.getElementById('fmGisList');
+  const countEl = document.getElementById('fmGisCount');
+  const markers = {};
+  const rows = {};
+  let selectedId = null;
+
+  function highlight(id, fromMap) {
+    if (selectedId && rows[selectedId]) rows[selectedId].classList.remove('is-on');
+    selectedId = id || null;
+    const row = selectedId ? rows[selectedId] : null;
+    if (row) {
+      row.classList.add('is-on');
+      if (fromMap) {
+        const top = row.offsetTop - listEl.clientHeight / 2 + row.offsetHeight / 2;
+        listEl.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      }
+    }
+    Object.keys(markers).forEach((key) => {
+      const el = markers[key].getElement();
+      if (el) el.classList.toggle('is-on', key === selectedId);
+    });
+  }
+  function focusDevice(id) {
+    const marker = markers[id];
+    if (!marker) return;
+    highlight(id, false);
+    const ll = marker.getLatLng();
+    map.setView(ll, 16, { animate: true });
+    marker.openPopup();
+  }
+  try {
+    const res = await fetch('/api/admin/devices/map-points', { headers: fmAuthHeaders() });
+    const data = await res.json();
+    const points = data.points || [];
+    if (!data.success || !points.length) {
+      hint.textContent = 'No geocoded devices yet. Edit a device and set building or coordinates.';
+      if (countEl) countEl.textContent = '0 shown';
+      if (listEl) listEl.innerHTML = '<p class="fm-muted">No devices with coordinates yet.</p>';
+      return;
+    }
+    const bounds = [];
+    points.forEach((d) => {
+      const color = pinColor(d);
+      const marker = L.marker([d.latitude, d.longitude], {
+        icon: L.divIcon({
+          className: 'fm-gis-pin',
+          html: '<span class="fm-gis-pin-dot" style="background:' + color + '"></span>',
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+          popupAnchor: [0, -10],
+        }),
+        keyboard: false,
+        riseOnHover: true,
+      }).addTo(map);
+      marker.bindPopup(
+        '<strong>' + esc(d.device_id) + '</strong> — ' + esc(d.name) + '<br>' +
+        'Health: ' + (d.health != null ? esc(d.health) : '—') +
+        ' · Status: ' + esc(fmHumanLabel(d.status, 'Idle')) + '<br>' +
+        '<a href="/admin/devices/' + encodeURIComponent(d.id) + '">Open device</a>'
+      );
+      marker.on('click', () => highlight(String(d.id), true));
+      markers[String(d.id)] = marker;
+      bounds.push([d.latitude, d.longitude]);
+      const chip = pinChip(d);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'fm-gis-row';
+      btn.innerHTML =
+        '<span class="fm-gis-row-id">' + esc(d.device_id) + '</span>' +
+        '<span class="fm-gis-row-name">' + esc(d.name || '') + '</span>' +
+        (d.building ? '<span class="fm-gis-row-meta">' + esc(d.building) + '</span>' : '') +
+        '<span class="twin-chip ' + chip.cls + '">' + esc(chip.label) + '</span>';
+      btn.addEventListener('click', () => focusDevice(String(d.id)));
+      listEl.appendChild(btn);
+      rows[String(d.id)] = btn;
+    });
+    if (countEl) countEl.textContent = points.length + ' shown';
+    hint.hidden = true;
+    function sizeMap() {
+      map.invalidateSize();
+      if (bounds.length) map.fitBounds(bounds, { padding: [36, 36] });
+    }
+    requestAnimationFrame(sizeMap);
+    setTimeout(sizeMap, 120);
+  } catch (err) {
+    hint.textContent = 'Could not load map points.';
+    if (countEl) countEl.textContent = '—';
+  }
+})();
+</script>
+{% endset %}
+{% include 'partials/dm_shell_end.html' %}

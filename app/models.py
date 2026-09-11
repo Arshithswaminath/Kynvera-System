@@ -505,10 +505,22 @@ class Device(db.Model):
     assigned_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     serial_or_asset_tag = db.Column(db.String(100), nullable=True)
     last_active_at = db.Column(db.DateTime, nullable=True)
+    building = db.Column(db.String(160), nullable=True, index=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    device_comment = db.Column(db.Text, nullable=True)
+    asset_owner_name = db.Column(db.String(255), nullable=True)
+    assignment_date = db.Column(db.Date, nullable=True)
     created_at = db.Column(db.DateTime, default=_utcnow)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
 
     assigned_user = db.relationship('User', backref='devices', foreign_keys=[assigned_user_id])
+    handovers = db.relationship(
+        'DeviceHandover',
+        backref='device',
+        lazy='dynamic',
+        cascade='all, delete-orphan',
+    )
 
     def to_dict(self):
         last = 'Never'
@@ -522,6 +534,7 @@ class Device(db.Model):
                 last = f'{delta.seconds // 60}m ago'
             else:
                 last = 'Just now'
+        assigned = self.assigned_user
         return {
             'id': self.id,
             'device_id': self.device_id,
@@ -531,15 +544,77 @@ class Device(db.Model):
             'status': self.status,
             'health': self.health,
             'assigned_user_id': self.assigned_user_id,
-            'assigned_user': self.assigned_user.email.split('@')[0] if self.assigned_user else None,
+            'assigned_user': assigned.email.split('@')[0] if assigned and assigned.email else None,
+            'assigned_user_name': assigned.full_name if assigned else None,
+            'assigned_user_email': assigned.email if assigned else None,
             'serial_or_asset_tag': self.serial_or_asset_tag,
+            'building': self.building,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
+            'device_comment': self.device_comment,
+            'asset_owner_name': self.asset_owner_name,
+            'assignment_date': self.assignment_date.isoformat() if self.assignment_date else None,
             'last_active': last,
+            'last_active_at': self.last_active_at.isoformat() if self.last_active_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
     def __repr__(self):
         return f'<Device {self.device_id} - {self.name}>'
+
+
+class DeviceHandover(db.Model):
+    """Audit log for device custody transfers."""
+    __tablename__ = 'device_handovers'
+
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(
+        db.Integer,
+        db.ForeignKey('devices.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+    )
+    handover_at = db.Column(db.DateTime, nullable=False, index=True)
+    from_person_name = db.Column(db.String(255), nullable=False)
+    from_person_email = db.Column(db.String(255), nullable=True)
+    from_person_phone = db.Column(db.String(80), nullable=True)
+    to_person_name = db.Column(db.String(255), nullable=False)
+    to_person_email = db.Column(db.String(255), nullable=True)
+    to_person_phone = db.Column(db.String(80), nullable=True)
+    condition_rating = db.Column(db.String(20), nullable=False)
+    condition_detail = db.Column(db.Text, nullable=True)
+    accessories_included = db.Column(db.Text, nullable=True)
+    defects_reported = db.Column(db.Text, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    recorded_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    recorded_by = db.relationship('User', foreign_keys=[recorded_by_user_id])
+
+    def to_dict(self):
+        device = self.device
+        return {
+            'id': self.id,
+            'device_pk': self.device_id,
+            'device_id': device.device_id if device else None,
+            'device_name': device.name if device else None,
+            'handover_at': self.handover_at.isoformat() if self.handover_at else None,
+            'from_person_name': self.from_person_name,
+            'from_person_email': self.from_person_email,
+            'to_person_name': self.to_person_name,
+            'to_person_email': self.to_person_email,
+            'condition_rating': self.condition_rating,
+            'condition_detail': self.condition_detail,
+            'accessories_included': self.accessories_included,
+            'defects_reported': self.defects_reported,
+            'notes': self.notes,
+            'recorded_by_user_id': self.recorded_by_user_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f'<DeviceHandover {self.id} device={self.device_id}>'
 
 
 class BDProject(db.Model):

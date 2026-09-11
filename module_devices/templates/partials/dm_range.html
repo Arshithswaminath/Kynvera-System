@@ -1,0 +1,46 @@
+{# Shared Weekly / Monthly / Yearly range. Pass range_action = endpoint name. #}
+{% macro dm_range_nav(range_action) %}
+<nav class="dm-ov-range" aria-label="Reporting range">
+  {% for key, label in overview.period_options %}
+  <a class="dm-ov-range-btn{% if overview.period == key %} is-on{% endif %}"
+     href="{{ url_for(range_action, range=key) }}"
+     data-dm-range-link="{{ key }}">{{ label }}</a>
+  {% endfor %}
+</nav>
+{% endmacro %}
+
+{% macro dm_heat_nav() %}
+<nav class="dm-ov-heat-nav" aria-label="Calendar range"
+     data-dm-heat-nav
+     data-mode="{{ overview.heat_nav.mode }}"
+     data-year="{{ overview.heat_nav.year }}"
+     data-month="{{ overview.heat_nav.month }}"
+     data-prev-year="{{ overview.heat_nav.prev_year }}"
+     data-prev-month="{{ overview.heat_nav.prev_month }}"
+     data-next-year="{{ overview.heat_nav.next_year }}"
+     data-next-month="{{ overview.heat_nav.next_month }}"
+     data-can-prev="{{ 1 if overview.heat_nav.can_prev else 0 }}"
+     data-can-next="{{ 1 if overview.heat_nav.can_next else 0 }}">
+  <button type="button" class="dm-ov-heat-step" data-dm-heat-step="-1" aria-label="Previous"{% if not overview.heat_nav.can_prev %} disabled{% endif %}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+  </button>
+  <span data-dm-live="heat-cursor">{{ overview.heat_nav.label }}</span>
+  <button type="button" class="dm-ov-heat-step" data-dm-heat-step="1" aria-label="Next"{% if not overview.heat_nav.can_next %} disabled{% endif %}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+  </button>
+</nav>
+{% endmacro %}
+
+{% macro dm_range_select(range_action) %}
+<form method="get" action="{{ url_for(range_action) }}" class="dm-ov-period" data-dm-range-form>
+  <label>
+    <span class="fm-sr">Reporting range</span>
+    <select name="range" data-dm-range aria-label="Reporting range">
+      {% for key, label in overview.period_options %}
+      <option value="{{ key }}"{% if overview.period == key %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <noscript><button type="submit" class="fm-btn fm-btn-outline">Apply</button></noscript>
+</form>
+{% endmacro %}

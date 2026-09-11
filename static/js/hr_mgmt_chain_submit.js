@@ -54,6 +54,22 @@
     list.appendChild(li);
   }
 
+  function liveSignedByKey() {
+    var map = {};
+    var steps = window.__hrMgmtChainLiveSteps;
+    if (!Array.isArray(steps)) return map;
+    steps.forEach(function (st) {
+      if (!st || !st.key) return;
+      var sig = st.signature;
+      if (typeof sig === 'string' && sig.trim() && sig.trim().indexOf('data:image') === 0) {
+        map[st.key] = st;
+      } else if (typeof sig === 'string' && sig.trim()) {
+        map[st.key] = st;
+      }
+    });
+    return map;
+  }
+
   function renderChain(ctx) {
     const list = document.getElementById('hrMgmtChainList');
     if (!list) return;
@@ -77,14 +93,23 @@
       return;
     }
 
+    const signedMap = liveSignedByKey();
     let n = 1;
     chain.forEach((c) => {
-      const cls = c.missing ? 'hr-mgmt-chain-step--missing' : '';
-      const desc = c.missing
-        ? (c.key === 'supervisor'
-            ? 'Not set on your profile. Ask an administrator to assign your supervisor.'
-            : 'No active users with this role yet. Ask an administrator to assign someone.')
-        : c.who_detail;
+      const live = c && c.key ? signedMap[c.key] : null;
+      const cls = c.missing
+        ? 'hr-mgmt-chain-step--missing'
+        : (live ? 'hr-mgmt-chain-step--signed' : '');
+      let desc;
+      if (live) {
+        desc = live.signed_by_name ? ('Signed by ' + live.signed_by_name) : 'Signed';
+      } else if (c.missing) {
+        desc = c.key === 'supervisor'
+          ? 'Not set on your profile. Ask an administrator to assign your supervisor.'
+          : 'No active users with this role yet. Ask an administrator to assign someone.';
+      } else {
+        desc = c.who_detail;
+      }
       appendStep(
         list,
         n++,
@@ -96,7 +121,47 @@
     });
   }
 
+  function chainFromStoredSteps(steps) {
+    return (Array.isArray(steps) ? steps : []).filter(function (st) {
+      return st && st.key;
+    }).map(function (st) {
+      var key = String(st.key);
+      var role = key === 'hr_head_office' || key === 'hr_manager' ? 'HR'
+        : key === 'reporting_manager' ? 'Reporting manager'
+        : key === 'general_manager' ? 'General manager'
+        : key === 'supervisor' ? 'Immediate supervisor'
+        : key === 'operations_manager' ? 'Operations manager'
+        : (st.pdf_label || st.step_label || st.role_label || 'Signer');
+      var who = String(st.signed_by_name || st.who_label || '').trim() || role;
+      return {
+        key: key,
+        role_label: role,
+        who_label: who,
+        who_detail: st.who_detail || null,
+        missing: false,
+      };
+    });
+  }
+
+  function mergeLiveStepsIntoCtx(ctx) {
+    var live = window.__hrMgmtChainLiveSteps;
+    if (!ctx || !Array.isArray(live) || !live.length) return ctx;
+    var chain = chainFromStoredSteps(live);
+    if (!chain.length) return ctx;
+    var flow = chain.map(function (c) { return c.role_label; }).join(' -> ');
+    return Object.assign({}, ctx, {
+      chain: chain,
+      lane_flow: flow,
+      admin_profile_bypass: false,
+      setup_error: null,
+      lane_intro: ctx.recorded_path
+        ? ctx.lane_intro
+        : 'This request follows the approval path recorded when it was submitted.',
+    });
+  }
+
   function applyContext(ctx) {
+    ctx = mergeLiveStepsIntoCtx(ctx || {});
     state.ctx = ctx;
 
     const intro = document.getElementById('hrMgmtIntro');
@@ -174,10 +239,13 @@
 
     const token = localStorage.getItem('access_token');
     var formType = document.body.getAttribute('data-hr-form-type') || '';
+    var editSid = '';
+    try { editSid = new URLSearchParams(location.search).get('edit') || ''; } catch (_e) { editSid = ''; }
     var ctxUrl = '/hr/api/mgmt-chain-context';
-    if (formType) {
-      ctxUrl += '?form_type=' + encodeURIComponent(formType);
-    }
+    var qs = [];
+    if (formType) qs.push('form_type=' + encodeURIComponent(formType));
+    if (editSid) qs.push('submission_id=' + encodeURIComponent(editSid));
+    if (qs.length) ctxUrl += '?' + qs.join('&');
     fetch(ctxUrl, {
       headers: token ? { Authorization: 'Bearer ' + token } : {},
     })
@@ -221,6 +289,9 @@
 
   document.addEventListener('DOMContentLoaded', boot);
   if (document.readyState !== 'loading') boot();
+  document.addEventListener('hr-mgmt-chain-live', function () {
+    if (state.ctx) applyContext(state.ctx);
+  });
 
   (function installSubmitFetchHook() {
     const origFetch = window.fetch;

@@ -22,19 +22,22 @@ DEVICE_HEADERS = (
     'Health',
     'Assigned User Email',
     'Serial / Asset Tag',
+    'Building',
+    'Latitude',
+    'Longitude',
 )
 
 DEVICE_SAMPLE_ROWS = (
-    ('LAPTOP-HQ-001', 'Laptop', 'Windows 11 Pro', 'online', 96, 'admin@injaaz.ae', 'AST-10001'),
-    ('DESKTOP-FIN-014', 'Desktop', 'Windows 10', 'idle', 88, '', 'AST-10002'),
-    ('MOBILE-OPS-022', 'Mobile', 'Android 15', 'online', 93, '', 'AST-10003'),
-    ('TABLET-QA-005', 'Tablet', 'iOS 18', 'update', 72, '', 'AST-10004'),
-    ('SERVER-DC-002', 'Server', 'Ubuntu 24.04', 'online', 91, '', 'AST-10005'),
-    ('LAPTOP-BD-011', 'Laptop', 'macOS Sequoia', 'offline', 54, '', 'AST-10006'),
-    ('DESKTOP-HR-018', 'Desktop', 'Windows 11', 'idle', 84, '', 'AST-10007'),
-    ('LAPTOP-ENG-031', 'Laptop', 'Windows 11', 'online', 97, '', 'AST-10008'),
-    ('MOBILE-FIELD-040', 'Mobile', 'Android 14', 'update', 67, '', 'AST-10009'),
-    ('TABLET-MEET-003', 'Tablet', 'iPadOS 18', 'online', 89, '', 'AST-10010'),
+    ('LAPTOP-HQ-001', 'Laptop', 'Windows 11 Pro', 'online', 96, 'admin@injaaz.ae', 'AST-10001', 'Tower A', 25.2048, 55.2708),
+    ('DESKTOP-FIN-014', 'Desktop', 'Windows 10', 'idle', 88, '', 'AST-10002', 'Tower B', 25.1972, 55.2744),
+    ('MOBILE-OPS-022', 'Mobile', 'Android 15', 'online', 93, '', 'AST-10003', 'Tower A', '', ''),
+    ('TABLET-QA-005', 'Tablet', 'iOS 18', 'update', 72, '', 'AST-10004', '', '', ''),
+    ('SERVER-DC-002', 'Server', 'Ubuntu 24.04', 'online', 91, '', 'AST-10005', 'HQ Building', 25.1975, 55.2796),
+    ('LAPTOP-BD-011', 'Laptop', 'macOS Sequoia', 'offline', 54, '', 'AST-10006', 'Retail Podium', '', ''),
+    ('DESKTOP-HR-018', 'Desktop', 'Windows 11', 'idle', 84, '', 'AST-10007', 'A&F Building', '', ''),
+    ('LAPTOP-ENG-031', 'Laptop', 'Windows 11', 'online', 97, '', 'AST-10008', 'Tower A', '', ''),
+    ('MOBILE-FIELD-040', 'Mobile', 'Android 14', 'update', 67, '', 'AST-10009', '', '', ''),
+    ('TABLET-MEET-003', 'Tablet', 'iPadOS 18', 'online', 89, '', 'AST-10010', 'HQ Building', '', ''),
 )
 
 TECHNICIAN_HEADERS = (
@@ -75,7 +78,7 @@ def build_devices_sample_bytes() -> bytes:
     write_header_row(ws, DEVICE_HEADERS)
     for i, row in enumerate(DEVICE_SAMPLE_ROWS, start=2):
         write_data_row(ws, i, row, example=True)
-    apply_column_widths(ws, [20, 14, 18, 12, 10, 28, 20])
+    apply_column_widths(ws, [20, 14, 18, 12, 10, 28, 20, 16, 12, 12])
 
     type_dv = DataValidation(
         type='list',
@@ -115,6 +118,9 @@ def build_devices_sample_bytes() -> bytes:
             ('Health', 'Optional 0–100 number. Also accepted as Health Percent.'),
             ('Assigned User Email', 'Optional. Must match an existing user email to assign.'),
             ('Serial / Asset Tag', 'Optional unique serial or asset tag.'),
+            ('Building', 'Optional site or building name. Used for grouping and the device map.'),
+            ('Latitude', 'Optional map pin. Blank is allowed if Building matches a mapped site.'),
+            ('Longitude', 'Optional map pin.'),
         ),
         example_headers=DEVICE_HEADERS,
         example_rows=DEVICE_SAMPLE_ROWS[:2],

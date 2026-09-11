@@ -128,7 +128,7 @@ def _sample_hr_mgmt_chain_pdf() -> dict:
             {
                 "key": "hr_head_office",
                 "wf": "hr_mgmt_hr_head_office",
-                "pdf_label": "HR (head office)",
+                "pdf_label": "HR",
                 "signer_mode": "designation",
                 "designation_gate": "hr_head_office",
                 "signed_by_name": None,

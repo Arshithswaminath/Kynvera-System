@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>GM Approval - HR Requests - Kynvera</title>
+<title>GM Approved Forms - Kynvera</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/static/animations.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=27">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}?v=22">
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-  <script src="{{ url_for('static', filename='js/hr_sign_pdf_preview.js') }}?v=3"></script>
+  <script src="{{ url_for('static', filename='js/hr_sign_pdf_preview.js') }}?v=4"></script>
   <style>
     :root {
       --primary: #ff8e68;
@@ -67,6 +67,39 @@
       border-bottom: 1px solid #f1f5f9;
       display: flex; align-items: center; justify-content: space-between;
       background: linear-gradient(to right, rgba(255,142,104,0.06), transparent);
+    }
+    .pending-list-header-tools {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.65rem;
+      flex: 1 1 16rem;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+    .hr-queue-search-wrap {
+      flex: 1 1 14rem;
+      min-width: min(100%, 12rem);
+      max-width: 28rem;
+    }
+    .hr-queue-search-input {
+      display: block;
+      width: 100%;
+      min-height: 2.5rem;
+      box-sizing: border-box;
+      border-radius: 9px;
+      border: 1px solid rgba(255,142,104,0.28);
+      background-color: #fff8f5;
+      color: #1c1917;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+    .hr-queue-search-input:focus {
+      border-color: #ff8e68;
+      box-shadow: 0 0 0 3px rgba(255,142,104,0.18);
+      outline: none;
+      background-color: #fff;
     }
     .pending-list-sort-wrap {
       display: flex;
@@ -145,6 +178,15 @@
     .age-pill.fresh { background: #f0fdf4; color: #16a34a; }
     .age-pill.aging  { background: #fffbeb; color: #d97706; }
     .age-pill.urgent { background: #fef2f2; color: #dc2626; }
+
+    .stage-pill {
+      font-size: 0.7rem; font-weight: 700;
+      padding: 0.18rem 0.52rem; border-radius: 100px;
+      display: inline-flex; align-items: center;
+      background: #fff7ed; color: #c2410c;
+      border: 1px solid #fed7aa;
+      letter-spacing: 0.01em;
+    }
 
     .card-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.55rem; }
     .card-chip {
@@ -535,6 +577,7 @@
     }
     .gm-sign-col .gm-action-zone-title { font-size: 0.82rem; margin-bottom: 0.65rem; }
     .gm-sign-col .hr-stamp { margin-bottom: 0.85rem; }
+    #hrApprovalInfo:empty { display: none; }
     /* Compact action buttons inside the right column */
     .gm-decision-actions {
       display: flex;
@@ -552,7 +595,7 @@
   </style>
   <style>body.has-main-nav { padding-top: 5.5rem; }</style>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-queue-kynvera.css') }}?v=24">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-queue-kynvera.css') }}?v=26">
 </head>
 <body class="has-main-nav hr-queue-list-page hr-module-page hr-kynvera-queue">
   {% set active_page = 'pending-review' %}
@@ -576,25 +619,31 @@
         {% set module_back_url = url_for('hr.hr_dashboard') %}
         {% set module_back_extra_class = 'back-btn' %}
         {% include 'partials/module_back_link.html' %}
-        <a href="{{ url_for('hr.approved_forms') }}" class="hr-queue-approved-link">View Approved Forms</a>
+        <a href="{{ url_for('hr.approved_forms') }}" class="hr-queue-approved-link">View Completed Forms</a>
       </div>
-      <h1 class="hr-queue-banner-title">GM Final Approval</h1>
-      <p class="hr-queue-banner-sub">HR-approved requests awaiting your final sign-off</p>
+      <h1 class="hr-queue-banner-title">GM Approved Forms</h1>
+      <p class="hr-queue-banner-sub">Forms you signed that are still waiting for remaining signatures</p>
     </header>
 
     <!-- Pending List -->
     <div class="pending-list-container">
       <div class="pending-list-header">
         <div class="pending-list-header-left">
-          <h2>Pending Approvals</h2>
+          <h2>GM Approved Forms</h2>
           <span class="pending-count-badge" id="pendingCountBadge">0</span>
         </div>
-        <div class="pending-list-sort-wrap">
-          <label for="pendingListSortOrder" class="pending-sort-label">Sort</label>
-          <select id="pendingListSortOrder" class="form-select pending-sort-select" aria-label="Sort by submission date">
-            <option value="newest" selected>Newest first</option>
-            <option value="oldest">Oldest first</option>
-          </select>
+        <div class="pending-list-header-tools">
+          <div class="hr-queue-search-wrap">
+            <label class="visually-hidden" for="pendingListSearch">Search forms</label>
+            <input type="search" id="pendingListSearch" class="hr-queue-search-input" placeholder="Search employee, form, or type" autocomplete="off">
+          </div>
+          <div class="pending-list-sort-wrap">
+            <label for="pendingListSortOrder" class="pending-sort-label">Sort</label>
+            <select id="pendingListSortOrder" class="form-select pending-sort-select" aria-label="Sort by submission date">
+              <option value="newest" selected>Newest first</option>
+              <option value="oldest">Oldest first</option>
+            </select>
+          </div>
         </div>
       </div>
       <div id="pendingList">
@@ -648,14 +697,28 @@
             <div class="gm-sign-col">
               <div class="gm-sign-card">
                 <header class="gm-rail-head">
-                  <p class="gm-sign-kicker">Final approval</p>
-                  <h2 class="gm-sign-title" id="gmSignTitle">Final Approval</h2>
-                  <p class="gm-sign-meta" id="gmSignMeta">Review and give your final decision</p>
+                  <p class="gm-sign-kicker">GM approved</p>
+                  <h2 class="gm-sign-title" id="gmSignTitle">GM Approved Forms</h2>
+                  <p class="gm-sign-meta" id="gmSignMeta">Submitted request</p>
                 </header>
 
                 <div id="hrApprovalInfo"></div>
 
-                <div class="gm-action-zone">
+                <div id="gmSignedWaitingPane" class="gm-signed-status">
+                  <div class="gm-signed-status__mark" aria-hidden="true">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                  </div>
+                  <h3 class="gm-signed-status__title">You have already signed</h3>
+                  <p class="gm-signed-status__copy" id="gmSignedWaitingCopy">Waiting on remaining signatures. This form stays here until they are in.</p>
+                  <div class="gm-signed-status__next" id="gmSignedWaitingNext" hidden>
+                    <span class="gm-signed-status__next-label">Next</span>
+                    <span class="gm-signed-status__next-value" id="gmSignedWaitingNextValue"></span>
+                  </div>
+                  <button type="button" class="gm-signed-status__btn" data-bs-dismiss="modal">Back to list</button>
+                </div>
+
+                <div id="gmSignDecisionPane" hidden>
+                  <div class="gm-action-zone">
                   <div class="gm-action-zone-title">Your Decision</div>
                   <div class="mb-2">
                     <label class="form-label" for="gmComments">Comments <span style="font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0;">(optional)</span></label>
@@ -670,11 +733,11 @@
                         style="touch-action:none; display:block; min-height:128px;"></canvas>
                     </div>
                   </div>
-                </div>
-
-                <div class="gm-decision-actions">
-                  <button type="button" class="btn btn-outline-danger" onclick="rejectRequest()">Reject</button>
-                  <button type="button" class="btn-approve-gm" onclick="approveRequest()">Approve</button>
+                  </div>
+                  <div class="gm-decision-actions">
+                    <button type="button" class="btn btn-outline-danger" onclick="rejectRequest()">Reject</button>
+                    <button type="button" class="btn-approve-gm" onclick="approveRequest()">Approve</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -703,7 +766,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/hr-display.js') }}?v=1"></script>
+  <script src="{{ url_for('static', filename='js/hr-display.js') }}?v=2"></script>
+  <script src="{{ url_for('static', filename='js/hr_queue_search.js') }}?v=1"></script>
   <script src="{{ url_for('static', filename='js/hr_submission_full_form_url.js') }}"></script>
   <script>
     const HR_SUPPORTED_DOCX_FORMS = {{ (supported_docx_forms or [])|tojson }};
@@ -816,6 +880,36 @@
       const s = sig.trim();
       if (!/^data:image\/(png|jpe?g|gif|webp|bmp|svg\+xml);/i.test(s)) return '';
       return s;
+    }
+
+    function hrHasSigned(fd) {
+      if (!fd || typeof fd !== 'object') return false;
+      if (hrSignatureDataUrl(fd.hr_signature)) return true;
+      if (fd.hr_reviewed_at) return true;
+      const steps = (fd.hr_mgmt_chain && fd.hr_mgmt_chain.steps) || [];
+      for (let i = 0; i < steps.length; i++) {
+        const st = steps[i];
+        if (!st || !st.signature) continue;
+        const key = String(st.key || st.step_key || '');
+        const gate = String(st.designation_gate || '');
+        if (key === 'hr_head_office' || gate === 'hr_head_office' || gate === 'hr_manager') return true;
+      }
+      return false;
+    }
+
+    function nextUnsignedStepLabel(fd) {
+      const steps = (fd && fd.hr_mgmt_chain && fd.hr_mgmt_chain.steps) || [];
+      for (let i = 0; i < steps.length; i++) {
+        const st = steps[i];
+        if (!st || st.signature) continue;
+        const key = String(st.key || st.step_key || '');
+        const gate = String(st.designation_gate || '');
+        if (key === 'hr_head_office' || gate === 'hr_head_office' || gate === 'hr_manager') return 'HR sign-off';
+        const raw = String(st.pdf_label || st.step_label || st.who_label || '').trim();
+        if (raw) return raw;
+        return 'Next approver';
+      }
+      return '';
     }
 
     /** Table block appended for appraisal-style forms rendered via generic filler. */
@@ -1028,8 +1122,8 @@
         badge.style.display = 'none';
         container.innerHTML = `
             <div class="empty-state">
-              <h5 style="font-weight:700;color:#1e293b;margin-bottom:0.4rem;">All caught up</h5>
-              <p class="text-muted mb-0" style="font-size:0.875rem;">No requests pending your approval</p>
+              <h5 style="font-weight:700;color:#1e293b;margin-bottom:0.4rem;">No GM approved forms in progress</h5>
+              <p class="text-muted mb-0" style="font-size:0.875rem;">Forms you signed will sit here until the remaining signatures are in</p>
             </div>`;
         return;
       }
@@ -1037,9 +1131,28 @@
       badge.textContent = pendingListCache.length;
       badge.style.display = 'inline-block';
 
-      const sorted = sortPendingByDate(pendingListCache, pendingListSortOrder());
+      const q = window.HrQueueSearch
+        ? HrQueueSearch.queryFrom(document.getElementById('pendingListSearch'))
+        : '';
+      const filtered = window.HrQueueSearch
+        ? HrQueueSearch.filter(pendingListCache, q)
+        : pendingListCache;
+      badge.textContent = filtered.length;
+      if (!filtered.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+              <h5 style="font-weight:700;color:#1e293b;margin-bottom:0.4rem;">No matching forms</h5>
+              <p class="text-muted mb-0" style="font-size:0.875rem;">Try another employee name, form reference, or form type.</p>
+            </div>`;
+        return;
+      }
+
+      const sorted = sortPendingByDate(filtered, pendingListSortOrder());
       container.innerHTML = sorted.map(s => {
         const fd = s.form_data || {};
+        const stage = (window.hrDisplay && hrDisplay.stageLabel)
+          ? hrDisplay.stageLabel(s.workflow_status, fd)
+          : '';
         const chips = [];
         if (fd.employee_name) chips.push(`<span class="card-chip"><strong>Employee:</strong> ${escapeHtml(fd.employee_name)}</span>`);
         if (fd.first_day_of_leave && fd.last_day_of_leave)
@@ -1057,17 +1170,18 @@
                     <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
                       <span class="form-type-badge ${getFormTypeClass(s.module_type)}">${getFormTypeLabel(s.module_type)}</span>
                       ${agePill(s.created_at)}
+                      ${stage ? `<span class="stage-pill">Stage: ${escapeHtml(stage)}</span>` : ''}
                     </div>
                     <div style="font-weight:700;font-size:0.92rem;color:#1e293b;margin-bottom:0.15rem;">${escapeHtml(hrSubmissionRef(s.submission_id))}</div>
                     <div style="font-size:0.8rem;color:#64748b;">
                       From <strong style="color:#374151;">${escapeHtml(s.submitter_name || 'Unknown')}</strong>
                       &nbsp;·&nbsp;
-                      ${InjaazDateTimeUAE.formatDateMed(s.created_at)}
+                      ${InjaazDateTimeUAE.formatDateTime(s.created_at)} (GST)
                     </div>
                     ${chips.length ? `<div class="card-chips">${chips.join('')}</div>` : ''}
                   </div>
                   <button class="btn-review-card" onclick="event.stopPropagation();openApproval('${s.submission_id}', ${JSON.stringify(s).replace(/"/g, '&quot;')})">
-                    Review &amp; Approve
+                    Review
                   </button>
                 </div>
               </div>`;
@@ -1081,6 +1195,28 @@
         const data = await response.json();
         pendingListCache = Array.isArray(data.submissions) ? data.submissions : [];
         renderPendingListFromCache();
+        const params = new URLSearchParams(window.location.search);
+        const openId = params.get('submission') || params.get('sign');
+        if (openId) {
+          let match = pendingListCache.find((s) => s.submission_id === openId);
+          if (!match) {
+            const mine = await fetch('/hr/api/my-mgmt-signoffs', { headers: { 'Authorization': `Bearer ${token}` } });
+            if (mine.ok) {
+              const mineData = await mine.json();
+              match = (mineData.submissions || []).find((s) => s.submission_id === openId);
+            }
+          }
+          if (!match) {
+            const detail = await fetch('/hr/api/mgmt-signoff-detail/' + encodeURIComponent(openId), {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (detail.ok) {
+              const dj = await detail.json();
+              if (dj.success && dj.submission) match = dj.submission;
+            }
+          }
+          if (match) openApproval(openId, match);
+        }
       } catch (error) {
         console.error('Error:', error);
         pendingListCache = [];
@@ -1089,6 +1225,7 @@
     }
 
     document.getElementById('pendingListSortOrder')?.addEventListener('change', () => renderPendingListFromCache());
+    if (window.HrQueueSearch) HrQueueSearch.bind('pendingListSearch', () => renderPendingListFromCache());
 
     /* ── Open approval modal ──────────────────────────────── */
     function openApproval(submissionId, submission) {
@@ -1138,37 +1275,58 @@
 
       const wf = currentWorkflowStatus || '';
       const isMgmtGm = wf === 'hr_mgmt_gm';
+      const needsGmSign = wf === 'gm_review' || isMgmtGm;
+      const waitingPane = document.getElementById('gmSignedWaitingPane');
+      const signPane = document.getElementById('gmSignDecisionPane');
+      if (waitingPane) waitingPane.hidden = !!needsGmSign;
+      if (signPane) signPane.hidden = !needsGmSign;
 
-      // HR Approval Stamp (management chain: HR signs after GM; omit HR stamp until then)
+      const waitingCopy = document.getElementById('gmSignedWaitingCopy');
+      const nextWrap = document.getElementById('gmSignedWaitingNext');
+      const nextValue = document.getElementById('gmSignedWaitingNextValue');
+      if (!needsGmSign) {
+        const nextLabel = nextUnsignedStepLabel(formData);
+        if (waitingCopy) {
+          waitingCopy.textContent = nextLabel
+            ? ('Waiting on ' + nextLabel + '. This form stays in GM Approved Forms until then.')
+            : 'Waiting on remaining signatures. This form stays in GM Approved Forms until then.';
+        }
+        if (nextWrap && nextValue) {
+          if (nextLabel) {
+            nextValue.textContent = nextLabel;
+            nextWrap.hidden = false;
+          } else {
+            nextValue.textContent = '';
+            nextWrap.hidden = true;
+          }
+        }
+      }
+
+      // HR stamp only after HR has actually signed — never show "HR approved / N/A"
       const hrInfo = document.getElementById('hrApprovalInfo');
-      if (isMgmtGm) {
-        hrInfo.innerHTML = `
-          <div class="hr-stamp" style="background:#f8fafc;border-style:dashed;">
-            <div class="hr-stamp-head">
-              <span class="hr-stamp-title" style="color:#334155;">Management chain</span>
-            </div>
-            <p style="margin:.5rem 0 0;font-size:0.82rem;color:#64748b;line-height:1.45;">
-              HR signs in the last step after General Manager. Supervisor / operations manager approvals are already on file for the PDF.
-            </p>
-          </div>`;
-      } else {
-      const approvedAt = formData.hr_reviewed_at ? fmtDateTime(formData.hr_reviewed_at) : 'N/A';
-      const hrMergedComment = hrCommentsCombined(formData);
-      const stampComment = hrMergedComment ? `<div class="hr-stamp-comment">${escapeHtml(hrMergedComment)}</div>` : '';
-      const sigUrl = hrSignatureDataUrl(formData.hr_signature);
-      const stampSig = sigUrl ? `<div class="hr-stamp-signature"><span>HR Signature</span><img src="${sigUrl.replace(/"/g, '&quot;')}" alt="HR signature"></div>` : '';
-      hrInfo.innerHTML = `
-        <div class="hr-stamp">
-          <div class="hr-stamp-head">
-            <span class="hr-stamp-title">HR approved</span>
-          </div>
-          <div class="hr-stamp-pills">
-            <span class="hr-stamp-pill">${escapeHtml(formData.hr_reviewed_by_name || 'HR Manager')}</span>
-            <span class="hr-stamp-pill">${approvedAt}</span>
-          </div>
-          ${stampComment}
-          ${stampSig}
-        </div>`;
+      if (hrInfo) {
+        if (hrHasSigned(formData) && !isMgmtGm) {
+          const approvedAt = formData.hr_reviewed_at ? fmtDateTime(formData.hr_reviewed_at) : '';
+          const hrMergedComment = hrCommentsCombined(formData);
+          const stampComment = hrMergedComment ? `<div class="hr-stamp-comment">${escapeHtml(hrMergedComment)}</div>` : '';
+          const sigUrl = hrSignatureDataUrl(formData.hr_signature);
+          const stampSig = sigUrl ? `<div class="hr-stamp-signature"><span>HR Signature</span><img src="${sigUrl.replace(/"/g, '&quot;')}" alt="HR signature"></div>` : '';
+          const pills = [
+            formData.hr_reviewed_by_name ? `<span class="hr-stamp-pill">${escapeHtml(formData.hr_reviewed_by_name)}</span>` : '',
+            approvedAt ? `<span class="hr-stamp-pill">${escapeHtml(approvedAt)}</span>` : '',
+          ].filter(Boolean).join('');
+          hrInfo.innerHTML = `
+            <div class="hr-stamp">
+              <div class="hr-stamp-head">
+                <span class="hr-stamp-title">HR approved</span>
+              </div>
+              ${pills ? `<div class="hr-stamp-pills">${pills}</div>` : ''}
+              ${stampComment}
+              ${stampSig}
+            </div>`;
+        } else {
+          hrInfo.innerHTML = '';
+        }
       }
 
       // Hidden HTML fallback (kept for legacy / debug use)
@@ -1190,14 +1348,22 @@
     async function loadGmPdfPreview(submissionId) {
       const gen = ++gmPdfPreviewGen;
       if (!window.HrSignPdfPreview) return;
+      const commentsEl = document.getElementById('gmComments');
       await HrSignPdfPreview.load({
         submissionId: submissionId,
         token: token,
         gen: gen,
         isStale: function (g) { return g !== gmPdfPreviewGen; },
+        previewComment: commentsEl ? commentsEl.value : '',
         errMessage: 'Could not load the submitted form as PDF. You can still approve below, or open the full form via the Print link.',
       });
     }
+
+    try {
+      HrSignPdfPreview.watchCommentField(document.getElementById('gmComments'), function () {
+        if (currentSubmissionId) loadGmPdfPreview(currentSubmissionId);
+      });
+    } catch (e) {}
 
     document.getElementById('approvalModal')?.addEventListener('hidden.bs.modal', function () {
       gmPdfPreviewGen += 1;
@@ -1229,7 +1395,7 @@
           const msg = isMgmtGm && result.completed
             ? 'The HR request has been fully approved (management chain complete).'
             : (isMgmtGm
-              ? 'Signed. The request is now with HR head office for the final step.'
+              ? 'Signed. The request is now with HR for the final step.'
               : 'The HR request has been fully approved. Notifications have been sent to the employee and HR.');
           showSuccessModal('approved', 'Request Approved!', msg);
           loadPending();

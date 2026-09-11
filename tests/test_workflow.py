@@ -329,6 +329,61 @@ class TestMySubmissions:
             assert 'hr-pytest-other-user' in ids
             assert isinstance(data.get('live_activity_feed'), list)
 
+    def test_access_hr_employee_does_not_see_org_wide_hr_submissions(
+        self, client, standard_user, app
+    ):
+        """HR module access is not org-wide Submitted Forms visibility."""
+        from app.models import Submission, User, db
+
+        with app.app_context():
+            filler = User(
+                username='hrfiller',
+                email='hrfiller@example.com',
+                full_name='HR Filler',
+                role='user',
+                designation='employee',
+                is_active=True,
+                password_changed=True,
+                access_hr=True,
+            )
+            filler.set_password('TestPass123')
+            db.session.add(filler)
+            db.session.commit()
+            db.session.add(Submission(
+                submission_id='hr-pytest-not-mine',
+                user_id=standard_user.id,
+                module_type='hr_leave_application',
+                status='submitted',
+                workflow_status='hr_review',
+                form_data={'employee_name': 'Other'},
+            ))
+            db.session.add(Submission(
+                submission_id='hr-pytest-mine',
+                user_id=filler.id,
+                module_type='hr_visa_renewal',
+                status='submitted',
+                workflow_status='hr_review',
+                form_data={'employee_name': 'Mine'},
+            ))
+            db.session.commit()
+
+            login = client.post(
+                '/api/auth/login',
+                json={'username': 'hrfiller', 'password': 'TestPass123'},
+            )
+            token = login.get_json().get('access_token')
+            assert token
+            response = client.get(
+                '/api/workflow/submissions/my-submissions?scope=hr',
+                headers={'Authorization': f'Bearer {token}'},
+            )
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data.get('org_wide') is not True
+            ids = [s['submission_id'] for s in data.get('submissions', [])]
+            assert 'hr-pytest-mine' in ids
+            assert 'hr-pytest-not-mine' not in ids
+
     def test_qhsi_forms_listed_on_submitted_forms_hidden_from_pending(
         self, client, admin_auth_headers, standard_user, app
     ):

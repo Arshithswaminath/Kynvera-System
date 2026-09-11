@@ -1,0 +1,85 @@
+</main>
+</div>{# tkt-content #}
+</div>{# tkt-dh-main #}
+</div></div>{# tkt-dh-page-root / tkt-dh-app-root #}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}?v=17" defer></script>
+<script src="{{ url_for('static', filename='js/files-save.js') }}?v=17"></script>
+<script src="{{ url_for('static', filename='js/dm-devices.js') }}?v=7"></script>
+<script>
+  function fmAuthHeaders(extra) {
+    const h = Object.assign({}, extra || {});
+    const t = localStorage.getItem('access_token');
+    if (t) h['Authorization'] = 'Bearer ' + t;
+    return h;
+  }
+  function fmFriendlyError(msg) {
+    const m = String(msg || '').trim();
+    if (/LLM is not enabled/i.test(m)) {
+      return 'AI features are not enabled. Add ANTHROPIC_API_KEY in the server .env and restart the app.';
+    }
+    return m || 'Something went wrong';
+  }
+  function fmNotify(message, type) {
+    type = type || 'error';
+    let host = document.getElementById('fmToastHost');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'fmToastHost';
+      host.className = 'fm-toast-host';
+      host.setAttribute('aria-live', 'polite');
+      document.body.appendChild(host);
+    }
+    const el = document.createElement('div');
+    el.className = 'fm-toast fm-toast-' + type;
+    el.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    el.textContent = fmFriendlyError(message);
+    host.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('is-visible'); });
+    setTimeout(function () {
+      el.classList.remove('is-visible');
+      setTimeout(function () { el.remove(); }, 220);
+    }, 5200);
+  }
+  function fmHumanLabel(value, fallback) {
+    const raw = String(value == null ? '' : value).trim();
+    if (!raw) return fallback == null ? '—' : fallback;
+    const spaced = raw.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (raw.includes('_') || raw.includes('-') || raw === raw.toLowerCase()) {
+      return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+    }
+    return raw;
+  }
+  function tktSetMenuExpanded(open){
+    const btn=document.getElementById('tktDhSidebarToggle');
+    if(btn)btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  function tktOpenMobileSidebar(){
+    const s=document.getElementById('tktDhSidebar');
+    const o=document.getElementById('tktDhOverlay');
+    if(s)s.classList.add('open');
+    if(o){o.classList.add('active');o.setAttribute('aria-hidden','false');}
+    tktSetMenuExpanded(true);
+  }
+  function tktCloseMobileSidebar(){
+    const s=document.getElementById('tktDhSidebar');
+    const o=document.getElementById('tktDhOverlay');
+    if(s)s.classList.remove('open');
+    if(o){o.classList.remove('active');o.setAttribute('aria-hidden','true');}
+    tktSetMenuExpanded(false);
+  }
+  function tktToggleMobileSidebar(){
+    const s=document.getElementById('tktDhSidebar');
+    if(!s)return;
+    s.classList.contains('open')?tktCloseMobileSidebar():tktOpenMobileSidebar();
+  }
+  document.addEventListener('click',function(e){
+    const s=document.getElementById('tktDhSidebar'),btn=document.getElementById('tktDhSidebarToggle');
+    if(s&&s.classList.contains('open')&&!s.contains(e.target)&&btn&&!btn.contains(e.target))tktCloseMobileSidebar();
+  });
+  document.querySelectorAll('#tktDhSidebar .sb-nav-item').forEach(function(el){
+    el.addEventListener('click',function(){ tktCloseMobileSidebar(); });
+  });
+</script>
+{% if fm_scripts is defined %}{{ fm_scripts|safe }}{% endif %}
+</body>
+</html>

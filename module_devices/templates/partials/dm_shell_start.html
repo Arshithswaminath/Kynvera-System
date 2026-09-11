@@ -1,0 +1,49 @@
+{# Shared Device Management page chrome — same stack as FM Assets.
+   Before include, set: fm_page_title, fm_topbar_title
+   optional: fm_narrow, fm_wide, fm_dash, fm_head_extra, fm_hide_module_back
+#}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <title>{{ fm_page_title | default('Device Management') }} — Kynvera</title>
+  {% include 'partials/caveat_font.html' ignore missing %}
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=21">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}?v=24">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fm-assets.css') }}?v=71">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dm-devices.css') }}?v=16">
+  {% if fm_head_extra is defined %}{{ fm_head_extra|safe }}{% endif %}
+</head>
+<body class="tkt-dh-page fm-assets-shell dm-devices-shell has-main-nav{% if fm_dash %} fm-dash-page{% endif %}">
+<div class="dh-overlay" id="tktDhOverlay" onclick="if(typeof tktCloseMobileSidebar==='function'){tktCloseMobileSidebar();}" aria-hidden="true"></div>
+<div class="tkt-dh-app-root">
+{% set active_page = active_page | default('devices') %}
+{% include 'partials/main_navbar.html' with context %}
+<div class="dh-page-root tkt-dh-page-root">
+{% include 'partials/dm_sidebar.html' with context %}
+<div class="tkt-dh-main">
+<header class="tkt-topbar">
+  <div class="tkt-topbar-left">
+    <button type="button" id="tktDhSidebarToggle" class="tkt-menu-toggle"
+            aria-label="Open Device Management menu" aria-expanded="false"
+            onclick="if(typeof tktToggleMobileSidebar==='function'){tktToggleMobileSidebar();}">
+      <svg class="tkt-menu-toggle-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+        <path d="M4 7h16M4 12h16M4 17h16"/>
+      </svg>
+      <span class="tkt-menu-toggle-label">Menu</span>
+    </button>
+    <h1 class="tkt-topbar-title">{{ fm_topbar_title | default('Device Management') }}</h1>
+  </div>
+</header>
+<div class="tkt-content">
+<main class="fm-wrap{% if fm_narrow %} fm-wrap-narrow{% endif %}{% if fm_wide %} fm-wrap-wide{% endif %}">
+{% if not fm_hide_module_back|default(false) %}
+{% set module_back_url = module_back_url|default(url_for('devices_bp.devices_dashboard')) %}
+{% include 'partials/module_back_link.html' %}
+{% endif %}

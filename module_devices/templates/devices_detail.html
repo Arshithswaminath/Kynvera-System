@@ -1,0 +1,56 @@
+{% set fm_page_title = device.device_id ~ ' — ' ~ device.name %}
+{% set fm_topbar_title = device.device_id %}
+{% set module_back_url = url_for('devices_bp.devices_list_page') %}
+{% include 'partials/dm_shell_start.html' %}
+
+  <header class="fm-header">
+    <div>
+      <h1>{{ device.name }}</h1>
+      <p>{{ device.device_type or 'Device' }}{% if device.building %} · {{ device.building }}{% endif %}{% if device.os %} · {{ device.os }}{% endif %}</p>
+    </div>
+    <div class="fm-header-actions">
+      <a class="fm-btn fm-btn-outline" href="{{ url_for('devices_bp.devices_edit_page', device_pk=device.id) }}">Edit</a>
+      <button type="button" class="fm-btn fm-btn-primary" id="removeBtn">Remove</button>
+    </div>
+  </header>
+
+  <section class="fm-detail-grid">
+    <div class="fm-panel">
+      <h2>Details</h2>
+      <dl class="fm-dl">
+        <dt>Status</dt><dd><span class="fm-status fm-status-{{ device.status or 'idle' }}">{{ (device.status or 'idle')|replace('_',' ')|capitalize }}</span></dd>
+        <dt>Health</dt><dd>{% if device.health is not none %}{{ device.health }} / 100{% else %}—{% endif %}</dd>
+        <dt>Serial</dt><dd>{{ device.serial_or_asset_tag or '—' }}</dd>
+        <dt>Assigned</dt><dd>{% if device.assigned_user %}{{ device.assigned_user.full_name or device.assigned_user.email }}{% else %}—{% endif %}</dd>
+        <dt>Asset owner</dt><dd>{{ device.asset_owner_name or '—' }}</dd>
+        <dt>Assigned on</dt><dd>{{ device.assignment_date or '—' }}</dd>
+        <dt>Building</dt><dd>{{ device.building or '—' }}</dd>
+        <dt>Coordinates</dt><dd>{% if device.latitude is not none and device.longitude is not none %}{{ device.latitude }}, {{ device.longitude }}{% else %}—{% endif %}</dd>
+        <dt>Last active</dt><dd>{{ device.last_active_at or '—' }}</dd>
+      </dl>
+      {% if device.device_comment %}<p class="fm-notes">{{ device.device_comment }}</p>{% endif %}
+    </div>
+    <div class="fm-panel">
+      <div class="fm-panel-head"><h2>Map</h2></div>
+      {% if device.latitude is not none and device.longitude is not none %}
+      <p class="fm-muted">This device has its own pin.</p>
+      <a class="fm-btn fm-btn-outline" href="{{ url_for('devices_bp.devices_map_page') }}">Open map</a>
+      {% elif device.building %}
+      <p class="fm-muted">No coordinates yet. The map can inherit a pin from building “{{ device.building }}” if that site is mapped.</p>
+      <a class="fm-btn fm-btn-outline" href="{{ url_for('devices_bp.devices_edit_page', device_pk=device.id) }}">Add coordinates</a>
+      {% else %}
+      <p class="fm-muted">Set a building or latitude/longitude to show this device on the map.</p>
+      <a class="fm-btn fm-btn-outline" href="{{ url_for('devices_bp.devices_edit_page', device_pk=device.id) }}">Edit location</a>
+      {% endif %}
+    </div>
+  </section>
+
+{% set fm_scripts %}
+<script>
+document.getElementById('removeBtn')?.addEventListener('click', async () => {
+  const ok = await DM.removeDevice({{ device.id|tojson }}, {{ device.name|tojson }});
+  if (ok) location.href = {{ url_for('devices_bp.devices_list_page')|tojson }};
+});
+</script>
+{% endset %}
+{% include 'partials/dm_shell_end.html' %}

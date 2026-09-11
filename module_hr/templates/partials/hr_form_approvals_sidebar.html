@@ -2,11 +2,24 @@
 {% set _aside = hr_sidebar_aside_class|default('leave-form-layout-aside') %}
 {% set _card = hr_sidebar_card_class|default('tkt-card leave-sidebar-card') %}
 {% set _inner = hr_sidebar_card_inner_class|default('leave-sidebar-card--flush leave-sidebar-inner') %}
+{% set _chain = (mgmt_chain_preview.chain if mgmt_chain_preview is defined and mgmt_chain_preview else []) or [] %}
 <aside class="{{ _aside }}" aria-label="Approvals and signature status">
   <div class="{{ _card }}">
     <div class="tkt-card-header">
       <h3>Signature status</h3>
-      <span class="hr-sig-status-hd-note">Updates as you fill</span>
+      <span class="hr-sig-status-hd-note" id="hrSigStatusCountNote">Required sign-offs</span>
+    </div>
+    <div class="hr-sig-required-banner" id="hrSigRequiredBanner">
+      <p class="hr-sig-required-title" id="hrSigRequiredTitle">Signatures required</p>
+      <p class="hr-sig-required-lede" id="hrSigRequiredLede">
+        {% if _chain %}
+        After you sign (if this form has an employee pad), this request needs
+        <strong>{{ _chain|length }}</strong> management signature{{ 's' if _chain|length != 1 else '' }}:
+        {{ _chain|map(attribute='role_label')|join(', ') }}.
+        {% else %}
+        You sign first when this form has a pad. The management chain (names load below) signs after you submit.
+        {% endif %}
+      </p>
     </div>
     <div class="tkt-card-body duty-sig-summary-rows" id="hrSigSummaryBody"></div>
   </div>
@@ -27,7 +40,12 @@
       {% include 'partials/hr_recorded_signatures_panel.html' %}
     </div>
   </div>
-  <script src="{{ url_for('static', filename='js/hr_mgmt_chain_submit.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/hr_signature_status_sidebar.js') }}"></script>
+  <script>
+    window.__hrCanSignHr = {{ (is_hr|default(false))|tojson }};
+    window.__hrCanSignGm = {{ (is_gm|default(false))|tojson }};
+    window.__hrSigReqCatalog = {{ (hr_sig_req_catalog|default({}))|tojson }};
+  </script>
+  <script src="{{ url_for('static', filename='js/hr_mgmt_chain_submit.js') }}?v=3"></script>
+  <script src="{{ url_for('static', filename='js/hr_signature_status_sidebar.js') }}?v=2"></script>
   <script src="{{ url_for('static', filename='js/hr_signoff_activity_sidebar.js') }}"></script>
 </aside>

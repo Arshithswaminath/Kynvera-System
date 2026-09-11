@@ -1,0 +1,168 @@
+{% set fm_page_title = 'Analytics' %}
+{% set fm_topbar_title = 'Analytics' %}
+{% include 'partials/dm_shell_start.html' %}
+{% from 'partials/dm_range.html' import dm_range_nav, dm_heat_nav with context %}
+
+  <div data-dm-live-root data-dm-period="{{ overview.period }}" data-dm-year="{{ overview.heat_nav.year }}" data-dm-month="{{ overview.heat_nav.month }}">
+  <header class="fm-header">
+    <div>
+      <p data-dm-live="report-lead">Fleet reporting for {{ overview.period_label|lower }} · {{ overview.range_caption }}</p>
+      {{ dm_range_nav('devices_bp.devices_analytics') }}
+    </div>
+    <div class="fm-header-actions">
+      <button type="button" class="fm-btn fm-btn-primary" id="refreshAnalyticsBtn">Refresh analytics</button>
+      <a class="fm-btn fm-btn-outline" href="{{ url_for('devices_bp.devices_map_page') }}">Map</a>
+    </div>
+  </header>
+
+  <section class="fm-kpi-grid">
+    <div class="fm-kpi">
+      <span class="fm-kpi-label" data-dm-live="enroll-kicker">{{ overview.enroll_kicker }}</span>
+      <span class="fm-kpi-value" data-dm-live="enroll-value">{{ overview.enrolled_in_range }}</span>
+      <span class="fm-kpi-hint" data-dm-live="enroll-hint">{{ overview.enroll_delta.label }} vs prior period</span>
+    </div>
+    <div class="fm-kpi">
+      <span class="fm-kpi-label">Last seen in range</span>
+      <span class="fm-kpi-value" data-dm-live="seen-range">{{ overview.seen_in_range }}</span>
+      <span class="fm-kpi-hint">{{ overview.seen_today }} seen today</span>
+    </div>
+    <div class="fm-kpi">
+      <span class="fm-kpi-label">Fleet health</span>
+      <span class="fm-kpi-value">{% if kpis.fleet_health_pct is not none %}{{ kpis.fleet_health_pct }}%{% else %}—{% endif %}</span>
+    </div>
+    <div class="fm-kpi">
+      <span class="fm-kpi-label">Assigned</span>
+      <span class="fm-kpi-value">{% if kpis.assigned_pct is not none %}{{ kpis.assigned_pct }}%{% else %}—{% endif %}</span>
+      <span class="fm-kpi-hint">{{ kpis.unassigned }} unassigned</span>
+    </div>
+    <div class="fm-kpi">
+      <span class="fm-kpi-label">Stale devices</span>
+      <span class="fm-kpi-value">{{ kpis.stale_count }}</span>
+      <span class="fm-kpi-hint">No activity in 14 days</span>
+    </div>
+    <div class="fm-kpi">
+      <span class="fm-kpi-label">Needs update</span>
+      <span class="fm-kpi-value">{{ kpis.pending_updates }}</span>
+      <span class="fm-kpi-hint">{{ kpis.online }} online · {{ kpis.offline }} offline</span>
+    </div>
+    <div class="fm-kpi{% if kpis.critical_count %} fm-kpi-warn{% endif %}">
+      <span class="fm-kpi-label">Critical</span>
+      <span class="fm-kpi-value">{{ kpis.critical_count }}</span>
+    </div>
+  </section>
+
+  <section class="fm-panel" data-dm-live="heat-card">
+    <div class="fm-panel-head">
+      <h2>Work activity</h2>
+      {{ dm_heat_nav() }}
+    </div>
+    <div class="dm-ov-heat-wrap">
+      <div class="dm-ov-heat-grid" data-dm-live="heat" style="--dm-cols: {{ overview.bucket_count }}" data-dm-cols="{{ overview.bucket_count }}" data-dm-period="{{ overview.period }}" role="img" aria-label="Last-seen activity {{ overview.period_label }}">
+        {% for row in overview.heat_rows %}
+        <div class="dm-ov-heat-row">
+          <span class="dm-ov-heat-label">{{ row.label }}</span>
+          {% for cell in row.cells %}
+          <span class="dm-ov-heat-cell lv-{{ cell.level }}" data-dm-tip="{{ row.label }} of {{ overview.day_labels[loop.index0] }} — {{ cell.count }} device{{ '' if cell.count == 1 else 's' }} last seen."></span>
+          {% endfor %}
+        </div>
+        {% endfor %}
+        <div class="dm-ov-heat-days">
+          <span></span>
+          {% for label in overview.day_labels %}
+          <span>{{ label }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <p class="fm-muted" data-dm-live="heat-hint"{% if not overview.heat_empty %} hidden{% endif %}>{{ overview.heat_empty_hint }}</p>
+  </section>
+
+  <section class="fm-panel">
+    <div class="fm-panel-head">
+      <h2>Enrolls</h2>
+    </div>
+    <div class="dm-ov-track" data-dm-live="timeline" style="--dm-cols: {{ overview.bucket_count }}" aria-label="Enrolls in range">
+      {% for mark in overview.timeline %}
+      <div class="dm-ov-track-col{% if mark.is_today %} is-today{% endif %}">
+        <span class="dm-ov-track-dot{% if mark.count %} is-on{% endif %}" data-dm-tip="{{ mark.label }} — {{ mark.count }} device{{ '' if mark.count == 1 else 's' }} enrolled."></span>
+        {% if mark.is_peak %}
+        <span class="dm-ov-pill">{{ mark.pill }}</span>
+        {% endif %}
+        <span class="dm-ov-track-day">{{ mark.label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="fm-panel" id="narrativePanel" hidden>
+    <div class="fm-panel-head"><h2>Fleet narrative</h2><span class="fm-badge-estimate">AI</span></div>
+    <p class="fm-notes" id="narrativeText"></p>
+  </section>
+
+  <section class="fm-panel">
+    <div class="fm-panel-head">
+      <h2>Readiness mix</h2>
+      <span class="fm-badge-estimate">Inventory</span>
+    </div>
+    <div class="fm-predict-grid">
+      <div><span class="fm-kpi-label">Healthy</span><span class="fm-kpi-value">{{ kpis.healthy_count }}</span></div>
+      <div><span class="fm-kpi-label">Needs attention</span><span class="fm-kpi-value">{{ kpis.attention_count }}</span></div>
+      <div><span class="fm-kpi-label">Missing serial</span><span class="fm-kpi-value">{{ kpis.missing_serial }}</span></div>
+    </div>
+    <p class="fm-muted">Health and status are inventory fields, not live MDM telemetry.</p>
+  </section>
+
+  {% if kpis.by_type %}
+  <section class="fm-panel">
+    <div class="fm-panel-head"><h2>By type</h2></div>
+    <div class="fm-building-grid">
+      {% for row in kpis.by_type %}
+      <div class="fm-building-card">
+        <strong>{{ row.type }}</strong>
+        <span>{{ row.count }} device{{ '' if row.count == 1 else 's' }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if kpis.by_building %}
+  <section class="fm-panel">
+    <div class="fm-panel-head"><h2>By building</h2></div>
+    <div class="fm-building-grid">
+      {% for b in kpis.by_building %}
+      <div class="fm-building-card">
+        <strong>{{ b.building }}</strong>
+        <span>{{ b.count }} device{{ '' if b.count == 1 else 's' }}</span>
+        <span>Health {% if b.avg_health is not none %}{{ b.avg_health }}%{% else %}—{% endif %}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+  </div>
+
+{% set fm_scripts %}
+<script>
+(async function loadNarrative() {
+  try {
+    const res = await fetch('/api/admin/devices/narrative', { headers: fmAuthHeaders() });
+    const data = await res.json();
+    const text = data.narrative || (data.data && data.data.narrative);
+    if (data.success && text) {
+      document.getElementById('narrativeText').textContent = text;
+      document.getElementById('narrativePanel').hidden = false;
+    }
+  } catch (_) { /* narrative is optional */ }
+})();
+document.getElementById('refreshAnalyticsBtn')?.addEventListener('click', () => {
+  if (window.DM && typeof DM.applyRange === 'function') {
+    const on = document.querySelector('[data-dm-range-link].is-on');
+    DM.applyRange((on && on.getAttribute('data-dm-range-link')) || 'week', { push: false, force: true });
+  } else {
+    location.reload();
+  }
+});
+</script>
+{% endset %}
+{% include 'partials/dm_shell_end.html' %}

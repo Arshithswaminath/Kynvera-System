@@ -1,0 +1,75 @@
+{% set fm_page_title = ('Edit device' if mode == 'edit' else 'Add device') %}
+{% set fm_topbar_title = fm_page_title %}
+{% set fm_narrow = true %}
+{% set module_back_url = url_for('devices_bp.devices_detail_page', device_pk=device.id) if mode == 'edit' and device else url_for('devices_bp.devices_list_page') %}
+{% include 'partials/dm_shell_start.html' %}
+
+  <form id="deviceForm" class="fm-form">
+    <label>Name *<input class="fm-input" name="name" required value="{{ device.name if device else '' }}"></label>
+    <label>Device ID<input class="fm-input" name="device_id" readonly placeholder="Auto DEV-####" value="{{ device.device_id if device else '' }}"></label>
+    <label>Type
+      {% set dt = device.device_type if device else 'Laptop' %}
+      <select class="fm-input" name="device_type">
+        {% for t in ['Laptop','Desktop','Tablet','Mobile','Server','Other'] %}
+        <option value="{{ t }}" {% if dt == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>OS<input class="fm-input" name="os" value="{{ device.os if device else 'Windows 11' }}"></label>
+    <label>Status
+      {% set st = device.status if device else 'idle' %}
+      <select class="fm-input" name="status">
+        {% for s in ['online','idle','offline','update'] %}
+        <option value="{{ s }}" {% if st == s %}selected{% endif %}>{{ s|replace('_',' ')|capitalize }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Health (0–100)<input class="fm-input" type="number" min="0" max="100" name="health" value="{{ device.health if device and device.health is not none else '' }}"></label>
+    <label>Assigned user email<input class="fm-input" name="assigned_user_email" type="email" value="{{ device.assigned_user.email if device and device.assigned_user else '' }}"></label>
+    <label>Serial / asset tag<input class="fm-input" name="serial_or_asset_tag" value="{{ device.serial_or_asset_tag if device and device.serial_or_asset_tag else '' }}"></label>
+    <label>Asset owner<input class="fm-input" name="asset_owner_name" value="{{ device.asset_owner_name if device and device.asset_owner_name else '' }}"></label>
+    <label>Assignment date<input class="fm-input" type="date" name="assignment_date" value="{{ device.assignment_date.isoformat() if device and device.assignment_date else '' }}"></label>
+    <label>Building<input class="fm-input" name="building" placeholder="Tower A" value="{{ device.building if device and device.building else '' }}"></label>
+    <label>Latitude<input class="fm-input" type="number" step="any" name="latitude" value="{{ device.latitude if device and device.latitude is not none else '' }}"></label>
+    <label>Longitude<input class="fm-input" type="number" step="any" name="longitude" value="{{ device.longitude if device and device.longitude is not none else '' }}"></label>
+    <label class="fm-full">Notes<textarea class="fm-input" name="device_comment" rows="3">{{ device.device_comment if device and device.device_comment else '' }}</textarea></label>
+    <div class="fm-form-actions fm-full">
+      <button type="submit" class="fm-btn fm-btn-primary">Save</button>
+      <a class="fm-btn fm-btn-outline" href="{{ module_back_url }}">Cancel</a>
+    </div>
+    <p id="formError" class="fm-inline-error fm-full" hidden></p>
+  </form>
+
+{% set fm_scripts %}
+<script>
+const MODE = {{ 'edit'|tojson if mode == 'edit' else 'create'|tojson }};
+const DEVICE_PK = {{ (device.id if device else none)|tojson }};
+document.getElementById('deviceForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errEl = document.getElementById('formError');
+  errEl.hidden = true;
+  const payload = {};
+  new FormData(e.target).forEach((value, key) => {
+    if (key === 'device_id') return;
+    payload[key] = typeof value === 'string' ? value.trim() : value;
+  });
+  try {
+    const url = MODE === 'edit' ? '/api/admin/devices/' + DEVICE_PK : '/api/admin/devices';
+    const res = await fetch(url, {
+      method: MODE === 'edit' ? 'PATCH' : 'POST',
+      headers: fmAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok || data.success === false) throw new Error(data.error || data.message || 'Save failed');
+    const device = data.device || {};
+    location.href = '/admin/devices/' + (device.id || DEVICE_PK || '');
+  } catch (err) {
+    errEl.textContent = err.message || String(err);
+    errEl.hidden = false;
+    if (typeof fmNotify === 'function') fmNotify(err.message || err, 'error');
+  }
+});
+</script>
+{% endset %}
+{% include 'partials/dm_shell_end.html' %}

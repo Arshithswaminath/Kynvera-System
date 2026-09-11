@@ -31,24 +31,31 @@ from module_hr.replacement_signoff import (
     pending_replacement_for_user,
     sync_replacement_display_fields,
 )
+from module_hr.hr_signature_requirements import FORM_REQUIREMENTS, summarize_required_signatures
 from module_hr.hr_management_chain import (
     ALL_MGMT_WF_STATUSES,
     MGMT_CHAIN_KEY,
-    WF_MGMT_GM,
     WF_MGMT_HR,
     apply_interview_chain_after_interviewer,
     apply_management_signature,
+    current_step,
     first_management_workflow_status,
     get_interview_routing_ui_context,
     get_mgmt_chain_ui_context,
+    get_mgmt_chain_ui_context_from_form_data,
     has_management_chain,
     init_management_chain_on_submit,
     interview_routing_deferred_at_submit,
     lane_for_user,
+    mgmt_step_display_label,
+    overlay_preview_comment_on_form_data,
     notify_current_management_signers,
     notify_submitter_management_final,
+    notify_submitter_management_progress,
     pending_management_step_for_user,
     reject_management_submission,
+    submitter_id_from_fd,
+    user_is_hr_head,
     user_is_mgmt_chain_participant,
     user_mgmt_chain_completed_step,
 )
@@ -186,13 +193,131 @@ def _user_can_view_hr_signoff_activity(user: User | None, submission: Submission
 
 
 def user_is_hr_staff(user: User | None) -> bool:
-    """Users who may fill HR-only sections (leave HR review rows, HR signatures).
+    """Users who may fill HR-only sections and act on Pending HR Review.
     HR *module access* (`access_hr`) is not enough — that flag is often used so staff can submit their own HR forms."""
+    return user_is_hr_head(user)
+
+
+def _is_own_hr_submission(user, submission) -> bool:
+    """True when this user created the HR request (including admin submitters)."""
+    if not user or not submission:
+        return False
+    try:
+        uid = int(user.id)
+    except (TypeError, ValueError):
+        return False
+    try:
+        if submission.user_id is not None and int(submission.user_id) == uid:
+            return True
+    except (TypeError, ValueError):
+        pass
+    fd = submission.form_data if isinstance(submission.form_data, dict) else {}
+    sid = submitter_id_from_fd(fd)
+    return sid is not None and int(sid) == uid
+
+
+def _submitted_forms_url(submission_id: str) -> str:
+    return f"/workflow/submitted-forms?scope=hr&submission={submission_id}"
+
+
+def _pending_step_label_from_submission(submission) -> str | None:
+    fd = submission.form_data if isinstance(getattr(submission, "form_data", None), dict) else {}
+    block = fd.get(MGMT_CHAIN_KEY) if isinstance(fd, dict) else None
+    if isinstance(block, dict):
+        step = current_step(block)
+        if isinstance(step, dict):
+            return step.get("pdf_label") or step.get("who_label")
+    wf = (getattr(submission, "workflow_status", None) or "").strip()
+    if wf == "gm_review":
+        return "General manager"
+    if wf in ("hr_review", WF_MGMT_HR):
+        return "HR"
+    if wf == "replacement_signoff":
+        return "Colleague sign-off"
+    return None
+
+
+def _serialize_pending_forms_row(submission, *, viewer_state: str) -> dict:
+    row = submission.to_dict()
+    submitter = db.session.get(User, submission.user_id)
+    if submitter:
+        name = submitter.full_name or submitter.username
+        row["submitter_display"] = name
+        row["submitter_name"] = name
+    row["pending_step_label"] = _pending_step_label_from_submission(submission)
+    row["viewer_state"] = viewer_state
+    row["can_sign"] = viewer_state == "signer"
+    return row
+
+
+_HR_FINISHED_STATUSES = frozenset({
+    "approved",
+    "completed",
+    "rejected",
+    "closed_by_admin",
+})
+
+_HR_IN_FLIGHT_WORKFLOWS = frozenset(
+    ALL_MGMT_WF_STATUSES
+    + ("hr_review", "gm_review", "replacement_signoff", "submitted")
+)
+
+
+def _user_sees_org_wide_approved_hr(user) -> bool:
+    """HR, GM, and admin see every fully completed HR form."""
     if not user:
         return False
-    if _role_is_admin(user):
+    if _role_is_admin(user) or user_is_hr_staff(user):
         return True
-    return _user_desig_lc(user) == "hr_manager"
+    return _user_desig_lc(user) == "general_manager"
+
+
+def _user_is_gm(user) -> bool:
+    return _user_desig_lc(user) == "general_manager"
+
+
+def _user_is_gm_or_admin(user) -> bool:
+    return _role_is_admin(user) or _user_is_gm(user)
+
+
+def _hr_request_is_finished(workflow_status: str | None) -> bool:
+    return (workflow_status or "") in _HR_FINISHED_STATUSES
+
+
+def _chain_has_gm_signature(fd) -> bool:
+    """True when a GM already signed — either the GM step or as reporting manager."""
+    if not isinstance(fd, dict):
+        return False
+    steps = (fd.get(MGMT_CHAIN_KEY) or {}).get("steps") or []
+    for step in steps:
+        if not isinstance(step, dict) or not step.get("signature"):
+            continue
+        key = str(step.get("key") or "")
+        gate = str(step.get("designation_gate") or "")
+        if key == "general_manager" or gate == "general_manager":
+            return True
+        try:
+            signer_id = int(step.get("signed_by_id") or 0)
+        except (TypeError, ValueError):
+            signer_id = 0
+        if not signer_id:
+            continue
+        signer = db.session.get(User, signer_id)
+        if signer and _user_is_gm(signer):
+            return True
+    return False
+
+
+def _gm_signed_waiting_for_others(user, submission) -> bool:
+    """GM has signed; later steps (usually HR) are still outstanding."""
+    if not user or not submission or _hr_request_is_finished(submission.workflow_status):
+        return False
+    fd = submission.form_data if isinstance(submission.form_data, dict) else {}
+    if _user_is_gm(user) and user_mgmt_chain_completed_step(user, fd):
+        return True
+    if _role_is_admin(user) and _chain_has_gm_signature(fd):
+        return True
+    return False
 
 
 def user_can_fill_hr_workflow_sidebar_fields(user: User | None) -> bool:
@@ -215,20 +340,24 @@ def user_can_fill_hr_workflow_sidebar_fields(user: User | None) -> bool:
 
 
 def _strip_non_privileged_hr_submit_fields(data: dict, user: User) -> None:
-    """Remove HR/GM-only payload keys from non–HR/GM submitters (defence in depth)."""
-    if not isinstance(data, dict):
+    """Remove HR/GM/RM signature keys the submitter is not allowed to capture.
+
+    Duty resumption used to preserve RM/GM/HR blobs from the employee payload;
+    those pads are workflow-only. Per-role keep: HR staff may send ``hr_*``,
+    GM/admin may send ``gm_signature``. Reporting-manager signature is never
+    accepted on a new submit (the submitter is the employee).
+    """
+    if not isinstance(data, dict) or not user:
         return
-    if user_is_hr_staff(user):
-        return
-    # Duty resumption: body signatures (employee, RM, GM, HR) captured on one form.
-    duty_bundle = data.get("form_type") == "duty_resumption"
-    preserve_sigs = {"hr_signature", "gm_signature", "reporting_manager_signature"} if duty_bundle else set()
-    for k in list(data.keys()):
-        if k.startswith("hr_") and k not in preserve_sigs:
-            data.pop(k, None)
-    is_gm = _role_is_admin(user) or user.designation == "general_manager"
-    if not is_gm and not duty_bundle:
+    is_hr = user_is_hr_staff(user)
+    is_gm = _role_is_admin(user) or (user.designation or "").strip().lower() == "general_manager"
+    if not is_hr:
+        for k in list(data.keys()):
+            if k.startswith("hr_"):
+                data.pop(k, None)
+    if not is_gm:
         data.pop("gm_signature", None)
+    data.pop("reporting_manager_signature", None)
 
 
 def _hr_form_context(user):
@@ -236,11 +365,16 @@ def _hr_form_context(user):
     is_hr = user_is_hr_staff(user)
     is_hr_broad = user_can_fill_hr_workflow_sidebar_fields(user)
     is_gm = _role_is_admin(user) or user.designation == 'general_manager'
+    mgmt_preview = get_mgmt_chain_ui_context(user)
+    chain = (mgmt_preview or {}).get("chain") if isinstance(mgmt_preview, dict) else []
     return {
         'is_hr': is_hr,
         'is_hr_broad': is_hr_broad,
         'is_gm': is_gm,
         'mgmt_lane': lane_for_user(user),
+        'mgmt_chain_preview': mgmt_preview,
+        'hr_sig_req_catalog': FORM_REQUIREMENTS,
+        'hr_sig_req_chain_summary': summarize_required_signatures(None, chain if isinstance(chain, list) else []),
     }
 
 
@@ -248,7 +382,7 @@ def _can_access_hr_submission_export(user, submission):
     """Admin, HR, GM may export any HR submission; submitter may export their own."""
     if not user or not submission:
         return False
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
+    is_hr = user_is_hr_staff(user)
     is_gm = user.designation == 'general_manager'
     if _role_is_admin(user) or is_hr or is_gm:
         return True
@@ -302,14 +436,13 @@ def _notify_hr_staff_new_submission(submission_id, module_type_full, employee_na
     q = User.query.filter(
         db.or_(
             User.role == 'admin',
-            User.access_hr == True,
-            User.designation == 'hr_manager'
+            User.designation.in_(['hr_manager', 'hr']),
         ),
         User.is_active == True
     )
     if exclude_user_id is not None:
         q = q.filter(User.id != exclude_user_id)
-    hr_users = q.all()
+    hr_users = [u for u in q.all() if user_is_hr_staff(u)]
     for hr_user in hr_users:
         create_notification(
             user_id=hr_user.id,
@@ -570,37 +703,32 @@ def hr_dashboard():
 @hr_bp.route('/pending_review')
 @jwt_required()
 def pending_review():
-    """Pending HR Review - For HR managers"""
+    """In-progress HR forms: sign when it is your step, or track status on your own requests."""
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    
-    # Only HR managers and admin can review
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    if not _role_is_admin(user) and not is_hr:
-        return jsonify({'error': 'Access denied'}), 403
-    
+
     return render_template('hr_pending_review.html', user=user, supported_docx_forms=get_supported_docx_forms(), supported_pdf_forms=get_supported_pdf_forms())
 
 
 @hr_bp.route('/approved-forms')
 @jwt_required()
 def approved_forms():
-    """Approved HR Forms - List page (HR managers, GM, admin)"""
+    """Completed HR Forms — every required signature is on the form.
+
+    Submitters see their own finished requests here. Signers see forms they
+    signed. HR / GM / admin see every completed form.
+    """
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    is_gm = user.designation == 'general_manager'
-    if not _role_is_admin(user) and not is_hr and not is_gm:
-        return jsonify({'error': 'Access denied'}), 403
     return render_template('hr_approved_forms.html', user=user, supported_docx_forms=get_supported_docx_forms(), supported_pdf_forms=get_supported_pdf_forms())
 
 
 @hr_bp.route('/gm-approval')
 @jwt_required()
 def gm_approval():
-    """GM Final Approval - For General Manager"""
+    """GM Approved Forms — GM has signed; remaining signatures are still outstanding."""
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -725,7 +853,16 @@ def hr_download_pdf(submission_id):
     try:
         from io import BytesIO
         buf = BytesIO()
-        ok, err = generate_hr_pdf(submission, buf)
+        preview_comment = (request.args.get('preview_comment') or '').strip()[:400]
+        overlay_fd = None
+        if preview_comment:
+            overlay_fd = overlay_preview_comment_on_form_data(
+                submission.form_data if isinstance(submission.form_data, dict) else {},
+                user,
+                submission,
+                preview_comment,
+            )
+        ok, err = generate_hr_pdf(submission, buf, form_data=overlay_fd)
         if not ok:
             return jsonify({'error': err or 'PDF not available for this form type'}), 404
         buf.seek(0)
@@ -967,15 +1104,18 @@ def get_user_permissions():
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
+    is_hr = user_is_hr_staff(user)
     is_gm = user.designation == 'general_manager'
     is_admin = _role_is_admin(user)
+    has_hr_module = bool(getattr(user, 'access_hr', False))
     
     return jsonify({
         'success': True,
         'permissions': {
-            'can_review_hr': is_admin or is_hr,
+            'can_review_hr': is_hr,
             'can_approve_gm': is_admin or is_gm,
+            'can_pending_forms': is_hr or is_gm or is_admin or has_hr_module,
+            'can_view_gm_approved': is_admin or is_gm,
             'is_admin': is_admin,
             'full_access': is_admin,
         }
@@ -1004,6 +1144,20 @@ def mgmt_chain_context():
     if not user:
         return jsonify({'error': 'User not found'}), 404
     form_type = (request.args.get('form_type') or '').strip().lower()
+    sid = (request.args.get('submission_id') or '').strip()
+    if sid:
+        submission = Submission.query.filter_by(submission_id=sid).first()
+        if (
+            submission
+            and isinstance(submission.module_type, str)
+            and submission.module_type.startswith('hr_')
+            and _can_access_hr_submission_export(user, submission)
+        ):
+            fd = submission.form_data if isinstance(submission.form_data, dict) else {}
+            if submission.module_type == 'hr_interview_assessment' and not has_management_chain(fd):
+                return jsonify(get_interview_routing_ui_context())
+            submitter = db.session.get(User, submission.user_id)
+            return jsonify(get_mgmt_chain_ui_context_from_form_data(fd, submitter or user))
     if form_type == 'interview_assessment':
         return jsonify(get_interview_routing_ui_context())
     return jsonify(get_mgmt_chain_ui_context(user))
@@ -1235,10 +1389,12 @@ def mgmt_signoff_detail(submission_id):
         return jsonify({'error': 'Submission not found'}), 404
 
     fd = submission.form_data or {}
-    pend = pending_management_step_for_user(fd, submission.workflow_status, user)
+    is_owner = _is_own_hr_submission(user, submission)
+    pend = pending_management_step_for_user(
+        fd, submission.workflow_status, user, submitter_id=submission.user_id
+    )
     completed = user_mgmt_chain_completed_step(user, fd)
-    is_owner = submission.user_id == user.id
-    is_hr_viewer = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
+    is_hr_viewer = user_is_hr_staff(user)
     allowed = (
         user_is_mgmt_chain_participant(user, fd)
         or is_owner
@@ -1249,10 +1405,18 @@ def mgmt_signoff_detail(submission_id):
     if not allowed:
         return jsonify({'error': 'Access denied'}), 403
 
+    # Submitter of this form never signs later chain steps (HR / GM / RM).
+    if is_owner:
+        pend = None
+    if completed:
+        pend = None
+
     if pend:
         viewer_state = 'can_sign'
     elif completed:
         viewer_state = 'already_signed'
+    elif is_owner:
+        viewer_state = 'submitter'
     elif user_is_mgmt_chain_participant(user, fd):
         viewer_state = 'not_your_turn'
     else:
@@ -1262,7 +1426,7 @@ def mgmt_signoff_detail(submission_id):
     if completed:
         signed_step = {
             'step_key': completed.get('key'),
-            'step_label': completed.get('pdf_label'),
+            'step_label': mgmt_step_display_label(completed),
             'signed_at': completed.get('signed_at'),
             'signed_by_name': completed.get('signed_by_name'),
             'comments': completed.get('comments'),
@@ -1277,7 +1441,12 @@ def mgmt_signoff_detail(submission_id):
         'viewer_state': viewer_state,
         'signed_step': signed_step,
         'current_user_id': user.id,
-        'step_label': pend.get('pdf_label') if pend else None,
+        'is_owner': bool(is_owner),
+        'submitted_forms_url': _submitted_forms_url(submission.submission_id),
+        'step_label': (
+            (signed_step or {}).get('step_label')
+            or (pend.get('pdf_label') if pend else None)
+        ),
         'form_type_display': get_form_type_display(submission.module_type),
         'workflow_status': submission.workflow_status,
         'reporting_to_dual_role_hint': dual_role_hint_for_user(fd, user.id),
@@ -1308,12 +1477,15 @@ def mgmt_signoff_sign(submission_id):
     app = current_app._get_current_object()
     finished = submission.workflow_status == 'approved'
     signed_step = user_mgmt_chain_completed_step(user, submission.form_data)
-    signed_role = (signed_step or {}).get('pdf_label') or 'Approver'
+    signed_role = mgmt_step_display_label(signed_step)
     signed_name = user.full_name or user.username
     if finished:
         notify_submitter_management_final(app, submission, completed=True)
     else:
         notify_current_management_signers(app, submission)
+        notify_submitter_management_progress(
+            app, submission, signed_by_name=signed_name, signed_role=signed_role
+        )
         from module_hr.hr_lifecycle_emails import send_submitter_progress
         send_submitter_progress(
             app, submission, signed_by_name=signed_name, signed_role=signed_role
@@ -1379,16 +1551,59 @@ def my_mgmt_signoffs():
     out = []
     for s in submissions:
         fd = s.form_data or {}
-        pend = pending_management_step_for_user(fd, s.workflow_status, user)
+        pend = pending_management_step_for_user(
+            fd, s.workflow_status, user, submitter_id=s.user_id
+        )
         if not pend:
             continue
-        d = s.to_dict()
-        submitter = db.session.get(User, s.user_id)
-        if submitter:
-            d['submitter_display'] = submitter.full_name or submitter.username
-        d['pending_step_label'] = pend.get('pdf_label')
+        if _is_own_hr_submission(user, s):
+            continue
+        d = _serialize_pending_forms_row(s, viewer_state='signer')
+        d['pending_step_label'] = pend.get('pdf_label') or d.get('pending_step_label')
         out.append(d)
 
+    if _user_is_gm_or_admin(user):
+        seen = {row['submission_id'] for row in out}
+        legacy_gm = (
+            Submission.query.filter(
+                Submission.module_type.like('hr_%'),
+                Submission.workflow_status == 'gm_review',
+            )
+            .order_by(Submission.created_at.desc())
+            .limit(80)
+            .all()
+        )
+        for s in legacy_gm:
+            if s.submission_id in seen:
+                continue
+            if _is_own_hr_submission(user, s):
+                continue
+            d = _serialize_pending_forms_row(s, viewer_state='signer')
+            d['pending_step_label'] = 'General manager'
+            out.append(d)
+
+    return jsonify({'success': True, 'submissions': out})
+
+
+@hr_bp.route('/api/my-in-flight-hr')
+@jwt_required()
+def my_in_flight_hr():
+    """The current user's own HR requests that are still in the approval chain."""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    submissions = (
+        Submission.query.filter(
+            Submission.module_type.like('hr_%'),
+            Submission.user_id == user.id,
+            Submission.workflow_status.in_(tuple(_HR_IN_FLIGHT_WORKFLOWS)),
+        )
+        .order_by(Submission.created_at.desc())
+        .limit(160)
+        .all()
+    )
+    out = [_serialize_pending_forms_row(s, viewer_state='submitter') for s in submissions]
     return jsonify({'success': True, 'submissions': out})
 
 
@@ -1400,9 +1615,7 @@ def get_pending_hr_review():
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    # Only HR managers and admin can access
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    if not _role_is_admin(user) and not is_hr:
+    if not user_is_hr_staff(user):
         return jsonify({'error': 'Access denied'}), 403
     
     # Get submissions pending HR review (legacy inbox + final HR step of management chain)
@@ -1414,6 +1627,11 @@ def get_pending_hr_review():
     # Add submitter info
     result = []
     for s in submissions:
+        if _is_own_hr_submission(user, s):
+            continue
+        fd = s.form_data if isinstance(s.form_data, dict) else {}
+        if user_mgmt_chain_completed_step(user, fd):
+            continue
         data = s.to_dict()
         submitter = db.session.get(User, s.user_id)
         if submitter:
@@ -1430,24 +1648,27 @@ def get_pending_hr_review():
 @hr_bp.route('/api/pending-gm-approval')
 @jwt_required()
 def get_pending_gm_approval():
-    """Get submissions pending GM approval"""
+    """GM Approved Forms: GM has signed; later signatures are still outstanding."""
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    # Only GM and admin can access
-    if not _role_is_admin(user) and user.designation != 'general_manager':
+    if not _user_is_gm_or_admin(user):
         return jsonify({'error': 'Access denied'}), 403
     
-    # Get submissions pending GM approval (legacy + management chain GM gate)
-    submissions = Submission.query.filter(
-        Submission.module_type.like('hr_%'),
-        Submission.workflow_status.in_(['gm_review', WF_MGMT_GM]),
-    ).order_by(Submission.created_at.desc()).all()
-    
-    # Add submitter and HR reviewer info
+    submissions = (
+        Submission.query.filter(
+            Submission.module_type.like('hr_%'),
+            Submission.workflow_status.notin_(tuple(_HR_FINISHED_STATUSES)),
+        )
+        .order_by(Submission.updated_at.desc())
+        .limit(200)
+        .all()
+    )
     result = []
     for s in submissions:
+        if not _gm_signed_waiting_for_others(user, s):
+            continue
         data = s.to_dict()
         submitter = db.session.get(User, s.user_id)
         if submitter:
@@ -1463,22 +1684,24 @@ def get_pending_gm_approval():
 @hr_bp.route('/api/approved-hr-submissions')
 @jwt_required()
 def get_approved_hr_submissions():
-    """Get HR submissions that have been fully approved (workflow_status=approved)"""
+    """Completed HR forms — every required signature is recorded."""
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    
-    # HR and GM can see approved submissions
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    is_gm = user.designation == 'general_manager'
-    if not _role_is_admin(user) and not is_hr and not is_gm:
-        return jsonify({'error': 'Access denied'}), 403
-    
+
     submissions = Submission.query.filter(
         Submission.module_type.like('hr_%'),
-        Submission.workflow_status == 'approved'
+        Submission.workflow_status.in_(['approved', 'completed']),
     ).order_by(Submission.updated_at.desc()).limit(100).all()
-    
+
+    if not _user_sees_org_wide_approved_hr(user):
+        uid = int(user.id)
+        submissions = [
+            s for s in submissions
+            if (s.user_id is not None and int(s.user_id) == uid)
+            or user_mgmt_chain_completed_step(user, s.form_data)
+        ]
+
     result = []
     for s in submissions:
         data = s.to_dict()
@@ -1486,7 +1709,7 @@ def get_approved_hr_submissions():
         if submitter:
             data['submitter_name'] = submitter.full_name or submitter.username
         result.append(data)
-    
+
     return jsonify({
         'success': True,
         'submissions': result
@@ -1501,14 +1724,15 @@ def hr_approve(submission_id):
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    # Only HR managers and admin can approve
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    if not _role_is_admin(user) and not is_hr:
+    if not user_is_hr_staff(user):
         return jsonify({'error': 'Access denied'}), 403
     
     submission = Submission.query.filter_by(submission_id=submission_id).first()
     if not submission:
         return jsonify({'error': 'Submission not found'}), 404
+
+    if _is_own_hr_submission(user, submission):
+        return jsonify({'error': 'You cannot approve your own request'}), 403
     
     if submission.workflow_status != 'hr_review':
         return jsonify({'error': 'Submission is not pending HR review'}), 400
@@ -1562,6 +1786,9 @@ def hr_approve(submission_id):
     send_submitter_progress(
         app, submission, signed_by_name=user.full_name or user.username, signed_role='HR'
     )
+    notify_submitter_management_progress(
+        app, submission, signed_by_name=user.full_name or user.username, signed_role='HR'
+    )
     send_action_required_to_users(
         app, submission, gm_users, role_label='General manager', sign_url=pending_review_url(app)
     )
@@ -1581,13 +1808,15 @@ def hr_reject(submission_id):
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    if not _role_is_admin(user) and not is_hr:
+    if not user_is_hr_staff(user):
         return jsonify({'error': 'Access denied'}), 403
     
     submission = Submission.query.filter_by(submission_id=submission_id).first()
     if not submission:
         return jsonify({'error': 'Submission not found'}), 404
+
+    if _is_own_hr_submission(user, submission):
+        return jsonify({'error': 'You cannot reject your own request'}), 403
     
     data = request.get_json() or {}
     
@@ -1778,10 +2007,19 @@ def get_hr_submissions():
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
+    is_hr = user_is_hr_staff(user)
     is_gm = user.designation == 'general_manager'
     if not _role_is_admin(user) and not is_hr and not is_gm:
-        return jsonify({'error': 'Access denied'}), 403
+        if not getattr(user, 'access_hr', False):
+            return jsonify({'error': 'Access denied'}), 403
+        submissions = Submission.query.filter(
+            Submission.module_type.like('hr_%'),
+            Submission.user_id == user.id,
+        ).order_by(Submission.created_at.desc()).all()
+        return jsonify({
+            'success': True,
+            'submissions': [s.to_dict() for s in submissions]
+        })
     
     # Get all HR submissions
     submissions = Submission.query.filter(

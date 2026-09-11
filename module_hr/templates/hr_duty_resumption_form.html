@@ -117,34 +117,31 @@
     .fld.fw{grid-column:1/-1}
 
     .sig-wrap{margin-top:.4rem;width:100%}
-    .sig-box{
-      min-height:110px;min-width:0;width:100%;
-      border:2px dashed var(--bd);border-radius:var(--r-sm);background:var(--sf);
-      display:flex;flex-direction:column;align-items:stretch;justify-content:flex-end;
-      overflow:hidden;padding:.5rem .65rem .65rem;transition:border-color var(--t),background var(--t)
+    .sig-row-aligned .fld-lbl{font-size:.8125rem;font-weight:600;letter-spacing:.02em;text-transform:none}
+    .hr-form-unified .sig-row-aligned .sig-box,
+    .sig-row-aligned .sig-box{
+      min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      border:1px dashed #cfd6d3;border-radius:var(--r-sm);background:var(--ios-grouped,#f5f5f7);
+      padding:.4rem;box-shadow:none;
     }
-    .sig-box-interactive:hover{border-color:var(--pri-sm)}
     .sig-box-editing{border-color:var(--pri-sm);background:#fff;box-shadow:inset 0 0 0 1px rgba(18,84,53,.08)}
     .sig-display{
-      display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;width:100%;min-height:96px;flex:1;
-      background:#fff;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;min-height:72px;flex:1;
+      background:transparent;
     }
+    .hr-form-unified .sig-box img,
     .sig-display img{
-      max-height:76px;max-width:100%;width:auto;object-fit:contain;object-position:left bottom;margin-top:auto;display:block;
-      background-color:#fff;
-      vertical-align:bottom;
+      max-height:60px;max-width:100%;width:auto;object-fit:contain;margin:0 auto;display:block;
+      background:transparent;mix-blend-mode:multiply;
     }
     .sig-editor{width:100%}
-    .sig-editor-hint{font-size:.72rem;color:var(--muted);margin:0 0 .35rem;line-height:1.35}
+    .sig-editor-hint{font-size:.72rem;color:var(--muted);margin:0 0 .35rem;line-height:1.35;text-align:left}
     .sig-inline-canvas{
-      width:100%;height:140px;display:block;border-radius:var(--r-sm);background:transparent;
+      width:100%;height:120px;display:block;border-radius:var(--r-sm);background:#fff;
       border:1px solid rgba(221,232,226,.95);touch-action:none;cursor:crosshair
     }
     .sig-editor-bar{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem;align-items:center}
-    .sig-slot-muted{border-style:dashed;background:linear-gradient(180deg,#fafafa 0%,#f4f7f5 100%);cursor:default}
-    .sig-slot-muted:hover{border-color:var(--bd)}
-    .sig-slot-muted .sig-ph{font-style:normal;text-align:left;line-height:1.35;align-self:flex-end;padding-bottom:2px;color:var(--muted)}
-    .sig-ph{font-size:.78rem;color:var(--muted);font-style:italic}
+    .sig-ph{font-size:.78rem;color:var(--muted);font-style:italic;text-align:center}
     .sig-actions{display:flex;gap:.4rem;margin-top:.5rem}
     .duty-sig-signer-comment{
       display:none;
@@ -168,112 +165,12 @@
     .sec-hr .sec-hd::before{background:#d97706}
     .sec-hr .fld-inp[readonly]{background:rgba(255,255,255,.6)}
 
-    .doc-ft{
-      padding:0.65rem 2.5rem 0;
-      margin-top:0;
-      background:transparent;
-      border-top:none;
-      text-align:center;line-height:1.65;
+    .card > .doc-ft{border-radius:0}
+    .card > .submit-bar{
+      position:sticky;bottom:0;z-index:5;
+      border-radius:0 0 var(--r-xl) var(--r-xl);
     }
-    .doc-ft--after-form{padding:0;margin:0;text-align:center;line-height:1.35;width:100%}
-    .doc-ft-meta{
-      display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;
-      font-weight:700;font-size:.84rem;margin-bottom:0;color:var(--pri);
-      letter-spacing:.02em;
-    }
-    .doc-ft--after-form .doc-ft-meta{
-      justify-content:center;
-      column-gap:clamp(2.25rem, 6vw, 4rem);
-      row-gap:0.35rem;
-      flex-wrap:nowrap;
-      align-items:baseline;
-      white-space:nowrap;
-    }
-
-    /* Submit + legal line live outside <form>; grid aligns with main column */
-    .duty-form-layout--after-form{
-      display:grid;
-      grid-template-columns:minmax(0,1fr) minmax(280px,360px);
-      gap:1.5rem;
-      align-items:start;
-      width:100%;
-      margin-top:.35rem;
-      padding-top:1.15rem;
-    }
-    /* Title + date centered; Save / Submit anchored right (overlays empty margin when visible) */
-    .duty-after-form-stack{
-      position:relative;
-      min-width:0;
-      display:flex;
-      flex-direction:row;
-      align-items:center;
-      justify-content:center;
-      gap:0.75rem 1.25rem;
-      flex-wrap:nowrap;
-      min-height:2.6rem;
-      padding:0;
-      box-sizing:border-box;
-    }
-    @media(min-width:721px){
-      .duty-after-form-stack{
-        padding-left:clamp(4rem,11vw,10rem);
-        padding-right:clamp(4rem,11vw,10rem);
-      }
-    }
-    .duty-tail-spacer{min-height:0;pointer-events:none}
-    /* Use 900px (not 1100): inside modals the iframe viewport is narrow — at ~1000px
-       we must keep main + sidebar columns to match full-page layout. */
-    @media(max-width:900px){
-      .duty-form-layout--after-form{
-        grid-template-columns:1fr;
-      }
-      .duty-tail-spacer{display:none!important}
-    }
-    @media(max-width:720px){
-      .duty-after-form-stack{
-        flex-wrap:wrap;
-        position:static;
-        padding-left:0;
-        padding-right:0;
-      }
-      .doc-ft--after-form{
-        flex:1 1 100%;
-        min-width:0;
-      }
-      .doc-ft--after-form .doc-ft-meta{
-        flex-wrap:wrap;
-        white-space:normal;
-      }
-      .duty-submit-outside-form{
-        position:static;
-        transform:none;
-        flex:1 1 auto;
-        justify-content:flex-end;
-        width:100%;
-      }
-    }
-
-    /* Inside .card: same surface as form — no separate white strip */
-    .submit-bar{
-      padding:0.85rem 2.5rem 1rem;
-      margin-top:0;
-      border-top:none;
-      display:flex;
-      align-items:center;
-      justify-content:flex-end;
-      gap:1rem;
-      background:transparent;
-    }
-    .duty-submit-outside-form{
-      padding:0;
-      margin:0;
-      flex:0 0 auto;
-      align-self:center;
-      position:absolute;
-      right:0;
-      top:50%;
-      transform:translateY(-50%);
-    }
+    .card > .submit-bar .submit-bar__hint{max-width:22rem}
 
     @keyframes spin{to{transform:rotate(360deg)}}.spin{animation:spin .7s linear infinite}
 
@@ -340,7 +237,7 @@
     @media(max-width:900px){.grid-3{grid-template-columns:repeat(2,1fr)}}
       @media(max-width:768px){
       .page-inner{padding:1rem}
-      .form-body,.doc-ft,.duty-submit-outside-form{padding-left:1.25rem;padding-right:1.25rem}
+      .form-body,.doc-ft,.submit-bar{padding-left:1.25rem;padding-right:1.25rem}
       .hd{padding:1.5rem 1.25rem;flex-direction:column;align-items:flex-start;gap:1rem}
       .hd-logo{height:72px}
       .sec{padding:1.25rem 1.25rem}
@@ -391,7 +288,6 @@
       .btn-rm,
       .sig-editor,
       .submit-bar,
-      .duty-submit-outside-form,
       .btn-submit,
       .btn-reset,
       .btn-next,
@@ -454,8 +350,7 @@
         page-break-inside: avoid;
       }
       .grid-2,
-      .grid-3,
-      .grid-4 {
+      .grid-3 {
         gap: 0.35rem 0.5rem !important;
       }
       .fld-inp {
@@ -467,8 +362,7 @@
         resize: none !important;
       }
       /* Same proportions as on screen: main + right rail within landscape printable width */
-      .duty-form-layout,
-      .duty-form-layout--after-form {
+      .duty-form-layout {
         grid-template-columns: minmax(0, 1fr) minmax(0, 30%) !important;
         gap: 0.45rem !important;
         align-items: start !important;
@@ -511,10 +405,6 @@
         border: none !important;
         background: none !important;
         break-inside: avoid;
-      }
-      .duty-after-form-stack {
-        padding-left: 0 !important;
-        padding-right: 0 !important;
       }
     }
   </style>
@@ -595,8 +485,9 @@
             <div class="step-panel" id="step2Panel">
               <div class="step-hint">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span><strong>Step 2 of 2</strong> — Capture employee, reporting manager, GM, and HR signatures below (same page), then submit. You can go back to edit Step 1 if needed.</span>
+                <span><strong>Step 2 of 2</strong> — Add your employee signature, then submit. Reporting manager, GM, and HR sign later in the approval chain.</span>
               </div>
+              {% include 'partials/hr_signatures_required_form_note.html' %}
 
               <section class="sec">
                 <h2 class="sec-hd">Line Manager Remarks</h2>
@@ -606,17 +497,17 @@
               </section>
               <section class="sec">
                 <h2 class="sec-hd">Signatures</h2>
-                <div class="grid-4">
-                  <div class="fld">
-                    <label class="fld-lbl">Employee Signature <span class="req">*</span></label>
+                <div class="grid-2 sig-row-aligned">
+                  <div class="fld sig-col">
+                    <label class="fld-lbl">Employee signature <span class="req">*</span></label>
                     <div class="sig-wrap">
-                      <div class="sig-box sig-box-interactive" id="empSigPrev">
+                      <div class="sig-box" id="empSigPrev">
                         <div class="sig-display">
-                          <span class="sig-ph">No signature</span>
+                          <span class="sig-ph">No signature yet</span>
                           <img id="empSigImg" src="" alt="" style="display:none">
                         </div>
                         <div class="sig-editor" hidden>
-                          <p class="sig-editor-hint">Draw your signature in this box (mouse or touch).</p>
+                          <p class="sig-editor-hint">Draw your signature with mouse or touch, then Apply.</p>
                           <canvas class="sig-inline-canvas" data-sig-role="employee" aria-label="Employee signature"></canvas>
                           <div class="sig-editor-bar">
                             <button type="button" class="btn-m-clear" onclick="clearInlinePad()">Clear</button>
@@ -631,85 +522,50 @@
                       </div>
                       <input type="hidden" name="employee_signature" id="empSigData">
                     </div>
+                    <em class="fld-indicator">Your signature confirming you have resumed duty. Required before submit.</em>
                     <div class="duty-sig-signer-comment" id="dutySigCommentEmployee" hidden></div>
                     <div class="fld" style="margin-top:.75rem"><label class="fld-lbl">Date</label><input class="fld-inp" type="date" name="sign_date" id="signDate"></div>
                   </div>
-                  <div class="fld">
-                    <label class="fld-lbl">Reporting Manager Signature</label>
+                  <div class="fld sig-col">
+                    <label class="fld-lbl">Reporting manager signature</label>
                     <div class="sig-wrap">
-                      <div class="sig-box sig-box-interactive" id="rmSigPrev">
+                      <div class="sig-box" id="rmSigPrev">
                         <div class="sig-display">
-                          <span class="sig-ph">No signature</span>
+                          <span class="sig-ph">No signature yet</span>
                           <img id="rmSigImg" src="" alt="" style="display:none">
                         </div>
-                        <div class="sig-editor" hidden>
-                          <p class="sig-editor-hint">Draw reporting manager signature in this box.</p>
-                          <canvas class="sig-inline-canvas" data-sig-role="rm" aria-label="Reporting manager signature"></canvas>
-                          <div class="sig-editor-bar">
-                            <button type="button" class="btn-m-clear" onclick="clearInlinePad()">Clear</button>
-                            <button type="button" class="btn-m-apply" onclick="applySig()">Apply</button>
-                            <button type="button" class="btn-sig-cancel" onclick="cancelInlineSig()">Cancel</button>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="sig-actions">
-                        <button type="button" class="btn-plus" onclick="openSig('rm')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
-                        <button type="button" class="btn-rm" id="rmSigRm" onclick="rmSig('rm')">Remove</button>
                       </div>
                       <input type="hidden" name="reporting_manager_signature" id="rmSigData">
                     </div>
+                    <em class="fld-indicator">Signs later in the approval chain</em>
                     <div class="duty-sig-signer-comment" id="dutySigCommentRm" hidden></div>
                   </div>
-                  <div class="fld">
-                    <label class="fld-lbl">GM Signature</label>
+                  <div class="fld sig-col">
+                    <label class="fld-lbl">GM signature</label>
                     <div class="sig-wrap">
-                      <div class="sig-box sig-box-interactive" id="gmSigPrev">
+                      <div class="sig-box" id="gmSigPrev">
                         <div class="sig-display">
-                          <span class="sig-ph">No signature</span>
+                          <span class="sig-ph">No signature yet</span>
                           <img id="gmSigImg" src="" alt="" style="display:none">
                         </div>
-                        <div class="sig-editor" hidden>
-                          <p class="sig-editor-hint">Draw GM approval signature in this box.</p>
-                          <canvas class="sig-inline-canvas" data-sig-role="gm" aria-label="GM signature"></canvas>
-                          <div class="sig-editor-bar">
-                            <button type="button" class="btn-m-clear" onclick="clearInlinePad()">Clear</button>
-                            <button type="button" class="btn-m-apply" onclick="applySig()">Apply</button>
-                            <button type="button" class="btn-sig-cancel" onclick="cancelInlineSig()">Cancel</button>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="sig-actions">
-                        <button type="button" class="btn-plus" onclick="openSig('gm')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
-                        <button type="button" class="btn-rm" id="gmSigRm" onclick="rmSig('gm')">Remove</button>
                       </div>
                       <input type="hidden" name="gm_signature" id="gmSigData">
                     </div>
+                    <em class="fld-indicator">Signs later in the approval chain</em>
                     <div class="duty-sig-signer-comment" id="dutySigCommentGm" hidden></div>
                   </div>
-                  <div class="fld">
-                    <label class="fld-lbl">HR Signature</label>
+                  <div class="fld sig-col">
+                    <label class="fld-lbl">HR signature</label>
                     <div class="sig-wrap">
-                      <div class="sig-box sig-box-interactive" id="hrSigPrev">
+                      <div class="sig-box" id="hrSigPrev">
                         <div class="sig-display">
-                          <span class="sig-ph">No signature</span>
+                          <span class="sig-ph">No signature yet</span>
                           <img id="hrSigImg" src="" alt="" style="display:none">
                         </div>
-                        <div class="sig-editor" hidden>
-                          <p class="sig-editor-hint">Draw HR signature in this box.</p>
-                          <canvas class="sig-inline-canvas" data-sig-role="hr" aria-label="HR signature"></canvas>
-                          <div class="sig-editor-bar">
-                            <button type="button" class="btn-m-clear" onclick="clearInlinePad()">Clear</button>
-                            <button type="button" class="btn-m-apply" onclick="applySig()">Apply</button>
-                            <button type="button" class="btn-sig-cancel" onclick="cancelInlineSig()">Cancel</button>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="sig-actions">
-                        <button type="button" class="btn-plus" onclick="openSig('hr')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
-                        <button type="button" class="btn-rm" id="hrSigRm" onclick="rmSig('hr')">Remove</button>
                       </div>
                       <input type="hidden" name="hr_signature" id="hrSigData">
                     </div>
+                    <em class="fld-indicator">Signs later in the approval chain</em>
                     <div class="duty-sig-signer-comment" id="dutySigCommentHr" hidden></div>
                   </div>
                 </div>
@@ -723,6 +579,22 @@
 
               </div>
 
+            <footer class="doc-ft" role="contentinfo">
+              <div class="doc-ft-meta"><span>Duty Resumption Form</span><span>DATE: <span id="docDate"></span></span></div>
+            </footer>
+            <div class="submit-bar" id="submitBar" style="display:none">
+              <p class="submit-bar__hint">Review your details and employee signature, then submit. Managers sign after you send this form.</p>
+              <div class="submit-bar__actions">
+                <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('dutyFrm').reset();clearAllSigs();goToStep1()}">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  Reset
+                </button>
+                <button type="submit" class="btn-submit">
+                  Submit Form
+                  <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </button>
+              </div>
+            </div>
             </div>
 
           </div>
@@ -734,19 +606,6 @@
         </div>
 
       </form>
-
-      <div class="duty-form-layout duty-form-layout--after-form">
-        <div class="duty-form-layout-main duty-after-form-stack">
-          <footer class="doc-ft doc-ft--after-form" role="contentinfo">
-            <div class="doc-ft-meta"><span>Duty Resumption Form</span><span>DATE: <span id="docDate"></span></span></div>
-          </footer>
-          <div class="submit-bar duty-submit-outside-form" id="submitBar" style="display:none">
-            <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('dutyFrm').reset();clearAllSigs();goToStep1()}">Reset</button>
-            <button type="submit" form="dutyFrm" class="btn-submit">Submit Form</button>
-          </div>
-        </div>
-        <div class="duty-tail-spacer" aria-hidden="true"></div>
-      </div>
     </div>
   </div>
 
@@ -802,7 +661,7 @@ function dutyUpdatePerSignerComments(fd) {
     ['dutySigCommentEmployee', 'employee', 'Comment from employee'],
     ['dutySigCommentRm', 'rm', 'Comment from reporting manager'],
     ['dutySigCommentGm', 'gm', 'Comment from general manager'],
-    ['dutySigCommentHr', 'hr', 'Comment from HR (head office)'],
+    ['dutySigCommentHr', 'hr', 'Comment from HR'],
   ];
   for (var i = 0; i < map.length; i++) {
     var el = document.getElementById(map[i][0]);
@@ -889,6 +748,7 @@ function cancelInlineSig(){
 }
 
 function openSig(t){
+  if(t!=='employee')return;
   cancelInlineSig();
   var c=sigCfg[t];
   if(!c)return;
@@ -906,7 +766,7 @@ function openSig(t){
   requestAnimationFrame(function(){
     var r=window.devicePixelRatio||1;
     var w=Math.max(220,Math.floor(box.getBoundingClientRect().width-20));
-    var h=140;
+    var h=120;
     canvas.width=Math.floor(w*r);
     canvas.height=Math.floor(h*r);
     canvas.style.width='100%';
@@ -942,6 +802,7 @@ function applySig(){
 }
 
 function rmSig(t){
+  if(t!=='employee')return;
   if(target===t)cancelInlineSig();
   var c=sigCfg[t];if(!c)return;
   var box=document.getElementById(c.prev);
@@ -954,7 +815,7 @@ function rmSig(t){
   refreshDutySignatureSummary();
 }
 
-function clearAllSigs(){cancelInlineSig();['employee','rm','gm','hr'].forEach(rmSig)}
+function clearAllSigs(){cancelInlineSig();rmSig('employee')}
 
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'&&target)cancelInlineSig();
@@ -971,8 +832,8 @@ document.getElementById('dutyFrm').addEventListener('submit',async e=>{
   if(btn){btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…'}
   try{const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});const r=await res.json();
   if(r.success){window.__hrLastHrSubmissionId=r.submission_id;document.getElementById('submissionId').textContent=r.submission_id;hrShowSuccessModal()}
-  else{alert('Error: '+(r.error||'Unknown'));if(btn){btn.disabled=false;btn.innerHTML='Submit Form'}}
-  }catch(err){alert('Network error: '+err.message);if(btn){btn.disabled=false;btn.innerHTML='Submit Form'}}
+  else{alert('Error: '+(r.error||'Unknown'));if(btn){btn.disabled=false;btn.innerHTML='Submit Form <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>'}}
+  }catch(err){alert('Network error: '+err.message);if(btn){btn.disabled=false;btn.innerHTML='Submit Form <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>'}}
 });
 </script>
   <script src="{{ url_for('static', filename='js/hr_generic_form_edit.js') }}"></script>

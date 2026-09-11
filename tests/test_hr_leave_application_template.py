@@ -94,7 +94,7 @@ LEAVE_APPLICATION_LAYOUT_MARKERS = [
     "Signature",
     "Date",
     "Reporting manager",
-    "HR (head office)",
+    "HR",
     "(HR pool)",
     "Generated",
     "Dubai",
@@ -124,6 +124,7 @@ def test_generated_leave_application_pdf_matches_layout_markers():
     text = _extract_pdf_text(buf.getvalue())
     missing = [m for m in LEAVE_APPLICATION_LAYOUT_MARKERS if m not in text]
     assert not missing, f"Generated PDF missing markers: {missing[:12]}"
+    assert "HR (head office)" not in text
     assert "Kynvera" in text or "KYNVERA" in text, "Generated PDF missing Kynvera branding"
     assert f"PDF layout {HR_PDF_LAYOUT_VERSION}" in text
 

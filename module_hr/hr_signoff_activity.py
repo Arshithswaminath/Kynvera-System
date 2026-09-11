@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from common.datetime_utils import normalize_legacy_hr_iso_to_utc_z
+from module_hr.hr_management_chain import mgmt_step_display_label
 
 # Mirrors workflow access VALID_DESIGNATIONS for HR activity polling.
 
@@ -21,7 +22,7 @@ _WORKFLOW_LABELS: dict[str, str] = {
     "hr_mgmt_reporting_manager": "Awaiting reporting manager sign-off",
     "hr_mgmt_gm": "Awaiting general manager sign-off",
     "hr_mgmt_routing_approver": "Awaiting next approver sign-off",
-    "hr_mgmt_hr_head_office": "With HR (head office) for final sign-off",
+    "hr_mgmt_hr_head_office": "With HR for final sign-off",
     "hr_review": "With HR for review",
     "gm_review": "With general manager for review",
     "approved": "Approved — workflow complete",
@@ -172,7 +173,7 @@ def compute_hr_signoff_activity(
             for st in steps:
                 if not isinstance(st, dict) or not st.get("signature"):
                     continue
-                pdf_label = (st.get("pdf_label") or st.get("key") or "Management").strip()
+                pdf_label = mgmt_step_display_label(st, default="Management")
                 who = (st.get("signed_by_name") or "").strip() or "Signatory"
                 raw.append(
                     {

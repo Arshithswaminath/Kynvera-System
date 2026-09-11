@@ -170,6 +170,18 @@ body.dochub-page-v2 * {
   position: relative;
   flex-shrink: 0;
 }
+a.sb-brand {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+a.sb-brand:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+a.sb-brand:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: -2px;
+}
 
 .sb-brand--text-only {
   gap: 0;
@@ -3845,8 +3857,11 @@ body.dochub-page-v2 .modal-overlay .modal {
    ───────────────────────────────────────────── */
 .dh-home {
   /* JS toggles inline display:flex — keep it a vertical, scrollable column */
+  flex: 1;
+  min-height: 0;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
+  justify-content: center;
   overflow-y: auto;
   padding: 0;
 }
@@ -3862,8 +3877,7 @@ body.dochub-page-v2 .editor-area:has(> #dhEmptyState[style*="flex"]) {
 .dh-home-inner {
   width: 100%;
   max-width: 1040px;
-  margin: 0;
-  margin-right: auto;
+  margin: 0 auto;
   padding: 44px 40px 52px;
   box-sizing: border-box;
 }

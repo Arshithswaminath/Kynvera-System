@@ -78,13 +78,18 @@ def replacement_sign_url(app: Flask, submission: Submission) -> str:
 
 
 def current_step_label(submission: Submission) -> str:
-    from module_hr.hr_management_chain import MGMT_CHAIN_KEY, current_step, has_management_chain
+    from module_hr.hr_management_chain import (
+        MGMT_CHAIN_KEY,
+        current_step,
+        has_management_chain,
+        mgmt_step_display_label,
+    )
 
     fd = submission.form_data if isinstance(submission.form_data, dict) else {}
     if has_management_chain(fd):
         step = current_step(fd[MGMT_CHAIN_KEY])
         if step:
-            return str(step.get("pdf_label") or step.get("who_label") or "Approver")
+            return mgmt_step_display_label(step)
     wf = (submission.workflow_status or "").strip()
     if wf == "replacement_signoff":
         return "Colleague signature"

@@ -1,0 +1,328 @@
+{% set fm_page_title = 'Device Management' %}
+{% set fm_topbar_title = 'Dashboard' %}
+{% set fm_hide_module_back = true %}
+{% set fm_wide = true %}
+{% set fm_dash = true %}
+{% include 'partials/dm_shell_start.html' %}
+{% from 'partials/dm_range.html' import dm_range_nav, dm_heat_nav with context %}
+
+  <div class="dm-ov-canvas">
+    <div class="dm-ov" data-dm-live-root data-dm-period="{{ overview.period }}" data-dm-year="{{ overview.heat_nav.year }}" data-dm-month="{{ overview.heat_nav.month }}">
+      <header class="dm-ov-head">
+        <div>
+          <h2 class="dm-ov-title">Overview</h2>
+          <p class="dm-ov-date">{{ overview.today_label }}</p>
+          <p class="dm-ov-range-caption" data-dm-live="caption">{{ overview.period_label }} · {{ overview.range_caption }}</p>
+          {{ dm_range_nav('devices_bp.devices_dashboard') }}
+        </div>
+        <div class="dm-ov-head-actions">
+          <label class="dm-ov-search">
+            <span class="dm-ov-search-icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path d="m21 21-4.37-4.37"/><circle cx="10.59" cy="10.59" r="7.74"/></svg>
+            </span>
+            <input type="search" id="dmOvSearch" placeholder="Search inventory" autocomplete="off">
+          </label>
+          <button type="button" class="fm-btn fm-btn-primary" id="enrollBtn">Add device</button>
+          <a class="fm-btn fm-btn-outline" href="{{ url_for('devices_bp.devices_map_page') }}">Map</a>
+        </div>
+      </header>
+
+      <div class="dm-ov-grid">
+        <section class="dm-ov-metrics" aria-label="Fleet totals">
+          <article class="dm-ov-hero" data-dm-tip="How many devices are in inventory right now, across every building.">
+            <span class="dm-ov-hero-badge {{ overview.hero_delta.css }}">{{ overview.hero_delta.label }}</span>
+            <div class="dm-ov-hero-icons" aria-hidden="true">
+              <span class="dm-ov-hero-chip">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+              </span>
+              <span class="dm-ov-hero-chip">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
+              </span>
+              <span class="dm-ov-hero-chip">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="7" width="20" height="12" rx="2"/><path d="M6 7V5h12v2"/></svg>
+              </span>
+            </div>
+            <span class="dm-ov-kicker">Total devices</span>
+            <strong class="dm-ov-hero-value">{{ '{:,}'.format(kpis.total) }}</strong>
+          </article>
+          <article class="dm-ov-stat" data-dm-tip="How many devices were added in the selected Weekly, Monthly, or Yearly range.">
+            <div class="dm-ov-stat-top">
+              <span class="dm-ov-stat-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </span>
+              <span class="dm-ov-delta {{ overview.enroll_delta.css }}" data-dm-live="enroll-delta">{{ overview.enroll_delta.label }}</span>
+            </div>
+            <span class="dm-ov-kicker" data-dm-live="enroll-kicker">{{ overview.enroll_kicker }}</span>
+            <strong data-dm-live="enroll-value">{{ overview.enrolled_this_week }}</strong>
+            <div class="dm-ov-spark" data-dm-live="enroll-spark" aria-hidden="true">
+              {% for n in overview.enrolled_spark %}
+              {% set h = 6 + ((n / overview.spark_max) * 16)|round|int %}
+              <span style="height:{{ h }}px"></span>
+              {% endfor %}
+            </div>
+          </article>
+          <article class="dm-ov-stat" data-dm-tip="Average inventory health score. This is not live MDM telemetry.">
+            <div class="dm-ov-stat-top">
+              <span class="dm-ov-stat-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg>
+              </span>
+              <span class="dm-ov-delta {{ overview.health_delta.css }}" data-dm-live="health-delta">{{ overview.health_delta.label }}</span>
+            </div>
+            <span class="dm-ov-kicker">Fleet health</span>
+            <strong>{% if kpis.fleet_health_pct is not none %}{{ kpis.fleet_health_pct }}%{% else %}—{% endif %}</strong>
+            <div class="dm-ov-spark" data-dm-live="health-spark" aria-hidden="true">
+              {% for n in overview.health_spark %}
+              {% set h = 6 + ((n / overview.health_spark_max) * 16)|round|int %}
+              <span style="height:{{ h }}px"></span>
+              {% endfor %}
+            </div>
+          </article>
+        </section>
+
+        <section class="dm-ov-card dm-ov-mix">
+          <div class="dm-ov-card-head">
+            <h3>Fleet mix</h3>
+            <span>{{ overview.ready_pct }}%</span>
+          </div>
+          <div class="dm-ov-mix-bar" role="img" aria-label="Status mix">
+            {% for part in overview.mix %}
+              {% if part.pct > 0 %}
+              <span class="dm-ov-mix-seg" style="flex:{{ part.pct }};background:{{ part.color }}" data-dm-tip="{{ part.label }}: {{ part.count }} devices ({{ part.pct|int }}% of the fleet).">
+                {% if part.show_label %}<b{% if part.label_dark %} class="is-dark"{% endif %}>{{ part.pct|int }}%</b>{% endif %}
+              </span>
+              {% endif %}
+            {% endfor %}
+            {% if kpis.total == 0 %}
+            <span class="dm-ov-mix-seg" style="flex:1;background:#efe7e0"></span>
+            {% endif %}
+          </div>
+          <ul class="dm-ov-mix-legend">
+            {% for part in overview.mix %}
+            <li><i style="background:{{ part.color }}"></i>{{ part.label }} {{ part.count }}</li>
+            {% endfor %}
+          </ul>
+          <aside class="dm-ov-dark" aria-label="Follow-ups">
+            <div class="dm-ov-dark-head">
+              <h3>Follow-ups</h3>
+              <span>{{ overview.follow_pct }}%</span>
+            </div>
+            <ul class="dm-ov-tasks">
+              {% for task in overview.follow_ups %}
+              <li class="{% if task.done %}is-done{% endif %}">
+                <span class="dm-ov-check" aria-hidden="true">{% if task.done %}✓{% endif %}</span>
+                <a class="dm-ov-task-link" href="{{ task.href }}">
+                  <strong>{{ task.label }}</strong>
+                  <em>{{ task.hint }}</em>
+                </a>
+              </li>
+              {% endfor %}
+            </ul>
+          </aside>
+        </section>
+
+        <section class="dm-ov-card dm-ov-heat" data-dm-live="heat-card">
+          <div class="dm-ov-card-head">
+            <h3>Work activity</h3>
+            {{ dm_heat_nav() }}
+          </div>
+          <div class="dm-ov-heat-wrap">
+            <div class="dm-ov-heat-grid" data-dm-live="heat" style="--dm-cols: {{ overview.bucket_count }}" data-dm-cols="{{ overview.bucket_count }}" data-dm-period="{{ overview.period }}" role="img" aria-label="Last-seen activity {{ overview.period_label }}">
+              {% for row in overview.heat_rows %}
+              <div class="dm-ov-heat-row">
+                <span class="dm-ov-heat-label">{{ row.label }}</span>
+                {% for cell in row.cells %}
+                <span class="dm-ov-heat-cell lv-{{ cell.level }}" data-dm-tip="{{ row.label }} of {{ overview.day_labels[loop.index0] }} — {{ cell.count }} device{{ '' if cell.count == 1 else 's' }} last seen."></span>
+                {% endfor %}
+              </div>
+              {% endfor %}
+              <div class="dm-ov-heat-days">
+                <span></span>
+                {% for label in overview.day_labels %}
+                <span>{{ label }}</span>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          <p class="dm-ov-empty-hint" data-dm-live="heat-hint"{% if not overview.heat_empty %} hidden{% endif %}>{{ overview.heat_empty_hint }}</p>
+        </section>
+
+        <section class="dm-ov-side">
+          <article class="dm-ov-card dm-ov-online">
+            <div class="dm-ov-card-head">
+              <h3>Online now</h3>
+              <span class="dm-ov-delta {{ overview.online_delta.css }}">{{ overview.online_delta.label }}</span>
+            </div>
+            <strong class="dm-ov-online-value">{{ '{:,}'.format(kpis.online) }}</strong>
+            <p class="dm-ov-online-hint">{{ overview.seen_today }} seen today · {{ kpis.idle }} idle</p>
+          </article>
+        </section>
+
+        <section class="dm-ov-card dm-ov-timeline">
+          <div class="dm-ov-card-head">
+            <h3>Work activity</h3>
+          </div>
+          <div class="dm-ov-track" data-dm-live="timeline" style="--dm-cols: {{ overview.bucket_count }}" aria-label="Enrolls in range">
+            {% for mark in overview.timeline %}
+            <div class="dm-ov-track-col{% if mark.is_today %} is-today{% endif %}">
+              <span class="dm-ov-track-dot{% if mark.count %} is-on{% endif %}" data-dm-tip="{{ mark.label }} — {{ mark.count }} device{{ '' if mark.count == 1 else 's' }} enrolled."></span>
+              {% if mark.is_peak %}
+              <span class="dm-ov-pill">{{ mark.pill }}</span>
+              {% endif %}
+              <span class="dm-ov-track-day">{{ mark.label }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <section class="dm-ov-inventory" aria-label="Device inventory">
+      <div class="dm-ov-card-head">
+        <h3>Device inventory</h3>
+        <div class="fm-filter-tabs" role="tablist">
+          <button type="button" class="fm-filter-tab active" data-tab="all">All</button>
+          <button type="button" class="fm-filter-tab" data-tab="online">Online</button>
+          <button type="button" class="fm-filter-tab" data-tab="offline">Offline</button>
+          <button type="button" class="fm-filter-tab" data-tab="update">Alerts</button>
+        </div>
+      </div>
+      <div class="fm-table-wrap">
+        <table class="fm-table fm-table--registry">
+          <thead>
+            <tr>
+              <th>ID</th><th>Name</th><th>Type</th><th>Building</th><th>Status</th><th>Health</th><th>Assigned</th>
+            </tr>
+          </thead>
+          <tbody id="deviceRows"><tr><td colspan="7">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="dm-ov-quick">
+      <div class="dm-ov-card-head"><h3>Quick actions</h3></div>
+      <div class="dm-quick-grid">
+        <button type="button" class="fm-btn fm-btn-outline" id="exportBtn">Export CSV</button>
+        <button type="button" class="fm-btn fm-btn-outline" id="importExcelBtn">Import Excel</button>
+        <button type="button" class="fm-btn fm-btn-outline" id="downloadSampleBtn">Sample Excel</button>
+        <a class="fm-btn fm-btn-outline" href="{{ url_for('devices_bp.devices_new_page') }}">Enroll device</a>
+      </div>
+      <input type="file" id="deviceExcelInput" accept=".xlsx,.xls" hidden>
+    </section>
+  </div>
+
+  <div class="dm-modal" id="enrollModal" role="dialog" aria-labelledby="enrollTitle" aria-hidden="true">
+    <div class="dm-modal-card">
+      <h2 id="enrollTitle">Enroll new device</h2>
+      <form id="enrollForm" class="fm-form" style="padding:1rem 1.2rem 0;grid-template-columns:1fr">
+        <label>Name *<input class="fm-input" name="name" id="newDevName" required></label>
+        <label>Type
+          <select class="fm-input" name="device_type" id="newDevType">
+            <option>Laptop</option><option>Desktop</option><option>Tablet</option><option>Mobile</option><option>Server</option><option>Other</option>
+          </select>
+        </label>
+        <label>OS<input class="fm-input" name="os" id="newDevOS" value="Windows 11"></label>
+        <label>Assigned user email<input class="fm-input" name="assigned_user_email" id="newDevUser" type="email"></label>
+        <label>Serial / asset tag<input class="fm-input" name="serial_or_asset_tag" id="newDevSerial"></label>
+        <label>Building<input class="fm-input" name="building" placeholder="Tower A"></label>
+        <div class="fm-form-actions fm-full dm-modal-actions" style="padding:0 0 1rem">
+          <button type="button" class="fm-btn fm-btn-outline" id="modalCancel">Cancel</button>
+          <button type="submit" class="fm-btn fm-btn-primary" id="enrollSubmitBtn">Enroll</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+{% set fm_scripts %}
+<script>
+(function () {
+  let devicesData = [];
+  let currentTab = 'all';
+  const tbody = document.getElementById('deviceRows');
+  const modal = document.getElementById('enrollModal');
+
+  function filtered() {
+    let rows = devicesData;
+    if (currentTab === 'update') {
+      rows = rows.filter((d) => d.status === 'update' || (d.health != null && d.health < 55));
+    } else if (currentTab !== 'all') {
+      rows = rows.filter((d) => d.status === currentTab);
+    }
+    const q = (document.getElementById('dmOvSearch')?.value || '').trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((d) => {
+      const blob = [d.device_id, d.name, d.device_type, d.building, d.os, d.assigned_user_name, d.assigned_user]
+        .map((v) => String(v || '').toLowerCase())
+        .join(' ');
+      return blob.includes(q);
+    });
+  }
+  async function reload() {
+    try {
+      devicesData = await DM.fetchDevices();
+      tbody.innerHTML = DM.deviceRowsHtml(filtered());
+    } catch (e) {
+      tbody.innerHTML = '<tr><td colspan="7">Could not load devices</td></tr>';
+      DM.notify(e.message || e, 'error');
+    }
+  }
+  DM.bindTableNav(tbody);
+  document.querySelectorAll('.fm-filter-tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.fm-filter-tab').forEach((el) => el.classList.remove('active'));
+      tab.classList.add('active');
+      currentTab = tab.dataset.tab || 'all';
+      tbody.innerHTML = DM.deviceRowsHtml(filtered());
+    });
+  });
+  const search = document.getElementById('dmOvSearch');
+  if (search) {
+    search.addEventListener('input', () => {
+      tbody.innerHTML = DM.deviceRowsHtml(filtered());
+    });
+  }
+  function openModal() {
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+  function closeModal() {
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+  document.getElementById('enrollBtn').addEventListener('click', openModal);
+  document.getElementById('modalCancel').addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+  document.getElementById('enrollForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await DM.enrollFromForm(e.target);
+      e.target.reset();
+      closeModal();
+      DM.notify('Device enrolled', 'info');
+      await reload();
+      location.reload();
+    } catch (err) {
+      DM.notify(err.message || err, 'error');
+    }
+  });
+  document.getElementById('exportBtn').addEventListener('click', () => DM.exportCSV(devicesData));
+  document.getElementById('importExcelBtn').addEventListener('click', () => document.getElementById('deviceExcelInput').click());
+  document.getElementById('deviceExcelInput').addEventListener('change', async function () {
+    const file = this.files && this.files[0];
+    if (!file) return;
+    try {
+      await DM.importExcel(file);
+      location.reload();
+    } catch (err) {
+      DM.notify(err.message || err, 'error');
+    } finally {
+      this.value = '';
+    }
+  });
+  document.getElementById('downloadSampleBtn').addEventListener('click', async () => {
+    try { await DM.downloadSample(); } catch (err) { DM.notify(err.message || err, 'error'); }
+  });
+  reload();
+})();
+</script>
+{% endset %}
+{% include 'partials/dm_shell_end.html' %}

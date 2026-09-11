@@ -2239,6 +2239,18 @@
     if (ch) ch.classList.add('open');
   }
 
+  window.dhGoHome = function (e) {
+    if (e) e.preventDefault();
+    if (dirty && !confirm('Discard unsaved changes?')) return;
+    dirty = false;
+    searchQ = '';
+    const search = document.getElementById('dhSearch');
+    if (search) search.value = '';
+    showEmpty();
+    window.filterDocs('all', document.getElementById('dhSbHeadAll'));
+    if (typeof window.dhCloseSidebar === 'function') window.dhCloseSidebar();
+  };
+
   window.filterDocs = function (f, el) {
     if (filterBucket !== f) {
       sbCollapsedBuckets.clear();
@@ -2532,6 +2544,8 @@
     bind('dhEmptyNewBtn', openNewModal);
     bind('dhEmptyUploadBtn', openUploadModal);
     bind('dhEditorSaveBtn', saveDoc);
+    const brandHome = document.getElementById('dhBrandHome');
+    if (brandHome) brandHome.addEventListener('click', window.dhGoHome);
 
     const stBadge = document.getElementById('dhStatusBadge');
     if (stBadge) stBadge.onclick = cycleStatus;

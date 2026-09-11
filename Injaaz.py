@@ -175,6 +175,15 @@ except Exception as e:
     logger.exception("Could not import module_assets.routes.assets_bp: %s", e)
     assets_bp = None
 
+# Device Management (IT inventory)
+devices_bp = None
+try:
+    from module_devices.routes import devices_bp  # noqa: F401
+    logger.info("Imported module_devices.routes.devices_bp")
+except Exception as e:
+    logger.exception("Could not import module_devices.routes.devices_bp: %s", e)
+    devices_bp = None
+
 # Ensure required directories exist at startup
 os.makedirs(GENERATED_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
@@ -889,6 +898,11 @@ def create_app():
                     _ensure_asset_columns(app)
                 except Exception as asset_mig_err:
                     logger.warning('Early asset column ensure: %s', asset_mig_err)
+                try:
+                    from module_devices.service import ensure_device_columns
+                    ensure_device_columns(app)
+                except Exception as device_mig_err:
+                    logger.warning('Early device column ensure: %s', device_mig_err)
 
                 # Step 6: Seed ticketing / FM / demo teams when empty (local + Render parity).
                 # Does not insert sample HR/hiring rows — that is opt-in via seed_all_sample_data.py.
@@ -965,7 +979,7 @@ def create_app():
         path = request.path or '/'
         public_exact = {
             '/', '/privacy', '/terms', '/robots.txt', '/health',
-            '/manifest.json', '/favicon.ico', '/offline',
+            '/manifest.json', '/favicon.ico', '/offline', '/sitemap.xml',
             '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png',
         }
         if path in public_exact or path.startswith('/static/'):
@@ -1174,6 +1188,7 @@ def create_app():
                 "Allow: /static/\n"
                 "Allow: /favicon.ico\n"
                 "Allow: /apple-touch-icon.png\n"
+                "Allow: /sitemap.xml\n"
                 "Disallow: /login\n"
                 "Disallow: /register\n"
                 "Disallow: /forgot-password\n"
@@ -1181,6 +1196,7 @@ def create_app():
                 "Disallow: /dashboard\n"
                 "Disallow: /admin\n"
                 "Disallow: /api/\n"
+                f"Sitemap: {_public_origin()}/sitemap.xml\n"
             )
         else:
             body = (
@@ -1196,6 +1212,7 @@ def create_app():
                 "Allow: /apple-touch-icon.png\n"
                 "Allow: /offline\n"
                 "Allow: /manifest.json\n"
+                "Allow: /sitemap.xml\n"
                 "Disallow: /admin\n"
                 "Disallow: /api/\n"
                 "Disallow: /dashboard\n"
@@ -1212,8 +1229,39 @@ def create_app():
                 "Disallow: /register\n"
                 "Disallow: /logout\n"
                 "Disallow: /sso/\n"
+                f"Sitemap: {_public_origin()}/sitemap.xml\n"
             )
         return Response(body, mimetype='text/plain')
+
+    def _public_origin():
+        from common.kynvera_hub import is_marketing_host, marketing_only, marketing_url
+        if marketing_only() or is_marketing_host():
+            return marketing_url().rstrip('/')
+        return (request.url_root or '').rstrip('/')
+
+    @app.route('/sitemap.xml')
+    def sitemap_xml():
+        """Public URL list for Google Search Console. Operations host is noindex."""
+        from common.kynvera_hub import is_operations_host
+        if is_operations_host():
+            abort(404)
+        origin = _public_origin()
+        urls = [
+            (f"{origin}/", "1.0"),
+            (f"{origin}/privacy", "0.6"),
+            (f"{origin}/terms", "0.6"),
+        ]
+        lines = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+        ]
+        for loc, priority in urls:
+            lines.append(
+                f"  <url><loc>{loc}</loc><changefreq>weekly</changefreq>"
+                f"<priority>{priority}</priority></url>"
+            )
+        lines.append("</urlset>\n")
+        return Response("\n".join(lines), mimetype="application/xml")
 
     @app.route('/privacy')
     def privacy_page():
@@ -1448,6 +1496,15 @@ def create_app():
     else:
         logger.warning("⚠️  FM Assets blueprint not available - check imports")
 
+    # Register Device Management pages
+    if devices_bp:
+        if hasattr(app, 'csrf') and app.csrf:
+            app.csrf.exempt(devices_bp)
+        app.register_blueprint(devices_bp)
+        logger.info("✅ Registered Device Management blueprint at /admin/devices")
+    else:
+        logger.warning("⚠️  Device Management blueprint not available - check imports")
+
     # Register reports API blueprint for on-demand regeneration
     try:
         from app.reports_api import reports_bp
@@ -1521,7 +1578,7 @@ def create_app():
         path = request.path or ''
         public_exact = {
             '/', '/offline', '/manifest.json', '/privacy', '/terms',
-            '/robots.txt', '/forgot-password', '/reset-password',
+            '/robots.txt', '/sitemap.xml', '/forgot-password', '/reset-password',
             '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png',
         }
         public_prefixes = (
@@ -1660,11 +1717,6 @@ def create_app():
     def mmr_chargeable_settings_page():
         """Report setting: chargeable / BaseUnit rules (admin UI)."""
         return render_template('mmr_chargeable_settings.html', active_page='mmr-chargeable')
-
-    @app.route('/admin/devices')
-    def admin_devices():
-        """Device management - admin only"""
-        return render_template('admin_device_management.html', active_page='devices')
 
     @app.route('/admin/bd')
     def admin_bd():

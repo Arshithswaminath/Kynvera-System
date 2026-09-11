@@ -878,6 +878,11 @@ def section_admin():
     print("\n=== 9) Admin ===")
     for path in (
         "/admin/devices",
+        "/admin/devices/all",
+        "/admin/devices/analytics",
+        "/admin/devices/map",
+        "/admin/devices/compliance",
+        "/admin/devices/audit",
         "/admin/team-management",
         "/admin/bd",
         "/admin/knowledge-base",

@@ -238,6 +238,11 @@ STATIC_PAGES: list[tuple[str, str, str, bool]] = [
     ("11_admin", "hub", "/admin/dashboard", True),
     ("11_admin", "email_log", "/admin/dashboard?focus=email-log", False),
     ("11_admin", "devices", "/admin/devices", False),
+    ("11_admin", "devices_all", "/admin/devices/all", False),
+    ("11_admin", "devices_analytics", "/admin/devices/analytics", False),
+    ("11_admin", "devices_map", "/admin/devices/map", False),
+    ("11_admin", "devices_compliance", "/admin/devices/compliance", False),
+    ("11_admin", "devices_audit", "/admin/devices/audit", False),
     ("11_admin", "bd", "/admin/bd", False),
     ("11_admin", "personal_progress", "/admin/personal-progress", False),
     ("11_admin", "team", "/admin/team-management", False),
@@ -367,7 +372,7 @@ POPUPS: dict[str, list[dict[str, str]]] = {
         {"name": "edit_user", "click": ".admin-user-row, button:has-text('Edit'), .user-edit-btn", "wait": "#editModal.active, #editModal"},
     ],
     "/admin/devices": [
-        {"name": "enroll", "click": "#enrollBtn, button:has-text('Enroll')", "wait": "#enrollModal"},
+        {"name": "enroll", "click": "#enrollBtn, button:has-text('Add device')", "wait": "#enrollModal.open, #enrollModal"},
     ],
     "/admin/knowledge-base": [
         {"name": "add_text", "click": "#kbAddTextBtn, button:has-text('Add text')", "wait": "#kbTextModal"},

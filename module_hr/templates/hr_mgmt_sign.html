@@ -212,9 +212,10 @@
     .rsp-signed-banner__meta {
       font-size: .78rem;
       color: #64748b;
-      margin-top: .45rem;
+      margin: .15rem 0 0 2.65rem;
       line-height: 1.4;
     }
+    .rsp-signed-banner__meta:empty { display: none; }
     .rsp-wait-banner {
       display: none;
       background: #f8fafc;
@@ -240,8 +241,9 @@
     }
     .rsp-dual-role-banner.is-visible { display: block; }
     .rsp-sign-form.is-hidden { display: none !important; }
-    .rsp-done-actions { display: none; margin-top: 1rem; }
-    .rsp-done-actions.is-visible { display: flex; gap: .65rem; flex-wrap: wrap; }
+    .rsp-done-actions { display: none; margin-top: 0.9rem; }
+    .rsp-done-actions.is-visible { display: flex; flex-direction: column; gap: .55rem; }
+    .rsp-done-actions a { text-decoration: none; width: 100%; box-sizing: border-box; }
     #rspNote { display: none !important; }
   </style>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
@@ -250,7 +252,7 @@
   {% set active_page = 'hr' %}
   {% include 'partials/hr_embed_optional_navbar.html' %}
   <div class="rsp-page">
-    <a href="/hr/my-requests" class="back-btn" style="margin-bottom:1rem;display:inline-flex;align-items:center;gap:.4rem;"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg> Back</a>
+    <a href="/hr/pending-review" class="back-btn" style="margin-bottom:1rem;display:inline-flex;align-items:center;gap:.4rem;"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg> Back to Pending Forms</a>
 
     <div class="rsp-layout">
       <div class="rsp-preview-col">
@@ -276,13 +278,21 @@
               </div>
               <div>
                 <h2 class="rsp-signed-banner__title">You have already signed this form</h2>
-                <p class="rsp-signed-banner__sub" id="rspSignedSub">Your signature is recorded on the official PDF trail.</p>
+                <p class="rsp-signed-banner__sub" id="rspSignedSub">Your signature is recorded. Remaining signatures are still outstanding.</p>
               </div>
             </div>
+            <p class="rsp-signed-banner__meta" id="rspSignedMeta"></p>
             <div class="rsp-signed-banner__sig" id="rspSignedSigWrap" style="display:none">
               <img id="rspSignedSigImg" alt="Your recorded signature">
-              <p class="rsp-signed-banner__meta" id="rspSignedMeta"></p>
             </div>
+            <div class="rsp-done-actions" id="rspDoneActions">
+              <a href="/hr/pending-review" class="btn-pri" id="rspDonePrimaryLink">Back to Pending Forms</a>
+            </div>
+          </div>
+          <div class="rsp-wait-banner" id="rspOwnerBanner" role="status">
+            This is a request you submitted. You already signed as the employee.
+            HR (or the next person in the chain) must sign next — the pad on this page is not for you.
+            <a id="rspOwnerSubmittedLink" href="/workflow/submitted-forms?scope=hr" style="display:inline-flex;margin-top:.75rem;font-weight:700;color:#c2410c;">Open in Submitted Forms</a>
           </div>
           <div class="rsp-wait-banner" id="rspWaitBanner" role="status">
             This form is with the next approver in the chain. Review the PDF on the left — you'll be notified when it's your turn to sign.
@@ -292,7 +302,7 @@
           </div>
           <div class="rsp-dual-role-banner" id="rspDualRoleBanner" role="status"></div>
 
-          <div class="rsp-sign-form" id="rspSignForm">
+          <div class="rsp-sign-form is-hidden" id="rspSignForm">
           <label class="fld-lbl">Comments <span style="opacity:.65">(optional)</span></label>
           <textarea class="fld-inp" id="rspComments" data-approval-comment placeholder="Add notes for the next reviewer…"></textarea>
 
@@ -306,18 +316,14 @@
             <button type="button" class="btn-pri" id="rspSubmit">Submit signature</button>
           </div>
           </div>
-          <div class="rsp-done-actions" id="rspDoneActions">
-            <a href="/hr/my-requests" class="btn-pri" style="text-decoration:none;display:inline-flex;align-items:center;">Back to My Requests</a>
-          </div>
           <div class="rsp-err" id="rspErr"></div>
         </div>
       </div>
     </div>
   </div>
 
-<script src="{{ url_for('static', filename='js/approval_comment.js') }}"></script>
-<script src="{{ url_for('static', filename='js/hr_sign_pdf_preview.js') }}"></script>
-<script src="{{ url_for('static', filename='js/hr_center_notice_modal.js') }}"></script>
+<script src="{{ url_for('static', filename='js/approval_comment.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='js/hr_sign_pdf_preview.js') }}?v=4"></script>
 <script>
 const SUBMISSION_ID = {{ submission_id | tojson }};
 const TOKEN = localStorage.getItem('access_token');
@@ -330,11 +336,13 @@ window.addEventListener('beforeunload', function () {
 
 async function loadSubmittedFormPdfPreview(){
   const gen = ++pdfPreviewLoadGen;
+  const commentEl = document.getElementById('rspComments');
   await HrSignPdfPreview.load({
     submissionId: SUBMISSION_ID,
     token: TOKEN,
     gen: gen,
     isStale: function (g) { return g !== pdfPreviewLoadGen; },
+    previewComment: commentEl ? commentEl.value : '',
     errMessage: 'Could not load the submitted form as PDF. You may still approve below if permitted, or open the submission from Pending review / My requests.',
   });
 }
@@ -434,23 +442,51 @@ async function boot(){
   document.getElementById('rspTitle').textContent = j.form_type_display || 'HR form';
 
   const subName = fd.submitted_by_name || '';
-  const slotLabel = (j.step_label || '').trim();
+  const isOwnerView = !!j.is_owner && !j.can_sign;
+  const slotLabel = (j.already_signed || j.viewer_state === 'already_signed')
+    ? ((j.signed_step && (j.signed_step.step_label || j.signed_step.pdf_label)) || '')
+    : (isOwnerView ? '' : (j.step_label || ''));
   const slotPart = slotLabel
     ? '<br><span style="color:#475569">Your step: <strong>'+escapeHtml(slotLabel)+'</strong></span>'
     : '';
 
+  var mySigned = j.signed_step || findMySignedStep(fd, j.current_user_id);
+  var alreadySigned = j.viewer_state === 'already_signed' || j.already_signed || !!mySigned;
+  var intro;
+  if (alreadySigned) {
+    intro = 'submitted this request. You have already signed it.';
+  } else if (isOwnerView) {
+    intro = 'submitted this request. It is waiting for the next approver — you cannot sign it yourself.';
+  } else {
+    intro = 'submitted an HR form requiring your approval.';
+  }
   document.getElementById('rspMeta').innerHTML =
-    '<strong>'+escapeHtml(subName)+'</strong> submitted an HR form requiring your approval.'+slotPart+
+    '<strong>'+escapeHtml(subName)+'</strong> ' +
+    intro +
+    slotPart +
     '<br>Ref: <code>'+escapeHtml(SUBMISSION_ID)+'</code>';
 
-  var mySigned = j.signed_step || findMySignedStep(fd, j.current_user_id);
-  if (j.viewer_state === 'already_signed' || j.already_signed || mySigned) {
-    showAlreadySignedState(mySigned || j.signed_step || {});
+  if (alreadySigned) {
+    showAlreadySignedState(mySigned || j.signed_step || {}, {
+      is_owner: j.is_owner,
+      submitted_forms_url: j.submitted_forms_url,
+    });
+    return;
+  }
+
+  if (j.is_owner && !j.can_sign) {
+    showNoSignState(j.viewer_state, {
+      is_owner: true,
+      submitted_forms_url: j.submitted_forms_url,
+    });
     return;
   }
 
   if (!j.can_sign) {
-    showNoSignState(j.viewer_state);
+    showNoSignState(j.viewer_state, {
+      is_owner: j.is_owner,
+      submitted_forms_url: j.submitted_forms_url,
+    });
     return;
   }
 
@@ -462,7 +498,12 @@ async function boot(){
     }
   }
 
+  document.getElementById('rspSignForm').classList.remove('is-hidden');
+  document.getElementById('rspSubmit').disabled = false;
+
   prefillSignComment();
+  try { HrSignPdfPreview.watchCommentField(document.getElementById('rspComments'), loadSubmittedFormPdfPreview); } catch (e) {}
+  void loadSubmittedFormPdfPreview();
 
   document.getElementById('rspClear').addEventListener('click', ()=>{
     if(pad) pad.clear();
@@ -470,6 +511,17 @@ async function boot(){
   });
 
   document.getElementById('rspSubmit').addEventListener('click', submitSig);
+}
+
+function mgmtStepDisplayLabel(st) {
+  if (!st || typeof st !== 'object') return 'Approver';
+  if (st.key === 'hr_head_office' || st.step_key === 'hr_head_office') return 'HR';
+  var raw = String(st.pdf_label || st.step_label || st.who_label || '').trim();
+  var lowered = raw.toLowerCase();
+  if (lowered.indexOf('head office') !== -1 || lowered === 'hr (ho)' || lowered === 'hr (h.o.)') {
+    return 'HR';
+  }
+  return raw || 'Approver';
 }
 
 function findMySignedStep(fd, userId) {
@@ -482,7 +534,7 @@ function findMySignedStep(fd, userId) {
     if (String(st.signed_by_id) === String(userId)) {
       return {
         step_key: st.key,
-        step_label: st.pdf_label,
+        step_label: mgmtStepDisplayLabel(st),
         signed_at: st.signed_at,
         signed_by_name: st.signed_by_name,
         comments: st.comments,
@@ -495,13 +547,22 @@ function findMySignedStep(fd, userId) {
 
 function hideSignFormUi() {
   document.getElementById('rspSignForm').classList.add('is-hidden');
-  document.getElementById('rspDoneActions').classList.add('is-visible');
   document.getElementById('rspSubmit').disabled = true;
   if (pad) { try { pad.off(); } catch (_e) {} pad = null; }
 }
 
-function showNoSignState(viewerState) {
+function showNoSignState(viewerState, opts) {
   hideSignFormUi();
+  opts = opts || {};
+  if (opts.is_owner || viewerState === 'submitter') {
+    var ownerBanner = document.getElementById('rspOwnerBanner');
+    if (ownerBanner) ownerBanner.classList.add('is-visible');
+    var link = document.getElementById('rspOwnerSubmittedLink');
+    if (link) {
+      link.href = opts.submitted_forms_url || ('/workflow/submitted-forms?scope=hr&submission=' + encodeURIComponent(SUBMISSION_ID));
+    }
+    return;
+  }
   if (viewerState === 'not_your_turn') {
     document.getElementById('rspWaitBanner').classList.add('is-visible');
     return;
@@ -523,20 +584,32 @@ function formatSignedAt(iso) {
   }
 }
 
-function showAlreadySignedState(signedStep) {
+function showAlreadySignedState(signedStep, opts) {
   signedStep = signedStep || {};
+  opts = opts || {};
   hideSignFormUi();
+  document.getElementById('rspDoneActions').classList.add('is-visible');
   document.getElementById('rspSignedBanner').classList.add('is-visible');
 
-  var role = (signedStep.step_label || 'Management approver').trim();
+  var role = mgmtStepDisplayLabel(signedStep);
   document.getElementById('rspSignedSub').textContent =
-    'Your signature is recorded as ' + role + '. This form has been forwarded to the next approver(s) in the chain for their signatures.';
+    'Your signature is recorded as ' + role + '. Remaining signatures are still outstanding.';
 
   var when = formatSignedAt(signedStep.signed_at);
-  var metaParts = [];
-  if (when) metaParts.push('Signed on ' + when);
-  document.getElementById('rspSignedSigWrap').style.display = 'none';
-  document.getElementById('rspSignedMeta').textContent = metaParts.join('');
+  var metaEl = document.getElementById('rspSignedMeta');
+  if (metaEl) metaEl.textContent = when ? ('Signed on ' + when) : '';
+  var sigWrap = document.getElementById('rspSignedSigWrap');
+  if (sigWrap) sigWrap.style.display = 'none';
+
+  var link = document.getElementById('rspDonePrimaryLink');
+  if (!link) return;
+  if (opts.is_owner) {
+    link.href = opts.submitted_forms_url || ('/workflow/submitted-forms?scope=hr&submission=' + encodeURIComponent(SUBMISSION_ID));
+    link.textContent = 'Open in Submitted Forms';
+  } else {
+    link.href = '/hr/pending-review';
+    link.textContent = 'Back to Pending Forms';
+  }
 }
 
 function escapeHtml(s){
@@ -549,22 +622,28 @@ async function refreshSignedStateAfterSubmit() {
   });
   const j = await res.json().catch(()=>({}));
   if (!j.success) {
-    window.location.href = '/hr/my-requests';
+    window.location.href = '/hr/pending-review';
     return;
   }
   var fd = (j.submission && j.submission.form_data) || {};
   var mine = j.signed_step || findMySignedStep(fd, j.current_user_id);
   if (j.already_signed || j.viewer_state === 'already_signed' || mine) {
-    showAlreadySignedState(mine || j.signed_step || {});
+    showAlreadySignedState(mine || j.signed_step || {}, {
+      is_owner: j.is_owner,
+      submitted_forms_url: j.submitted_forms_url,
+    });
     void loadSubmittedFormPdfPreview();
     return;
   }
   if (!j.can_sign) {
-    showNoSignState(j.viewer_state);
+    showNoSignState(j.viewer_state, {
+      is_owner: j.is_owner,
+      submitted_forms_url: j.submitted_forms_url,
+    });
     void loadSubmittedFormPdfPreview();
     return;
   }
-  window.location.href = '/hr/my-requests';
+  window.location.href = '/hr/pending-review';
 }
 
 async function submitSig(){
@@ -594,11 +673,7 @@ async function submitSig(){
     if(!res.ok){
       throw new Error(j.error || 'Unable to submit');
     }
-    openHrCenterNotice({
-      title: 'Signature recorded',
-      message: j.message || 'Your signature has been saved on this form.',
-      onOk: function () { void refreshSignedStateAfterSubmit(); },
-    });
+    void refreshSignedStateAfterSubmit();
   } catch(e){
     err.textContent = e.message||'Error';
     err.style.display='block';

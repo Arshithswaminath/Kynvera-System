@@ -595,17 +595,18 @@
   }
 
   const STATUS_LABELS = {
-    hr_review:'HR Review', gm_review:'GM Approval',
+    hr_review:'With HR', gm_review:'With GM',
     approved:'Approved', rejected:'Rejected', completed:'Completed',
     submitted:'Submitted', supervisor_review:'Supervisor Review', supervisor_notified:'Supervisor Review',
     bd_procurement_review:'BD/Procurement Review',
     operations_manager_review:'Ops Manager Review', general_manager_review:'GM Review',
-    hr_mgmt_reporting_manager:'Reporting manager',
-    hr_mgmt_gm:'General manager',
-    hr_mgmt_operations_manager:'Operations manager',
-    hr_mgmt_supervisor:'Supervisor',
-    hr_mgmt_hr_head_office:'HR head office',
-    hr_mgmt_routing_approver:'Routing approver',
+    hr_mgmt_reporting_manager:'With reporting manager',
+    hr_mgmt_gm:'With GM',
+    hr_mgmt_operations_manager:'With operations manager',
+    hr_mgmt_supervisor:'With supervisor',
+    hr_mgmt_hr_head_office:'With HR',
+    hr_mgmt_routing_approver:'With next approver',
+    replacement_signoff:'With colleagues',
   };
   function _statusLabel(s) {
     return STATUS_LABELS[s] || (s || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -639,10 +640,16 @@
     'hr_mgmt_reporting_manager','hr_mgmt_gm',
     'hr_mgmt_operations_manager','hr_mgmt_supervisor','hr_mgmt_hr_head_office'
   ]);
+  function _isOwnHrSubmission(sub) {
+    return !!(currentUser && sub && sub.user_id != null && Number(sub.user_id) === Number(currentUser.id));
+  }
   function _hrReviewUrl(sub) {
     const wf = sub.workflow_status || '';
+    if (_isOwnHrSubmission(sub)) {
+      return `/workflow/submitted-forms?scope=hr&submission=${encodeURIComponent(sub.submission_id || '')}`;
+    }
     if (MGMT_WF.has(wf)) return `/hr/mgmt-sign/${encodeURIComponent(sub.submission_id)}`;
-    if (wf === 'gm_review') return `/hr/gm-approval`;
+    if (wf === 'gm_review') return `/hr/gm-approval?sign=${encodeURIComponent(sub.submission_id || '')}`;
     if (wf === 'hr_review') return `/hr/pending-review`;
     return `/workflow/submitted-forms?scope=hr&submission=${encodeURIComponent(sub.submission_id)}`;
   }
@@ -687,7 +694,8 @@
     const titleRaw = sub.site_name || modName || sub.submission_id || 'Form';
     const url = _reviewUrl(sub, isPending);
     const isMgmt = isHr && MGMT_WF.has(sub.workflow_status || '');
-    const btnLabel = isPending ? (isMgmt ? 'Sign' : 'Review') : 'Open';
+    const isOwnHr = isHr && _isOwnHrSubmission(sub);
+    const btnLabel = isPending ? (isOwnHr ? 'Open' : (isMgmt ? 'Sign' : 'Review')) : 'Open';
 
     const shortId = _esc((sub.submission_id || '').slice(0, 16));
     const pdfUrl = !isPending ? _pdfDownloadUrl(sub) : null;

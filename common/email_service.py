@@ -38,6 +38,7 @@ _UNVERIFIED_MAIL_SENDERS = frozenset({
 _NON_DELIVERABLE_EMAIL_DOMAINS = frozenset({
     'example.com', 'example.net', 'example.org',
     'localhost', 'invalid',
+    'test.example',
 })
 
 # Gmail/Yahoo/Outlook DMARC rejects third-party API sends that claim these From addresses.
@@ -658,6 +659,22 @@ def _deliver_email(recipient, subject, body, html_body=None, cc=None, attachment
     """
     try:
         app = current_app._get_current_object()
+        to_list = recipient if isinstance(recipient, (list, tuple)) else [recipient]
+        real_to = []
+        for addr in to_list:
+            email = str(addr or "").strip()
+            domain = email.rsplit("@", 1)[-1].lower() if "@" in email else ""
+            # Live form tests use @test.example against the running app; never spend
+            # Brevo quota on those. Do not skip example.com here — unit tests use it
+            # with a mocked transporter.
+            if email and domain == "test.example":
+                logger.info("Email skipped (placeholder domain) to %s", email)
+                continue
+            if email:
+                real_to.append(email)
+        if not real_to:
+            return False
+        recipient = real_to if isinstance(recipient, (list, tuple)) else real_to[0]
 
         brevo_key = brevo_api_key(app)
         if brevo_key:

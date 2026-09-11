@@ -119,6 +119,12 @@ class TestPageShellVsProtectedApiPairing:
         # An HTML shell should not be a JSON payload of user/session data.
         assert resp.get_json(silent=True) is None
 
+    def test_dochub_brand_opens_dashboard(self, client):
+        html = client.get('/dochub').get_data(as_text=True)
+        assert 'id="dhBrandHome"' in html
+        assert 'href="/dochub"' in html
+        assert 'DocHub dashboard' in html
+
     @pytest.mark.parametrize('api_path', [
         '/api/admin/users',
         '/api/docs',

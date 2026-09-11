@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-  <title>Pending HR Review - Kynvera</title>
+  <title>Pending Forms - Kynvera</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/static/animations.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=27">
   <link rel="stylesheet" href="/static/css/hr-forms.css">
   <link rel="stylesheet" href="/static/mobile_responsive.css">
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-  <script src="{{ url_for('static', filename='js/hr_sign_pdf_preview.js') }}?v=3"></script>
+  <script src="{{ url_for('static', filename='js/hr_sign_pdf_preview.js') }}?v=4"></script>
   <style>
     :root { --primary: #ff8e68; --primary-light: #f97e54; }
 
@@ -63,6 +63,39 @@
       padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9;
       display: flex; align-items: center; justify-content: space-between;
       background: linear-gradient(to right, rgba(255,142,104,0.05), transparent);
+    }
+    .pending-list-header-tools {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.65rem;
+      flex: 1 1 16rem;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+    .hr-queue-search-wrap {
+      flex: 1 1 14rem;
+      min-width: min(100%, 12rem);
+      max-width: 28rem;
+    }
+    .hr-queue-search-input {
+      display: block;
+      width: 100%;
+      min-height: 2.5rem;
+      box-sizing: border-box;
+      border-radius: 9px;
+      border: 1px solid rgba(255,142,104,0.28);
+      background-color: #fff8f5;
+      color: #1c1917;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+    .hr-queue-search-input:focus {
+      border-color: #ff8e68;
+      box-shadow: 0 0 0 3px rgba(255,142,104,0.18);
+      outline: none;
+      background-color: #fff;
     }
     .pending-list-sort-wrap {
       display: flex;
@@ -141,6 +174,15 @@
     .age-pill.fresh  { background: #f0fdf4; color: #16a34a; }
     .age-pill.aging  { background: #fffbeb; color: #d97706; }
     .age-pill.urgent { background: #fef2f2; color: #dc2626; }
+
+    .stage-pill {
+      font-size: 0.7rem; font-weight: 700;
+      padding: 0.18rem 0.52rem; border-radius: 100px;
+      display: inline-flex; align-items: center;
+      background: #fff7ed; color: #c2410c;
+      border: 1px solid #fed7aa;
+      letter-spacing: 0.01em;
+    }
 
     .card-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.55rem; }
     .card-chip {
@@ -418,6 +460,21 @@
       font-size: 0.78rem;
       color: #334155;
     }
+    .hr-owner-review-copy {
+      font-size: 0.88rem;
+      color: #475569;
+      line-height: 1.5;
+      margin: 0 0 0.75rem;
+    }
+    #hrOwnerReview .btn-approve {
+      margin-top: 0.35rem;
+      text-decoration: none;
+      display: inline-flex;
+      justify-content: center;
+    }
+    #hrOwnerReview .btn-approve[hidden] {
+      display: none !important;
+    }
     .hr-sign-card .review-actions-card {
       margin-top: 0;
       max-height: none;
@@ -450,7 +507,7 @@
   </style>
   <style>body.has-main-nav { padding-top: 5.5rem; }</style>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-queue-kynvera.css') }}?v=24">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-queue-kynvera.css') }}?v=26">
 </head>
 <body class="has-main-nav hr-queue-list-page hr-module-page hr-kynvera-queue">
   {% set active_page = 'pending-review' %}
@@ -463,23 +520,29 @@
         {% set module_back_extra_class = 'back-btn' %}
         {% include 'partials/module_back_link.html' %}
       </div>
-      <h1 class="hr-queue-banner-title">Pending HR Review</h1>
-      <p class="hr-queue-banner-sub">Review and approve employee HR requests before forwarding to GM</p>
+      <h1 class="hr-queue-banner-title">Pending Forms</h1>
+      <p class="hr-queue-banner-sub">In-progress requests — sign when it is your step, or track status on forms you submitted. Submitted Forms has the full glance.</p>
     </header>
 
     <!-- Pending List -->
     <div class="pending-list-container">
       <div class="pending-list-header">
         <div class="pending-list-header-left">
-          <h2>Pending Reviews</h2>
+          <h2>Pending Forms</h2>
           <span class="pending-count-badge" id="pendingCountBadge">0</span>
         </div>
-        <div class="pending-list-sort-wrap">
-          <label for="pendingListSortOrder" class="pending-sort-label">Sort</label>
-          <select id="pendingListSortOrder" class="form-select pending-sort-select" aria-label="Sort by submission date">
-            <option value="newest" selected>Newest first</option>
-            <option value="oldest">Oldest first</option>
-          </select>
+        <div class="pending-list-header-tools">
+          <div class="hr-queue-search-wrap">
+            <label class="visually-hidden" for="pendingListSearch">Search forms</label>
+            <input type="search" id="pendingListSearch" class="hr-queue-search-input" placeholder="Search employee, form, or type" autocomplete="off">
+          </div>
+          <div class="pending-list-sort-wrap">
+            <label for="pendingListSortOrder" class="pending-sort-label">Sort</label>
+            <select id="pendingListSortOrder" class="form-select pending-sort-select" aria-label="Sort by submission date">
+              <option value="newest" selected>Newest first</option>
+              <option value="oldest">Oldest first</option>
+            </select>
+          </div>
         </div>
       </div>
       <div id="pendingList">
@@ -537,11 +600,27 @@
             <div class="hr-sign-col">
               <div class="hr-sign-card">
                 <header class="gm-rail-head">
-                  <p class="hr-sign-kicker">HR review</p>
+                  <p class="hr-sign-kicker" id="hrSignKicker">HR review</p>
                   <h2 class="hr-sign-title" id="hrSignTitle">HR Review</h2>
                   <p class="hr-sign-meta" id="hrSignMeta">Review and forward to GM</p>
                 </header>
 
+                <div id="hrOwnerReview" class="hr-owner-review" hidden>
+                  <div class="review-actions-card">
+                    <div class="review-actions-title">Review</div>
+                    <div id="hrOwnerReviewOwnerCopy">
+                      <p class="hr-owner-review-copy">This is a status preview of a request you submitted. Signing and HR actions are not available here.</p>
+                      <p class="hr-owner-review-copy">Submitted Forms has the full glance of this request.</p>
+                    </div>
+                    <div id="hrOwnerReviewSignedCopy" hidden>
+                      <p class="hr-owner-review-copy">You already signed this request. It is waiting for remaining signatures — you cannot sign it again.</p>
+                      <p class="hr-owner-review-copy" id="hrOwnerReviewSignedDestCopy">When every signature is in, the form is in Completed Forms.</p>
+                    </div>
+                    <a id="hrOwnerSubmittedFormsLink" class="btn-approve" href="/workflow/submitted-forms?scope=hr">Open in Submitted Forms</a>
+                  </div>
+                </div>
+
+                <div id="hrSignerActions">
                 <div class="review-actions-card">
                   <div class="review-actions-title">Your Review</div>
 
@@ -592,6 +671,7 @@
                   <button type="button" class="btn btn-outline-danger" onclick="rejectRequest()">Reject</button>
                   <button type="button" class="btn-approve" onclick="approveRequest()">Approve &amp; Forward</button>
                 </div>
+                </div>
               </div>
             </div>
           </div>
@@ -622,11 +702,14 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/hr-display.js') }}?v=1"></script>
+  <script src="{{ url_for('static', filename='js/hr-display.js') }}?v=2"></script>
+  <script src="{{ url_for('static', filename='js/hr_queue_search.js') }}?v=1"></script>
   <script src="{{ url_for('static', filename='js/hr_submission_full_form_url.js') }}"></script>
   <script>
     const HR_SUPPORTED_DOCX_FORMS = {{ (supported_docx_forms or [])|tojson }};
     const HR_SUPPORTED_PDF_FORMS  = {{ (supported_pdf_forms or [])|tojson }};
+    const CURRENT_USER_ID = {{ (user.id if user else none)|tojson }};
+    const CURRENT_USER_IS_HR = {{ ((user.designation or '') in ('hr_manager', 'hr') or (user.role or '') == 'admin')|tojson }};
     const token = localStorage.getItem('access_token');
     let pendingListCache = [];
     let currentSubmissionId = null;
@@ -893,7 +976,7 @@
         container.innerHTML = `
             <div class="empty-state">
               <h5 style="font-weight:700;color:#1e293b;margin-bottom:0.4rem;">All caught up</h5>
-              <p class="text-muted mb-0" style="font-size:0.875rem;">No requests pending HR review</p>
+              <p class="text-muted mb-0" style="font-size:0.875rem;">No in-progress forms. Submitted Forms has the full glance of your requests.</p>
             </div>`;
         return;
       }
@@ -901,11 +984,31 @@
       badge.textContent = pendingListCache.length;
       badge.style.display = 'inline-block';
 
-      const sorted = sortPendingByDate(pendingListCache, pendingListSortOrder());
+      const q = window.HrQueueSearch
+        ? HrQueueSearch.queryFrom(document.getElementById('pendingListSearch'))
+        : '';
+      const filtered = window.HrQueueSearch
+        ? HrQueueSearch.filter(pendingListCache, q)
+        : pendingListCache;
+      badge.textContent = filtered.length;
+      if (!filtered.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+              <h5 style="font-weight:700;color:#1e293b;margin-bottom:0.4rem;">No matching forms</h5>
+              <p class="text-muted mb-0" style="font-size:0.875rem;">Try another employee name, form reference, or form type.</p>
+            </div>`;
+        return;
+      }
+
+      const sorted = sortPendingByDate(filtered, pendingListSortOrder());
       const leaveLabels = { annual: 'Annual', sick: 'Sick', ot_compensatory: 'OT Comp', unpaid: 'Unpaid', compassionate: 'Compassionate', hajj: 'Hajj', other: 'Other' };
 
       container.innerHTML = sorted.map(s => {
         const fd = s.form_data || {};
+        const own = isOwnPendingRow(s);
+        const stage = (window.hrDisplay && hrDisplay.stageLabel)
+          ? hrDisplay.stageLabel(s.workflow_status, fd)
+          : (s.pending_step_label ? ('With ' + s.pending_step_label) : '');
         const chips = [];
         if (fd.employee_name) chips.push(`<span class="card-chip"><strong>Employee:</strong> ${escapeHtml(fd.employee_name)}</span>`);
         if (fd.leave_type)    chips.push(`<span class="card-chip"><strong>Type:</strong> ${escapeHtml(leaveLabels[fd.leave_type] || fd.leave_type)}</span>`);
@@ -922,17 +1025,18 @@
                     <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
                       <span class="form-type-badge ${getFormTypeClass(s.module_type)}">${getFormTypeLabel(s.module_type)}</span>
                       ${agePill(s.created_at)}
+                      ${stage ? `<span class="stage-pill">Stage: ${escapeHtml(stage)}</span>` : ''}
                     </div>
                     <div style="font-weight:700;font-size:0.92rem;color:#1e293b;margin-bottom:0.15rem;">${escapeHtml(hrSubmissionRef(s.submission_id))}</div>
                     <div style="font-size:0.8rem;color:#64748b;">
-                      From <strong style="color:#374151;">${escapeHtml(s.submitter_name || 'Unknown')}</strong>
+                      ${own ? 'You submitted this' : ('From <strong style="color:#374151;">' + escapeHtml(s.submitter_name || 'Unknown') + '</strong>')}
                       &nbsp;·&nbsp;
-                      ${InjaazDateTimeUAE.formatDateMed(s.created_at)}
+                      ${InjaazDateTimeUAE.formatDateTime(s.created_at)} (GST)
                     </div>
                     ${chips.length ? `<div class="card-chips">${chips.join('')}</div>` : ''}
                   </div>
                   <button class="btn-review-card" onclick="event.stopPropagation();openReview('${s.submission_id}', ${JSON.stringify(s).replace(/"/g, '&quot;')})">
-                    Review
+                    ${own ? 'Status' : 'Review'}
                   </button>
                 </div>
               </div>`;
@@ -942,9 +1046,32 @@
     /* ── Load pending list ────────────────────────────────── */
     async function loadPending() {
       try {
-        const response = await fetch('/hr/api/pending-hr-review', { headers: { 'Authorization': `Bearer ${token}` } });
-        const data = await response.json();
-        pendingListCache = Array.isArray(data.submissions) ? data.submissions : [];
+        const byId = new Map();
+        const inflight = await fetch('/hr/api/my-in-flight-hr', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (inflight.ok) {
+          const data = await inflight.json();
+          (data.submissions || []).forEach((s) => {
+            if (s && s.submission_id) byId.set(s.submission_id, s);
+          });
+        }
+        const mine = await fetch('/hr/api/my-mgmt-signoffs', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (mine.ok) {
+          const data = await mine.json();
+          (data.submissions || []).forEach((s) => {
+            if (s && s.submission_id) byId.set(s.submission_id, s);
+          });
+        }
+        const hr = await fetch('/hr/api/pending-hr-review', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (hr.ok) {
+          const data = await hr.json();
+          (data.submissions || []).forEach((s) => {
+            if (s && s.submission_id) byId.set(s.submission_id, s);
+          });
+        }
+        pendingListCache = Array.from(byId.values()).filter(function (s) {
+          if (isOwnPendingRow(s)) return true;
+          return !alreadySignedByMe(s);
+        });
         renderPendingListFromCache();
       } catch (error) {
         console.error('Error:', error);
@@ -954,6 +1081,7 @@
     }
 
     document.getElementById('pendingListSortOrder')?.addEventListener('change', () => renderPendingListFromCache());
+    if (window.HrQueueSearch) HrQueueSearch.bind('pendingListSearch', () => renderPendingListFromCache());
 
     /* ── Sidebar helpers ──────────────────────────────────── */
     const FORM_TYPE_LABELS = {
@@ -975,7 +1103,7 @@
       interview_assessment: 'Interview Assessment Form', asset: 'Asset Form'
     };
     const WORKFLOW_STATUS_LABELS = {
-      hr_review: 'Pending HR Review', hr_mgmt_hr_head_office: 'HR Head Office',
+      hr_review: 'Pending HR Review', hr_mgmt_hr_head_office: 'HR',
       gm_review: 'Pending GM Approval', approved: 'Approved',
       rejected: 'Rejected', submitted: 'Submitted', replacement_signoff: 'Awaiting Signoffs'
     };
@@ -1002,25 +1130,25 @@
         items.push(sigItem('Employee Signature', 'Captured on this form', hasSig(fd.employee_signature)));
         items.push(sigItem('Colleague / Replacement', 'Replacement signoff', repSigned));
         items.push(sigItem('Manager Signature', 'Management sign-off', hasSig(fd.gm_signature)));
-        items.push(sigItem('HR (Head Office)', 'Final HR review', hasSig(fd.hr_signature)));
+        items.push(sigItem('HR', 'Final HR review', hasSig(fd.hr_signature)));
       } else if (formType === 'duty_resumption') {
         items.push(sigItem('Employee Signature', 'Captured on this form', hasSig(fd.employee_signature)));
         items.push(sigItem('Reporting Manager', 'Captured on this form', hasSig(fd.reporting_manager_signature)));
         items.push(sigItem('General Manager', 'Captured on this form', hasSig(fd.gm_signature)));
-        items.push(sigItem('HR (Head Office)', 'Captured on this form', hasSig(fd.hr_signature)));
+        items.push(sigItem('HR', 'Captured on this form', hasSig(fd.hr_signature)));
       } else if (formType === 'passport_release') {
         items.push(sigItem('Employee Signature', 'Captured on this form', hasSig(fd.employee_signature)));
-        items.push(sigItem('HR Signature', 'HR head office', hasSig(fd.hr_signature)));
+        items.push(sigItem('HR Signature', 'HR', hasSig(fd.hr_signature)));
       } else if (formType === 'grievance') {
         items.push(sigItem('Complainant Signature', 'Captured on this form', hasSig(fd.complainant_signature)));
-        items.push(sigItem('HR Signature', 'HR head office', hasSig(fd.hr_signature)));
+        items.push(sigItem('HR Signature', 'HR', hasSig(fd.hr_signature)));
       } else {
         items.push(sigItem('Employee Signature', 'Captured on this form', hasSig(fd.employee_signature)));
         if (hasSig(fd.reporting_manager_signature) || fd.reporting_manager_signature === '')
           items.push(sigItem('Reporting Manager', 'Captured on this form', hasSig(fd.reporting_manager_signature)));
         if (hasSig(fd.gm_signature) || fd.gm_signature === '')
           items.push(sigItem('General Manager', 'Captured on this form', hasSig(fd.gm_signature)));
-        items.push(sigItem('HR (Head Office)', 'Final HR review', hasSig(fd.hr_signature)));
+        items.push(sigItem('HR', 'Final HR review', hasSig(fd.hr_signature)));
       }
       document.getElementById('sigStatusList').innerHTML = items.join('');
     }
@@ -1032,7 +1160,7 @@
       const rmSlot = routedSlots.find(s => s && s.key === 'reporting_manager');
       const rmDisplay = rmName || (rmSlot && rmSlot.signers && rmSlot.signers[0] && rmSlot.signers[0].display_name) || null;
 
-      let html = `<p class="mgmt-approvals-text">Your <strong>reporting manager</strong> is assigned on your profile by an administrator. This form routes: reporting manager → general manager → HR (head office).</p>`;
+      let html = `<p class="mgmt-approvals-text">Your <strong>reporting manager</strong> is assigned on your profile by an administrator. This form routes: reporting manager → general manager → HR.</p>`;
       if (rmDisplay) {
         html += `<div class="mgmt-chip"><span class="mgmt-chip-dot"></span>${escapeHtml(rmDisplay)}</div>`;
       } else {
@@ -1043,8 +1171,46 @@
       if (pdfLink) pdfLink.href = fullFormUrl || '#';
     }
 
+    function alreadySignedByMe(submission) {
+      const fd = (submission && submission.form_data) || {};
+      const steps = fd.hr_mgmt_chain && fd.hr_mgmt_chain.steps;
+      if (!Array.isArray(steps) || CURRENT_USER_ID == null) return false;
+      return steps.some(function (st) {
+        return st && st.signature && String(st.signed_by_id) === String(CURRENT_USER_ID);
+      });
+    }
+
+    function isOwnPendingRow(submission) {
+      if (!submission) return false;
+      if (submission.viewer_state === 'submitter') return true;
+      const fd = submission.form_data || {};
+      const ownerId = submission.user_id != null
+        ? submission.user_id
+        : (fd.submitted_by_id != null ? fd.submitted_by_id : null);
+      return CURRENT_USER_ID != null && ownerId != null && String(ownerId) === String(CURRENT_USER_ID);
+    }
+
+    function pendingUsesHrPad(submission) {
+      const wf = (submission && submission.workflow_status) || '';
+      return !!(CURRENT_USER_IS_HR && (wf === 'hr_review' || wf === 'hr_mgmt_hr_head_office'));
+    }
+
     /* ── Open review modal ────────────────────────────────── */
     function openReview(submissionId, submission) {
+      const isOwner = isOwnPendingRow(submission);
+      if (!isOwner && alreadySignedByMe(submission)) {
+        window.location.href = '/hr/mgmt-sign/' + encodeURIComponent(submissionId);
+        return;
+      }
+      if (!isOwner && submission && !pendingUsesHrPad(submission)) {
+        const wf = submission.workflow_status || '';
+        if (wf === 'gm_review') {
+          window.location.href = '/hr/gm-approval?sign=' + encodeURIComponent(submissionId);
+          return;
+        }
+        window.location.href = '/hr/mgmt-sign/' + encodeURIComponent(submissionId);
+        return;
+      }
       currentSubmissionId = submissionId;
       currentFormType = submission.module_type || submission.form_type;
       currentWorkflowStatus = submission.workflow_status || '';
@@ -1058,7 +1224,9 @@
       if (badge) badge.textContent = FORM_TYPE_LABELS[formTypeClean] || formTypeClean.replace(/_/g, ' ').toUpperCase();
       const subEl = document.getElementById('reviewModalSubtitle');
       if (subEl) subEl.textContent = submissionId;
-      const statusLabel = WORKFLOW_STATUS_LABELS[currentWorkflowStatus] || currentWorkflowStatus;
+      const statusLabel = (window.hrDisplay && hrDisplay.stageLabel)
+        ? hrDisplay.stageLabel(currentWorkflowStatus, submission.form_data)
+        : (WORKFLOW_STATUS_LABELS[currentWorkflowStatus] || currentWorkflowStatus);
       const statusEl = document.getElementById('reviewHeaderStatus');
       if (statusEl) statusEl.textContent = statusLabel ? '(' + statusLabel + ')' : '';
       const refPill = document.getElementById('hrPageRef');
@@ -1067,11 +1235,15 @@
       // Sign-card title + meta
       const signTitle = document.getElementById('hrSignTitle');
       if (signTitle) signTitle.textContent = FORM_CARD_TITLES[formTypeClean] || (FORM_TYPE_LABELS[formTypeClean] || 'HR Review');
+      const signKicker = document.getElementById('hrSignKicker');
+      if (signKicker) signKicker.textContent = isOwner ? 'Status' : 'HR review';
       const signMeta = document.getElementById('hrSignMeta');
       if (signMeta) {
-        const submitterName = escapeHtml(submission.submitter_name || (formData && formData.submitted_by_name) || 'Employee');
-        signMeta.innerHTML =
-          '<strong>' + submitterName + '</strong> submitted this request.';
+        const submitterName = escapeHtml(submission.submitter_name || (submission.form_data && submission.form_data.submitted_by_name) || 'Employee');
+        signMeta.innerHTML = isOwner
+          ? ('You submitted this request.' + (statusLabel ? '<br>Stage: <strong>' + escapeHtml(statusLabel) + '</strong>.' : ''))
+          : ('<strong>' + submitterName + '</strong> submitted this request.'
+            + (statusLabel ? '<br>Stage: <strong>' + escapeHtml(statusLabel) + '</strong>.' : ''));
       }
 
       // Hidden legacy iframe (kept so other code paths that read it do not break)
@@ -1104,6 +1276,27 @@
       }
 
       const formData = submission.form_data || {};
+      const alreadySigned = (function () {
+        const steps = formData.hr_mgmt_chain && formData.hr_mgmt_chain.steps;
+        if (!Array.isArray(steps) || CURRENT_USER_ID == null) return false;
+        return steps.some(function (st) {
+          return st && st.signature && String(st.signed_by_id) === String(CURRENT_USER_ID);
+        });
+      }());
+      const hideSign = isOwner || alreadySigned;
+      const ownerPane = document.getElementById('hrOwnerReview');
+      const signerPane = document.getElementById('hrSignerActions');
+      const ownerLink = document.getElementById('hrOwnerSubmittedFormsLink');
+      const ownerCopy = document.getElementById('hrOwnerReviewOwnerCopy');
+      const signedCopy = document.getElementById('hrOwnerReviewSignedCopy');
+      if (ownerLink) {
+        ownerLink.href = '/workflow/submitted-forms?scope=hr&submission=' + encodeURIComponent(submissionId || '');
+        ownerLink.hidden = !isOwner;
+      }
+      if (ownerCopy) ownerCopy.hidden = !isOwner;
+      if (signedCopy) signedCopy.hidden = !(!isOwner && alreadySigned);
+      if (ownerPane) ownerPane.hidden = !hideSign;
+      if (signerPane) signerPane.hidden = !!hideSign;
 
       // HR form fields
       const hrFormFields = document.getElementById('hrFormFields');
@@ -1129,14 +1322,22 @@
     async function loadHrPdfPreview(submissionId) {
       const gen = ++hrPdfPreviewGen;
       if (!window.HrSignPdfPreview) return;
+      const commentsEl = document.getElementById('reviewComments');
       await HrSignPdfPreview.load({
         submissionId: submissionId,
         token: token,
         gen: gen,
         isStale: function (g) { return g !== hrPdfPreviewGen; },
+        previewComment: commentsEl ? commentsEl.value : '',
         errMessage: 'Could not load the submitted form as PDF. You can still review and sign below.',
       });
     }
+
+    try {
+      HrSignPdfPreview.watchCommentField(document.getElementById('reviewComments'), function () {
+        if (currentSubmissionId) loadHrPdfPreview(currentSubmissionId);
+      });
+    } catch (e) {}
 
     document.getElementById('reviewModal')?.addEventListener('hidden.bs.modal', function () {
       hrPdfPreviewGen += 1;
@@ -1217,6 +1418,7 @@
     /* ── Approve / Reject ─────────────────────────────────── */
     async function approveRequest() {
       if (!currentSubmissionId) return;
+      if (document.getElementById('hrSignerActions') && document.getElementById('hrSignerActions').hidden) return;
       const comments  = (document.getElementById('reviewComments') || {}).value || '';
       const signature = signaturePad && !signaturePad.isEmpty() ? signaturePad.toDataURL() : '';
       const payload = { comments, signature };
@@ -1253,7 +1455,7 @@
           loadPending();
           const follow = isMgmtHrFinal
             ? (serverMsg + '\n\nPDF trail: management chain is complete when all steps are signed.')
-            : (serverMsg + '\n\nNext: General Manager completes sign-off in GM Final Approval.');
+            : (serverMsg + '\n\nNext: the General Manager signs from Pending Forms.');
           const title = isMgmtHrFinal ? 'HR sign-off saved' : 'Approved — forwarded to GM';
           requestAnimationFrame(() => setTimeout(() => showHrPendingReviewResult(title, follow, 'approve'), 50));
         } else { showErrorToast('Error: ' + (result.error || result.message || 'Approval failed')); }
@@ -1262,6 +1464,7 @@
 
     async function rejectRequest() {
       if (!currentSubmissionId) return;
+      if (document.getElementById('hrSignerActions') && document.getElementById('hrSignerActions').hidden) return;
       const reason = prompt('Please provide a reason for rejection:');
       if (!reason) return;
       try {

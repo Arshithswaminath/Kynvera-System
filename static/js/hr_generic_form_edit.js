@@ -5,6 +5,17 @@
 (function (global) {
   var stateMap = {};
 
+  function mgmtStepDisplayLabel(st) {
+    if (!st || typeof st !== 'object') return 'Approver';
+    if (st.key === 'hr_head_office') return 'HR';
+    var raw = String(st.pdf_label || st.who_label || '').trim();
+    var lowered = raw.toLowerCase();
+    if (lowered.indexOf('head office') !== -1 || lowered === 'hr (ho)' || lowered === 'hr (h.o.)') {
+      return 'HR';
+    }
+    return raw || 'Approver';
+  }
+
   function unwrapNestedFormData(fd) {
     if (!fd || typeof fd !== 'object') return fd || {};
     var nested = fd.data;
@@ -247,7 +258,7 @@
       if (!skipMgmtTrailInPanel && chain && typeof chain === 'object' && Array.isArray(chain.steps)) {
         chain.steps.forEach(function (st) {
           if (!st || !st.signature) return;
-          var pdfLabel = st.pdf_label || st.key || 'Management';
+          var pdfLabel = mgmtStepDisplayLabel(st);
           var who = st.signed_by_name ? String(st.signed_by_name) : '';
           pushEntry({
             title: String(pdfLabel) + (who ? ' — ' + who : ''),
@@ -270,7 +281,7 @@
         var hru = signatureDataUrl(fd.hr_signature);
         if (hru)
           pushEntry({
-            title: 'HR (head office)' + (fd.hr_reviewed_by_name ? ' — ' + String(fd.hr_reviewed_by_name) : ''),
+            title: 'HR' + (fd.hr_reviewed_by_name ? ' — ' + String(fd.hr_reviewed_by_name) : ''),
             subtitle: fd.hr_reviewed_at ? fmtLocalMaybeIso(fd.hr_reviewed_at) : '',
             extra: (fd.hr_comments || fd.hr_remarks || '')
               ? String(fd.hr_comments || fd.hr_remarks)
@@ -627,6 +638,16 @@
         if (!gmMirror && st.also_mirrors_gm_fields) gmMirror = st;
       }
       var gmSrc = gmPick || gmMirror;
+      if (!gmSrc) {
+        for (var r = 0; r < steps.length; r++) {
+          var str = steps[r];
+          if (!str || !str.signature) continue;
+          if (str.key === 'reporting_manager' || str.key === 'supervisor') {
+            gmSrc = str;
+            break;
+          }
+        }
+      }
       if (gmSrc) applySignaturePreview(form, 'gm_signature', gmSrc.signature);
     }
 
@@ -1262,6 +1283,12 @@
       else defaultPopulate(form, fd, opt);
       syncReportingManagerSignatureFromMgmtChain(form, fd);
       syncGmHrSignaturesFromMgmtChain(form, fd);
+      if (typeof window.setHrMgmtChainLiveSteps === 'function') {
+        var liveChain = fd.hr_mgmt_chain && Array.isArray(fd.hr_mgmt_chain.steps)
+          ? fd.hr_mgmt_chain.steps
+          : [];
+        window.setHrMgmtChainLiveSteps(liveChain);
+      }
       if (typeof opt.afterPopulate === 'function') opt.afterPopulate(payload, fd, form, opt);
       renderRecordedSignaturesPanel(form, fd);
       showRevisionBanner(fd);
@@ -1343,11 +1370,18 @@
   api.stopSignoffActivityPoll = stopSignoffActivityPoll;
   api.bootSignoffActivitySidebar = bootSignoffActivitySidebar;
   api.canModifySig = function (formId, slotKey) {
+    var key = String(slotKey || '').toLowerCase();
+    var selfKeys = { employee: 1, complainant: 1, takeover: 1 };
     var f = document.getElementById(formId);
-    if (!f) return true;
-    var st = stateMap[f.id];
-    if (!st || !st.viewLocked) return true;
-    if (slotKey === 'hr') return !!st.canEditHr;
-    return !!st.canEditEmployee;
+    var st = f ? stateMap[f.id] : null;
+    if (!st || !st.viewLocked) {
+      if (selfKeys[key]) return true;
+      if (key === 'hr') return !!window.__hrCanSignHr;
+      if (key === 'gm') return !!window.__hrCanSignGm;
+      return false;
+    }
+    if (key === 'hr') return !!st.canEditHr;
+    if (key === 'gm' || key === 'rm') return false;
+    return !!selfKeys[key] && !!st.canEditEmployee;
   };
 })(window);

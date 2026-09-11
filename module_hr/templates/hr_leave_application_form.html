@@ -205,8 +205,9 @@
             <div class="step-panel" id="step2Panel">
               <div class="step-hint">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span><strong>Step 2 of 2</strong> — Fill in leave details, add your signature, then submit. You can go back to edit Step 1 if needed.</span>
+                <span><strong>Step 2 of 2</strong> — Fill in leave details, add your employee signature, then submit. Coverage colleagues (if any) and the management chain sign later.</span>
               </div>
+              {% include 'partials/hr_signatures_required_form_note.html' %}
 
               <section class="sec">
                 <h2 class="sec-hd">Details of Leave</h2>
@@ -1021,6 +1022,38 @@ function resolveSignaturePreviewUrl(raw) {
   return '';
 }
 
+function managerSignatureFromLeaveFd(fd) {
+  fd = fd || {};
+  var fromFlat = fd.gm_signature || fd.reporting_manager_signature;
+  if (fromFlat) return fromFlat;
+  var steps = (fd.hr_mgmt_chain && fd.hr_mgmt_chain.steps) || [];
+  var i;
+  for (i = 0; i < steps.length; i++) {
+    var st = steps[i];
+    if (!st || !st.signature) continue;
+    if (st.key === 'general_manager') return st.signature;
+  }
+  for (i = 0; i < steps.length; i++) {
+    var st2 = steps[i];
+    if (!st2 || !st2.signature) continue;
+    if (st2.key === 'reporting_manager' || st2.key === 'supervisor' || st2.also_mirrors_gm_fields) {
+      return st2.signature;
+    }
+  }
+  return '';
+}
+
+function hrSignatureFromLeaveFd(fd) {
+  fd = fd || {};
+  if (fd.hr_signature) return fd.hr_signature;
+  var steps = (fd.hr_mgmt_chain && fd.hr_mgmt_chain.steps) || [];
+  for (var i = 0; i < steps.length; i++) {
+    var st = steps[i];
+    if (st && st.key === 'hr_head_office' && st.signature) return st.signature;
+  }
+  return '';
+}
+
 let leaveHydrationFd = null;
 
 function collectReplacementSignersForPreview(fd) {
@@ -1287,9 +1320,12 @@ async function hydrateFromSubmissionIfNeeded() {
   hydrateLeaveCoverage(fd);
 
   applySigPreviewSlot('employee', fd.employee_signature);
-  if (sigCfg.gm) applySigPreviewSlot('gm', fd.gm_signature);
-  if (sigCfg.hr) applySigPreviewSlot('hr', fd.hr_signature);
+  if (sigCfg.gm) applySigPreviewSlot('gm', managerSignatureFromLeaveFd(fd));
+  if (sigCfg.hr) applySigPreviewSlot('hr', hrSignatureFromLeaveFd(fd));
   renderReplacementSignaturesPreview(fd);
+  if (typeof window.setHrMgmtChainLiveSteps === 'function') {
+    window.setHrMgmtChainLiveSteps((fd.hr_mgmt_chain && fd.hr_mgmt_chain.steps) || []);
+  }
 
   if (form.elements['hr_checked']) {
     setRadioGroupValue('hr_checked', fd.hr_checked);
@@ -1438,7 +1474,7 @@ document.getElementById('leaveFrm').addEventListener('submit',async e=>{
   }catch(err){alert('Unable to submit: '+(err && err.message ? err.message : String(err)));btn.disabled=false;btn.innerHTML='Submit Application'}
 });
 </script>
-  <script src="{{ url_for('static', filename='js/hr_generic_form_edit.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/hr_generic_form_edit.js') }}?v=2"></script>
   <script>
     HrGenericFormEdit.attach({
       formId: 'leaveFrm',

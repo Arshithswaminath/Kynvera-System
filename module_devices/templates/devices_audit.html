@@ -1,0 +1,96 @@
+{% set fm_page_title = 'Audit logs' %}
+{% set fm_topbar_title = 'Audit logs' %}
+{% include 'partials/dm_shell_start.html' %}
+
+  <header class="fm-header">
+    <div>
+      <p>Enroll, update, import, and remove history for the device inventory</p>
+    </div>
+  </header>
+
+  <section class="fm-panel">
+    <div class="fm-panel-head"><h2>Activity</h2></div>
+    <div class="fm-table-wrap">
+      <table class="fm-table fm-table--registry">
+        <thead>
+          <tr>
+            <th>When</th><th>Action</th><th>Device</th><th>User</th>
+          </tr>
+        </thead>
+        <tbody id="auditRows"><tr><td colspan="4">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="fm-panel">
+    <div class="fm-panel-head"><h2>Handovers</h2></div>
+    <div class="fm-table-wrap">
+      <table class="fm-table fm-table--registry">
+        <thead>
+          <tr>
+            <th>When</th><th>Device</th><th>From</th><th>To</th><th>Condition</th>
+          </tr>
+        </thead>
+        <tbody id="handoverRows"><tr><td colspan="5">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+{% set fm_scripts %}
+<script>
+function fmtWhen(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString();
+}
+function actionLabel(action) {
+  const map = {
+    device_enroll: 'Enrolled',
+    device_update: 'Updated',
+    device_delete: 'Removed',
+    device_import: 'Excel import',
+  };
+  return map[action] || fmHumanLabel(action, action || '—');
+}
+(async function () {
+  const auditBody = document.getElementById('auditRows');
+  const handBody = document.getElementById('handoverRows');
+  try {
+    const res = await fetch('/api/admin/devices/audit', { headers: fmAuthHeaders() });
+    const data = await res.json();
+    const logs = data.logs || [];
+    const handovers = data.handovers || [];
+    if (!logs.length) {
+      auditBody.innerHTML = '<tr><td colspan="4">No device activity yet. Enroll or edit a device to start the log.</td></tr>';
+    } else {
+      auditBody.innerHTML = logs.map((row) =>
+        '<tr>' +
+        '<td data-label="When">' + DM.esc(fmtWhen(row.created_at)) + '</td>' +
+        '<td data-label="Action">' + DM.esc(actionLabel(row.action)) + '</td>' +
+        '<td data-label="Device">' + DM.esc(row.resource_id || (row.details && row.details.name) || '—') + '</td>' +
+        '<td data-label="User">' + DM.esc(row.user_name || row.user_email || '—') + '</td>' +
+        '</tr>'
+      ).join('');
+    }
+    if (!handovers.length) {
+      handBody.innerHTML = '<tr><td colspan="5">No custody handovers recorded.</td></tr>';
+    } else {
+      handBody.innerHTML = handovers.map((row) =>
+        '<tr>' +
+        '<td data-label="When">' + DM.esc(fmtWhen(row.handover_at)) + '</td>' +
+        '<td data-label="Device">' + DM.esc((row.device_id || '') + (row.device_name ? ' — ' + row.device_name : '')) + '</td>' +
+        '<td data-label="From">' + DM.esc(row.from_person_name || '—') + '</td>' +
+        '<td data-label="To">' + DM.esc(row.to_person_name || '—') + '</td>' +
+        '<td data-label="Condition">' + DM.esc(row.condition_rating || '—') + '</td>' +
+        '</tr>'
+      ).join('');
+    }
+  } catch (e) {
+    auditBody.innerHTML = '<tr><td colspan="4">Could not load audit logs.</td></tr>';
+    handBody.innerHTML = '<tr><td colspan="5">Could not load handovers.</td></tr>';
+  }
+})();
+</script>
+{% endset %}
+{% include 'partials/dm_shell_end.html' %}

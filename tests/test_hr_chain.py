@@ -155,6 +155,15 @@ def test_office_staff_lane_is_gm_then_hr(app, chain_users):
         assert err is None
         assert _chain_keys(steps) == ["general_manager", "hr_head_office"]
         assert [s["signer_mode"] for s in steps] == ["designation", "designation"]
+        assert steps[1]["pdf_label"] == "HR"
+
+
+def test_mgmt_step_display_label_uses_hr_not_head_office():
+    from module_hr.hr_management_chain import mgmt_step_display_label
+
+    assert mgmt_step_display_label({"key": "hr_head_office", "pdf_label": "HR (head office)"}) == "HR"
+    assert mgmt_step_display_label({"pdf_label": "HR head office"}) == "HR"
+    assert mgmt_step_display_label({"pdf_label": "General manager"}) == "General manager"
 
 
 def test_gm_without_reporting_manager_skips_self_and_lists_admin_as_hr(app, chain_users):
@@ -180,6 +189,7 @@ def test_gm_without_reporting_manager_skips_self_and_lists_admin_as_hr(app, chai
         hr_row = ctx["chain"][0]
         assert hr_row["who_label"]
         assert hr_row["key"] == "hr_head_office"
+        assert hr_row["role_label"] == "HR"
 
 
 def test_canonical_hr_falls_back_to_admin_when_no_hr_manager(app, chain_users):
@@ -359,7 +369,7 @@ def test_ui_context_technician_descriptor(app, chain_users):
             "Immediate supervisor",
             "Operations manager",
             "General manager",
-            "HR (head office)",
+            "HR",
         ]
 
         sup_row = ctx["chain"][0]
@@ -405,7 +415,8 @@ def test_ui_context_flags_setup_error_for_technician_without_supervisor(app, cha
         assert ctx["supervisor"]["assigned"] is False
 
 
-def test_access_hr_user_can_sign_hr_mgmt_step(app, chain_users):
+def test_access_hr_user_cannot_sign_hr_mgmt_step(app, chain_users):
+    """Module access is not HR signing authority."""
     from app.models import db, User
     from module_hr.hr_management_chain import user_allowed_to_sign_step, _step, WF_MGMT_HR
 
@@ -428,16 +439,236 @@ def test_access_hr_user_can_sign_hr_mgmt_step(app, chain_users):
         step = _step(
             "hr_head_office",
             WF_MGMT_HR,
-            "HR (head office)",
+            "HR",
             signer_mode="designation",
             designation_gate="hr_head_office",
         )
         assert user_allowed_to_sign_step(chain_users["hr"], step) is True
-        assert user_allowed_to_sign_step(hr_staff, step) is True
+        assert user_allowed_to_sign_step(hr_staff, step) is False
         assert user_allowed_to_sign_step(chain_users["tech"], step) is False
 
         db.session.delete(hr_staff)
         db.session.commit()
+
+
+def test_submitter_cannot_sign_own_hr_mgmt_step(app, chain_users):
+    from module_hr.hr_management_chain import user_allowed_to_sign_step, _step, WF_MGMT_HR
+
+    with app.app_context():
+        hr = chain_users["hr"]
+        step = _step(
+            "hr_head_office",
+            WF_MGMT_HR,
+            "HR",
+            signer_mode="designation",
+            designation_gate="hr_head_office",
+        )
+        assert user_allowed_to_sign_step(hr, step) is True
+        assert user_allowed_to_sign_step(hr, step, submitter_id=hr.id) is False
+        assert user_allowed_to_sign_step(hr, step, submitter_id=chain_users["emp"].id) is True
+
+
+def test_admin_cannot_sign_own_hr_mgmt_step(app, chain_users):
+    from app.models import db, User
+    from module_hr.hr_management_chain import user_allowed_to_sign_step, _step, WF_MGMT_HR
+
+    with app.app_context():
+        admin = User(
+            username=f"adm_{uuid.uuid4().hex[:6]}",
+            email="adm-own@example.com",
+            full_name="Admin Submitter",
+            role="admin",
+            is_active=True,
+            password_changed=True,
+        )
+        admin.set_password("TestPass123")
+        db.session.add(admin)
+        db.session.flush()
+        step = _step(
+            "hr_head_office",
+            WF_MGMT_HR,
+            "HR",
+            signer_mode="designation",
+            designation_gate="hr_head_office",
+        )
+        assert user_allowed_to_sign_step(admin, step) is True
+        assert user_allowed_to_sign_step(admin, step, submitter_id=admin.id) is False
+        assert user_allowed_to_sign_step(admin, step, submitter_id=chain_users["emp"].id) is True
+        db.session.delete(admin)
+        db.session.commit()
+
+
+def test_gm_cannot_sign_hr_mgmt_step(app, chain_users):
+    from module_hr.hr_management_chain import user_allowed_to_sign_step, _step, WF_MGMT_HR
+
+    with app.app_context():
+        step = _step(
+            "hr_head_office",
+            WF_MGMT_HR,
+            "HR",
+            signer_mode="designation",
+            designation_gate="hr_head_office",
+        )
+        assert user_allowed_to_sign_step(chain_users["gm"], step) is False
+        assert user_allowed_to_sign_step(chain_users["hr"], step) is True
+
+
+def test_prior_signer_cannot_sign_later_hr_step(app, chain_users):
+    from module_hr.hr_management_chain import (
+        MGMT_CHAIN_KEY,
+        WF_MGMT_HR,
+        init_management_chain_on_submit,
+        pending_management_step_for_user,
+    )
+
+    with app.app_context():
+        emp = chain_users["emp"]
+        gm = chain_users["gm"]
+        hr = chain_users["hr"]
+        payload = {"employee_name": "Emp", "submitted_by_id": emp.id}
+        assert init_management_chain_on_submit(payload, emp) is None
+        block = payload[MGMT_CHAIN_KEY]
+        gm_step = block["steps"][0]
+        assert gm_step["key"] == "general_manager"
+        gm_step["signature"] = "data:image/png;base64,x"
+        gm_step["signed_by_id"] = gm.id
+        block["current_index"] = 1
+        assert pending_management_step_for_user(
+            payload, WF_MGMT_HR, gm, submitter_id=emp.id
+        ) is None
+        assert pending_management_step_for_user(
+            payload, WF_MGMT_HR, hr, submitter_id=emp.id
+        ) is not None
+
+
+def test_apply_management_signature_refuses_submitter(app, chain_users):
+    from app.models import db, Submission
+    from module_hr.hr_management_chain import (
+        MGMT_CHAIN_KEY,
+        WF_MGMT_HR,
+        apply_management_signature,
+        init_management_chain_on_submit,
+    )
+
+    sig = (
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+        "AAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+    )
+    with app.app_context():
+        hr = chain_users["hr"]
+        payload = {"employee_name": "HR Self", "submitted_by_id": hr.id}
+        assert init_management_chain_on_submit(payload, hr) is None
+        block = payload[MGMT_CHAIN_KEY]
+        steps = block["steps"]
+        hr_idx = next(i for i, s in enumerate(steps) if s["key"] == "hr_head_office")
+        block["current_index"] = hr_idx
+        sub = Submission(
+            submission_id=f"HR-VISA_RENEWAL-{uuid.uuid4().hex[:8].upper()}",
+            user_id=hr.id,
+            module_type="hr_visa_renewal",
+            site_name="HR Self",
+            status="submitted",
+            workflow_status=WF_MGMT_HR,
+            form_data=payload,
+        )
+        db.session.add(sub)
+        db.session.flush()
+        ok, err = apply_management_signature(sub, hr, sig, "self")
+        assert ok is False
+        assert err
+        ok_other, err_other = apply_management_signature(
+            sub, chain_users["emp"], sig, "nope"
+        )
+        assert ok_other is False
+        db.session.rollback()
+
+
+def test_hr_signer_pool_excludes_submitter(app, chain_users):
+    from app.models import Submission
+    from module_hr.hr_management_chain import (
+        MGMT_CHAIN_KEY,
+        WF_MGMT_HR,
+        current_management_signer_users,
+        init_management_chain_on_submit,
+    )
+
+    with app.app_context():
+        emp = chain_users["emp"]
+        hr = chain_users["hr"]
+        payload = {"employee_name": "Emp", "submitted_by_id": emp.id}
+        assert init_management_chain_on_submit(payload, emp) is None
+        block = payload[MGMT_CHAIN_KEY]
+        hr_idx = next(i for i, s in enumerate(block["steps"]) if s["key"] == "hr_head_office")
+        block["current_index"] = hr_idx
+        sub = Submission(
+            submission_id=f"HR-VISA_RENEWAL-{uuid.uuid4().hex[:8].upper()}",
+            user_id=emp.id,
+            module_type="hr_visa_renewal",
+            site_name="Emp",
+            status="submitted",
+            workflow_status=WF_MGMT_HR,
+            form_data=payload,
+        )
+        recipients, role = current_management_signer_users(sub)
+        ids = {u.id for u in recipients}
+        assert emp.id not in ids
+        assert hr.id in ids
+        assert role == "HR"
+
+
+def test_submitter_mgmt_signoff_detail_cannot_sign_hr_step(client, app, chain_users):
+    """Employee who started the visa form must not see the HR signature pad."""
+    from app.models import db, Submission
+    from module_hr.hr_management_chain import (
+        MGMT_CHAIN_KEY,
+        WF_MGMT_HR,
+        init_management_chain_on_submit,
+    )
+
+    with app.app_context():
+        emp = chain_users["emp"]
+        emp.access_hr = True
+        db.session.commit()
+        payload = {
+            "employee_name": "Arshith",
+            "submitted_by_id": emp.id,
+            "submitted_by_name": "Arshith",
+        }
+        assert init_management_chain_on_submit(payload, emp) is None
+        block = payload[MGMT_CHAIN_KEY]
+        hr_idx = next(i for i, s in enumerate(block["steps"]) if s["key"] == "hr_head_office")
+        block["current_index"] = hr_idx
+        sub = Submission(
+            submission_id=f"HR-VISA_RENEWAL-{uuid.uuid4().hex[:8].upper()}",
+            user_id=emp.id,
+            module_type="hr_visa_renewal",
+            site_name="Arshith",
+            status="submitted",
+            workflow_status=WF_MGMT_HR,
+            form_data=payload,
+        )
+        db.session.add(sub)
+        db.session.commit()
+        sid = sub.submission_id
+        emp_name = emp.username
+        hr_name = chain_users["hr"].username
+
+    emp_h = _login_headers(client, emp_name)
+    detail = client.get(f"/hr/api/mgmt-signoff-detail/{sid}", headers=emp_h).get_json()
+    assert detail["success"] is True
+    assert detail["is_owner"] is True
+    assert detail["can_sign"] is False
+    assert detail["viewer_state"] == "submitter"
+    assert not detail.get("step_label")
+
+    mine = client.get("/hr/api/my-mgmt-signoffs", headers=emp_h).get_json()["submissions"]
+    assert sid not in {row["submission_id"] for row in mine}
+
+    hr_h = _login_headers(client, hr_name)
+    hr_detail = client.get(f"/hr/api/mgmt-signoff-detail/{sid}", headers=hr_h).get_json()
+    assert hr_detail["can_sign"] is True
+    assert hr_detail["is_owner"] is False
+    assert hr_detail["step_label"] == "HR"
 
 
 def test_canonical_hr_prefers_named_account_over_seed_login(app, chain_users):
@@ -540,3 +771,265 @@ def test_can_access_hr_submission_export_for_mgmt_chain_supervisor(app, chain_us
         )
         assert _can_access_hr_submission_export(sup, submission) is True
         assert _can_access_hr_submission_export(chain_users["emp"], submission) is False
+
+
+def _login_headers(client, username, password="TestPass123"):
+    r = client.post("/api/auth/login", json={"username": username, "password": password})
+    assert r.status_code == 200, r.get_json()
+    token = r.get_json().get("access_token")
+    assert token
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_pending_review_sends_submitter_to_submitted_and_signer_to_archive(client, admin_auth_headers):
+    r = client.get("/hr/pending-review", headers=admin_auth_headers)
+    assert r.status_code == 200
+    body = r.data.decode("utf-8", errors="ignore")
+    assert "Open in Submitted Forms" in body
+    assert "/hr/api/my-in-flight-hr" in body
+    assert "Status" in body
+    assert "hrOwnerSubmittedFormsLink" in body
+    assert "Open in Completed Forms" not in body
+    assert "Open in GM Approved Forms" not in body
+    assert "/hr/gm-approval?submission=" not in body
+
+
+def test_mgmt_sign_page_stays_put_with_pending_forms_link(client, admin_auth_headers):
+    r = client.get("/hr/mgmt-sign/HR-LEAVE_APPLICATION-TEST", headers=admin_auth_headers)
+    assert r.status_code == 200
+    body = r.data.decode("utf-8", errors="ignore")
+    assert "You have already signed this form" in body
+    assert "Back to Pending Forms" in body
+    assert 'id="rspDonePrimaryLink"' in body
+    assert "/hr/pending-review" in body
+    assert "openHrCenterNotice" not in body
+    assert "redirectGmAlreadySigned" not in body
+    assert "Open in GM Approved Forms" not in body
+    assert "Open in Completed Forms" not in body
+    assert "Open Completed Forms" not in body
+
+
+def test_gm_approval_waiting_overlay_does_not_show_fake_hr_or_completed_cta(client, admin_auth_headers):
+    r = client.get("/hr/gm-approval", headers=admin_auth_headers)
+    assert r.status_code == 200
+    body = r.data.decode("utf-8", errors="ignore")
+    assert "You have already signed" in body
+    assert "gm-signed-status" in body
+    assert "Back to list" in body
+    assert "Open Completed Forms" not in body
+    assert "function hrHasSigned" in body
+    assert "function nextUnsignedStepLabel" in body
+    assert "hr_reviewed_by_name || 'HR Manager'" not in body
+    assert "You signed this request. Remaining signatures are still outstanding." not in body
+
+
+def test_workflow_cards_split_pending_gm_approved_and_completed(client, app, chain_users):
+    """Pending = needs this user or the submitter's own in-flight status; GM Approved = GM signed in-flight; Completed = all signatures."""
+    from app.models import db, Submission
+    from module_hr.hr_management_chain import (
+        WF_MGMT_HR,
+        apply_management_signature,
+        first_management_workflow_status,
+        init_management_chain_on_submit,
+    )
+
+    sig = "data:image/png;base64,abc"
+    with app.app_context():
+        emp = chain_users["emp"]
+        gm = chain_users["gm"]
+        emp.reporting_manager_id = gm.id
+        db.session.commit()
+
+        payload: dict = {"employee_name": "Office Emp"}
+        assert init_management_chain_on_submit(payload, emp) is None
+        wf0 = first_management_workflow_status(payload)
+        sub = Submission(
+            submission_id=f"HR-VISA_RENEWAL-{uuid.uuid4().hex[:8].upper()}",
+            user_id=emp.id,
+            module_type="hr_visa_renewal",
+            site_name="Office Emp",
+            status="submitted",
+            workflow_status=wf0,
+            form_data=payload,
+        )
+        db.session.add(sub)
+        db.session.commit()
+        sid = sub.submission_id
+        gm_name = gm.username
+        emp_name = emp.username
+
+    gm_h = _login_headers(client, gm_name)
+    emp_h = _login_headers(client, emp_name)
+    assert client.get("/hr/pending-review", headers=gm_h).status_code == 200
+    assert client.get("/hr/pending-review", headers=emp_h).status_code == 200
+
+    pending = client.get("/hr/api/my-mgmt-signoffs", headers=gm_h).get_json()["submissions"]
+    assert sid in {s["submission_id"] for s in pending}
+
+    own_inflight = client.get("/hr/api/my-in-flight-hr", headers=emp_h).get_json()["submissions"]
+    assert sid in {s["submission_id"] for s in own_inflight}
+    own_row = next(s for s in own_inflight if s["submission_id"] == sid)
+    assert own_row["viewer_state"] == "submitter"
+    assert own_row["can_sign"] is False
+    assert sid not in {
+        s["submission_id"]
+        for s in client.get("/hr/api/my-mgmt-signoffs", headers=emp_h).get_json()["submissions"]
+    }
+
+    gm_approved = client.get("/hr/api/pending-gm-approval", headers=gm_h).get_json()["submissions"]
+    assert sid not in {s["submission_id"] for s in gm_approved}
+
+    with app.app_context():
+        sub = Submission.query.filter_by(submission_id=sid).first()
+        gm = chain_users["gm"]
+        ok, err = apply_management_signature(sub, gm, sig, "ok")
+        assert ok, err
+        db.session.commit()
+        assert sub.workflow_status == WF_MGMT_HR
+
+    pending_after = client.get("/hr/api/my-mgmt-signoffs", headers=gm_h).get_json()["submissions"]
+    assert sid not in {s["submission_id"] for s in pending_after}
+
+    gm_approved_after = client.get("/hr/api/pending-gm-approval", headers=gm_h).get_json()["submissions"]
+    assert sid in {s["submission_id"] for s in gm_approved_after}
+
+    detail = client.get(f"/hr/api/mgmt-signoff-detail/{sid}", headers=gm_h).get_json()
+    assert detail["already_signed"] is True
+    assert detail["can_sign"] is False
+    assert detail["viewer_state"] == "already_signed"
+    label = (detail.get("step_label") or "").lower()
+    assert "hr" not in label
+    assert "reporting" in label or "manager" in label
+
+    completed = client.get("/hr/api/approved-hr-submissions", headers=gm_h).get_json()["submissions"]
+    assert sid not in {s["submission_id"] for s in completed}
+
+    with app.app_context():
+        sub = Submission.query.filter_by(submission_id=sid).first()
+        sub.workflow_status = "approved"
+        db.session.commit()
+
+    gm_approved_done = client.get("/hr/api/pending-gm-approval", headers=gm_h).get_json()["submissions"]
+    assert sid not in {s["submission_id"] for s in gm_approved_done}
+
+    completed_done = client.get("/hr/api/approved-hr-submissions", headers=gm_h).get_json()["submissions"]
+    assert sid in {s["submission_id"] for s in completed_done}
+
+    own_done = client.get("/hr/api/my-in-flight-hr", headers=emp_h).get_json()["submissions"]
+    assert sid not in {s["submission_id"] for s in own_done}
+
+
+def test_approved_forms_signer_sees_only_forms_they_signed(client, app, chain_users):
+    """Completed Forms: own requests plus forms this user signed; not everyone else's."""
+    from app.models import db, Submission
+    from module_hr.hr_management_chain import MGMT_CHAIN_KEY, init_management_chain_on_submit
+
+    with app.app_context():
+        tech = chain_users["tech"]
+        sup = chain_users["sup"]
+        emp = chain_users["emp"]
+        gm = chain_users["gm"]
+
+        signed_payload: dict = {"employee_name": "Tech User"}
+        assert init_management_chain_on_submit(signed_payload, tech) is None
+        step = signed_payload[MGMT_CHAIN_KEY]["steps"][0]
+        step["signature"] = "data:image/png;base64,abc"
+        step["signed_by_id"] = sup.id
+        signed = Submission(
+            submission_id=f"HR-COMMENCEMENT-{uuid.uuid4().hex[:8].upper()}",
+            user_id=tech.id,
+            module_type="hr_commencement",
+            site_name="Tech User",
+            status="submitted",
+            workflow_status="approved",
+            form_data=signed_payload,
+        )
+
+        other_payload: dict = {"employee_name": "Other"}
+        assert init_management_chain_on_submit(other_payload, emp) is None
+        other = Submission(
+            submission_id=f"HR-VISA_RENEWAL-{uuid.uuid4().hex[:8].upper()}",
+            user_id=emp.id,
+            module_type="hr_visa_renewal",
+            site_name="Other",
+            status="submitted",
+            workflow_status="approved",
+            form_data=other_payload,
+        )
+        db.session.add_all([signed, other])
+        db.session.commit()
+        signed_id = signed.submission_id
+        other_id = other.submission_id
+        names = {
+            "sup": sup.username,
+            "emp": emp.username,
+            "gm": gm.username,
+        }
+
+    sup_h = _login_headers(client, names["sup"])
+    assert client.get("/hr/approved-forms", headers=sup_h).status_code == 200
+    sup_ids = {
+        s["submission_id"]
+        for s in client.get("/hr/api/approved-hr-submissions", headers=sup_h).get_json()["submissions"]
+    }
+    assert signed_id in sup_ids
+    assert other_id not in sup_ids
+
+    emp_h = _login_headers(client, names["emp"])
+    assert client.get("/hr/approved-forms", headers=emp_h).status_code == 200
+    emp_ids = {
+        s["submission_id"]
+        for s in client.get("/hr/api/approved-hr-submissions", headers=emp_h).get_json()["submissions"]
+    }
+    assert signed_id not in emp_ids
+    assert other_id in emp_ids
+
+    gm_h = _login_headers(client, names["gm"])
+    gm_ids = {
+        s["submission_id"]
+        for s in client.get("/hr/api/approved-hr-submissions", headers=gm_h).get_json()["submissions"]
+    }
+    assert signed_id in gm_ids
+    assert other_id in gm_ids
+
+
+def test_mgmt_chain_context_uses_submitter_path_when_viewing_a_form(client, app, chain_users):
+    """GM viewing an employee's leave must see that employee's RM → HR path, not the GM's own."""
+    from app.models import db, Submission
+    from module_hr.hr_management_chain import init_management_chain_on_submit
+
+    with app.app_context():
+        emp = chain_users["emp"]
+        gm = chain_users["gm"]
+        emp.reporting_manager_id = gm.id
+        db.session.commit()
+        payload: dict = {"employee_name": "Office Emp"}
+        assert init_management_chain_on_submit(payload, emp) is None
+        sub = Submission(
+            submission_id=f"HR-LEAVE_APPLICATION-{uuid.uuid4().hex[:8].upper()}",
+            user_id=emp.id,
+            module_type="hr_leave_application",
+            site_name="Office Emp",
+            status="submitted",
+            workflow_status="approved",
+            form_data=payload,
+        )
+        db.session.add(sub)
+        db.session.commit()
+        sid = sub.submission_id
+        gm_name = gm.username
+
+    gm_h = _login_headers(client, gm_name)
+    own = client.get("/hr/api/mgmt-chain-context", headers=gm_h).get_json()
+    own_keys = [c.get("key") for c in (own.get("chain") or [])]
+    assert "reporting_manager" not in own_keys
+
+    recorded = client.get(
+        f"/hr/api/mgmt-chain-context?submission_id={sid}",
+        headers=gm_h,
+    ).get_json()
+    rec_keys = [c.get("key") for c in (recorded.get("chain") or [])]
+    assert rec_keys[0] == "reporting_manager"
+    assert rec_keys[-1] == "hr_head_office"
+    assert "Reporting manager" in (recorded.get("lane_flow") or "")
+    assert recorded.get("recorded_path") is True

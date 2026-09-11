@@ -41,6 +41,25 @@
     return false;
   }
 
+  function escapeRegExp(s) {
+    return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function extraAfterKnownName(namePart, expectedName) {
+    const s = String(namePart || '').trim();
+    const n = String(expectedName || '').trim();
+    if (!s) return '';
+    if (!n) return s;
+    if (s.toLowerCase() === n.toLowerCase()) return '';
+    const re = new RegExp(
+      '^' + escapeRegExp(n) + '(?:\\s*[,:;.\\-—–]+\\s*|\\s+)([\\s\\S]+)$',
+      'i'
+    );
+    const m = s.match(re);
+    if (m) return String(m[1] || '').trim();
+    return s;
+  }
+
   function parseSignedVerifiedComment(text) {
     const trimmed = String(text || '').trim();
     const match = trimmed.match(SV_PREFIX_RE);
@@ -72,13 +91,18 @@
 
   function ensureSignedVerifiedComment(raw) {
     const name = reviewerFirstName();
-    const parsed = parseSignedVerifiedComment(raw);
-    if (parsed.hasPrefix) {
-      return buildSignedVerifiedComment(name, parsed.suffix);
-    }
     const body = String(raw || '').trim();
-    if (!body || isBareSignedVerified(body) || isSignedVerifiedPhrase(body)) {
+    if (!body || isBareSignedVerified(body)) {
       return signedVerifiedPrefix();
+    }
+    const parsed = parseSignedVerifiedComment(body);
+    if (parsed.hasPrefix) {
+      const extra = parsed.suffix || extraAfterKnownName(parsed.name, name);
+      return buildSignedVerifiedComment(name, extra);
+    }
+    const rest = body.replace(/^Signed\s*(?:&|and)\s*Verified\.?\s*/i, '').trim();
+    if (isSignedVerifiedPhrase(body)) {
+      return buildSignedVerifiedComment(name, rest);
     }
     return buildSignedVerifiedComment(name, body);
   }

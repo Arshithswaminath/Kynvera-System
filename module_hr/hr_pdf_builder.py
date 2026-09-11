@@ -608,6 +608,7 @@ def _append_management_chain_pdf(story, fd, styles, form_type=None):
     Printed management trail: comments + signatures in one bordered block below the form body.
     """
     from xml.sax.saxutils import escape as _esc
+    from module_hr.hr_management_chain import mgmt_step_display_label
 
     block = (fd or {}).get("hr_mgmt_chain") if isinstance(fd, dict) else None
     if not isinstance(block, dict) or block.get("v") != 1:
@@ -675,7 +676,7 @@ def _append_management_chain_pdf(story, fd, styles, form_type=None):
     for i, step in enumerate(steps):
         if not isinstance(step, dict):
             continue
-        lbl_txt = str(step.get("pdf_label") or step.get("key") or f"Step {i+1}")
+        lbl_txt = mgmt_step_display_label(step, default=str(step.get("key") or f"Step {i+1}"))
         lbl = Paragraph(f"<b>{_esc(lbl_txt)}</b>", ps_body)
         signer_name = "—"
         if step.get("signed_by_name"):

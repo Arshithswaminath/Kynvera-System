@@ -8,17 +8,20 @@ from io import BytesIO
 logger = logging.getLogger(__name__)
 
 
-def generate_hr_pdf(submission, output_stream):
+def generate_hr_pdf(submission, output_stream, form_data=None):
     """
     Generate a top-notch professional PDF from HR submission.
     Uses native ReportLab (hr_pdf_builder) — crisp typography, bold branding.
     Returns (True, None) on success, (False, error_msg) on failure.
+
+    Optional form_data overlays the stored submission (preview comments, tests).
     """
     from module_hr.hr_pdf_builder import build_hr_pdf, supports_pdf
     from module_hr.docx_service import _normalize_form_data_for_docx
 
     form_type = (submission.module_type or "").replace("hr_", "")
-    form_data = _normalize_form_data_for_docx(submission.form_data or {}, form_type)
+    raw = form_data if form_data is not None else (submission.form_data or {})
+    form_data = _normalize_form_data_for_docx(raw, form_type)
 
     if not supports_pdf(form_type):
         return False, "PDF not available for this form type"

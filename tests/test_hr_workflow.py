@@ -51,7 +51,7 @@ def _make_users(app, suffix):
 
     with app.app_context():
         employee = u("emp")
-        hr = u("hruser", access_hr=True)
+        hr = u("hruser", access_hr=True, designation="hr_manager")
         gm = u("gmuser", designation="general_manager")
         db.session.commit()
         eid, hid, gid = employee.id, hr.id, gm.id
@@ -203,3 +203,138 @@ def test_hr_permissions_endpoints(client, app, hr_three_users):
 
     perms_gm = client.get("/hr/api/user-permissions", headers=h_gm).get_json()
     assert perms_gm["permissions"]["can_approve_gm"] is True
+    assert perms_gm["permissions"]["can_review_hr"] is False
+    assert perms_gm["permissions"]["can_pending_forms"] is True
+    assert perms_gm["permissions"]["can_view_gm_approved"] is True
+    assert client.get("/hr/pending-review", headers=h_gm).status_code == 200
+
+
+def test_access_hr_employee_cannot_review_or_approve(client, app, hr_three_users):
+    """Employees with HR module access can submit forms, not sign as HR."""
+    from app.models import db, User, Submission
+
+    eid, hid, _, emp_u, hr_u, _ = hr_three_users
+    suffix = emp_u.rsplit("_", 1)[-1]
+    with app.app_context():
+        filler = User(
+            username=f"filler_{suffix}",
+            email=f"filler_{suffix}@test.example",
+            full_name="Form Filler",
+            role="user",
+            designation="employee",
+            is_active=True,
+            password_changed=True,
+            access_hr=True,
+        )
+        filler.set_password("TestPass123!")
+        db.session.add(filler)
+        db.session.commit()
+        filler_name = filler.username
+        filler_id = filler.id
+
+    h_filler = _login_headers(client, filler_name, "TestPass123!")
+    h_hr = _login_headers(client, hr_u, "TestPass123!")
+
+    perms = client.get("/hr/api/user-permissions", headers=h_filler).get_json()
+    assert perms["permissions"]["can_review_hr"] is False
+    assert perms["permissions"]["can_pending_forms"] is True
+    assert client.get("/hr/api/pending-hr-review", headers=h_filler).status_code == 403
+    assert client.get("/hr/pending-review", headers=h_filler).status_code == 200
+
+    sid = f"HR-LEAVE_APPLICATION-{suffix[:8].upper()}"
+    with app.app_context():
+        sub = Submission(
+            submission_id=sid,
+            user_id=filler_id,
+            module_type="hr_leave_application",
+            site_name="Form Filler",
+            status="submitted",
+            workflow_status="hr_review",
+            form_data={"employee_name": "Form Filler", "submitted_by_id": filler_id},
+        )
+        db.session.add(sub)
+        db.session.commit()
+
+    inflight = client.get("/hr/api/my-in-flight-hr", headers=h_filler).get_json()["submissions"]
+    assert sid in {s["submission_id"] for s in inflight}
+    assert next(s for s in inflight if s["submission_id"] == sid)["can_sign"] is False
+
+    own = client.post(
+        f"/hr/api/hr-approve/{sid}",
+        json={"comments": "self", "signature": SIG},
+        headers=h_filler,
+    )
+    assert own.status_code == 403
+
+    other = client.post(
+        f"/hr/api/hr-approve/{sid}",
+        json={"comments": "ok", "signature": SIG},
+        headers=h_hr,
+    )
+    assert other.status_code == 200, other.get_json()
+
+
+def test_employee_submit_strips_rm_gm_hr_signatures(client, app, hr_three_users):
+    """Submitter cannot persist RM/GM/HR pads — they sign later in the chain."""
+    _, _, _, emp_u, _, _ = hr_three_users
+    h_emp = _login_headers(client, emp_u, "TestPass123!")
+    duty = {
+        "form_type": "duty_resumption",
+        "employee_name": "Sig Strip Tester",
+        "employee_signature": SIG,
+        "reporting_manager_signature": SIG,
+        "gm_signature": SIG,
+        "hr_signature": SIG,
+        "hr_comments": "forged",
+    }
+    r = client.post("/hr/api/submit", json=duty, headers=h_emp)
+    assert r.status_code == 200, r.get_json()
+    sid = r.get_json()["submission_id"]
+    from app.models import Submission
+
+    with app.app_context():
+        fd = Submission.query.filter_by(submission_id=sid).first().form_data or {}
+        assert fd.get("employee_signature") == SIG
+        assert "reporting_manager_signature" not in fd or not fd.get("reporting_manager_signature")
+        assert not fd.get("gm_signature")
+        assert not fd.get("hr_signature")
+        assert not fd.get("hr_comments")
+
+    leave = {
+        "form_type": "leave_application",
+        "employee_name": "Sig Strip Leave",
+        "employee_signature": SIG,
+        "gm_signature": SIG,
+        "hr_signature": SIG,
+        "need_coverage_signature": "no",
+    }
+    r2 = client.post("/hr/api/submit", json=leave, headers=h_emp)
+    assert r2.status_code == 200, r2.get_json()
+    with app.app_context():
+        fd2 = Submission.query.filter_by(submission_id=r2.get_json()["submission_id"]).first().form_data or {}
+        assert fd2.get("employee_signature") == SIG
+        assert not fd2.get("gm_signature")
+        assert not fd2.get("hr_signature")
+
+
+def test_hr_staff_submit_keeps_own_hr_signature(client, app, hr_three_users):
+    _, _, _, _, hr_u, _ = hr_three_users
+    h_hr = _login_headers(client, hr_u, "TestPass123!")
+    r = client.post(
+        "/hr/api/submit",
+        json={
+            "form_type": "leave_application",
+            "employee_name": "HR Self Submit",
+            "employee_signature": SIG,
+            "hr_signature": SIG,
+            "need_coverage_signature": "no",
+        },
+        headers=h_hr,
+    )
+    assert r.status_code == 200, r.get_json()
+    from app.models import Submission
+
+    with app.app_context():
+        fd = Submission.query.filter_by(submission_id=r.get_json()["submission_id"]).first().form_data or {}
+        assert fd.get("hr_signature") == SIG
+        assert not fd.get("gm_signature")

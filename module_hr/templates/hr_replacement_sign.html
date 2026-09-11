@@ -211,8 +211,8 @@
     </div>
   </div>
 
-<script src="{{ url_for('static', filename='js/approval_comment.js') }}"></script>
-<script src="{{ url_for('static', filename='js/hr_sign_pdf_preview.js') }}"></script>
+<script src="{{ url_for('static', filename='js/approval_comment.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='js/hr_sign_pdf_preview.js') }}?v=4"></script>
 <script src="{{ url_for('static', filename='js/hr_center_notice_modal.js') }}"></script>
 <script src="{{ url_for('static', filename='js/hr_colleague_slot_picker.js') }}?v=2"></script>
 <script>
@@ -229,11 +229,13 @@ window.addEventListener('beforeunload', function () {
 
 async function loadSubmittedFormPdfPreview(){
   const gen = ++pdfPreviewLoadGen;
+  const commentEl = document.getElementById('rspComments');
   await HrSignPdfPreview.load({
     submissionId: SUBMISSION_ID,
     token: TOKEN,
     gen: gen,
     isStale: function (g) { return g !== pdfPreviewLoadGen; },
+    previewComment: commentEl ? commentEl.value : '',
     errMessage: 'Could not load the submitted form as PDF. You can still complete your signature below, or open the request from My Requests after signing if your role allows.',
   });
 }
@@ -362,6 +364,8 @@ async function boot(){
   }
 
   prefillSignComment();
+  try { HrSignPdfPreview.watchCommentField(document.getElementById('rspComments'), loadSubmittedFormPdfPreview); } catch (e) {}
+  void loadSubmittedFormPdfPreview();
 
   document.getElementById('rspClear').addEventListener('click', ()=>{
     if(pad) pad.clear();

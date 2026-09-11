@@ -75,6 +75,17 @@
     .my-requests-section { margin-top: 2rem; }
     .my-requests-list { background: transparent; }
     #hrFormsGrid { margin-bottom: 0; }
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
     .hr-inbox-banner {
       margin-top: 1.75rem;
       margin-bottom: 0;
@@ -262,6 +273,10 @@
       <div id="mgmtChainBanner" class="hr-inbox-banner" style="display:none"></div>
 
       <h2 class="modules-section-label my-requests-heading">My submitted requests</h2>
+      <div class="hr-queue-search-wrap" id="myRequestsSearchWrap" style="margin:0 0 0.85rem;max-width:28rem;">
+        <label class="visually-hidden" for="myRequestsSearch">Search forms</label>
+        <input type="search" id="myRequestsSearch" class="hr-queue-search-input" placeholder="Search employee, form, or type" autocomplete="off" style="min-height:2.5rem;width:100%;border-radius:9px;border:1px solid rgba(255,142,104,0.28);background:#fff8f5;padding:0.35rem 0.75rem;font-size:0.82rem;">
+      </div>
       <div id="requestsList" class="my-requests-list">
         <div style="text-align: center; padding: 3rem; color: #64748b;">
           <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
@@ -287,7 +302,8 @@
   </section>
 
   <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/hr-display.js') }}?v=1"></script>
+  <script src="{{ url_for('static', filename='js/hr-display.js') }}?v=2"></script>
+  <script src="{{ url_for('static', filename='js/hr_queue_search.js') }}?v=1"></script>
   <script>
     (function redirectLegacySubmissionModalLink() {
       try {
@@ -300,18 +316,22 @@
     })();
 
     const token = localStorage.getItem('access_token');
+    let myRequestsCache = [];
 
-    function getStatusLabel(status) {
+    function getStatusLabel(status, formData) {
+      if (window.hrDisplay && hrDisplay.stageLabel) {
+        return hrDisplay.stageLabel(status, formData);
+      }
       const labels = {
-        hr_review: 'Pending HR Review',
-        replacement_signoff: 'Teammate signatures',
-        gm_review: 'Pending GM Approval',
-        hr_mgmt_supervisor: 'Management: Supervisor',
-        hr_mgmt_operations_manager: 'Management: Operations mgr',
-        hr_mgmt_reporting_manager: 'Management: Reporting mgr',
-        hr_mgmt_routing_approver: 'Management: Next approver',
-        hr_mgmt_gm: 'Management: GM',
-        hr_mgmt_hr_head_office: 'Management: HR (HO)',
+        hr_review: 'With HR',
+        replacement_signoff: 'With colleagues',
+        gm_review: 'With GM',
+        hr_mgmt_supervisor: 'With supervisor',
+        hr_mgmt_operations_manager: 'With operations manager',
+        hr_mgmt_reporting_manager: 'With reporting manager',
+        hr_mgmt_routing_approver: 'With next approver',
+        hr_mgmt_gm: 'With GM',
+        hr_mgmt_hr_head_office: 'With HR',
         approved: 'Approved',
         rejected: 'Rejected',
         submitted: 'Submitted',
@@ -331,16 +351,49 @@
       return '/workflow/submitted-forms?scope=hr&submission=' + encodeURIComponent(submissionId || '');
     }
 
-    async function loadRequests() {
-      try {
-        const response = await fetch('/hr/api/my-submissions', { headers: { 'Authorization': `Bearer ${token}` } });
-        const data = await response.json();
-        const container = document.getElementById('requestsList');
+    function setMyRequestsSearchVisible(show) {
+      const wrap = document.getElementById('myRequestsSearchWrap');
+      if (!wrap) return;
+      wrap.style.display = show ? '' : 'none';
+    }
 
-        if (data.submissions && data.submissions.length > 0) {
-          container.innerHTML = data.submissions.map((s) => {
-            const sfHref = submittedFormsHrefForSubmission(s.submission_id);
-            return `
+    function renderMyRequestsFromCache() {
+      const container = document.getElementById('requestsList');
+      if (!container) return;
+
+      if (!myRequestsCache.length) {
+        setMyRequestsSearchVisible(false);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 3rem; background: white; border-radius: 14px; border: 1px solid #e2e8f0;">
+              <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+              <h4 style="font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">No requests yet</h4>
+              <p style="color: #64748b;">Use Start a new request below to submit your first HR form</p>
+            </div>
+          `;
+        return;
+      }
+
+      setMyRequestsSearchVisible(true);
+      const q = window.HrQueueSearch
+        ? HrQueueSearch.queryFrom(document.getElementById('myRequestsSearch'))
+        : '';
+      const filtered = window.HrQueueSearch
+        ? HrQueueSearch.filter(myRequestsCache, q)
+        : myRequestsCache;
+
+      if (!filtered.length) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 3rem; background: white; border-radius: 14px; border: 1px solid #e2e8f0;">
+              <h4 style="font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">No matching forms</h4>
+              <p style="color: #64748b;">Try another employee name, form reference, or form type.</p>
+            </div>
+          `;
+        return;
+      }
+
+      container.innerHTML = filtered.map((s) => {
+        const sfHref = submittedFormsHrefForSubmission(s.submission_id);
+        return `
             <a class="request-card" href="${sfHref}" aria-label="Open in Submitted forms: ${escapeHtml(s.submission_id)}">
               <div class="request-card-main">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem;">
@@ -349,7 +402,7 @@
                     <h3 style="font-size: 1.05rem; font-weight: 600; margin: 0.5rem 0 0.25rem; color: #1e293b;">${escapeHtml(hrSubmissionRef(s.submission_id))}</h3>
                     <p style="font-size: 0.875rem; color: #64748b; margin: 0;">Submitted: ${InjaazDateTimeUAE.formatDateMed(s.created_at)}</p>
                   </div>
-                  <span class="status-badge status-${s.workflow_status}">${getStatusLabel(s.workflow_status)}</span>
+                  <span class="status-badge status-${s.workflow_status}">${getStatusLabel(s.workflow_status, s.form_data)}</span>
                 </div>
                 ${s.form_data?.employee_name ? `<p style="margin: 0.75rem 0 0; font-size: 0.9rem;"><strong>Employee:</strong> ${escapeHtml(s.form_data.employee_name)}</p>` : ''}
               </div>
@@ -358,18 +411,19 @@
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
               </span>
             </a>`;
-          }).join('');
-        } else {
-          container.innerHTML = `
-            <div style="text-align: center; padding: 3rem; background: white; border-radius: 14px; border: 1px solid #e2e8f0;">
-              <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
-              <h4 style="font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">No requests yet</h4>
-              <p style="color: #64748b;">Use Start a new request below to submit your first HR form</p>
-            </div>
-          `;
-        }
+      }).join('');
+    }
+
+    async function loadRequests() {
+      try {
+        const response = await fetch('/hr/api/my-submissions', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await response.json();
+        myRequestsCache = Array.isArray(data.submissions) ? data.submissions : [];
+        renderMyRequestsFromCache();
       } catch (error) {
         console.error('Error:', error);
+        myRequestsCache = [];
+        setMyRequestsSearchVisible(false);
         document.getElementById('requestsList').innerHTML = '<div style="padding: 1.5rem; background: #fee2e2; color: #dc2626; border-radius: 12px;">Error loading requests</div>';
       }
     }
@@ -407,6 +461,7 @@
       } catch(e){ wrap.style.display='none'; }
     }
 
+    if (window.HrQueueSearch) HrQueueSearch.bind('myRequestsSearch', () => renderMyRequestsFromCache());
     loadReplacementBanner();
     loadMgmtChainBanner();
     loadRequests();

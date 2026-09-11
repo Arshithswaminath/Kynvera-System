@@ -1,0 +1,51 @@
+{% set fm_page_title = 'Compliance' %}
+{% set fm_topbar_title = 'Compliance' %}
+{% include 'partials/dm_shell_start.html' %}
+
+  <header class="fm-header">
+    <div>
+      <p>Inventory policy checks — health, ownership, serials, and stale activity</p>
+    </div>
+    <div class="fm-header-actions">
+      <a class="fm-btn fm-btn-outline" href="{{ url_for('devices_bp.devices_list_page') }}">All devices</a>
+    </div>
+  </header>
+
+  <section class="fm-kpi-grid">
+    <div class="fm-kpi">
+      <span class="fm-kpi-label">Devices</span>
+      <span class="fm-kpi-value">{{ compliance.total }}</span>
+    </div>
+    <div class="fm-kpi">
+      <span class="fm-kpi-label">Healthy</span>
+      <span class="fm-kpi-value">{{ compliance.healthy_count }}</span>
+      <span class="fm-kpi-hint">Health 80%+</span>
+    </div>
+    <div class="fm-kpi{% if compliance.open_issues %} fm-kpi-warn{% endif %}">
+      <span class="fm-kpi-label">Open findings</span>
+      <span class="fm-kpi-value">{{ compliance.open_issues }}</span>
+    </div>
+  </section>
+
+  {% for check in compliance.checks %}
+  <section class="fm-panel dm-check" data-severity="{{ check.severity }}">
+    <div class="dm-check-meta">
+      <div>
+        <h2>{{ check.label }}</h2>
+        <p class="fm-muted">{{ check.hint }}</p>
+      </div>
+      <span class="dm-check-count">{{ check.count }}</span>
+    </div>
+    {% if check.devices %}
+    <ul class="dm-check-list">
+      {% for d in check.devices %}
+      <li><a href="{{ url_for('devices_bp.devices_detail_page', device_pk=d.id) }}">{{ d.device_id }} — {{ d.name }}</a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="fm-muted">None.</p>
+    {% endif %}
+  </section>
+  {% endfor %}
+
+{% include 'partials/dm_shell_end.html' %}

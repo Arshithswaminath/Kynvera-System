@@ -744,7 +744,7 @@
                   </div>
                   <div class="hr-wf-info">
                     <span class="module-number">Workflow</span>
-                    <h2 class="module-title">Pending HR Review</h2>
+                    <h2 class="module-title">Pending Forms</h2>
                   </div>
                   <div class="hr-wf-meta">
                     <span class="hr-wf-badge" id="pendingBadge" style="display: none;">0</span>
@@ -761,7 +761,7 @@
                   </div>
                   <div class="hr-wf-info">
                     <span class="module-number">Workflow</span>
-                    <h2 class="module-title">GM Final Approval</h2>
+                    <h2 class="module-title">GM Approved Forms</h2>
                   </div>
                   <div class="hr-wf-meta">
                     <span class="hr-wf-badge" id="gmPendingBadge" style="display: none;">0</span>
@@ -778,7 +778,7 @@
                   </div>
                   <div class="hr-wf-info">
                     <span class="module-number">Workflow</span>
-                    <h2 class="module-title">Approved Forms</h2>
+                    <h2 class="module-title">Completed Forms</h2>
                   </div>
                   <div class="hr-wf-meta">
                     <svg class="hr-wf-arrow" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
@@ -1050,27 +1050,49 @@
         const permData = await permResponse.json();
         const perms = permData.permissions || {};
         let hasAnyAccess = false;
-        
-        // Only load HR pending if user has HR review access
-        if (perms.can_review_hr) {
+        const pendingIds = new Set();
+
+        if (perms.can_pending_forms || perms.can_review_hr || perms.can_approve_gm) {
           hasAnyAccess = true;
           document.getElementById('hrReviewCard').style.display = 'block';
-          
-          const hrResponse = await fetch('/hr/api/pending-hr-review', {
+
+          const inflight = await fetch('/hr/api/my-in-flight-hr', {
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          if (hrResponse.ok) {
-            const hrData = await hrResponse.json();
-            if (hrData.submissions && hrData.submissions.length > 0) {
-              const badge = document.getElementById('pendingBadge');
-              badge.textContent = hrData.submissions.length;
-              badge.style.display = 'inline';
+          if (inflight.ok) {
+            const inflightData = await inflight.json();
+            (inflightData.submissions || []).forEach((s) => {
+              if (s && s.submission_id) pendingIds.add(String(s.submission_id));
+            });
+          }
+          const mine = await fetch('/hr/api/my-mgmt-signoffs', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (mine.ok) {
+            const mineData = await mine.json();
+            (mineData.submissions || []).forEach((s) => {
+              if (s && s.submission_id) pendingIds.add(String(s.submission_id));
+            });
+          }
+          if (perms.can_review_hr) {
+            const hrResponse = await fetch('/hr/api/pending-hr-review', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (hrResponse.ok) {
+              const hrData = await hrResponse.json();
+              (hrData.submissions || []).forEach((s) => {
+                if (s && s.submission_id) pendingIds.add(String(s.submission_id));
+              });
             }
+          }
+          if (pendingIds.size > 0) {
+            const badge = document.getElementById('pendingBadge');
+            badge.textContent = String(pendingIds.size);
+            badge.style.display = 'inline';
           }
         }
         
-        // Only load GM pending if user has GM approval access
-        if (perms.can_approve_gm) {
+        if (perms.can_view_gm_approved || perms.can_approve_gm) {
           hasAnyAccess = true;
           document.getElementById('gmApprovalCard').style.display = 'block';
           

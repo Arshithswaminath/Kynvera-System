@@ -1,16 +1,21 @@
 {# Shared <head> content for the public landing page (light theme). #}
-{# Expects: `title` (string) #}
-{% set lp_description = 'Kynvera provides operations application services for companies. Run tickets, inspections, HR, assets and reporting in one workspace, with access control and a full audit trail.' %}
+{# Expects: `title` (string). Optional: `description` to override the default meta. #}
+{% set lp_description = description|default('Kynvera provides operations application services for companies. Run tickets, inspections, HR, assets and reporting in one workspace, with access control and a full audit trail.') %}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
 <meta name="theme-color" content="#FFF8F5">
 <title>{{ title }}</title>
-{% set lp_canonical = (hub.home_url ~ '/') if marketing_host|default(false) and hub is defined and hub.home_url else url_for('index', _external=True) %}
+{% set lp_home = ((hub.home_url if marketing_host|default(false) and hub is defined and hub.home_url else url_for('index', _external=True))|trim).rstrip('/') %}
+{% set lp_is_home = (request.path or '/') in ['/', ''] %}
+{% set lp_canonical = (lp_home ~ '/') if lp_is_home else (lp_home ~ request.path) %}
 <meta name="description" content="{{ lp_description }}">
 <link rel="canonical" href="{{ lp_canonical }}">
 
 {# Social cards — landscape 1200×630 from scripts/Thumbnail Kynvera.png #}
-{% set lp_og_image = lp_canonical.rstrip('/') ~ url_for('static', filename='images/kynvera/og-share.jpg') %}
+{% set lp_og_image = lp_home ~ url_for('static', filename='images/kynvera/og-share.jpg') %}
+{% set lp_logo = lp_home ~ url_for('static', filename='images/kynvera/kynvera-mark.png') %}
+{% set lp_org_id = lp_home ~ '/#organization' %}
+{% set lp_site_id = lp_home ~ '/#website' %}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Kynvera">
 <meta property="og:title" content="{{ title }}">
@@ -29,25 +34,62 @@
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "Kynvera",
-  "applicationCategory": "BusinessApplication",
-  "operatingSystem": "Web",
-  "description": {{ lp_description|tojson }},
-  "url": {{ lp_canonical|tojson }},
-  "provider": {
-    "@type": "Organization",
-    "name": "Kynvera",
-    "url": {{ lp_canonical|tojson }}
-  }
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": {{ lp_org_id|tojson }},
+      "name": "Kynvera",
+      "url": {{ (lp_home ~ '/')|tojson }},
+      "email": "contact@kynvera.net",
+      "description": {{ lp_description|tojson }},
+      "logo": {
+        "@type": "ImageObject",
+        "url": {{ lp_logo|tojson }},
+        "contentUrl": {{ lp_logo|tojson }},
+        "width": 1024,
+        "height": 1024,
+        "caption": "Kynvera"
+      },
+      "image": {{ lp_logo|tojson }}
+    },
+    {
+      "@type": "WebSite",
+      "@id": {{ lp_site_id|tojson }},
+      "name": "Kynvera",
+      "url": {{ (lp_home ~ '/')|tojson }},
+      "description": {{ lp_description|tojson }},
+      "publisher": { "@id": {{ lp_org_id|tojson }} },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "WebPage",
+      "@id": {{ (lp_canonical ~ '#webpage')|tojson }},
+      "url": {{ lp_canonical|tojson }},
+      "name": {{ title|tojson }},
+      "description": {{ lp_description|tojson }},
+      "isPartOf": { "@id": {{ lp_site_id|tojson }} },
+      "about": { "@id": {{ lp_org_id|tojson }} }
+    }{% if lp_is_home %},
+    {
+      "@type": "SoftwareApplication",
+      "name": "Kynvera",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "description": {{ lp_description|tojson }},
+      "url": {{ (lp_home ~ '/')|tojson }},
+      "image": {{ lp_logo|tojson }},
+      "provider": { "@id": {{ lp_org_id|tojson }} }
+    }{% endif %}
+  ]
 }
 </script>
 
 <link rel="icon" href="/favicon.ico" sizes="48x48">
-<link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}?v=4">
-<link rel="icon" type="image/png" sizes="96x96" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-96.png') }}?v=4">
-<link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=4">
-<link rel="apple-touch-icon" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-180.png') }}?v=4">
+<link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-192.png') }}?v=5">
+<link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}?v=5">
+<link rel="icon" type="image/png" sizes="96x96" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-96.png') }}?v=5">
+<link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=5">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-180.png') }}?v=5">
 {# Hero photo first — do not let fonts/CSS queue ahead of LCP on live. #}
 <link rel="preload" as="image" type="image/webp" fetchpriority="high"
       href="{{ url_for('static', filename='images/kynvera/hero-photo.webp') }}?v=1"

@@ -4702,7 +4702,7 @@ function notificationDestination(type, submissionId, title, message) {
     return '/procurement/purchase-requests';
   }
 
-  if (t === 'gm_approval_pending') return '/hr/gm-approval';
+  if (t === 'gm_approval_pending') return sid ? '/hr/gm-approval?sign=' + enc : '/hr/pending-review';
   if (t === 'hr_mgmt_chain_signoff' || t === 'hr_commencement_dual_role') {
     return sid ? '/hr/mgmt-sign/' + enc : '/workflow/pending-reviews';
   }
@@ -4714,7 +4714,8 @@ function notificationDestination(type, submissionId, title, message) {
     t === 'hr_approved' ||
     t === 'hr_rejected' ||
     t === 'hr_submitter_withdrawn' ||
-    t === 'hr_replacement_complete'
+    t === 'hr_replacement_complete' ||
+    t === 'hr_progress'
   ) {
     return sid ? '/hr/my-requests?submission=' + enc : '/hr/my-requests';
   }

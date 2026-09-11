@@ -12,13 +12,13 @@ immediate supervisor is a per-user, admin-assigned signer
 Lanes:
 
 * ``technician`` -> Immediate supervisor (fixed per user) -> Operations manager
-  (pool) -> General manager (pool) -> HR head office.
+  (pool) -> General manager (pool) -> HR.
 * ``supervisor`` -> Operations manager (pool) -> General manager (pool) ->
-  HR head office.
+  HR.
 * office staff (everyone else, including operations_manager / general_manager /
   hr_manager / employee / bd / procurement / business_development) ->
   Reporting manager (if assigned on the profile) -> General manager (pool,
-  excluding that reporting manager and the submitter) -> HR head office
+  excluding that reporting manager and the submitter) -> HR
   (``hr_manager`` designation, or an administrator if none is assigned).
 * Admin with no profile data continues to bypass the chain to the HR review
   queue (unchanged).
@@ -29,6 +29,7 @@ without this block keep the old flow: ``hr_review`` -> ``gm_review``.
 from __future__ import annotations
 
 from typing import Any
+import copy
 
 from flask import Flask
 
@@ -47,6 +48,7 @@ WF_MGMT_OM = "hr_mgmt_operations_manager"
 WF_MGMT_RM = "hr_mgmt_reporting_manager"
 WF_MGMT_GM = "hr_mgmt_gm"
 WF_MGMT_HR = "hr_mgmt_hr_head_office"
+HR_STEP_DISPLAY_LABEL = "HR"
 WF_MGMT_ROUTING = "hr_mgmt_routing_approver"
 
 ALL_MGMT_WF_STATUSES = (
@@ -72,18 +74,59 @@ def lane_for_user(user: User | None) -> str:
 
 
 def user_is_hr_head(user: User | None) -> bool:
-    """Users who may sign or review at the HR head office workflow step."""
+    """Users who may sign or review at the HR workflow step.
+
+    ``access_hr`` is module access (fill and submit forms) and is not enough.
+    """
     if not user:
         return False
-    if user.role == "admin":
-        return True
-    if getattr(user, "access_hr", False):
+    if (user.role or "").strip().lower() == "admin":
         return True
     return _desig(user) in ("hr_manager", "hr")
 
 
+def _as_user_id(value: Any) -> int | None:
+    try:
+        if value is None or value == "":
+            return None
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def submitter_id_from_fd(fd: dict[str, Any] | None) -> int | None:
+    if not isinstance(fd, dict):
+        return None
+    return _as_user_id(fd.get("submitted_by_id"))
+
+
+def _is_this_submitter(user: User | None, submitter_id: int | None) -> bool:
+    """True when this user is the person who started the request (any role)."""
+    if not user or submitter_id is None:
+        return False
+    uid = _as_user_id(getattr(user, "id", None))
+    sid = _as_user_id(submitter_id)
+    return uid is not None and sid is not None and uid == sid
+
+
+def _is_non_admin_submitter(user: User | None, submitter_id: int | None) -> bool:
+    """True when this user created the request and is not an administrator."""
+    if not user or submitter_id is None:
+        return False
+    if (user.role or "").strip().lower() == "admin":
+        return False
+    return _is_this_submitter(user, submitter_id)
+
+
+def _exclude_submitter(users: list[User], submitter_id: int | None) -> list[User]:
+    sid = _as_user_id(submitter_id)
+    if sid is None:
+        return users
+    return [u for u in users if _as_user_id(getattr(u, "id", None)) != sid]
+
+
 def _active_hr_manager_users() -> list[User]:
-    """Active users with the HR manager designation (official HR head office account)."""
+    """Active users with the HR manager designation (official HR account)."""
     return _active_users_with_designation("hr_manager")
 
 
@@ -120,13 +163,13 @@ def _canonical_hr_user() -> User | None:
 
 
 def _active_hr_signers() -> list[User]:
-    """Active users who may sign the HR head office management step."""
+    """Active users who may sign the HR management step."""
     out: list[User] = []
     seen: set[int] = set()
     for u in User.query.filter(User.is_active == True).order_by(  # noqa: E712
         User.full_name, User.username
     ).all():
-        if user_is_hr_head(u) and u.id not in seen:
+        if user_is_hr_head(u) and _desig(u) != "general_manager" and u.id not in seen:
             out.append(u)
             seen.add(u.id)
     return out
@@ -173,6 +216,22 @@ def _step(
     if also_mirrors_gm_fields:
         d["also_mirrors_gm_fields"] = True
     return d
+
+
+def mgmt_step_display_label(step: dict[str, Any] | None, *, default: str = "Approver") -> str:
+    """User-facing role name. Legacy stored labels said ``HR (head office)``."""
+    if not isinstance(step, dict):
+        return default
+    key = str(step.get("key") or "")
+    raw = str(
+        step.get("pdf_label") or step.get("who_label") or step.get("role_label") or ""
+    ).strip()
+    if key == "hr_head_office":
+        return HR_STEP_DISPLAY_LABEL
+    lowered = raw.lower()
+    if "head office" in lowered or lowered in {"hr (ho)", "hr (h.o.)"}:
+        return HR_STEP_DISPLAY_LABEL
+    return raw or default
 
 
 def _exclude_ids(step: dict[str, Any] | None) -> set[int]:
@@ -364,7 +423,7 @@ def _build_chain_for_submitter(submitter: User) -> tuple[list[dict[str, Any]], s
         _step(
             "hr_head_office",
             WF_MGMT_HR,
-            "HR (head office)",
+            HR_STEP_DISPLAY_LABEL,
             signer_mode="designation",
             designation_gate="hr_head_office",
         )
@@ -380,7 +439,7 @@ def build_interview_chain_after_interviewer(
 ) -> tuple[list[dict[str, Any]], str | None]:
     """
     Interview assessment: interviewer picks the next approver at sign time.
-    Chain is always: chosen colleague → GM (pool) → HR head office (pool).
+    Chain is always: chosen colleague → GM (pool) → HR (pool).
     """
     try:
         na_id = int(next_approver_id)
@@ -415,7 +474,7 @@ def build_interview_chain_after_interviewer(
         _step(
             "hr_head_office",
             WF_MGMT_HR,
-            "HR (head office)",
+            HR_STEP_DISPLAY_LABEL,
             signer_mode="designation",
             designation_gate="hr_head_office",
         ),
@@ -548,8 +607,16 @@ def current_step(block: dict[str, Any]) -> dict[str, Any] | None:
     return steps[idx]
 
 
-def user_allowed_to_sign_step(user: User, step: dict[str, Any]) -> bool:
-    if user.role == "admin":
+def user_allowed_to_sign_step(
+    user: User, step: dict[str, Any], *, submitter_id: int | None = None
+) -> bool:
+    if not user or not isinstance(step, dict):
+        return False
+    # The person who started the form never signs later chain steps — not even
+    # as admin / HR / GM. Those roles sign other people's requests.
+    if _is_this_submitter(user, submitter_id):
+        return False
+    if (user.role or "").strip().lower() == "admin":
         return True
     mode = step.get("signer_mode")
     if mode == "fixed_user":
@@ -562,6 +629,9 @@ def user_allowed_to_sign_step(user: User, step: dict[str, Any]) -> bool:
             return False
         return _desig(user) == "general_manager"
     if gate == "hr_head_office" or gate == "hr_manager":
+        # GM already has a chain step (or signed as reporting manager when they are the GM).
+        if _desig(user) == "general_manager":
+            return False
         return user_is_hr_head(user)
     return False
 
@@ -602,13 +672,17 @@ def user_is_mgmt_chain_participant(user: User | None, fd: dict[str, Any] | None)
                 return True
         except (TypeError, ValueError):
             pass
-        if user_allowed_to_sign_step(user, step):
+        if user_allowed_to_sign_step(user, step, submitter_id=submitter_id_from_fd(fd)):
             return True
     return False
 
 
 def pending_management_step_for_user(
-    fd: dict[str, Any] | None, workflow_status: str | None, user: User | None
+    fd: dict[str, Any] | None,
+    workflow_status: str | None,
+    user: User | None,
+    *,
+    submitter_id: int | None = None,
 ) -> dict[str, Any] | None:
     """If this user may sign now, return {step, label, submission_id context from caller}."""
     if not user or not has_management_chain(fd) or not workflow_status:
@@ -621,11 +695,14 @@ def pending_management_step_for_user(
         return None
     if step.get("signature"):
         return None
-    if not user_allowed_to_sign_step(user, step):
+    if user_mgmt_chain_completed_step(user, fd):
+        return None
+    sid = submitter_id if submitter_id is not None else submitter_id_from_fd(fd)
+    if not user_allowed_to_sign_step(user, step, submitter_id=sid):
         return None
     return {
         "step_key": step.get("key"),
-        "pdf_label": step.get("pdf_label"),
+        "pdf_label": mgmt_step_display_label(step),
         "step": step,
     }
 
@@ -679,6 +756,91 @@ def notify_submitter_management_final(
         send_submitter_outcome(app, submission, approved=True)
 
 
+def notify_submitter_management_progress(
+    app: Flask,
+    submission: Submission,
+    *,
+    signed_by_name: str,
+    signed_role: str,
+) -> None:
+    """In-app ping for the submitter after a mid-chain signature (pairs with the progress email)."""
+    if not submission.user_id:
+        return
+    form_type_display = (submission.module_type or "HR").replace("hr_", "").replace("_", " ").title()
+    sid = submission.submission_id
+    who = (signed_by_name or "An approver").strip()
+    role = (signed_role or "Approver").strip()
+    from module_hr.hr_lifecycle_emails import current_step_label
+    nxt = current_step_label(submission)
+    _notify_user(
+        app,
+        submission.user_id,
+        f"Update on your {form_type_display}",
+        f"{who} signed as {role}. Your request ({sid}) is now with {nxt}.",
+        sid,
+        "hr_progress",
+    )
+
+
+def overlay_preview_comment_on_form_data(
+    fd: dict[str, Any] | None,
+    user: User | None,
+    submission: Submission,
+    comment: str,
+) -> dict[str, Any]:
+    """Return a copy of form_data with a draft comment on the viewer's current sign step.
+
+    Does not persist. Used so the PDF preview Comments column (and HR Comments on
+    leave) update as the reviewer types, before they submit the signature.
+    """
+    src = fd if isinstance(fd, dict) else {}
+    text = str(comment or "").strip()[:400]
+    if not text or not user:
+        return copy.deepcopy(src) if src else {}
+    out = copy.deepcopy(src)
+    if has_management_chain(out):
+        block = out[MGMT_CHAIN_KEY]
+        step = current_step(block)
+        if (
+            step
+            and not step.get("signature")
+            and user_allowed_to_sign_step(user, step, submitter_id=submission.user_id)
+        ):
+            idx = int(block.get("current_index") or 0)
+            steps = block.get("steps") or []
+            if 0 <= idx < len(steps) and isinstance(steps[idx], dict):
+                steps[idx]["comments"] = text
+            key = str(step.get("key") or "")
+            if key in ("hr_head_office", "hr_manager"):
+                out["hr_comments"] = text
+            elif key == "general_manager":
+                out["gm_comments"] = text
+            return out
+    wf = (submission.workflow_status or "").strip()
+    desig = (getattr(user, "designation", None) or "").strip().lower()
+    role = (getattr(user, "role", None) or "").strip().lower()
+    if wf == "hr_review" and (role == "admin" or desig in ("hr_manager", "hr")):
+        out["hr_comments"] = text
+    elif wf == "gm_review" and (role == "admin" or desig == "general_manager"):
+        out["gm_comments"] = text
+    return out
+
+
+def _already_signed_user_ids(fd: dict[str, Any] | None) -> set[int]:
+    out: set[int] = set()
+    if not isinstance(fd, dict):
+        return out
+    block = fd.get(MGMT_CHAIN_KEY) if has_management_chain(fd) else None
+    steps = (block or {}).get("steps") or []
+    for step in steps:
+        if not isinstance(step, dict) or not step.get("signature"):
+            continue
+        uid = _as_user_id(step.get("signed_by_id"))
+        if uid is not None:
+            out.add(uid)
+    return out
+
+
 def current_management_signer_users(submission: Submission) -> tuple[list[User], str]:
     """Users who may sign the current management step, plus that step's display label."""
     fd = submission.form_data if isinstance(submission.form_data, dict) else {}
@@ -688,7 +850,7 @@ def current_management_signer_users(submission: Submission) -> tuple[list[User],
     step = current_step(block)
     if not step or step.get("signature"):
         return [], ""
-    role = str(step.get("pdf_label") or step.get("who_label") or "Approver")
+    role = mgmt_step_display_label(step)
     recipients: list[User] = []
     mode = step.get("signer_mode")
     if mode == "fixed_user":
@@ -699,7 +861,9 @@ def current_management_signer_users(submission: Submission) -> tuple[list[User],
         recipient = db.session.get(User, uid)
         if recipient:
             recipients.append(recipient)
-        return recipients, role
+        recipients = _exclude_submitter(recipients, submission.user_id)
+        signed = _already_signed_user_ids(fd)
+        return [u for u in recipients if int(u.id) not in signed], role
     gate = (step.get("designation_gate") or "").lower()
     if gate == "operations_manager":
         recipients = list(_active_users_with_designation("operations_manager"))
@@ -707,7 +871,9 @@ def current_management_signer_users(submission: Submission) -> tuple[list[User],
         recipients = list(_gm_pool(exclude=_exclude_ids(step)))
     elif gate in ("hr_head_office", "hr_manager"):
         recipients = [u for u in _active_hr_signers() if u.role != "admin"]
-    return recipients, role
+    recipients = _exclude_submitter(recipients, submission.user_id)
+    signed = _already_signed_user_ids(fd)
+    return [u for u in recipients if int(u.id) not in signed], role
 
 
 def notify_current_management_signers(app: Flask, submission: Submission) -> None:
@@ -778,8 +944,15 @@ def apply_management_signature(
         return False, "Workflow step mismatch."
     if step.get("signature"):
         return False, "This step is already signed."
-    if not user_allowed_to_sign_step(user, step):
+    if not user_allowed_to_sign_step(user, step, submitter_id=submission.user_id):
         return False, "You are not authorised to sign this step."
+    if (user.role or "").strip().lower() != "admin" and user_mgmt_chain_completed_step(user, fd):
+        return False, "You have already signed this request."
+
+    if _is_this_submitter(user, submission.user_id) or _is_this_submitter(
+        user, submitter_id_from_fd(fd)
+    ):
+        return False, "You submitted this request. HR (or the next approver) must sign it."
 
     if not signature or not isinstance(signature, str) or not signature.startswith("data:image"):
         return False, "A signature image is required."
@@ -865,8 +1038,10 @@ def reject_management_submission(submission: Submission, user: User, reason: str
     step = steps[idx] if idx < len(steps) else None
     if not step or step.get("signature"):
         return False, "Invalid step."
-    if not user_allowed_to_sign_step(user, step):
+    if not user_allowed_to_sign_step(user, step, submitter_id=submission.user_id):
         return False, "You are not authorised to reject at this stage."
+    if (user.role or "").strip().lower() != "admin" and user_mgmt_chain_completed_step(user, fd):
+        return False, "You have already signed this request."
 
     reason = (reason or "").strip() or "Rejected"
     step["comments"] = f"Rejected: {reason}"
@@ -932,7 +1107,7 @@ def get_interview_routing_ui_context() -> dict[str, Any]:
         "lane": "interview_routing",
         "lane_intro": (
             "Interview assessment: the assigned interviewer signs first and chooses who "
-            "receives the form next. It then goes to the General Manager and HR head office."
+            "receives the form next. It then goes to the General Manager and HR."
         ),
         "lane_flow": _LANE_FLOW["interview_routing"],
         "chain": [
@@ -962,8 +1137,8 @@ def get_interview_routing_ui_context() -> dict[str, Any]:
             },
             {
                 "key": "hr_head_office",
-                "role_label": "HR (head office)",
-                "who_label": "HR head office",
+                "role_label": HR_STEP_DISPLAY_LABEL,
+                "who_label": HR_STEP_DISPLAY_LABEL,
                 "who_detail": "Final sign-off.",
                 "signer_mode": "designation",
                 "missing": False,
@@ -1045,7 +1220,7 @@ def _chain_descriptor(submitter: User, steps: list[dict[str, Any]]) -> list[dict
                         "No HR manager is assigned — an administrator handles this sign-off."
                     )
                 else:
-                    who_detail = "HR head office (final sign-off)."
+                    who_detail = "Final sign-off."
                 missing = False
             else:
                 who_label = "Not assigned"
@@ -1053,7 +1228,7 @@ def _chain_descriptor(submitter: User, steps: list[dict[str, Any]]) -> list[dict
                 missing = True
             out.append({
                 "key": key,
-                "role_label": "HR (head office)",
+                "role_label": HR_STEP_DISPLAY_LABEL,
                 "who_label": who_label,
                 "who_detail": who_detail,
                 "signer_mode": "designation",
@@ -1083,6 +1258,21 @@ def _chain_descriptor(submitter: User, steps: list[dict[str, Any]]) -> list[dict
                 "missing": False,
             })
     return out
+
+
+def _lane_copy_for_keys(lane: str, keys: list[Any]) -> tuple[str, str]:
+    """Order line + intro for a chain, from the step keys actually on the form."""
+    if lane == "office_staff":
+        if "reporting_manager" in keys and "general_manager" in keys:
+            flow = "Reporting manager -> General manager -> HR"
+        elif "reporting_manager" in keys:
+            flow = "Reporting manager -> HR"
+        elif "general_manager" in keys:
+            flow = "General manager -> HR"
+        else:
+            flow = "Administrator / HR"
+        return flow, _LANE_INTRO.get(lane) or ""
+    return _LANE_FLOW.get(lane) or "", _LANE_INTRO.get(lane) or ""
 
 
 def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
@@ -1139,19 +1329,7 @@ def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
     chain = _chain_descriptor(submitter, steps)
 
     keys = [c.get("key") for c in chain]
-    if lane == "office_staff":
-        if "reporting_manager" in keys and "general_manager" in keys:
-            lane_flow = "Reporting manager -> General manager -> HR"
-        elif "reporting_manager" in keys:
-            lane_flow = "Reporting manager -> HR"
-        elif "general_manager" in keys:
-            lane_flow = "General manager -> HR"
-        else:
-            lane_flow = "Administrator / HR"
-        lane_intro = _LANE_INTRO.get(lane)
-    else:
-        lane_flow = _LANE_FLOW.get(lane)
-        lane_intro = _LANE_INTRO.get(lane)
+    lane_flow, lane_intro = _lane_copy_for_keys(lane, keys)
 
     sup_descriptor = None
     if lane == "technician":
@@ -1184,4 +1362,42 @@ def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
         "missing_pools": missing_pools,
         "setup_error": None,
         "admin_profile_bypass": False,
+    }
+
+
+def get_mgmt_chain_ui_context_from_form_data(
+    fd: dict[str, Any] | None,
+    submitter: User | None,
+) -> dict[str, Any]:
+    """Sidebar for an already-submitted form: use the stored chain, not the viewer's lane."""
+    if not has_management_chain(fd) or not submitter:
+        return get_mgmt_chain_ui_context(submitter)
+
+    stored = (fd.get(MGMT_CHAIN_KEY) or {}).get("steps") or []
+    steps = [s for s in stored if isinstance(s, dict)]
+    if not steps:
+        return get_mgmt_chain_ui_context(submitter)
+
+    chain = _chain_descriptor(submitter, steps)
+    for card, step in zip(chain, steps):
+        signed_name = str(step.get("signed_by_name") or "").strip()
+        if signed_name:
+            card["who_label"] = signed_name
+    lane = lane_for_user(submitter)
+    keys = [c.get("key") for c in chain]
+    lane_flow, _unused_intro = _lane_copy_for_keys(lane, keys)
+    return {
+        "success": True,
+        "lane": lane,
+        "lane_intro": (
+            "This request follows the approval path recorded when it was submitted."
+        ),
+        "lane_flow": lane_flow,
+        "chain": chain,
+        "supervisor": None,
+        "default_reporting_to": None,
+        "missing_pools": [],
+        "setup_error": None,
+        "admin_profile_bypass": False,
+        "recorded_path": True,
     }
