@@ -9,6 +9,9 @@ def test_robots_txt_disallows_app_shells(client):
     assert 'Disallow: /api/' in body
     assert 'Allow: /privacy' in body
     assert 'Allow: /favicon.ico' in body
+    assert 'Allow: /sitemap.xml' in body
+    assert 'Sitemap: ' in body
+    assert body.strip().endswith('sitemap.xml')
     assert response.mimetype == 'text/plain'
 
 
@@ -29,6 +32,7 @@ def test_landing_declares_google_favicon_sizes(client):
     assert 'href="/favicon.ico"' in html
     assert 'kynvera-mark-48.png' in html
     assert 'kynvera-mark-96.png' in html
+    assert 'kynvera-mark-192.png' in html
 
 
 def test_privacy_and_terms_pages(client):
@@ -179,3 +183,93 @@ def test_booking_url_used_on_landing_when_configured(client, app):
         assert 'Book an appointment' in html
     finally:
         app.config['KYNVERA_BOOKING_URL'] = previous
+
+
+def _json_ld_graph(html):
+    import json
+    import re
+
+    match = re.search(
+        r'<script type="application/ld\+json">\s*(\{.*?\})\s*</script>',
+        html,
+        re.DOTALL,
+    )
+    assert match, 'expected JSON-LD script on page'
+    data = json.loads(match.group(1))
+    return data.get('@graph') or [data]
+
+
+def test_landing_json_ld_exposes_organization_logo(client):
+    html = client.get('/').get_data(as_text=True)
+    graph = _json_ld_graph(html)
+    types = {item.get('@type') for item in graph}
+    assert 'Organization' in types
+    assert 'WebSite' in types
+    assert 'SoftwareApplication' in types
+    org = next(item for item in graph if item.get('@type') == 'Organization')
+    logo = org['logo']
+    assert logo['width'] >= 112
+    assert logo['height'] >= 112
+    assert logo['url'].endswith('/static/images/kynvera/kynvera-mark.png')
+    assert 'kynvera-mark-192.png' in html
+    logo_resp = client.get('/static/images/kynvera/kynvera-mark.png')
+    assert logo_resp.status_code == 200
+    icon_192 = client.get('/static/images/kynvera/kynvera-mark-192.png')
+    assert icon_192.status_code == 200
+    assert icon_192.mimetype == 'image/png'
+
+
+def test_privacy_page_has_its_own_canonical(client):
+    html = client.get('/privacy').get_data(as_text=True)
+    assert 'rel="canonical"' in html
+    assert '/privacy' in html
+    assert 'og-share.jpg' in html
+    assert '/privacy/static/' not in html
+    graph = _json_ld_graph(html)
+    types = {item.get('@type') for item in graph}
+    assert 'Organization' in types
+    assert 'SoftwareApplication' not in types
+
+
+def test_sitemap_lists_public_pages(client):
+    response = client.get('/sitemap.xml')
+    assert response.status_code == 200
+    assert 'xml' in (response.mimetype or '')
+    body = response.get_data(as_text=True)
+    assert 'https://' in body or 'http://' in body
+    assert '/privacy' in body
+    assert '/terms' in body
+    assert '<urlset' in body
+
+
+def test_sitemap_hidden_on_operations_host(client, app):
+    previous = app.config.get('KYNVERA_MARKETING_HOSTS')
+    app.config['KYNVERA_MARKETING_HOSTS'] = 'kynvera.net,www.kynvera.net'
+    try:
+        response = client.get('/sitemap.xml', headers={'Host': 'operations.kynvera.net'})
+        assert response.status_code == 404
+        robots = client.get('/robots.txt', headers={'Host': 'operations.kynvera.net'})
+        assert 'Sitemap:' not in robots.get_data(as_text=True)
+    finally:
+        app.config['KYNVERA_MARKETING_HOSTS'] = previous
+
+
+def test_marketing_host_sitemap_uses_apex(client, app):
+    previous = {
+        'KYNVERA_MARKETING_HOSTS': app.config.get('KYNVERA_MARKETING_HOSTS'),
+        'KYNVERA_HOME_URL': app.config.get('KYNVERA_HOME_URL'),
+        'KYNVERA_MARKETING_ONLY': app.config.get('KYNVERA_MARKETING_ONLY'),
+    }
+    app.config['KYNVERA_MARKETING_HOSTS'] = 'kynvera.net,www.kynvera.net'
+    app.config['KYNVERA_HOME_URL'] = 'https://kynvera.net'
+    app.config['KYNVERA_MARKETING_ONLY'] = True
+    try:
+        response = client.get('/sitemap.xml', headers={'Host': 'kynvera.net'})
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert 'https://kynvera.net/' in body
+        assert 'https://kynvera.net/privacy' in body
+        robots = client.get('/robots.txt', headers={'Host': 'kynvera.net'})
+        assert 'Sitemap: https://kynvera.net/sitemap.xml' in robots.get_data(as_text=True)
+    finally:
+        app.config.update(previous)

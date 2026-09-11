@@ -945,7 +945,7 @@ def create_app():
         path = request.path or '/'
         public_exact = {
             '/', '/privacy', '/terms', '/robots.txt', '/health',
-            '/manifest.json', '/favicon.ico', '/offline',
+            '/manifest.json', '/favicon.ico', '/offline', '/sitemap.xml',
             '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png',
         }
         if path in public_exact or path.startswith('/static/'):
@@ -1139,37 +1139,93 @@ def create_app():
 
     @app.route('/robots.txt')
     def robots_txt():
-        body = (
-            "User-agent: *\n"
-            "Allow: /\n"
-            "Allow: /login\n"
-            "Allow: /forgot-password\n"
-            "Allow: /reset-password\n"
-            "Allow: /privacy\n"
-            "Allow: /terms\n"
-            "Allow: /static/\n"
-            "Allow: /favicon.ico\n"
-            "Allow: /apple-touch-icon.png\n"
-            "Allow: /offline\n"
-            "Allow: /manifest.json\n"
-            "Disallow: /admin\n"
-            "Disallow: /api/\n"
-            "Disallow: /dashboard\n"
-            "Disallow: /hr\n"
-            "Disallow: /tickets\n"
-            "Disallow: /procurement\n"
-            "Disallow: /qhsi\n"
-            "Disallow: /inspection\n"
-            "Disallow: /assets\n"
-            "Disallow: /files\n"
-            "Disallow: /automations\n"
-            "Disallow: /dochub\n"
-            "Disallow: /workflow\n"
-            "Disallow: /register\n"
-            "Disallow: /logout\n"
-            "Disallow: /sso/\n"
-        )
+        from common.kynvera_hub import is_marketing_host, is_operations_host, marketing_only
+
+        if is_operations_host():
+            body = "User-agent: *\nDisallow: /\n"
+        elif marketing_only() or is_marketing_host():
+            body = (
+                "User-agent: *\n"
+                "Allow: /\n"
+                "Allow: /privacy\n"
+                "Allow: /terms\n"
+                "Allow: /static/\n"
+                "Allow: /favicon.ico\n"
+                "Allow: /apple-touch-icon.png\n"
+                "Allow: /sitemap.xml\n"
+                "Disallow: /login\n"
+                "Disallow: /register\n"
+                "Disallow: /forgot-password\n"
+                "Disallow: /reset-password\n"
+                "Disallow: /dashboard\n"
+                "Disallow: /admin\n"
+                "Disallow: /api/\n"
+                f"Sitemap: {_public_origin()}/sitemap.xml\n"
+            )
+        else:
+            body = (
+                "User-agent: *\n"
+                "Allow: /\n"
+                "Allow: /login\n"
+                "Allow: /forgot-password\n"
+                "Allow: /reset-password\n"
+                "Allow: /privacy\n"
+                "Allow: /terms\n"
+                "Allow: /static/\n"
+                "Allow: /favicon.ico\n"
+                "Allow: /apple-touch-icon.png\n"
+                "Allow: /offline\n"
+                "Allow: /manifest.json\n"
+                "Allow: /sitemap.xml\n"
+                "Disallow: /admin\n"
+                "Disallow: /api/\n"
+                "Disallow: /dashboard\n"
+                "Disallow: /hr\n"
+                "Disallow: /tickets\n"
+                "Disallow: /procurement\n"
+                "Disallow: /qhsi\n"
+                "Disallow: /inspection\n"
+                "Disallow: /assets\n"
+                "Disallow: /files\n"
+                "Disallow: /automations\n"
+                "Disallow: /dochub\n"
+                "Disallow: /workflow\n"
+                "Disallow: /register\n"
+                "Disallow: /logout\n"
+                "Disallow: /sso/\n"
+                f"Sitemap: {_public_origin()}/sitemap.xml\n"
+            )
         return Response(body, mimetype='text/plain')
+
+    def _public_origin():
+        from common.kynvera_hub import is_marketing_host, marketing_only, marketing_url
+        if marketing_only() or is_marketing_host():
+            return marketing_url().rstrip('/')
+        return (request.url_root or '').rstrip('/')
+
+    @app.route('/sitemap.xml')
+    def sitemap_xml():
+        """Public URL list for Google Search Console. Operations host is noindex."""
+        from common.kynvera_hub import is_operations_host
+        if is_operations_host():
+            abort(404)
+        origin = _public_origin()
+        urls = [
+            (f"{origin}/", "1.0"),
+            (f"{origin}/privacy", "0.6"),
+            (f"{origin}/terms", "0.6"),
+        ]
+        lines = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+        ]
+        for loc, priority in urls:
+            lines.append(
+                f"  <url><loc>{loc}</loc><changefreq>weekly</changefreq>"
+                f"<priority>{priority}</priority></url>"
+            )
+        lines.append("</urlset>\n")
+        return Response("\n".join(lines), mimetype="application/xml")
 
     @app.route('/privacy')
     def privacy_page():
@@ -1467,7 +1523,7 @@ def create_app():
         path = request.path or ''
         public_exact = {
             '/', '/offline', '/manifest.json', '/privacy', '/terms',
-            '/robots.txt', '/forgot-password', '/reset-password',
+            '/robots.txt', '/sitemap.xml', '/forgot-password', '/reset-password',
             '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png',
         }
         public_prefixes = (
