@@ -248,11 +248,96 @@ class TestTicketInboundEmailWebhookSecret:
             assert intake.status == 'processed'
             assert intake.ticket_id is not None
 
+
+class TestTicketInboundEmailWebhookSecretBrevo:
+    """Same secret-in-path contract as TestTicketInboundEmailWebhookSecret, but for
+    the Brevo inbound-parse route, which normalizes a different payload shape
+    (an `items` array of Brevo email objects) into the same draft-ticket path."""
+
+    BREVO_PAYLOAD = {
+        'items': [{
+            'MessageId': 'test-auth-edge-msg-001@brevo',
+            'From': {'Address': 'jane.reporter@example.com', 'Name': 'Jane Doe'},
+            'Recipients': [{'Address': 'intake@injaaz.example', 'Name': None}],
+            'Subject': '[Ajman Mall] HVAC - high - AC not cooling',
+            'RawTextBody': (
+                'Property: Retail Podium\n'
+                'Zone: Ground Level\n'
+                'Unit: Staff Canteen\n'
+                'AC not cooling in the food court.'
+            ),
+            'Attachments': [],
+        }],
+    }
+
+    @pytest.fixture
+    def webhook_secret(self, app):
+        original = app.config.get('TICKET_INBOUND_WEBHOOK_SECRET')
+        app.config['TICKET_INBOUND_WEBHOOK_SECRET'] = 'expected-secret-for-test'
+        yield 'expected-secret-for-test'
+        app.config['TICKET_INBOUND_WEBHOOK_SECRET'] = original
+
+    def test_wrong_secret_returns_404_and_creates_nothing(self, client, app, webhook_secret):
+        from app.models import Ticket, TicketEmailIntake
+
+        with app.app_context():
+            intake_count_before = TicketEmailIntake.query.count()
+            ticket_count_before = Ticket.query.count()
+
+        resp = client.post(
+            '/tickets/api/inbound-email-brevo/wrong-secret',
+            json=self.BREVO_PAYLOAD,
+        )
+        assert resp.status_code == 404
+
+        with app.app_context():
+            assert TicketEmailIntake.query.count() == intake_count_before
+            assert Ticket.query.count() == ticket_count_before
+
+    def test_correct_secret_accepts_and_creates_draft(self, client, app, webhook_secret):
+        from app.models import Ticket, TicketEmailIntake
+
+        resp = client.post(
+            f'/tickets/api/inbound-email-brevo/{webhook_secret}',
+            json=self.BREVO_PAYLOAD,
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()['success'] is True
+
+        with app.app_context():
+            intake = TicketEmailIntake.query.filter_by(
+                message_id='test-auth-edge-msg-001@brevo'
+            ).first()
+            assert intake is not None
+            assert intake.status == 'processed'
+            assert intake.ticket_id is not None
+
             ticket = db_get_ticket(intake.ticket_id)
             assert ticket is not None
             assert ticket.source == 'email'
             assert ticket.status == 'draft'
             assert ticket.source_sender_email == 'jane.reporter@example.com'
+
+    def test_cookie_only_session_does_not_block_brevo_webhook(
+        self, client, app, webhook_secret, admin_user
+    ):
+        """Providers cannot send Authorization. A leftover access cookie must
+        not 401 the inbound webhook before the path-secret check runs."""
+        login = client.post('/api/auth/login', json={
+            'username': 'testadmin',
+            'password': 'AdminPass123',
+        })
+        assert login.status_code == 200
+        token = login.get_json()['access_token']
+        cookie_name = app.config.get('JWT_ACCESS_COOKIE_NAME', 'access_token_cookie')
+        client.set_cookie('localhost', cookie_name, token)
+
+        resp = client.post(
+            f'/tickets/api/inbound-email-brevo/{webhook_secret}',
+            json=self.BREVO_PAYLOAD,
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()['success'] is True
 
 
 def db_get_ticket(ticket_id):

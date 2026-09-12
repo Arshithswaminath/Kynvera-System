@@ -1666,13 +1666,16 @@ def api_geocode_site():
 
 
 # ---------------------------------------------------------------------------
-# Inbound email intake -> draft ticket (Mailjet Parse API)
+# Inbound email intake -> draft ticket (Mailjet Parse API / Brevo inbound parsing)
 # ---------------------------------------------------------------------------
 #
 # Requesters email the ticket intake address following the published format guide
-# (see the "Email a ticket" help card in Settings). Mailjet Parse API POSTs parsed
-# JSON to our webhook; we do best-effort field extraction and create a
-# `status='draft'` ticket for supervisor review before it enters the workflow.
+# (see the "Email a ticket" help card in Settings). The provider (Mailjet Parse API
+# or Brevo inbound parsing) POSTs parsed JSON to our webhook; we do best-effort
+# field extraction and create a `status='draft'` ticket for supervisor review
+# before it enters the workflow. Both providers normalize into the same internal
+# intake dict and share `_process_inbound_email_intake()` — see
+# `_normalize_mailjet_parse_payload()` / `_normalize_brevo_inbound_item()`.
 
 def _intake_priorities() -> set[str]:
     return tkt_fields.priority_values() or {'low', 'medium', 'high', 'critical'}
@@ -1764,6 +1767,65 @@ def _normalize_mailjet_parse_payload(payload: dict) -> dict:
         'subject': (payload.get('Subject') or '').strip(),
         'body': body,
         'attachments': _mailjet_parse_attachments(payload),
+    }
+
+
+def _brevo_inbound_attachments(item: dict) -> list:
+    """Download image attachments referenced by a Brevo inbound item's DownloadToken.
+
+    Brevo doesn't inline attachment bytes like Mailjet does — each attachment is
+    fetched separately via its own authenticated download endpoint.
+    """
+    out = []
+    api_key = current_app.config.get('BREVO_API_KEY') or os.environ.get('BREVO_API_KEY')
+    if not api_key:
+        return out
+    for att in (item.get('Attachments') or []):
+        name = att.get('Name') or 'attachment'
+        token = att.get('DownloadToken')
+        if not token or not _allowed_image(name):
+            continue
+        try:
+            resp = requests.get(
+                f'https://api.brevo.com/v3/inbound/attachments/{token}',
+                headers={'api-key': api_key},
+                timeout=15,
+            )
+            resp.raise_for_status()
+            out.append({'name': name, 'content': resp.content})
+        except Exception:
+            logger.warning('Could not download Brevo inbound attachment %s', name, exc_info=True)
+    return out
+
+
+def _normalize_brevo_inbound_item(item: dict) -> dict:
+    """Map one email object from a Brevo inbound-parse webhook `items` array into our
+    internal intake dict (same shape `_normalize_mailjet_parse_payload` produces)."""
+    from_mbox = item.get('From') or {}
+    from_email = (from_mbox.get('Address') or '').strip().lower() or None
+    from_name = (from_mbox.get('Name') or '').strip() or None
+
+    to_email = None
+    for mbox in (item.get('Recipients') or item.get('To') or []):
+        addr = (mbox.get('Address') or '').strip()
+        if addr:
+            to_email = addr
+            break
+
+    body = (
+        (item.get('RawTextBody') or '').strip()
+        or (item.get('ExtractedMarkdownMessage') or '').strip()
+        or (item.get('RawHtmlBody') or '').strip()
+    )
+
+    return {
+        'message_id': (item.get('MessageId') or '').strip() or None,
+        'from_email': from_email,
+        'from_name': from_name,
+        'to_email': to_email,
+        'subject': (item.get('Subject') or '').strip(),
+        'body': body,
+        'attachments': _brevo_inbound_attachments(item),
     }
 
 
@@ -1959,6 +2021,33 @@ def inbound_email_webhook(secret_token):
         _process_inbound_email_intake(intake)
     except Exception:
         logger.error('Unhandled error processing inbound email', exc_info=True)
+
+    return jsonify({'success': True}), 200
+
+
+@ticketing_bp.route('/api/inbound-email-brevo/<secret_token>', methods=['POST'])
+def inbound_email_webhook_brevo(secret_token):
+    """Brevo inbound-parse webhook target. Same secret-in-path scheme as the Mailjet
+    route above — Brevo's inbound webhook has no signature of its own to check."""
+    from common.security import secrets_equal
+    configured_secret = (
+        current_app.config.get('TICKET_INBOUND_WEBHOOK_SECRET')
+        or os.environ.get('TICKET_INBOUND_WEBHOOK_SECRET')
+    )
+    if not secrets_equal(secret_token, configured_secret or ''):
+        abort(404)
+
+    payload = request.get_json(silent=True) or {}
+    items = payload.get('items')
+    if not isinstance(items, list):
+        return jsonify({'success': False, 'error': 'Not a Brevo inbound-parse payload'}), 400
+
+    for item in items:
+        try:
+            intake = _normalize_brevo_inbound_item(item)
+            _process_inbound_email_intake(intake)
+        except Exception:
+            logger.error('Unhandled error processing inbound email (Brevo)', exc_info=True)
 
     return jsonify({'success': True}), 200
 

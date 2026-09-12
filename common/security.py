@@ -205,7 +205,10 @@ _COOKIE_MUTATION_EXEMPT_EXACT = frozenset({
     '/logout',
 })
 _COOKIE_MUTATION_EXEMPT_PREFIXES = (
-    '/tickets/api/inbound-email/',
+    # Covers both /tickets/api/inbound-email/<secret> (Mailjet) and
+    # /tickets/api/inbound-email-brevo/<secret> (Brevo). Trailing slash would
+    # miss the Brevo path.
+    '/tickets/api/inbound-email',
     '/procurement/doc-approve/',
 )
 
