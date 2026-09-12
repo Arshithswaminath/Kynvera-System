@@ -1465,6 +1465,12 @@ def create_app():
             app.csrf.exempt(ticketing_bp)
         app.register_blueprint(ticketing_bp, url_prefix='/tickets')
         logger.info("✅ Registered Ticketing blueprint at /tickets")
+        try:
+            if not app.config.get('KYNVERA_MARKETING_ONLY'):
+                from module_ticketing.inbound_mailbox import init_scheduler as init_ticket_imap_scheduler
+                init_ticket_imap_scheduler(app)
+        except Exception as sched_err:
+            logger.warning("⚠️  Ticket intake IMAP poller not started: %s", sched_err)
     else:
         logger.warning("⚠️  Ticketing blueprint not available - check imports")
 

@@ -6,42 +6,73 @@ that a supervisor/admin reviews and converts into a real ticket under
 **Tickets → Draft Tickets (Email)**. See the in-app guide at
 **Tickets → Settings → Email a Ticket** for the format shared with requesters.
 
-This uses **Brevo's inbound parsing webhook** for inbound mail, paired with the same
-Brevo account used for outbound notifications (see `docs/EMAIL_SMTP_OPTIONS.md`).
-(A Mailjet Parse API variant also exists — `inbound_email_webhook()` — kept for
-accounts that use Mailjet instead of Brevo; the setup is analogous but not covered
-here.)
+**Current path (no paid Brevo inbound plan):** the app reads
+`contact@kynvera.net` through Microsoft Graph (Entra app registration) and
+creates drafts from unread inbox mail. **Later path:** paid Brevo inbound
+parsing (webhook) — keep the code and `reply.kynvera.net` MX; unset the Graph
+secret when that is live.
+
+A Mailjet Parse API webhook (`inbound_email_webhook()`) also exists for accounts
+that use Mailjet instead.
 
 ---
 
-## How it works
+## How it works today
 
 ```
-requester email → Bcc copy → parse subdomain MX (inbound1/2.sendinblue.com)
-  → Brevo inbound parsing → POST to our webhook
-  → /tickets/api/inbound-email-brevo/<TICKET_INBOUND_WEBHOOK_SECRET>
+requester email → Microsoft 365 (contact@kynvera.net)
+  → app Graph poller (every ~60s)
   → draft Ticket created, supervisors notified
 ```
 
-Code: `module_ticketing/routes.py` — `inbound_email_webhook_brevo()`,
-`_normalize_brevo_inbound_item()`, `_brevo_inbound_attachments()`,
-`_process_inbound_email_intake()`.
+Code: `module_ticketing/inbound_mailbox.py` — `poll_intake_mailbox()`,
+`message_to_intake()` → `_process_inbound_email_intake()`.
 
-Every inbound call (successful, duplicate, or failed) is logged to the
-`ticket_email_intakes` table (`TicketEmailIntake` model) for auditing/debugging.
+Every processed message is logged to `ticket_email_intakes`.
 
-> **`kynvera.net`'s MX already points to Microsoft 365** (`contact@kynvera.net` is a
-> live Exchange Online mailbox), so its MX cannot be repointed at Brevo without
-> breaking normal company mail. The setup below uses a **dedicated parse subdomain +
-> Exchange forwarding rule** instead of moving the root domain's MX.
+Until Graph credentials are set, sending mail only fills Outlook.
+
+### Current setup (Microsoft Graph)
+
+1. In Entra, register app **Kynvera ticket intake** (this organizational directory only).
+2. **API permissions** → Add → **Microsoft Graph** → **Application** permissions →
+   **Mail.ReadWrite** → Add. Then **Grant admin consent**.
+3. **Certificates & secrets** → **New client secret**. Copy the **Value** once.
+4. **Disable** the Exchange rule `Bcc ticket intake to Brevo` until a paid
+   Brevo inbound-parse plan exists.
+5. Set on Render and in `.env`:
+
+```env
+TICKET_INTAKE_EMAIL=contact@kynvera.net
+TICKET_INTAKE_GRAPH_TENANT_ID=<Directory (tenant) ID>
+TICKET_INTAKE_GRAPH_CLIENT_ID=<Application (client) ID>
+TICKET_INTAKE_GRAPH_CLIENT_SECRET=<client secret Value>
+TICKET_INTAKE_GRAPH_MAILBOX=contact@kynvera.net
+```
+
+6. Restart the app. Logs should show `Ticket intake Graph poller started`.
+7. Send a new email to `contact@kynvera.net`. Within about a minute it appears
+   under **Tickets → Email drafts** (production: https://operations.kynvera.net).
+   Unread mail already in the inbox is also picked up on the first poll.
+
+Recommended lock-down (Exchange Online PowerShell), so the app can read only
+this mailbox:
+
+```powershell
+New-ApplicationAccessPolicy -AppId <Application (client) ID> `
+  -PolicyScopeGroupId contact@kynvera.net `
+  -AccessRight RestrictAccess `
+  -Description "Kynvera ticket intake mailbox only"
+```
 
 ---
 
-## One-time setup (subdomain + Exchange forwarding rule)
+## Later: Brevo inbound parsing (paid)
 
-This keeps `contact@kynvera.net` on Microsoft 365 exactly as it is today. A copy of
-each inbound message is Bcc'd, via an Exchange mail-flow rule, to a dedicated
-parse-only subdomain whose MX points at Brevo.
+This keeps `contact@kynvera.net` on Microsoft 365. A copy of each inbound
+message is Bcc'd to a parse-only subdomain whose MX points at Brevo. Use this
+only after inbound email parsing is on the Brevo plan; then unset
+`TICKET_INTAKE_GRAPH_CLIENT_SECRET` so the Graph poller stops.
 
 ### 1. Add a dedicated parse subdomain in DNS
 

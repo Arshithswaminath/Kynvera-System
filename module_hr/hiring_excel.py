@@ -372,7 +372,7 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
             'Fill one row per candidate. Full Name is required for new rows.',
             'Use Pipeline Status and document dropdowns (✗ missing, ✓ submitted).',
             'Leave a document cell blank to keep the current status unchanged on update.',
-            'Save as .xlsx and click Import Excel on the Hiring dashboard.',
+            'Save as .xlsx and click Import on the Hiring dashboard.',
         ),
         columns=(
             ('Candidate ID', 'Optional. System id or any HR reference. Used to match existing rows.'),
