@@ -2270,6 +2270,31 @@ class TicketAsset(db.Model):
         return f'<TicketAsset ticket={self.ticket_id} asset={self.asset_pk}>'
 
 
+class TicketNotifyRecipient(db.Model):
+    """Optional extra recipients for a ticket's lifecycle notification emails,
+    on top of the mandatory creator + supervisor. Saved via the ticket detail
+    page's "Email Recipients" control; persists across all future
+    notifications for this ticket until changed.
+    """
+    __tablename__ = 'ticket_notify_recipients'
+    __table_args__ = (
+        db.UniqueConstraint('ticket_id', 'user_id', name='uq_ticket_notify_recipient'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    added_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    ticket = db.relationship('Ticket', backref=db.backref(
+        'notify_recipients', lazy='selectin', cascade='all, delete-orphan'))
+    user = db.relationship('User', foreign_keys=[user_id])
+
+    def __repr__(self):
+        return f'<TicketNotifyRecipient ticket={self.ticket_id} user={self.user_id}>'
+
+
 class Asset(db.Model):
     """Facility Management equipment/asset registry (chillers, pumps, AHUs, etc.).
 

@@ -11,6 +11,7 @@ import base64
 import calendar
 import logging
 import tempfile
+import threading
 import requests
 from email.utils import parseaddr
 from urllib.parse import quote
@@ -38,6 +39,7 @@ from app.models import (
     TicketServiceGroup, TicketFaultCategory, TicketFaultCode,
     TicketPriority, TicketHoldReason, TicketCancelReason,
     BDProject, TicketEmailIntake, Asset, TicketTriageLog, TicketAsset,
+    TicketNotifyRecipient,
 )
 from module_ticketing import ticket_field_catalog as tkt_fields
 from module_ticketing import project_resources as tkt_resources
@@ -1009,6 +1011,7 @@ def _add_note(ticket: Ticket, user: User, content: str, note_type: str = 'note')
         note_type=note_type,
     )
     db.session.add(note)
+    return note
 
 
 def _ticket_supervisor_user(ticket) -> User | None:
@@ -1018,6 +1021,64 @@ def _ticket_supervisor_user(ticket) -> User | None:
     if ticket.supervisor_id:
         return db.session.get(User, ticket.supervisor_id)
     return None
+
+
+def _ticket_notify_supervisor_user(ticket) -> User | None:
+    """Supervisor to notify: prefer the current liaison (assigned_to), falling
+    back to the project-derived supervisor. These two fields are set
+    identically by _apply_ticket_project_routing() but can diverge after a
+    manual routing override, which only touches assigned_to_id.
+    """
+    return ticket.assigned_to or _ticket_supervisor_user(ticket)
+
+
+def _ticket_notify_creator_email(ticket) -> str | None:
+    """Real, deliverable address for whoever raised the ticket. For
+    email-intake tickets, ticket.reporter is a non-deliverable system
+    "Email Intake" user — source_sender_email is the authoritative address.
+    """
+    if (ticket.source or '') == 'email' and (ticket.source_sender_email or '').strip():
+        return ticket.source_sender_email.strip()
+    if ticket.reporter and ticket.reporter.email:
+        return ticket.reporter.email.strip()
+    return None
+
+
+def _ticket_extra_notify_emails(ticket) -> list[str]:
+    """Optional recipients saved via TicketNotifyRecipient for this ticket."""
+    return [
+        r.user.email.strip() for r in (ticket.notify_recipients or [])
+        if r.user and r.user.email
+    ]
+
+
+def _ticket_notify_recipients(ticket) -> list[str]:
+    """Full, deduped recipient list for a lifecycle email: mandatory creator +
+    mandatory supervisor (when set) + saved optional extras.
+    """
+    seen: dict[str, str] = {}
+
+    def _add(email):
+        if email:
+            seen.setdefault(email.lower(), email)
+
+    _add(_ticket_notify_creator_email(ticket))
+    sup = _ticket_notify_supervisor_user(ticket)
+    _add(sup.email if sup else None)
+    for e in _ticket_extra_notify_emails(ticket):
+        _add(e)
+    return list(seen.values())
+
+
+def _notify_recipient_candidates() -> list:
+    """Active users with a known email — the pool selectable as extra ticket
+    notification recipients.
+    """
+    return (
+        User.query.filter(User.is_active == True, User.email.isnot(None), User.email != '')  # noqa: E712
+        .order_by(User.full_name)
+        .all()
+    )
 
 
 def _supervisor_log_name(ticket) -> str | None:
@@ -1163,6 +1224,106 @@ def _send_ticket_email(subject: str, recipients: list, body_html: str, attachmen
                 )
     except Exception as exc:
         logger.warning("Ticket email send failed: %s", exc)
+
+
+def _run_ticket_email_task(task_name: str, fn):
+    """Run fn() (a zero-arg closure over plain values only — no live ORM
+    objects) off the request path so ticket actions don't block on the mail
+    API. Runs inline under TESTING for deterministic assertions.
+    """
+    if current_app.config.get('TESTING'):
+        fn()
+        return
+    app = current_app._get_current_object()
+
+    def _run():
+        with app.app_context():
+            try:
+                fn()
+            except Exception:
+                logger.warning('%s failed', task_name, exc_info=True)
+
+    threading.Thread(target=_run, daemon=True, name=task_name).start()
+
+
+def _send_draft_conversion_confirmation_email(ticket: Ticket):
+    """One-time email to the original inbound-email sender when their draft
+    becomes an active ticket. No-op for non-email-sourced tickets.
+    """
+    if (ticket.source or '') != 'email' or not (ticket.source_sender_email or '').strip():
+        return
+    to_email = ticket.source_sender_email.strip()
+    ticket_code = ticket.ticket_id
+    subject_line = ticket.source_subject or ticket.title
+    project = ticket.project
+    sender_name = ticket.source_sender_name or 'there'
+
+    from html import escape as html_escape
+    from common.email_service import branded_details_html, branded_kynvera_html
+    body = branded_kynvera_html(
+        greeting='Request received',
+        paragraphs=[
+            f'Hi {html_escape(sender_name)},',
+            f'Your request has been received and logged as ticket <strong>{html_escape(ticket_code)}</strong>. '
+            'Please reference this number in any follow-up.',
+        ],
+        extra_html=branded_details_html([
+            ('Ticket', ticket_code),
+            ('Subject', subject_line or ''),
+            ('Project', project or ''),
+        ]),
+    )
+    subject = f'Your request has been received — Ticket {ticket_code}'
+    _run_ticket_email_task(
+        'kynvera-draft-conversion-email',
+        lambda: _send_ticket_email(subject, [to_email], body, related_id=ticket_code),
+    )
+
+
+def _build_ticket_lifecycle_email_html(ticket: Ticket, notes: list, actor: User) -> str:
+    from html import escape as html_escape
+    from common.email_service import branded_details_html, branded_kynvera_html
+    lines = ''.join(f'<li>{html_escape(n.content)}</li>' for n in notes)
+    actor_name = (actor.full_name if actor else '') or 'a team member'
+    paragraphs = [
+        f'Ticket <strong>{html_escape(ticket.ticket_id)}</strong> has an update from {html_escape(actor_name)}:',
+    ]
+    extra_html = (
+        f'<ul style="margin:0 0 12px 18px;padding:0;">{lines}</ul>'
+        + branded_details_html([
+            ('Ticket', ticket.ticket_id),
+            ('Title', ticket.title or ''),
+            ('Status', ticket.status),
+            ('Project', ticket.project or ''),
+        ])
+    )
+    return branded_kynvera_html(
+        greeting='Ticket update',
+        paragraphs=paragraphs,
+        extra_html=extra_html,
+        cta_url=_ticket_mail_url(ticket),
+        cta_label='Open ticket',
+    )
+
+
+def _dispatch_ticket_lifecycle_emails(ticket: Ticket, notes: list, actor: User):
+    """Best-effort — call once, right after db.session.commit(), from any
+    route that just added TicketNote row(s) via _add_note(). Emails mandatory
+    creator + supervisor + any saved optional extras.
+    """
+    notes = [n for n in (notes or []) if n]
+    if not notes or ticket.status == 'draft':
+        return
+    recipients = _ticket_notify_recipients(ticket)
+    if not recipients:
+        return
+    body = _build_ticket_lifecycle_email_html(ticket, notes, actor)
+    ticket_code = ticket.ticket_id
+    subject = f'[Kynvera] Ticket {ticket_code} updated'
+    _run_ticket_email_task(
+        'kynvera-ticket-lifecycle-email',
+        lambda: _send_ticket_email(subject, recipients, body, related_id=ticket_code),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -2434,7 +2595,7 @@ def create_ticket():
 
     actor_role = _activity_role_label(user)
     actor_bit = f'{user.full_name} ({actor_role})' if actor_role else user.full_name
-    _add_note(
+    note = _add_note(
         ticket,
         user,
         f'Ticket {ticket.ticket_id} created by {actor_bit}. {_routing_activity_text(ticket)}',
@@ -2447,6 +2608,7 @@ def create_ticket():
     )
 
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, [note], user)
     try:
         from common.fm_integration import fm_log_audit, dispatch_webhooks
         fm_log_audit(user.id, 'ticket_create', 'ticket', ticket.ticket_id, {'title': ticket.title})
@@ -2526,6 +2688,7 @@ def convert_draft(ticket_id):
     )
 
     db.session.commit()
+    _send_draft_conversion_confirmation_email(ticket)
     return jsonify({'success': True, 'ticket_id': ticket.ticket_id, 'id': ticket.id})
 
 
@@ -2594,6 +2757,13 @@ def ticket_detail(ticket_id):
     manpower_entries = ticket.manpower.all()
     sees_all = _ticketing_sees_all_tickets(user)
     supervisor_assignees = _supervisor_assignees_for_dropdown(ticket.assigned_to) if sees_all else []
+    notify_recipient_candidates = _notify_recipient_candidates()
+    notify_recipient_candidates_json = [
+        {'id': u.id, 'name': u.full_name, 'email': u.email} for u in notify_recipient_candidates
+    ]
+    ticket_extra_notify_user_ids = [r.user_id for r in ticket.notify_recipients]
+    notify_mandatory_creator_email = _ticket_notify_creator_email(ticket)
+    notify_mandatory_supervisor = _ticket_notify_supervisor_user(ticket)
 
     mat_total = sum(m.total_price or 0 for m in materials)
     mp_total  = sum(e.total_cost or 0 for e in manpower_entries)
@@ -2666,6 +2836,11 @@ def ticket_detail(ticket_id):
         triage_tech_name=triage_tech_name,
         location_map=_ticket_location_map_payload(ticket),
         procurement_catalog_url=_ticket_procurement_catalog_url(ticket),
+        notify_recipient_candidates=notify_recipient_candidates,
+        notify_recipient_candidates_json=notify_recipient_candidates_json,
+        ticket_extra_notify_user_ids=ticket_extra_notify_user_ids,
+        notify_mandatory_creator_email=notify_mandatory_creator_email,
+        notify_mandatory_supervisor=notify_mandatory_supervisor,
     )
 
 
@@ -2760,22 +2935,24 @@ def update_status(ticket_id):
 
     comment = (data.get('comment') or '').strip()
     old_norm = legacy_map.get(old_status, old_status)
+    new_notes = []
     if old_norm != ticket.status:
         actor_role = _activity_role_label(user)
         actor_bit = f'{user.full_name} ({actor_role})' if actor_role else user.full_name
         sup_name = _supervisor_log_name(ticket)
         sup_bit = f' Supervisor: {sup_name}.' if sup_name else ''
-        _add_note(
+        new_notes.append(_add_note(
             ticket,
             user,
             f'Status updated from {_STATUS_LABELS.get(old_status, old_status)} to '
             f'{_STATUS_LABELS.get(ticket.status, ticket.status)} by {actor_bit}.{sup_bit}',
             note_type='status_change',
-        )
+        ))
     if comment:
-        _add_note(ticket, user, comment, note_type='note')
+        new_notes.append(_add_note(ticket, user, comment, note_type='note'))
 
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, new_notes, user)
     return jsonify({'success': True, 'status': ticket.status})
 
 
@@ -2865,7 +3042,7 @@ def revoke_stage(ticket_id):
     actor_bit = f'{user.full_name} ({actor_role})' if actor_role else user.full_name
     sup_name = _supervisor_log_name(ticket)
     sup_bit = f' Supervisor: {sup_name}.' if sup_name else ''
-    _add_note(
+    note = _add_note(
         ticket,
         user,
         f'{old_label} revoked by {actor_bit}; ticket returned to {prev_label}.{unassign_bit} '
@@ -2873,6 +3050,7 @@ def revoke_stage(ticket_id):
         note_type='status_change',
     )
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, [note], user)
     return jsonify({'success': True, 'status': ticket.status, 'previous': prev})
 
 
@@ -2906,16 +3084,17 @@ def reopen_ticket(ticket_id):
 
     data = request.get_json(silent=True) or {}
     comment = (data.get('reason') or data.get('comment') or '').strip()
-    _add_note(
+    new_notes = [_add_note(
         ticket,
         user,
         f'Ticket reopened from "{old_status}" to "open" by {user.full_name}.',
         note_type='status_change',
-    )
+    )]
     if comment:
-        _add_note(ticket, user, comment, note_type='note')
+        new_notes.append(_add_note(ticket, user, comment, note_type='note'))
 
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, new_notes, user)
     return jsonify({'success': True, 'status': 'open'})
 
 
@@ -2954,7 +3133,7 @@ def assign_ticket(ticket_id):
             return jsonify({'success': False, 'error': 'Assignment is limited to supervisor accounts.'}), 400
         ticket.assigned_to_id = assignee.id
         actor = _actor_with_supervisor(ticket, user)
-        _add_note(
+        note = _add_note(
             ticket,
             user,
             f'{actor} set the liaison supervisor to {assignee.full_name} via routing override.',
@@ -2966,7 +3145,7 @@ def assign_ticket(ticket_id):
     else:
         ticket.assigned_to_id = None
         actor = _actor_with_supervisor(ticket, user)
-        _add_note(
+        note = _add_note(
             ticket,
             user,
             f'{actor} cleared the liaison supervisor. Ticket returns to the shared supervisor queue.',
@@ -2974,7 +3153,54 @@ def assign_ticket(ticket_id):
         )
 
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, [note], user)
     return jsonify({'success': True, 'assigned_to_name': ticket.assigned_to.full_name if ticket.assigned_to else None})
+
+
+# ---------------------------------------------------------------------------
+# Per-ticket extra email recipients
+# ---------------------------------------------------------------------------
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/notify-recipients', methods=['POST'])
+@jwt_required()
+def set_notify_recipients(ticket_id):
+    """Save the optional extra recipients for this ticket's lifecycle emails."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    deny = _api_forbid_unless_ticket_visible(user, ticket)
+    if deny:
+        return deny
+    if not (_ticketing_sees_all_tickets(user) or _is_supervisor_of_ticket(user, ticket)):
+        return jsonify({
+            'success': False,
+            'error': 'Only supervisors or OPS / GM / Admin may edit notification recipients.',
+        }), 403
+
+    data = request.get_json(silent=True) or {}
+    try:
+        user_ids = {int(i) for i in (data.get('user_ids') or [])}
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Invalid user id'}), 400
+
+    candidates = {u.id for u in _notify_recipient_candidates()}
+    user_ids &= candidates
+
+    TicketNotifyRecipient.query.filter_by(ticket_id=ticket.id).delete()
+    for uid in user_ids:
+        db.session.add(TicketNotifyRecipient(ticket_id=ticket.id, user_id=uid, added_by_id=user.id))
+    db.session.commit()
+
+    rows = TicketNotifyRecipient.query.filter_by(ticket_id=ticket.id).all()
+    return jsonify({
+        'success': True,
+        'recipients': [
+            {'id': r.user_id, 'name': r.user.full_name, 'email': r.user.email}
+            for r in rows if r.user
+        ],
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -3005,6 +3231,7 @@ def add_note(ticket_id):
     )
     db.session.add(note)
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, [note], user)
 
     return jsonify({'success': True, 'note': note.to_dict()})
 
@@ -3051,8 +3278,9 @@ def upload_image(ticket_id):
         uploaded_by=user.id,
     )
     db.session.add(img)
-    _add_note(ticket, user, f'Image uploaded: {f.filename}.', note_type='image')
+    note = _add_note(ticket, user, f'Image uploaded: {f.filename}.', note_type='image')
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, [note], user)
 
     return jsonify({'success': True, 'image': img.to_dict()})
 
@@ -3078,8 +3306,9 @@ def delete_image(ticket_id, image_id):
     path = img.file_path
     caption = img.caption or img.filename
     db.session.delete(img)
-    _add_note(ticket, user, f'Image removed: {caption}.', note_type='image')
+    note = _add_note(ticket, user, f'Image removed: {caption}.', note_type='image')
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, [note], user)
     if path:
         try:
             if os.path.isfile(path):
@@ -3414,7 +3643,7 @@ def _complete_work_and_open_verification(ticket: Ticket, user, resolution_notes=
     ticket.work_completed_at = now.isoformat()
     ticket.resolved_at = now
     _recalc_total_cost(ticket)
-    _add_note(
+    note = _add_note(
         ticket, user,
         f'Work completed by {user.full_name}. Ticket sent for verification.'
         + (f' Notes: {notes_val}' if notes_val else ''),
@@ -3427,6 +3656,7 @@ def _complete_work_and_open_verification(ticket: Ticket, user, resolution_notes=
             f'{user.full_name} completed work on "{ticket.title}". Ready for verification.',
             ntype='ticket_completed', ticket_id=ticket.ticket_id,
         )
+    return note
 
 
 @ticketing_bp.route('/api/tickets/<string:ticket_id>/advance', methods=['POST'])
@@ -3468,8 +3698,9 @@ def advance_ticket(ticket_id):
 
     old_status = ticket.status
     if next_status == 'verification' and old_status in ('work_started', 'pending_parts'):
-        _complete_work_and_open_verification(ticket, user, data.get('resolution_notes'))
+        note = _complete_work_and_open_verification(ticket, user, data.get('resolution_notes'))
         db.session.commit()
+        _dispatch_ticket_lifecycle_emails(ticket, [note], user)
         return jsonify({
             'success': True,
             'status': 'verification',
@@ -3484,12 +3715,13 @@ def advance_ticket(ticket_id):
     elif next_status == 'work_started':
         ticket.work_started_at = now_str
 
-    _add_note(ticket, user,
+    note = _add_note(ticket, user,
               f'Status advanced from "{_STATUS_LABELS.get(old_status, old_status)}" to '
               f'"{_STATUS_LABELS.get(next_status, next_status)}" by {user.full_name}.',
               note_type='status_change')
 
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, [note], user)
     return jsonify({'success': True, 'status': next_status, 'label': _STATUS_LABELS.get(next_status, next_status)})
 
 
@@ -3520,8 +3752,9 @@ def begin_verification(ticket_id):
         return jsonify({'success': False, 'error': f'Cannot begin verification from "{ticket.status}"'}), 400
 
     ticket.status = 'verification'
-    _add_note(ticket, user, f'Verification started by {user.full_name}.', note_type='status_change')
+    note = _add_note(ticket, user, f'Verification started by {user.full_name}.', note_type='status_change')
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, [note], user)
     return jsonify({'success': True, 'status': 'verification'})
 
 
@@ -3561,8 +3794,9 @@ def hold_ticket(ticket_id):
     msg = f'Ticket placed on hold — {reason_label}.'
     if notes:
         msg += f' Notes: {notes}'
-    _add_note(ticket, user, msg, note_type='status_change')
+    note = _add_note(ticket, user, msg, note_type='status_change')
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, [note], user)
     return jsonify({
         'success': True, 'status': 'on_hold',
         'reason': reason_key, 'reason_label': reason_label,
@@ -3594,8 +3828,9 @@ def resume_ticket(ticket_id):
     msg = f'Ticket resumed to "{_STATUS_LABELS.get(resume_to, resume_to)}" by {user.full_name}.'
     if notes:
         msg += f' Notes: {notes}'
-    _add_note(ticket, user, msg, note_type='status_change')
+    note = _add_note(ticket, user, msg, note_type='status_change')
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, [note], user)
     return jsonify({'success': True, 'status': resume_to, 'label': _STATUS_LABELS.get(resume_to, resume_to)})
 
 
@@ -3643,8 +3878,9 @@ def cancel_ticket(ticket_id):
     msg = f'Ticket cancelled — {reason_label}. By {user.full_name}.'
     if notes:
         msg += f' Notes: {notes}'
-    _add_note(ticket, user, msg, note_type='status_change')
+    note = _add_note(ticket, user, msg, note_type='status_change')
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, [note], user)
     return jsonify({'success': True, 'status': 'cancelled', 'reason': reason_key, 'reason_label': reason_label})
 
 
@@ -3674,10 +3910,11 @@ def submit_to_supervisor(ticket_id):
     ticket.status = 'pending_supervisor'
     _apply_ticket_project_routing(ticket)
 
-    _add_note(ticket, user,
+    note = _add_note(ticket, user,
               'Work order submitted to supervisor queue for technician assignment.',
               note_type='status_change')
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, [note], user)
 
     _notify_supervisor_queue_ticket(
         ticket,
@@ -3754,7 +3991,7 @@ def assign_technician(ticket_id):
             )
         if not _supervisor_log_name(ticket):
             msg += ' No project supervisor is configured.'
-        _add_note(ticket, user, msg, note_type='assignment')
+        note = _add_note(ticket, user, msg, note_type='assignment')
         _notify_user(technician.id, f'Work Order Assigned: {ticket.ticket_id}',
                      f'You have been assigned to work order {ticket.ticket_id}: "{ticket.title}".',
                      ntype='ticket_assigned', ticket_id=ticket.ticket_id)
@@ -3777,11 +4014,12 @@ def assign_technician(ticket_id):
         )
         if not _supervisor_log_name(ticket):
             msg += ' No project supervisor is configured.'
-        _add_note(ticket, user, msg, note_type='assignment')
+        note = _add_note(ticket, user, msg, note_type='assignment')
     else:
         return jsonify({'success': False, 'error': 'technician_id or technician_name required'}), 400
 
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, [note], user)
     return jsonify({'success': True, 'status': 'assigned',
                     'technician_name': display_name,
                     'supervisor_name': user.full_name})
@@ -3818,8 +4056,9 @@ def mark_completed(ticket_id):
 
     data = request.get_json(silent=True) or {}
     resolution_notes = (data.get('resolution_notes') or '').strip() or None
-    _complete_work_and_open_verification(ticket, user, resolution_notes)
+    note = _complete_work_and_open_verification(ticket, user, resolution_notes)
     db.session.commit()
+    _dispatch_ticket_lifecycle_emails(ticket, [note], user)
     return jsonify({'success': True, 'status': 'verification'})
 
 
@@ -4093,7 +4332,7 @@ def _send_completion_emails(ticket: Ticket, closed_by: User):
         recipients = list(set(filter(None, [
             ticket.reporter.email if ticket.reporter else None,
             ticket.assigned_to.email if ticket.assigned_to else None,
-        ] + admin_emails)))
+        ] + admin_emails + _ticket_extra_notify_emails(ticket))))
 
         from html import escape as html_escape
         from common.email_service import branded_details_html, branded_kynvera_html
