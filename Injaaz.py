@@ -1835,6 +1835,9 @@ def create_app():
         status_code = 200 if health_status['status'] == 'healthy' else 503
         return jsonify(health_status), status_code
 
+    if app.limiter:
+        app.limiter.exempt(health_check)
+
     return app
 
 
