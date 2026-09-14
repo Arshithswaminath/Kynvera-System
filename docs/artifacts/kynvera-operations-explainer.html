@@ -1,0 +1,1464 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kynvera Operations, Explained</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* ============ TOKENS ============ */
+  :root{
+    --bg:#f7f7f9; --card:#ffffff; --card2:#fbfbfc; --line:#e4e4e8; --ink:#191b23; --ink2:#3f3f46; --muted:#8b8f9a;
+
+    --coral:#e05f36; --coral-fill:#ff8e68; --coral-rgb:224,95,54; --coral-fill-rgb:255,142,104;
+    --teal:#2b7a8c; --teal-rgb:43,122,140;
+    --indigo:#5b4e9c; --indigo-rgb:91,78,156;
+    --taupe:#8a7562; --taupe-rgb:138,117,98;
+
+    --shadow: 0 1px 2px rgba(20,20,30,.04), 0 8px 24px -12px rgba(20,20,30,.10);
+    --radius: 14px;
+    --font-display:'Public Sans', system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-body:'IBM Plex Sans', system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0b0b0d; --card:#18181b; --card2:#1e1e22; --line:#2b2b30; --ink:#f7f7f8; --ink2:#c7c7cf; --muted:#8b8f9a;
+      --coral:#ffb090; --coral-fill:#ff9a78; --coral-rgb:255,176,144; --coral-fill-rgb:255,154,120;
+      --teal:#7fd3e3; --teal-rgb:127,211,227;
+      --indigo:#bdb2ef; --indigo-rgb:189,178,239;
+      --taupe:#d9c4ac; --taupe-rgb:217,196,172;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0b0b0d; --card:#18181b; --card2:#1e1e22; --line:#2b2b30; --ink:#f7f7f8; --ink2:#c7c7cf; --muted:#8b8f9a;
+    --coral:#ffb090; --coral-fill:#ff9a78; --coral-rgb:255,176,144; --coral-fill-rgb:255,154,120;
+    --teal:#7fd3e3; --teal-rgb:127,211,227;
+    --indigo:#bdb2ef; --indigo-rgb:189,178,239;
+    --taupe:#d9c4ac; --taupe-rgb:217,196,172;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--font-body); line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.disp{font-family:var(--font-display); font-weight:700; text-wrap:balance; letter-spacing:-.01em;}
+  .mono{font-family:var(--font-mono);}
+  .eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--coral); font-weight:500;
+  }
+  a{color:inherit;}
+  svg text{font-family:var(--font-body);}
+
+  /* ============ TOPBAR ============ */
+  .topbar{
+    position:sticky; top:0; z-index:40; background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar-inner{
+    max-width:1240px; margin:0 auto; padding:12px clamp(16px,4vw,32px);
+    display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:center; gap:10px; margin-right:auto;}
+  .brand img{height:26px; width:auto; display:block;}
+  .brand-word{font-family:var(--font-display); font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand-sub{font-family:var(--font-mono); font-size:11px; color:var(--muted); display:none;}
+  @media (min-width:640px){ .brand-sub{display:inline;} }
+
+  .tabs{display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab-btn{
+    font-family:var(--font-display); font-weight:600; font-size:13.5px; color:var(--muted);
+    background:transparent; border:1px solid transparent; border-radius:999px; padding:8px 15px;
+    cursor:pointer; white-space:nowrap; transition:background .15s,color .15s;
+  }
+  .tab-btn:hover{color:var(--ink);}
+  .tab-btn.active{color:var(--ink); background:var(--card); border-color:var(--line); box-shadow:var(--shadow);}
+  .tab-btn:focus-visible{outline:2px solid var(--coral); outline-offset:2px;}
+
+  .colorkey{display:flex; align-items:center; gap:12px; padding-left:14px; border-left:1px solid var(--line);}
+  .ck-item{display:flex; align-items:center; gap:5px; font-size:11px; color:var(--muted); font-family:var(--font-mono);}
+  .ck-dot{width:8px; height:8px; border-radius:50%; flex:none;}
+  .ck-label{display:none;}
+  @media (min-width:900px){ .ck-label{display:inline;} }
+  @media (max-width:639px){ .colorkey{display:none;} }
+
+  /* ============ LAYOUT ============ */
+  main{max-width:1240px; margin:0 auto; padding:0 clamp(16px,4vw,32px) 80px;}
+  .view{display:none; padding-block:36px 8px;}
+  .view.active{display:block; animation:fadein .25s ease both;}
+  @keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+  @media (prefers-reduced-motion: reduce){ .view.active{animation:none;} html{scroll-behavior:auto;} }
+
+  .thesis{font-size:clamp(21px,3vw,28px); max-width:760px; margin:0 0 8px;}
+  .thesis-sub{color:var(--ink2); max-width:640px; font-size:15px; margin:0 0 28px;}
+  .section-head{margin-bottom:22px;}
+
+  figure{margin:0;}
+  figure.diagram{
+    background:var(--card); border:1px solid var(--line); border-radius:20px; padding:clamp(12px,3vw,28px);
+    box-shadow:var(--shadow); overflow-x:auto;
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:560px;}
+  figcaption{margin-top:14px; font-size:13px; color:var(--muted); max-width:70ch;}
+
+  /* legend strip, reprinted per tab */
+  .legend{
+    display:flex; flex-wrap:wrap; gap:18px; margin-top:16px; padding:12px 16px;
+    background:var(--card2); border:1px solid var(--line); border-radius:12px;
+    font-size:12px; color:var(--ink2);
+  }
+  .legend b{font-family:var(--font-mono); font-weight:500; color:var(--muted); text-transform:uppercase; font-size:10px; letter-spacing:.08em; margin-right:14px;}
+  .legend span{display:inline-flex; align-items:center; gap:6px; white-space:nowrap;}
+  .lg-rect{width:14px; height:10px; border:1.6px solid var(--ink2); border-radius:3px;}
+  .lg-circle{width:11px; height:11px; border:1.6px solid var(--ink2); border-radius:50%;}
+  .lg-hex{width:13px; height:12px; background:var(--ink2); clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%); opacity:.55;}
+  .lg-line{width:20px; height:0; border-top:2px solid var(--ink2);}
+  .lg-dash{width:20px; height:0; border-top:2px dashed var(--coral);}
+
+  /* group summary cards, Overview */
+  .group-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin-top:26px;}
+  .group-card{
+    background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px;
+    border-top:3px solid var(--gc); cursor:pointer; transition:transform .15s, box-shadow .15s; text-align:left;
+  }
+  .group-card:hover{transform:translateY(-2px); box-shadow:var(--shadow);}
+  .group-card h3{font-size:15px; margin:0 0 6px; color:var(--gc);}
+  .group-card p{font-size:13px; color:var(--ink2); margin:0;}
+
+  /* ============ MODULE CARDS ============ */
+  .grp-heading{display:flex; align-items:center; gap:10px; margin:44px 0 16px;}
+  .grp-heading .dot{width:11px; height:11px; border-radius:50%; background:var(--gc);}
+  .grp-heading h2{font-size:17px; margin:0; color:var(--gc);}
+  .grp-heading .count{font-family:var(--font-mono); font-size:12px; color:var(--muted);}
+  .grp-heading .rule{flex:1; height:1px; background:var(--line);}
+
+  .card-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:16px;}
+  .m-card{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px;
+    box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px;
+  }
+  .m-head{display:flex; align-items:center; gap:11px;}
+  .m-icon{
+    width:38px; height:38px; border-radius:11px; flex:none; display:flex; align-items:center; justify-content:center;
+    background:rgba(var(--gc-rgb),.12); color:var(--gc); border:1px solid rgba(var(--gc-rgb),.25);
+  }
+  .m-icon svg{width:20px; height:20px;}
+  .m-name{font-family:var(--font-display); font-weight:700; font-size:14.5px; margin:0;}
+  .m-sub{font-size:12px; color:var(--muted); margin:1px 0 0;}
+  .m-diagram{width:100%; height:auto; display:block;}
+  .m-roles{display:flex; flex-wrap:wrap; gap:6px;}
+  .chip{
+    font-size:10.5px; font-family:var(--font-mono); padding:3px 8px; border-radius:999px;
+    background:var(--card2); border:1px solid var(--line); color:var(--ink2);
+  }
+  .m-foot{display:flex; align-items:center; gap:8px; padding-top:10px; border-top:1px solid var(--line); flex-wrap:wrap;}
+  .m-foot span{font-size:10.5px; color:var(--muted); font-family:var(--font-mono);}
+  .rel-dot{width:9px; height:9px; border-radius:50%; cursor:pointer; border:none; padding:0; flex:none;}
+  .rel-dot:focus-visible{outline:2px solid var(--coral); outline-offset:2px;}
+  .m-note{font-size:11.5px; color:var(--muted); font-style:italic; margin:0;}
+  .m-card.highlight{animation:pulse 1.1s ease 1;}
+  @keyframes pulse{ 0%,100%{box-shadow:var(--shadow);} 40%{box-shadow:0 0 0 3px rgba(var(--coral-rgb),.55), var(--shadow);} }
+
+  /* ============ SECURITY ============ */
+  .gate-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-top:22px;}
+  @media (max-width:900px){ .gate-grid{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:520px){ .gate-grid{grid-template-columns:1fr;} }
+  .gate-card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:var(--shadow);}
+  .gate-num{font-family:var(--font-mono); font-size:11px; color:var(--coral); margin:0 0 6px;}
+  .gate-card h3{font-size:14px; margin:0 0 4px;}
+  .gate-card p{font-size:12.5px; color:var(--ink2); margin:0 0 6px;}
+  .gate-tech{font-size:11px; color:var(--muted); font-style:italic; margin:0;}
+
+  .plaque-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:26px;}
+  @media (max-width:720px){ .plaque-grid{grid-template-columns:1fr;} }
+  .plaque{background:var(--card2); border:1px solid var(--line); border-radius:16px; padding:20px;}
+  .plaque h3{font-size:14.5px; margin:0 0 10px; display:flex; align-items:center; gap:8px;}
+  .plaque ul{margin:0; padding-left:18px; font-size:13px; color:var(--ink2); display:flex; flex-direction:column; gap:7px;}
+
+  .logbook{
+    margin-top:16px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px;
+    display:flex; gap:18px; align-items:flex-start; flex-wrap:wrap;
+  }
+  .logbook-icon{width:40px; height:40px; flex:none; border-radius:10px; background:rgba(var(--coral-rgb),.12); display:flex; align-items:center; justify-content:center; color:var(--coral);}
+  .logbook h3{margin:0 0 6px; font-size:14.5px;}
+  .logbook p{margin:0; font-size:13px; color:var(--ink2); max-width:70ch;}
+
+  /* ============ DATA ============ */
+  .glossary{display:flex; flex-wrap:wrap; gap:18px; margin-top:18px; font-size:13px; color:var(--ink2);}
+  .glossary b{color:var(--ink); font-family:var(--font-mono); font-size:12px;}
+
+  /* ============ SPEC STRIP ============ */
+  .spec-strip{display:flex; flex-wrap:wrap; gap:10px; margin:24px 0 4px;}
+  .spec{background:var(--card); border:1px solid var(--line); border-radius:11px; padding:12px 15px; flex:1 1 158px; border-top:2px solid var(--coral);}
+  .spec .n{font-family:var(--font-mono); font-size:17px; color:var(--ink); display:block; line-height:1.15; font-variant-numeric:tabular-nums;}
+  .spec .l{font-size:11px; color:var(--muted); display:block; margin-top:4px;}
+
+  /* ============ SUB-SECTION HEADS ============ */
+  .sub-head{margin:52px 0 4px;}
+  .sub-head .eyebrow{display:block; margin-bottom:8px;}
+  .sub-head h2{font-size:clamp(18px,2.2vw,22px); margin:0 0 7px;}
+  .sub-head p{font-size:14px; color:var(--ink2); margin:0; max-width:72ch;}
+
+  /* ============ BADGES / PERMISSIONS ============ */
+  .badge-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:20px;}
+  @media (max-width:760px){ .badge-grid{grid-template-columns:1fr;} }
+  .badge-card{border:1px solid var(--line); border-radius:16px; padding:20px; background:var(--card); box-shadow:var(--shadow);}
+  .badge-card.admin{border-color:rgba(var(--coral-rgb),.5); background:rgba(var(--coral-rgb),.05);}
+  .badge-head{display:flex; align-items:center; gap:11px; margin-bottom:9px;}
+  .badge-ico{width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex:none; border:1px solid var(--line); background:var(--card2);}
+  .badge-card.admin .badge-ico{border-color:rgba(var(--coral-rgb),.4); background:rgba(var(--coral-rgb),.12); color:var(--coral);}
+  .badge-head h3{margin:0; font-size:15px;}
+  .badge-head span{font-family:var(--font-mono); font-size:10.5px; color:var(--muted); display:block; margin-top:2px;}
+  .badge-card > p{font-size:13px; color:var(--ink2); margin:0;}
+  .perm-label{font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:14px 0 8px;}
+  .perm-tags{display:flex; flex-wrap:wrap; gap:6px;}
+  .ptag{font-size:11px; padding:4px 9px; border-radius:6px; background:var(--card2); border:1px solid var(--line); color:var(--ink2);}
+  .ptag.on{border-color:rgba(var(--teal-rgb),.45); color:var(--teal); background:rgba(var(--teal-rgb),.08);}
+  .ptag.adm{border-color:rgba(var(--coral-rgb),.4); color:var(--coral); background:rgba(var(--coral-rgb),.08);}
+
+  /* ============ STEP FLOW ============ */
+  .steps{margin-top:20px; border:1px solid var(--line); border-radius:16px; background:var(--card); overflow:hidden;}
+  .step{display:flex; gap:16px; padding:16px 20px; border-bottom:1px solid var(--line);}
+  .step:last-child{border-bottom:none;}
+  .step:nth-child(odd){background:var(--card2);}
+  .step-n{font-family:var(--font-mono); font-size:11.5px; color:var(--coral); flex:none; width:24px; padding-top:3px; font-variant-numeric:tabular-nums;}
+  .step-b{min-width:0;}
+  .step-b h4{margin:0 0 4px; font-size:13.5px;}
+  .step-b p{margin:0; font-size:12.5px; color:var(--ink2);}
+  .step-b .where{font-family:var(--font-mono); font-size:10.5px; color:var(--muted); margin-top:6px; display:inline-block;}
+
+  /* ============ INFO CARDS ============ */
+  .info-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(232px,1fr)); gap:14px; margin-top:18px;}
+  .info-card{background:var(--card); border:1px solid var(--line); border-radius:13px; padding:17px; box-shadow:var(--shadow);}
+  .info-card h4{margin:0 0 7px; font-size:13.5px; display:flex; align-items:center; gap:8px;}
+  .info-card h4 svg{width:16px; height:16px; color:var(--coral); flex:none;}
+  .info-card p{margin:0; font-size:12.5px; color:var(--ink2);}
+
+  /* ============ DATA DISTRICT CARDS ============ */
+  .dist-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(248px,1fr)); gap:14px; margin-top:26px;}
+  .dist-card{
+    background:var(--card); border:1px solid var(--line); border-left:3px solid var(--gc);
+    border-radius:12px; padding:16px 16px 14px; box-shadow:var(--shadow);
+  }
+  .dist-top{display:flex; align-items:baseline; justify-content:space-between; gap:8px;}
+  .dist-card h3{font-size:13px; margin:0; color:var(--gc);}
+  .dist-card .cnt{font-family:var(--font-mono); font-size:10px; color:var(--muted); white-space:nowrap;}
+  .dist-list{list-style:none; margin:11px 0 0; padding:0; display:flex; flex-direction:column; gap:5px;}
+  .dist-list li{font-size:12px; color:var(--ink2); display:flex; gap:7px; align-items:baseline; line-height:1.35;}
+  .dist-list li::before{content:""; width:4px; height:4px; border-radius:50%; background:var(--line); flex:none; transform:translateY(-3px);}
+  .dist-list li.key{color:var(--ink); font-weight:600;}
+  .dist-list li.key::before{background:var(--gc); width:6px; height:6px; transform:translateY(-2px);}
+  .dist-foot{margin:11px 0 0; font-size:11px; color:var(--muted); font-style:italic;}
+
+  /* ============ AI TILES ============ */
+  .ai-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:0;}
+  @media (max-width:860px){ .ai-grid{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:560px){ .ai-grid{grid-template-columns:1fr;} }
+  .ai-tile{
+    position:relative; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px;
+    box-shadow:var(--shadow);
+  }
+  .ai-corner{position:absolute; top:10px; right:10px; width:8px; height:8px; border-radius:50%; background:var(--coral);}
+  .ai-tile h3{font-size:13.5px; margin:0 0 6px;}
+  .ai-tile p{font-size:12.5px; color:var(--ink2); margin:0;}
+
+  /* ============ FOOTER ============ */
+  .sheet-footer{
+    max-width:1240px; margin:40px auto 0; padding:14px clamp(16px,4vw,32px) 0; border-top:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:center; font-family:var(--font-mono);
+    font-size:11px; color:var(--muted); flex-wrap:wrap; gap:8px;
+  }
+
+  .kicker{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+  .kicker .sw{width:10px;height:10px;border-radius:3px;background:var(--gc, var(--coral));}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="1" y="1" width="22" height="22" rx="6" fill="var(--coral-fill)"/><path d="M8 6v12M8 12l7-6M8 12l7 6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="brand-word">Kynvera Operations</span>
+      <span class="brand-sub">— explained, plainly</span>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab-btn active" data-view="overview" role="tab" aria-selected="true">Overview</button>
+      <button class="tab-btn" data-view="modules" role="tab" aria-selected="false">Modules</button>
+      <button class="tab-btn" data-view="security" role="tab" aria-selected="false">Security</button>
+      <button class="tab-btn" data-view="data" role="tab" aria-selected="false">Data</button>
+      <button class="tab-btn" data-view="ai" role="tab" aria-selected="false">AI</button>
+    </nav>
+    <div class="colorkey" aria-hidden="true">
+      <span class="ck-item"><span class="ck-dot" style="background:var(--teal)"></span><span class="ck-label">Field Ops</span></span>
+      <span class="ck-item"><span class="ck-dot" style="background:var(--indigo)"></span><span class="ck-label">People &amp; Approvals</span></span>
+      <span class="ck-item"><span class="ck-dot" style="background:var(--taupe)"></span><span class="ck-label">Back Office</span></span>
+      <span class="ck-item"><span class="ck-dot" style="background:var(--coral)"></span><span class="ck-label">AI</span></span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- ======================= OVERVIEW ======================= -->
+<section id="overview" class="view active">
+  <div class="eyebrow">HOW THE WHOLE SYSTEM FITS TOGETHER</div>
+  <h1 class="thesis">One system, three working areas, one control room underneath, and a thin layer of AI on top that only ever suggests.</h1>
+  <p class="thesis-sub">Kynvera Operations runs Ajman Municipality's day-to-day facilities work — from a technician fixing an air conditioner to HR approving someone's leave. Every screen a staff member sees belongs to one of the shapes below.</p>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 1160 500" role="img" aria-label="Cross-section of Kynvera Operations: three working columns — Field Operations, People and Approvals, Back Office and Records — sitting on an Admin foundation that underlies all three, with an Intelligence roof of AI features on top.">
+      <defs>
+        <marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/></marker>
+        <marker id="arc" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--coral)"/></marker>
+      </defs>
+      <!-- roof -->
+      <rect x="10" y="14" width="1140" height="86" rx="14" fill="rgba(var(--coral-rgb),.09)" stroke="var(--coral)" stroke-opacity=".4"/>
+      <text x="32" y="33" class="mono" font-size="10" letter-spacing="1.6" fill="var(--coral)">INTELLIGENCE LAYER</text>
+
+      <!-- Assistant -->
+      <g transform="translate(56,68)">
+        <circle r="20" fill="var(--card)" stroke="var(--coral)" stroke-width="1.7"/>
+        <rect x="-10" y="-9" width="20" height="13.5" rx="5" fill="none" stroke="var(--coral)" stroke-width="1.5"/>
+        <path d="M-3.5,4.5 v5 l5,-5 Z" fill="var(--coral)"/>
+        <path d="M9.5,-13 l1.4,-3.5 1.4,3.5 3.5,1.4 -3.5,1.4 -1.4,3.5 -1.4,-3.5 -3.5,-1.4Z" fill="var(--coral)"/>
+      </g>
+      <text x="88" y="64" font-size="13" font-weight="700" fill="var(--ink)">Assistant</text>
+      <text x="88" y="81" font-size="10.5" fill="var(--muted)">answers questions, drafts (never sends)</text>
+
+      <!-- AI Triage -->
+      <g transform="translate(400,68)">
+        <circle r="20" fill="var(--card)" stroke="var(--coral)" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <path d="M-9,-7 h18 l-6.5,8.5 v7.5 l-5,-2.6 v-4.9 Z" fill="none" stroke="var(--coral)" stroke-width="1.5" stroke-linejoin="round"/>
+      </g>
+      <text x="432" y="64" font-size="13" font-weight="700" fill="var(--ink)">AI Triage</text>
+      <text x="432" y="81" font-size="10.5" fill="var(--muted)">runs inside Ticketing, below ↓</text>
+
+      <!-- the rule that governs this whole layer -->
+      <rect x="748" y="50" width="380" height="36" rx="18" fill="rgba(var(--coral-rgb),.12)" stroke="var(--coral)" stroke-width="1.3"/>
+      <path d="M776,68 l4.5,5 9,-10" fill="none" stroke="var(--coral)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="800" y="72" font-size="11.5" font-weight="600" fill="var(--coral)">Suggests only — never saves without a person's yes</text>
+
+      <!-- dotted reach-down ticks: Assistant reads from every column -->
+      <g stroke="var(--coral)" stroke-width="1.3" stroke-dasharray="2 4" opacity=".7">
+        <line x1="195" y1="100" x2="195" y2="128" marker-end="url(#arc)"/>
+        <line x1="580" y1="100" x2="580" y2="128" marker-end="url(#arc)"/>
+        <line x1="965" y1="100" x2="965" y2="128" marker-end="url(#arc)"/>
+      </g>
+
+      <!-- columns -->
+      <rect x="10" y="128" width="370" height="244" rx="16" fill="rgba(var(--teal-rgb),.07)" stroke="var(--teal)" stroke-opacity=".3"/>
+      <rect x="395" y="128" width="370" height="244" rx="16" fill="rgba(var(--indigo-rgb),.07)" stroke="var(--indigo)" stroke-opacity=".3"/>
+      <rect x="780" y="128" width="370" height="244" rx="16" fill="rgba(var(--taupe-rgb),.08)" stroke="var(--taupe)" stroke-opacity=".3"/>
+      <text x="28" y="150" class="mono" font-size="10.5" letter-spacing="1.5" fill="var(--teal)">FIELD OPERATIONS</text>
+      <text x="413" y="150" class="mono" font-size="10.5" letter-spacing="1.5" fill="var(--indigo)">PEOPLE &amp; APPROVALS</text>
+      <text x="798" y="150" class="mono" font-size="10.5" letter-spacing="1.5" fill="var(--taupe)">BACK OFFICE &amp; RECORDS</text>
+
+      <!-- Field Ops contents -->
+      <rect x="30" y="164" width="330" height="72" rx="10" fill="rgba(var(--teal-rgb),.1)" stroke="var(--teal)" stroke-width="1.6"/>
+      <circle cx="58" cy="200" r="16" fill="var(--card)" stroke="var(--teal)" stroke-width="1.4"/>
+      <rect x="52" y="194" width="12" height="14" rx="2" fill="none" stroke="var(--teal)" stroke-width="1.4"/><rect x="55" y="192" width="6" height="4" rx="1" fill="var(--teal)"/>
+      <text x="82" y="196" font-size="13.5" font-weight="700" fill="var(--ink)">Ticketing</text>
+      <text x="82" y="212" font-size="10.5" fill="var(--muted)">a facility problem, reported to closed</text>
+      <circle cx="340" cy="178" r="5" fill="var(--coral)"/>
+      <text x="330" y="181" font-size="8.5" fill="var(--coral)" text-anchor="end">AI</text>
+
+      <line x1="77" y1="236" x2="77" y2="264" stroke="var(--ink2)" stroke-width="1.3" stroke-dasharray="3 3"/>
+      <text x="86" y="253" font-size="9" fill="var(--muted)">history</text>
+
+      <g font-size="10.8" fill="var(--ink2)" text-anchor="middle">
+        <rect x="30" y="264" width="95" height="60" rx="9" fill="rgba(var(--teal-rgb),.06)" stroke="var(--teal)" stroke-opacity=".55" stroke-width="1.2"/>
+        <circle cx="77" cy="279" r="6" fill="none" stroke="var(--teal)" stroke-width="1.3"/><path d="M77,270v3M77,285v3M68,279h3M83,279h3" stroke="var(--teal)" stroke-width="1.3"/>
+        <text x="77" y="302" font-weight="600" fill="var(--ink)">Assets</text>
+        <text x="77" y="315" fill="var(--muted)" font-size="9.5">equipment</text>
+
+        <rect x="150" y="264" width="95" height="60" rx="9" fill="rgba(var(--teal-rgb),.06)" stroke="var(--teal)" stroke-opacity=".55" stroke-width="1.2"/>
+        <path d="M191,277 l6,-3 6,3 -6,3Z M191,277 v6l6,3v-6Z M203,277v6l-6,3v-6Z" fill="none" stroke="var(--teal)" stroke-width="1.1"/>
+        <text x="197" y="302" font-weight="600" fill="var(--ink)">Procurement</text>
+        <text x="197" y="315" fill="var(--muted)" font-size="9.5">materials</text>
+
+        <rect x="270" y="264" width="90" height="60" rx="9" fill="rgba(var(--teal-rgb),.06)" stroke="var(--teal)" stroke-opacity=".55" stroke-width="1.2"/>
+        <rect x="309" y="271" width="12" height="16" rx="2" fill="none" stroke="var(--teal)" stroke-width="1.3"/>
+        <text x="315" y="302" font-weight="600" fill="var(--ink)">Devices</text>
+        <text x="315" y="315" fill="var(--muted)" font-size="9.5">tablets/phones</text>
+      </g>
+      <text x="137" y="286" font-size="8.5" fill="var(--muted)" text-anchor="middle">parts</text>
+      <line x1="126" y1="294" x2="149" y2="294" stroke="var(--ink2)" stroke-width="1.3" marker-end="url(#ar)"/>
+      <line x1="149" y1="302" x2="126" y2="302" stroke="var(--ink2)" stroke-width="1.3" marker-end="url(#ar)"/>
+
+      <text x="30" y="348" font-size="9.5" fill="var(--muted)">equipment history feeds Ticketing's AI suggestion</text>
+
+      <!-- People & Approvals contents -->
+      <rect x="412" y="164" width="104" height="68" rx="9" fill="rgba(var(--indigo-rgb),.08)" stroke="var(--indigo)" stroke-width="1.3"/>
+      <circle cx="464" cy="181" r="6.5" fill="none" stroke="var(--indigo)" stroke-width="1.3"/><path d="M455,196c0,-6 5,-8 9,-8s9,2 9,8" fill="none" stroke="var(--indigo)" stroke-width="1.3"/>
+      <text x="464" y="212" text-anchor="middle" font-weight="700" fill="var(--ink)" font-size="11">HR</text>
+      <text x="464" y="225" text-anchor="middle" fill="var(--muted)" font-size="9.5">12 form types</text>
+
+      <rect x="528" y="164" width="104" height="68" rx="9" fill="rgba(var(--indigo-rgb),.08)" stroke="var(--indigo)" stroke-width="1.3"/>
+      <path d="M580,173 l9,3.5v8c0,6.5 -3.5,9 -9,11.5 -5.5,-2.5 -9,-5 -9,-11.5v-8Z" fill="none" stroke="var(--indigo)" stroke-width="1.2"/>
+      <text x="580" y="212" text-anchor="middle" font-weight="700" fill="var(--ink)" font-size="11">QHSI</text>
+      <text x="580" y="225" text-anchor="middle" fill="var(--muted)" font-size="9.5">compliance</text>
+
+      <rect x="644" y="164" width="116" height="68" rx="9" fill="rgba(var(--indigo-rgb),.05)" stroke="var(--indigo)" stroke-width="1.2" stroke-dasharray="4 3"/>
+      <circle cx="699" cy="182" r="6.5" fill="none" stroke="var(--indigo)" stroke-width="1.3"/><line x1="704" y1="187" x2="709" y2="192" stroke="var(--indigo)" stroke-width="1.3" stroke-linecap="round"/>
+      <text x="702" y="212" text-anchor="middle" font-weight="700" fill="var(--ink)" font-size="11">Inspection</text>
+      <text x="702" y="225" text-anchor="middle" fill="var(--muted)" font-size="8.8">site-visit engine</text>
+
+      <!-- merge: HR/QHSI/Inspection all feed the same first approval stage -->
+      <g stroke="var(--indigo)" stroke-width="1.1" fill="none" opacity=".8">
+        <line x1="464" y1="232" x2="490" y2="258" marker-end="url(#ar)"/>
+        <line x1="580" y1="232" x2="490" y2="258" marker-end="url(#ar)"/>
+        <line x1="702" y1="232" x2="490" y2="258" marker-end="url(#ar)"/>
+      </g>
+      <circle cx="490" cy="258" r="3" fill="var(--indigo)"/>
+      <line x1="490" y1="261" x2="475" y2="282" stroke="var(--indigo)" stroke-width="1.3" marker-end="url(#ar)"/>
+
+      <!-- workflow relay -->
+      <g transform="translate(412,288)">
+        <polygon points="0,10 8,0 60,0 68,10 60,20 8,20" fill="rgba(var(--indigo-rgb),.14)" stroke="var(--indigo)" stroke-width="1.3"/>
+        <text x="34" y="14" font-size="8.4" text-anchor="middle" fill="var(--ink)">Supervisor</text>
+        <line x1="68" y1="10" x2="82" y2="10" stroke="var(--indigo)" stroke-width="1.3" marker-end="url(#ar)"/>
+        <polygon points="86,10 94,0 138,0 146,10 138,20 94,20" fill="rgba(var(--indigo-rgb),.14)" stroke="var(--indigo)" stroke-width="1.3"/>
+        <text x="116" y="14" font-size="8.4" text-anchor="middle" fill="var(--ink)">Ops Mgr</text>
+        <line x1="146" y1="10" x2="160" y2="10" stroke="var(--indigo)" stroke-width="1.3" marker-end="url(#ar)"/>
+        <polygon points="164,10 172,0 232,0 240,10 232,20 172,20" fill="rgba(var(--indigo-rgb),.14)" stroke="var(--indigo)" stroke-width="1.3"/>
+        <text x="202" y="14" font-size="7.8" text-anchor="middle" fill="var(--ink)">BD + Procurement</text>
+        <line x1="240" y1="10" x2="254" y2="10" stroke="var(--indigo)" stroke-width="1.3" marker-end="url(#ar)"/>
+        <polygon points="258,10 266,0 296,0 304,10 296,20 266,20" fill="rgba(var(--indigo-rgb),.14)" stroke="var(--indigo)" stroke-width="1.3"/>
+        <text x="281" y="14" font-size="8.4" text-anchor="middle" fill="var(--ink)">GM</text>
+        <line x1="304" y1="10" x2="318" y2="10" stroke="var(--indigo)" stroke-width="1.3" marker-end="url(#ar)"/>
+        <rect x="318" y="0" width="34" height="20" rx="5" fill="rgba(var(--indigo-rgb),.22)" stroke="var(--indigo)" stroke-width="1.1"/>
+        <text x="335" y="14" font-size="8.2" text-anchor="middle" fill="var(--indigo)">Filed</text>
+      </g>
+      <text x="412" y="334" font-size="9.5" fill="var(--muted)">HR, QHSI and Inspection all enter this same relay</text>
+
+      <!-- Back office contents -->
+      <rect x="798" y="164" width="106" height="58" rx="9" fill="rgba(var(--taupe-rgb),.09)" stroke="var(--taupe)" stroke-width="1.3"/>
+      <rect x="843" y="182" width="4" height="10" fill="var(--taupe)"/><rect x="849" y="176" width="4" height="16" fill="var(--taupe)"/><rect x="855" y="185" width="4" height="7" fill="var(--taupe)"/>
+      <text x="851" y="211" text-anchor="middle" font-weight="700" fill="var(--ink)">MMR</text>
+
+      <rect x="918" y="164" width="106" height="58" rx="9" fill="rgba(var(--taupe-rgb),.09)" stroke="var(--taupe)" stroke-width="1.3"/>
+      <path d="M959,176 h8l3,3h12v13h-23Z" fill="none" stroke="var(--taupe)" stroke-width="1.3"/>
+      <text x="971" y="211" text-anchor="middle" font-weight="700" fill="var(--ink)">Files</text>
+
+      <rect x="1038" y="164" width="104" height="58" rx="9" fill="rgba(var(--taupe-rgb),.09)" stroke="var(--taupe)" stroke-width="1.3"/>
+      <path d="M1079,176c4,-2 8,-2 11,0v15c-3,-2 -7,-2 -11,0Z M1101,176c-4,-2 -8,-2 -11,0v15c3,-2 7,-2 11,0Z" fill="none" stroke="var(--taupe)" stroke-width="1.1"/>
+      <text x="1090" y="211" text-anchor="middle" font-weight="700" fill="var(--ink)">DocHub</text>
+
+      <rect x="798" y="244" width="106" height="54" rx="9" fill="rgba(var(--taupe-rgb),.05)" stroke="var(--taupe)" stroke-width="1.2" stroke-dasharray="4 3"/>
+      <path d="M841,255h20v13h-20Z M841,255l10,7 10,-7" fill="none" stroke="var(--taupe)" stroke-width="1.1"/>
+      <text x="851" y="288" text-anchor="middle" font-weight="700" fill="var(--ink)" font-size="10.6">BD email</text>
+
+      <rect x="918" y="244" width="106" height="54" rx="9" fill="rgba(var(--taupe-rgb),.09)" stroke="var(--taupe)" stroke-width="1.3"/>
+      <circle cx="971" cy="262" r="8" fill="none" stroke="var(--taupe)" stroke-width="1.2"/><path d="M971,257v5l4,2" stroke="var(--taupe)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+      <text x="971" y="288" text-anchor="middle" font-weight="700" fill="var(--ink)" font-size="10.6">Automations</text>
+
+      <line x1="971" y1="244" x2="971" y2="222" stroke="var(--taupe)" stroke-width="1.2" marker-end="url(#ar)"/>
+      <text x="798" y="324" font-size="9.5" fill="var(--muted)">BD sends the emails; the deal pipeline</text>
+      <text x="798" y="338" font-size="9.5" fill="var(--muted)">itself lives in Admin, just below</text>
+
+      <!-- root ticks -->
+      <g stroke="var(--taupe)" stroke-width="2">
+        <line x1="195" y1="372" x2="195" y2="390"/>
+        <line x1="580" y1="372" x2="580" y2="390"/>
+        <line x1="965" y1="372" x2="965" y2="390"/>
+      </g>
+      <rect x="10" y="390" width="1140" height="86" rx="14" fill="rgba(var(--taupe-rgb),.12)" stroke="var(--taupe)" stroke-opacity=".45"/>
+      <circle cx="52" cy="428" r="18" fill="var(--card)" stroke="var(--taupe)" stroke-width="1.5"/>
+      <circle cx="52" cy="422" r="6" fill="none" stroke="var(--taupe)" stroke-width="1.4"/><path d="M40,436c0,-8 6,-11 12,-11s12,3 12,11" fill="none" stroke="var(--taupe)" stroke-width="1.4"/>
+      <text x="82" y="424" font-size="13.5" font-weight="700" fill="var(--taupe)">Admin — the foundation</text>
+      <text x="82" y="442" font-size="10.8" fill="var(--ink2)">User accounts &amp; permissions · technician &amp; device rosters · the AI's knowledge base</text>
+      <text x="82" y="459" font-size="10.8" fill="var(--ink2)">Sets up what every column above depends on.</text>
+    </svg>
+    <figcaption>Three working columns handle the day-to-day; Admin underneath sets up the people, rosters and permissions all three depend on; a thin AI layer on top only ever suggests — a person always confirms before anything changes.</figcaption>
+  </figure>
+
+  <div class="legend">
+    <span><b>Shapes mean</b></span>
+    <span><span class="lg-rect"></span> a module</span>
+    <span><span class="lg-circle"></span> a person / role</span>
+    <span><span class="lg-hex" style="clip-path:polygon(20% 0,80% 0,100% 50%,80% 100%,20% 100%,0 50%); background:transparent; border:1.4px solid var(--ink2); width:16px; height:13px;"></span> an approval gate</span>
+    <span><span class="lg-line"></span> a real handoff</span>
+    <span><span class="lg-dash"></span> AI suggestion only</span>
+  </div>
+
+  <div class="group-grid">
+    <button class="group-card" style="--gc:var(--teal)" onclick="goTo('modules','field-ops')">
+      <h3>Field Operations</h3>
+      <p>Ticketing, Assets, Procurement, Devices — the hands-on work of keeping buildings running.</p>
+    </button>
+    <button class="group-card" style="--gc:var(--indigo)" onclick="goTo('modules','people')">
+      <h3>People &amp; Approvals</h3>
+      <p>HR, QHSI, Inspection, and the shared Workflow chain that signs off on all three.</p>
+    </button>
+    <button class="group-card" style="--gc:var(--taupe)" onclick="goTo('modules','back-office')">
+      <h3>Back Office &amp; Records</h3>
+      <p>MMR, Files, DocHub, BD, Automations, and Admin underneath holding it all together.</p>
+    </button>
+    <button class="group-card" style="--gc:var(--coral)" onclick="goTo('modules','intelligence')">
+      <h3>Intelligence Layer</h3>
+      <p>Assistant and AI Triage — always a suggestion, never an action, until a person says yes.</p>
+    </button>
+  </div>
+</section>
+
+<!-- ======================= MODULES ======================= -->
+<section id="modules" class="view">
+  <div class="eyebrow">SIXTEEN MODULES, GROUPED EXACTLY LIKE THE PICTURE YOU JUST SAW</div>
+  <h1 class="thesis">Every screen belongs to one of these.</h1>
+  <p class="thesis-sub">Each card shows the same thing: what it's for, the steps it actually walks someone through, who uses it, and which other modules it hands work to.</p>
+
+  <div class="legend">
+    <span><b>Shapes mean</b></span>
+    <span><span class="lg-circle"></span> a step</span>
+    <span><span class="lg-line"></span> hands off to</span>
+    <span><span class="lg-dash"></span> AI suggestion</span>
+  </div>
+
+  <!-- FIELD OPS -->
+  <div class="grp-heading" id="field-ops" style="--gc:var(--teal)"><span class="dot"></span><h2>Field Operations</h2><span class="count">4 modules</span><span class="rule"></span></div>
+  <div class="card-grid">
+
+    <article class="m-card" id="mod-ticketing" style="--gc-rgb:var(--teal-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="17" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div>
+        <div><p class="m-name">Ticketing</p><p class="m-sub">Work orders, start to finish</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 58" role="img" aria-label="Ticketing steps: report, AI suggests, assign, work and log parts, close.">
+        <g font-size="8" fill="var(--ink2)" text-anchor="middle">
+          <circle cx="20" cy="18" r="13" fill="var(--card2)" stroke="var(--teal)" stroke-width="1.3"/><text x="20" y="21">Rpt</text><text x="20" y="42">Report</text>
+          <line x1="33" y1="18" x2="55" y2="18" stroke="var(--coral)" stroke-width="1.2" stroke-dasharray="2 3" marker-end="url(#ar)"/>
+          <circle cx="68" cy="18" r="13" fill="var(--card2)" stroke="var(--coral)" stroke-width="1.3" stroke-dasharray="2 2"/><text x="68" y="21" fill="var(--coral)">AI</text><text x="68" y="42">Suggests</text>
+          <line x1="81" y1="18" x2="103" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="116" cy="18" r="13" fill="var(--card2)" stroke="var(--teal)" stroke-width="1.3"/><text x="116" y="21">Asn</text><text x="116" y="42">Assign</text>
+          <line x1="129" y1="18" x2="151" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="170" cy="18" r="16" fill="var(--card2)" stroke="var(--teal)" stroke-width="1.3"/><text x="170" y="21">Wrk</text><text x="176" y="42" text-anchor="start">Work &amp; log parts</text>
+          <line x1="186" y1="18" x2="238" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="252" cy="18" r="13" fill="var(--card2)" stroke="var(--teal)" stroke-width="1.3"/><text x="252" y="21">Cls</text><text x="252" y="42">Close</text>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">Reporter</span><span class="chip">Technician</span><span class="chip">Supervisor</span></div>
+      <div class="m-foot"><span>hands off to</span><button class="rel-dot" style="background:var(--teal)" onclick="goTo('modules','mod-procurement')" title="Procurement"></button><button class="rel-dot" style="background:var(--teal)" onclick="goTo('modules','mod-assets')" title="Assets"></button><button class="rel-dot" style="background:var(--coral)" onclick="goTo('modules','mod-aitriage')" title="AI Triage"></button></div>
+    </article>
+
+    <article class="m-card" id="mod-assets" style="--gc-rgb:var(--teal-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21M6 6l1.7 1.7M16.3 16.3 18 18M18 6l-1.7 1.7M7.7 16.3 6 18"/></svg></div>
+        <div><p class="m-name">Assets</p><p class="m-sub">The equipment registry</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 58" role="img" aria-label="Assets steps: register, map it, AI predicts risk, feeds Ticketing.">
+        <g font-size="8" fill="var(--ink2)" text-anchor="middle">
+          <circle cx="24" cy="18" r="14" fill="var(--card2)" stroke="var(--teal)" stroke-width="1.3"/><text x="24" y="21">QR</text><text x="24" y="42">Register</text>
+          <line x1="38" y1="18" x2="66" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="80" cy="18" r="14" fill="var(--card2)" stroke="var(--teal)" stroke-width="1.3"/><text x="80" y="21">Map</text><text x="80" y="42">Map it</text>
+          <line x1="94" y1="18" x2="122" y2="18" stroke="var(--coral)" stroke-width="1.2" stroke-dasharray="2 3" marker-end="url(#ar)"/>
+          <circle cx="140" cy="18" r="18" fill="var(--card2)" stroke="var(--coral)" stroke-width="1.3" stroke-dasharray="2 2"/><text x="140" y="21" fill="var(--coral)">AI</text><text x="140" y="46">Predicts risk</text>
+          <line x1="158" y1="18" x2="196" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <text x="250" y="21" text-anchor="middle" font-size="8">Feeds Ticketing's</text><text x="250" y="31" text-anchor="middle" font-size="8">AI suggestions</text>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">FM Engineer</span><span class="chip">Executive</span></div>
+      <div class="m-foot"><span>hands off to</span><button class="rel-dot" style="background:var(--teal)" onclick="goTo('modules','mod-ticketing')" title="Ticketing"></button></div>
+    </article>
+
+    <article class="m-card" id="mod-procurement" style="--gc-rgb:var(--teal-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-4 9 4-9 4-9-4Z"/><path d="M3 8v9l9 4 9-4V8M12 12v9"/></svg></div>
+        <div><p class="m-name">Procurement</p><p class="m-sub">Materials &amp; spares</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 58" role="img" aria-label="Procurement steps: catalog and stock, request, approve if over budget, receive, issue to a job.">
+        <g font-size="7.6" fill="var(--ink2)" text-anchor="middle">
+          <circle cx="20" cy="18" r="13" fill="var(--card2)" stroke="var(--teal)" stroke-width="1.3"/><text x="20" y="21">Cat</text><text x="20" y="42">Catalog</text>
+          <line x1="33" y1="18" x2="53" y2="18" stroke="var(--ink2)" stroke-width="1.1" marker-end="url(#ar)"/>
+          <circle cx="66" cy="18" r="13" fill="var(--card2)" stroke="var(--teal)" stroke-width="1.3"/><text x="66" y="21">Req</text><text x="66" y="42">Request</text>
+          <line x1="79" y1="18" x2="99" y2="18" stroke="var(--ink2)" stroke-width="1.1" marker-end="url(#ar)"/>
+          <polygon points="112,5 130,5 136,18 130,31 112,31 106,18" fill="var(--card2)" stroke="var(--indigo)" stroke-width="1.2"/><text x="121" y="21" font-size="6.6">GM ok</text><text x="121" y="42">If over budget</text>
+          <line x1="136" y1="18" x2="156" y2="18" stroke="var(--ink2)" stroke-width="1.1" marker-end="url(#ar)"/>
+          <circle cx="169" cy="18" r="13" fill="var(--card2)" stroke="var(--teal)" stroke-width="1.3"/><text x="169" y="21">Rcv</text><text x="169" y="42">Receive</text>
+          <line x1="182" y1="18" x2="202" y2="18" stroke="var(--ink2)" stroke-width="1.1" marker-end="url(#ar)"/>
+          <circle cx="222" cy="18" r="17" fill="var(--card2)" stroke="var(--teal)" stroke-width="1.3"/><text x="222" y="21">Iss</text><text x="222" y="45">Issue to a job</text>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">Storekeeper</span><span class="chip">Supervisor</span><span class="chip">GM</span></div>
+      <div class="m-foot"><span>hands off to</span><button class="rel-dot" style="background:var(--teal)" onclick="goTo('modules','mod-ticketing')" title="Ticketing"></button></div>
+    </article>
+
+    <article class="m-card" id="mod-devices" style="--gc-rgb:var(--teal-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="12" height="17" rx="2"/><line x1="10" y1="17" x2="10" y2="17.01"/><path d="M18 10c1.8 0 3 1.5 3 3.4 0 2.4-3 6.6-3 6.6s-3-4.2-3-6.6c0-1.9 1.2-3.4 3-3.4Z"/></svg></div>
+        <div><p class="m-name">Devices</p><p class="m-sub">Company tablets &amp; phones</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 58" role="img" aria-label="Devices steps: register device, track on map, bulk import, feeds Admin dashboard.">
+        <g font-size="8" fill="var(--ink2)" text-anchor="middle">
+          <circle cx="24" cy="18" r="14" fill="var(--card2)" stroke="var(--teal)" stroke-width="1.3"/><text x="24" y="21">Reg</text><text x="24" y="42">Register</text>
+          <line x1="38" y1="18" x2="60" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="76" cy="18" r="14" fill="var(--card2)" stroke="var(--teal)" stroke-width="1.3"/><text x="76" y="21">Map</text><text x="76" y="42">Track</text>
+          <line x1="90" y1="18" x2="112" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="130" cy="18" r="16" fill="var(--card2)" stroke="var(--teal)" stroke-width="1.3"/><text x="130" y="21">XLS</text><text x="130" y="42">Bulk import</text>
+          <line x1="146" y1="18" x2="176" y2="18" stroke="var(--taupe)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <text x="235" y="21" text-anchor="middle" font-size="8">Feeds Admin's</text><text x="235" y="31" text-anchor="middle" font-size="8">compliance dashboard</text>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">IT / Admin</span></div>
+      <div class="m-foot"><span>hands off to</span><button class="rel-dot" style="background:var(--taupe)" onclick="goTo('modules','mod-admin')" title="Admin"></button></div>
+    </article>
+  </div>
+
+  <!-- PEOPLE & APPROVALS -->
+  <div class="grp-heading" id="people" style="--gc:var(--indigo)"><span class="dot"></span><h2>People &amp; Approvals</h2><span class="count">4 modules</span><span class="rule"></span></div>
+  <div class="card-grid">
+
+    <article class="m-card" id="mod-hr" style="--gc-rgb:var(--indigo-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3"/><path d="M5 21c0-4 3-6 7-6s7 2 7 6"/><rect x="9" y="10.5" width="6" height="7" rx="1"/></svg></div>
+        <div><p class="m-name">HR</p><p class="m-sub">12 employee form types</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 58" role="img" aria-label="HR steps: pick a form, fill and sign, workflow approval, archived PDF.">
+        <g font-size="8" fill="var(--ink2)" text-anchor="middle">
+          <circle cx="24" cy="18" r="15" fill="var(--card2)" stroke="var(--indigo)" stroke-width="1.3"/><text x="24" y="21">×12</text><text x="24" y="42">Pick a form</text>
+          <line x1="39" y1="18" x2="65" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="80" cy="18" r="14" fill="var(--card2)" stroke="var(--indigo)" stroke-width="1.3"/><text x="80" y="21">Sig</text><text x="80" y="42">Fill &amp; sign</text>
+          <line x1="94" y1="18" x2="120" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <polygon points="132,4 158,4 168,18 158,32 132,32 122,18" fill="var(--card2)" stroke="var(--indigo)" stroke-width="1.3"/><text x="145" y="21" font-size="7.5">Workflow</text>
+          <line x1="168" y1="18" x2="194" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="212" cy="18" r="16" fill="var(--card2)" stroke="var(--indigo)" stroke-width="1.3"/><text x="212" y="21">PDF</text><text x="212" y="45">Archived</text>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">Employee</span><span class="chip">HR</span><span class="chip">Supervisor</span><span class="chip">GM</span></div>
+      <div class="m-foot"><span>hands off to</span><button class="rel-dot" style="background:var(--indigo)" onclick="goTo('modules','mod-workflow')" title="Workflow"></button><button class="rel-dot" style="background:var(--taupe)" onclick="goTo('modules','mod-automations')" title="Automations"></button></div>
+    </article>
+
+    <article class="m-card" id="mod-qhsi" style="--gc-rgb:var(--indigo-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.6-3 7.6-7 9-4-1.4-7-4.4-7-9V6l7-3Z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <div><p class="m-name">QHSI</p><p class="m-sub">Quality, health &amp; safety</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 58" role="img" aria-label="QHSI steps: log compliance and training, run inspection, send for approval.">
+        <g font-size="8" fill="var(--ink2)" text-anchor="middle">
+          <circle cx="24" cy="18" r="16" fill="var(--card2)" stroke="var(--indigo)" stroke-width="1.3"/><text x="24" y="21">PPE</text><text x="24" y="45">Log compliance</text>
+          <line x1="40" y1="18" x2="70" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="90" cy="18" r="17" fill="var(--card2)" stroke="var(--indigo)" stroke-width="1.3" stroke-dasharray="4 3"/><text x="90" y="21" font-size="7.4">Inspect</text><text x="90" y="46">via Inspection</text>
+          <line x1="107" y1="18" x2="133" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <polygon points="146,4 172,4 182,18 172,32 146,32 136,18" fill="var(--card2)" stroke="var(--indigo)" stroke-width="1.3"/><text x="159" y="21" font-size="7.5">Workflow</text>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">QHSI Officer</span><span class="chip">Ops Manager</span></div>
+      <div class="m-foot"><span>hands off to</span><button class="rel-dot" style="background:var(--indigo)" onclick="goTo('modules','mod-inspection')" title="Inspection"></button><button class="rel-dot" style="background:var(--indigo)" onclick="goTo('modules','mod-workflow')" title="Workflow"></button></div>
+    </article>
+
+    <article class="m-card" id="mod-inspection" style="--gc-rgb:var(--indigo-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M14.5 14.5 20 20M8 10h4"/></svg></div>
+        <div><p class="m-name">Inspection</p><p class="m-sub">QHSI's on-site checklist engine</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 58" role="img" aria-label="Inspection steps: fill checklist on site, attach photos, save or submit.">
+        <g font-size="8" fill="var(--ink2)" text-anchor="middle">
+          <circle cx="26" cy="18" r="17" fill="var(--card2)" stroke="var(--indigo)" stroke-width="1.3"/><text x="26" y="21" font-size="7.4">HVAC/Civil</text><text x="26" y="45">Fill on-site</text>
+          <line x1="43" y1="18" x2="73" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="92" cy="18" r="14" fill="var(--card2)" stroke="var(--indigo)" stroke-width="1.3"/><text x="92" y="21">Pic</text><text x="92" y="42">Photos</text>
+          <line x1="106" y1="18" x2="132" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="150" cy="18" r="14" fill="var(--card2)" stroke="var(--indigo)" stroke-width="1.3"/><text x="150" y="21">Sub</text><text x="150" y="42">Submit</text>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">Field Inspector</span></div>
+      <div class="m-foot"><span>satellite of</span><button class="rel-dot" style="background:var(--indigo)" onclick="goTo('modules','mod-qhsi')" title="QHSI"></button></div>
+    </article>
+
+    <article class="m-card" id="mod-workflow" style="--gc-rgb:var(--indigo-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="2.3"/><circle cx="12" cy="6" r="2.3"/><circle cx="19" cy="12" r="2.3"/><circle cx="12" cy="18" r="2.3"/><path d="M7 11l3.5-3.5M14 8.5 17 11M17 13l-3 3.5M10 16.5 7 13"/></svg></div>
+        <div><p class="m-name">Workflow</p><p class="m-sub">The shared approval relay</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 58" role="img" aria-label="Workflow relay: Supervisor to Operations Manager to BD and Procurement together to General Manager to filed.">
+        <g font-size="7.4" fill="var(--ink)" text-anchor="middle">
+          <polygon points="6,5 24,5 32,18 24,31 6,31 -2,18" fill="var(--card2)" stroke="var(--indigo)" stroke-width="1.3" transform="translate(6,0)"/><text x="18" y="21">Sup</text>
+          <line x1="42" y1="18" x2="60" y2="18" stroke="var(--indigo)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <polygon points="6,5 24,5 32,18 24,31 6,31 -2,18" fill="var(--card2)" stroke="var(--indigo)" stroke-width="1.3" transform="translate(64,0)"/><text x="76" y="21">OM</text>
+          <line x1="100" y1="18" x2="118" y2="18" stroke="var(--indigo)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <polygon points="4,5 44,5 52,18 44,31 4,31 -4,18" fill="var(--card2)" stroke="var(--indigo)" stroke-width="1.3" transform="translate(120,0)"/><text x="144" y="21" font-size="6.6">BD+Proc</text>
+          <line x1="176" y1="18" x2="194" y2="18" stroke="var(--indigo)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <polygon points="6,5 24,5 32,18 24,31 6,31 -2,18" fill="var(--card2)" stroke="var(--indigo)" stroke-width="1.3" transform="translate(196,0)"/><text x="208" y="21">GM</text>
+          <line x1="234" y1="18" x2="252" y2="18" stroke="var(--indigo)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <rect x="254" y="6" width="40" height="24" rx="5" fill="rgba(var(--indigo-rgb),.15)" stroke="var(--indigo)"/><text x="274" y="21" font-size="7.5">Filed</text>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">Whoever's next in line</span></div>
+      <div class="m-foot"><span>receives from</span><button class="rel-dot" style="background:var(--indigo)" onclick="goTo('modules','mod-hr')" title="HR"></button><button class="rel-dot" style="background:var(--indigo)" onclick="goTo('modules','mod-qhsi')" title="QHSI"></button><button class="rel-dot" style="background:var(--indigo)" onclick="goTo('modules','mod-inspection')" title="Inspection"></button>
+        <p class="m-note" style="width:100%">Doesn't touch tickets — those have their own status lifecycle.</p></div>
+    </article>
+  </div>
+
+  <!-- BACK OFFICE -->
+  <div class="grp-heading" id="back-office" style="--gc:var(--taupe)"><span class="dot"></span><h2>Back Office &amp; Records</h2><span class="count">6 modules</span><span class="rule"></span></div>
+  <div class="card-grid">
+
+    <article class="m-card" id="mod-mmr" style="--gc-rgb:var(--taupe-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 17v-4M12 17V9M16 17v-7"/></svg></div>
+        <div><p class="m-name">MMR</p><p class="m-sub">Monthly management report</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 58" role="img" aria-label="MMR steps: import spreadsheet, calculate costs, build report, email out.">
+        <g font-size="7.8" fill="var(--ink2)" text-anchor="middle">
+          <circle cx="24" cy="18" r="16" fill="var(--card2)" stroke="var(--taupe)" stroke-width="1.3"/><text x="24" y="21" font-size="7">CAFM</text><text x="24" y="45">Import sheet</text>
+          <line x1="40" y1="18" x2="66" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="84" cy="18" r="16" fill="var(--card2)" stroke="var(--taupe)" stroke-width="1.3"/><text x="84" y="21" font-size="7">$</text><text x="84" y="45">Calc cost</text>
+          <line x1="100" y1="18" x2="126" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="144" cy="18" r="14" fill="var(--card2)" stroke="var(--taupe)" stroke-width="1.3"/><text x="144" y="21">Bld</text><text x="144" y="42">Build</text>
+          <line x1="158" y1="18" x2="180" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="198" cy="18" r="16" fill="var(--card2)" stroke="var(--taupe)" stroke-width="1.3"/><text x="198" y="21">✉</text><text x="198" y="42">Email</text>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">Report Admin</span></div>
+      <div class="m-foot"><span>scheduled by</span><button class="rel-dot" style="background:var(--taupe)" onclick="goTo('modules','mod-automations')" title="Automations"></button></div>
+    </article>
+
+    <article class="m-card" id="mod-files" style="--gc-rgb:var(--taupe-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6a1 1 0 011-1h5l2 2h9a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V6Z"/></svg></div>
+        <div><p class="m-name">Files</p><p class="m-sub">Shared document storage</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 58" role="img" aria-label="Files steps: upload, store in folders, optional Drive sync.">
+        <g font-size="8" fill="var(--ink2)" text-anchor="middle">
+          <circle cx="24" cy="18" r="14" fill="var(--card2)" stroke="var(--taupe)" stroke-width="1.3"/><text x="24" y="21">Up</text><text x="24" y="42">Upload</text>
+          <line x1="38" y1="18" x2="64" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="82" cy="18" r="16" fill="var(--card2)" stroke="var(--taupe)" stroke-width="1.3"/><text x="82" y="21" font-size="7">Store</text><text x="82" y="45">Folders</text>
+          <line x1="98" y1="18" x2="124" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="144" cy="18" r="16" fill="var(--card2)" stroke="var(--taupe)" stroke-width="1.3" stroke-dasharray="3 3"/><text x="144" y="21" font-size="6.6">Drive</text><text x="144" y="45">Optional sync</text>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">Any staff</span></div>
+      <div class="m-foot"><span>receives exports from</span><button class="rel-dot" style="background:var(--taupe)" onclick="goTo('modules','mod-automations')" title="Automations"></button><button class="rel-dot" style="background:var(--taupe)" onclick="goTo('modules','mod-bd')" title="BD"></button></div>
+    </article>
+
+    <article class="m-card" id="mod-dochub" style="--gc-rgb:var(--taupe-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5c3-1.5 6-1.5 8 0v14c-2-1.5-5-1.5-8 0V5ZM20 5c-3-1.5-6-1.5-8 0v14c2-1.5 5-1.5 8 0V5Z"/></svg></div>
+        <div><p class="m-name">DocHub</p><p class="m-sub">Company knowledge base</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 58" role="img" aria-label="DocHub steps: draft, review, publish.">
+        <g font-size="8.4" fill="var(--ink2)" text-anchor="middle">
+          <circle cx="26" cy="18" r="15" fill="var(--card2)" stroke="var(--taupe)" stroke-width="1.3"/><text x="26" y="21">Drft</text><text x="26" y="42">Draft</text>
+          <line x1="41" y1="18" x2="67" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="86" cy="18" r="16" fill="var(--card2)" stroke="var(--taupe)" stroke-width="1.3"/><text x="86" y="21" font-size="7">Rvw</text><text x="86" y="45">Review</text>
+          <line x1="102" y1="18" x2="128" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <circle cx="146" cy="18" r="16" fill="var(--card2)" stroke="var(--taupe)" stroke-width="1.3"/><text x="146" y="21" font-size="7">Pub</text><text x="146" y="45">Published</text>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">Authors (admin-granted)</span></div>
+      <div class="m-foot"><span>access set by</span><button class="rel-dot" style="background:var(--taupe)" onclick="goTo('modules','mod-admin')" title="Admin"></button>
+        <p class="m-note" style="width:100%">Not the same as Files — this is curated, not a drop-folder.</p></div>
+    </article>
+
+    <article class="m-card" id="mod-bd" style="--gc-rgb:var(--taupe-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="11" rx="2"/><path d="M3 6l7 5 7-5M17 14h5M19 12l3 2-3 2"/></svg></div>
+        <div><p class="m-name">BD Email</p><p class="m-sub">Outreach tooling only</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 58" role="img" aria-label="BD steps: compose branded email, pick recipient group, schedule, send.">
+        <g font-size="7.6" fill="var(--ink2)" text-anchor="middle">
+          <circle cx="22" cy="18" r="14" fill="var(--card2)" stroke="var(--taupe)" stroke-width="1.3"/><text x="22" y="21">Cmp</text><text x="22" y="42">Compose</text>
+          <line x1="36" y1="18" x2="58" y2="18" stroke="var(--ink2)" stroke-width="1.1" marker-end="url(#ar)"/>
+          <circle cx="76" cy="18" r="16" fill="var(--card2)" stroke="var(--taupe)" stroke-width="1.3"/><text x="76" y="21" font-size="6.8">Group</text><text x="76" y="45">Recipients</text>
+          <line x1="92" y1="18" x2="114" y2="18" stroke="var(--ink2)" stroke-width="1.1" marker-end="url(#ar)"/>
+          <circle cx="130" cy="18" r="13" fill="var(--card2)" stroke="var(--taupe)" stroke-width="1.3"/><text x="130" y="21">⏱</text><text x="130" y="42">Schedule</text>
+          <line x1="143" y1="18" x2="163" y2="18" stroke="var(--ink2)" stroke-width="1.1" marker-end="url(#ar)"/>
+          <circle cx="180" cy="18" r="13" fill="var(--card2)" stroke="var(--taupe)" stroke-width="1.3"/><text x="180" y="21">✉</text><text x="180" y="42">Send</text>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">BD / Sales</span></div>
+      <div class="m-foot"><span>deals live in</span><button class="rel-dot" style="background:var(--taupe)" onclick="goTo('modules','mod-admin')" title="Admin"></button>
+        <p class="m-note" style="width:100%">Same business function, split in two: this sends emails, Admin holds the deal pipeline.</p></div>
+    </article>
+
+    <article class="m-card" id="mod-admin" style="--gc-rgb:var(--taupe-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l3 3"/></svg></div>
+        <div><p class="m-name">Admin</p><p class="m-sub">The control room</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 90" role="img" aria-label="Admin as a hub connected to eight spokes: users and permissions, technician roster, device inventory, BD deals, DocHub access, AI knowledge base, dashboards, backups.">
+        <circle cx="150" cy="45" r="17" fill="rgba(var(--taupe-rgb),.16)" stroke="var(--taupe)" stroke-width="1.4"/>
+        <text x="150" y="49" text-anchor="middle" font-size="9" font-weight="700" fill="var(--taupe)">Admin</text>
+        <g font-size="7" fill="var(--ink2)" text-anchor="middle">
+          <g><line x1="150" y1="28" x2="150" y2="8" stroke="var(--taupe)" stroke-width="1"/><text x="150" y="6">Users &amp; perms</text></g>
+          <g><line x1="164" y1="34" x2="230" y2="10" stroke="var(--taupe)" stroke-width="1"/><text x="238" y="10" text-anchor="start">Technician roster</text></g>
+          <g><line x1="167" y1="45" x2="245" y2="45" stroke="var(--taupe)" stroke-width="1"/><text x="252" y="48" text-anchor="start">Device inventory</text></g>
+          <g><line x1="164" y1="56" x2="230" y2="80" stroke="var(--taupe)" stroke-width="1"/><text x="238" y="83" text-anchor="start">BD deals</text></g>
+          <g><line x1="150" y1="62" x2="150" y2="86" stroke="var(--taupe)" stroke-width="1"/><text x="150" y="88">Dashboards</text></g>
+          <g><line x1="136" y1="56" x2="70" y2="80" stroke="var(--taupe)" stroke-width="1"/><text x="62" y="83" text-anchor="end">Backups</text></g>
+          <g><line x1="133" y1="45" x2="55" y2="45" stroke="var(--taupe)" stroke-width="1"/><text x="48" y="48" text-anchor="end">DocHub access</text></g>
+          <g><line x1="136" y1="34" x2="70" y2="10" stroke="var(--taupe)" stroke-width="1"/><text x="62" y="10" text-anchor="end">AI's knowledge</text></g>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">Admin / Senior Mgmt</span></div>
+      <div class="m-foot"><span>underlies</span><span style="font-family:var(--font-mono)">every module above</span></div>
+    </article>
+
+    <article class="m-card" id="mod-automations" style="--gc-rgb:var(--taupe-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></div>
+        <div><p class="m-name">Automations</p><p class="m-sub">Runs itself, overnight</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 90" role="img" aria-label="Automations clock connected to six nightly jobs: HR export, procurement export, device export, technician export, database backup, ticket inbox check.">
+        <circle cx="150" cy="45" r="16" fill="rgba(var(--taupe-rgb),.16)" stroke="var(--taupe)" stroke-width="1.4"/>
+        <path d="M150,35 v10 l7,5" stroke="var(--taupe)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        <g font-size="7" fill="var(--ink2)" text-anchor="middle">
+          <line x1="150" y1="29" x2="150" y2="8" stroke="var(--taupe)" stroke-width="1"/><text x="150" y="6">HR export</text>
+          <line x1="163" y1="35" x2="225" y2="14" stroke="var(--taupe)" stroke-width="1"/><text x="233" y="14" text-anchor="start">Procurement export</text>
+          <line x1="166" y1="45" x2="245" y2="45" stroke="var(--taupe)" stroke-width="1"/><text x="252" y="48" text-anchor="start">Device export</text>
+          <line x1="163" y1="55" x2="225" y2="78" stroke="var(--taupe)" stroke-width="1"/><text x="233" y="82" text-anchor="start">Technician export</text>
+          <line x1="137" y1="55" x2="75" y2="78" stroke="var(--taupe)" stroke-width="1"/><text x="67" y="82" text-anchor="end">DB backup</text>
+          <line x1="134" y1="45" x2="55" y2="45" stroke="var(--taupe)" stroke-width="1"/><text x="48" y="48" text-anchor="end">Ticket-inbox check</text>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">Fully automatic</span></div>
+      <div class="m-foot"><span>saves into</span><button class="rel-dot" style="background:var(--taupe)" onclick="goTo('modules','mod-files')" title="Files"></button></div>
+    </article>
+  </div>
+
+  <!-- INTELLIGENCE -->
+  <div class="grp-heading" id="intelligence" style="--gc:var(--coral)"><span class="dot"></span><h2>Intelligence Layer</h2><span class="count">2 modules</span><span class="rule"></span></div>
+  <div class="card-grid">
+
+    <article class="m-card" id="mod-assistant" style="--gc-rgb:var(--coral-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4V5Z"/><path d="M12 8v.01M9 11l1-3 1 3M15 8l-1 3 1 3"/></svg></div>
+        <div><p class="m-name">Assistant</p><p class="m-sub">Ask it anything, in plain language</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 58" role="img" aria-label="Assistant flow: idea, suggestion, human confirms, then it happens.">
+        <g font-size="8" fill="var(--ink2)" text-anchor="middle">
+          <circle cx="22" cy="18" r="13" fill="var(--card2)" stroke="var(--coral)" stroke-width="1.3"/><text x="22" y="21" fill="var(--coral)">AI</text><text x="22" y="42">Reads data</text>
+          <line x1="35" y1="18" x2="59" y2="18" stroke="var(--coral)" stroke-width="1.2" stroke-dasharray="2 3" marker-end="url(#arc)"/>
+          <rect x="60" y="7" width="68" height="22" rx="8" fill="var(--card2)" stroke="var(--coral)" stroke-width="1.2" stroke-dasharray="3 3"/><text x="94" y="21" font-size="7.4">Drafts a ticket</text>
+          <line x1="128" y1="18" x2="150" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <polygon points="152,4 178,4 188,18 178,32 152,32 142,18" fill="var(--card2)" stroke="var(--ink2)" stroke-width="1.3"/><text x="165" y="21" font-size="7.2">You confirm</text>
+          <line x1="188" y1="18" x2="208" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <text x="240" y="21" font-size="8">Only then</text><text x="240" y="31" font-size="8">it's created</text>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">Any staff member</span></div>
+      <div class="m-foot"><span>reads from</span><button class="rel-dot" style="background:var(--teal)" onclick="goTo('modules','mod-ticketing')" title="Ticketing"></button><button class="rel-dot" style="background:var(--indigo)" onclick="goTo('modules','mod-hr')" title="HR"></button><button class="rel-dot" style="background:var(--teal)" onclick="goTo('modules','mod-procurement')" title="Procurement"></button><button class="rel-dot" style="background:var(--teal)" onclick="goTo('modules','mod-assets')" title="Assets"></button></div>
+    </article>
+
+    <article class="m-card" id="mod-aitriage" style="--gc-rgb:var(--coral-rgb)">
+      <div class="m-head"><div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6 8v6l-4-2v-4L4 5Z"/></svg></div>
+        <div><p class="m-name">AI Triage</p><p class="m-sub">Docked onto Ticketing</p></div></div>
+      <svg class="m-diagram" viewBox="0 0 300 58" role="img" aria-label="AI Triage suggests priority, deadline, technician and parts, logged, human confirms.">
+        <g font-size="7.6" fill="var(--ink2)" text-anchor="middle">
+          <circle cx="24" cy="18" r="16" fill="var(--card2)" stroke="var(--coral)" stroke-width="1.3"/><text x="24" y="21" fill="var(--coral)">AI</text><text x="24" y="45">Reads history</text>
+          <line x1="40" y1="18" x2="64" y2="18" stroke="var(--coral)" stroke-width="1.2" stroke-dasharray="2 3" marker-end="url(#arc)"/>
+          <rect x="66" y="4" width="104" height="28" rx="8" fill="var(--card2)" stroke="var(--coral)" stroke-width="1.2" stroke-dasharray="3 3"/><text x="118" y="15" font-size="7">Priority · SLA</text><text x="118" y="26" font-size="7">Technician · parts</text>
+          <line x1="170" y1="18" x2="192" y2="18" stroke="var(--ink2)" stroke-width="1.2" marker-end="url(#ar)"/>
+          <text x="235" y="15" font-size="7.6">Logged, then a</text><text x="235" y="27" font-size="7.6">supervisor confirms</text>
+        </g>
+      </svg>
+      <div class="m-roles"><span class="chip">Runs inside Ticketing</span></div>
+      <div class="m-foot"><span>satellite of</span><button class="rel-dot" style="background:var(--teal)" onclick="goTo('modules','mod-ticketing')" title="Ticketing"></button></div>
+    </article>
+  </div>
+</section>
+
+<!-- ======================= SECURITY ======================= -->
+<section id="security" class="view">
+  <div class="eyebrow">HOW YOUR INFORMATION IS PROTECTED</div>
+  <h1 class="thesis">Two keys to get in, and every room inside locked separately.</h1>
+  <p class="thesis-sub">Five checkpoints stand between the public internet and your data. No one — not your staff, not ours, not anyone holding the database — can read a password. And every action is written down with a name and a timestamp.</p>
+
+  <div class="spec-strip">
+    <div class="spec"><span class="n">2 keys</span><span class="l">Password, plus a code from your phone</span></div>
+    <div class="spec"><span class="n">1 hour</span><span class="l">Before a signed-in pass expires</span></div>
+    <div class="spec"><span class="n">0</span><span class="l">Passwords stored in readable form</span></div>
+    <div class="spec"><span class="n">Every action</span><span class="l">Recorded: who, what, when, from where</span></div>
+  </div>
+
+  <div class="sub-head">
+    <span class="eyebrow">THE WAY IN</span>
+    <h2>Five checkpoints, in order</h2>
+    <p>Every single request — opening a page, saving a form, uploading a photo — walks this same corridor before it touches anything. The technical name for each is in parentheses, for whoever needs it.</p>
+  </div>
+
+  <figure class="diagram" style="margin-top:20px;">
+    <svg viewBox="0 0 1160 200" role="img" aria-label="A corridor of five security checkpoints a request passes through: front door, visitor pass, corridor sensors, room access, package check.">
+      <defs><marker id="arS" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/></marker></defs>
+      <line x1="40" y1="150" x2="1120" y2="150" stroke="var(--line)" stroke-width="3"/>
+      <circle cx="70" cy="150" r="7" fill="var(--coral)"><title>a request, entering</title></circle>
+      <line x1="80" y1="150" x2="1110" y2="150" stroke="var(--ink2)" stroke-width="1" marker-end="url(#arS)" opacity=".4"/>
+      <g font-family="var(--font-body)">
+        <g transform="translate(170,0)">
+          <rect x="-46" y="30" width="92" height="70" rx="10" fill="var(--card)" stroke="var(--ink2)" stroke-width="1.6"/>
+          <path d="M-20,50 v34M20,50 v34M-20,60 h40" stroke="var(--ink2)" stroke-width="1.6"/>
+          <text x="0" y="118" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">Front Door</text>
+          <text x="0" y="134" text-anchor="middle" font-size="9.5" fill="var(--muted)">password + optional code</text>
+        </g>
+        <g transform="translate(390,0)">
+          <rect x="-46" y="30" width="92" height="70" rx="10" fill="var(--card)" stroke="var(--ink2)" stroke-width="1.6"/>
+          <rect x="-24" y="55" width="48" height="26" rx="5" fill="none" stroke="var(--ink2)" stroke-width="1.6"/><circle cx="0" cy="68" r="5" fill="none" stroke="var(--ink2)" stroke-width="1.4"/>
+          <text x="0" y="118" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">Visitor Pass</text>
+          <text x="0" y="134" text-anchor="middle" font-size="9.5" fill="var(--muted)">expires, revocable</text>
+        </g>
+        <g transform="translate(610,0)">
+          <rect x="-46" y="30" width="92" height="70" rx="10" fill="var(--card)" stroke="var(--ink2)" stroke-width="1.6"/>
+          <circle cx="-14" cy="60" r="6" fill="none" stroke="var(--ink2)" stroke-width="1.6"/><circle cx="14" cy="76" r="6" fill="none" stroke="var(--ink2)" stroke-width="1.6"/>
+          <text x="0" y="118" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">Corridor Sensors</text>
+          <text x="0" y="134" text-anchor="middle" font-size="9.5" fill="var(--muted)">rate limit + forgery check</text>
+        </g>
+        <g transform="translate(830,0)">
+          <rect x="-46" y="30" width="92" height="70" rx="10" fill="var(--card)" stroke="var(--ink2)" stroke-width="1.6"/>
+          <path d="M-18,45 h36 v40 h-36 Z M-18,60 h36" stroke="var(--ink2)" stroke-width="1.6" fill="none"/>
+          <text x="0" y="118" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">Room Access</text>
+          <text x="0" y="134" text-anchor="middle" font-size="9.5" fill="var(--muted)">role &amp; permission gate</text>
+        </g>
+        <g transform="translate(1040,0)">
+          <rect x="-46" y="30" width="92" height="70" rx="10" fill="var(--card)" stroke="var(--ink2)" stroke-width="1.6"/>
+          <path d="M-20,50 h40v34h-40Z M-20,50 l20,-14 20,14" stroke="var(--ink2)" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
+          <text x="0" y="118" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">Package Check</text>
+          <text x="0" y="134" text-anchor="middle" font-size="9.5" fill="var(--muted)">file type &amp; size limits</text>
+        </g>
+      </g>
+      <text x="1140" y="154" font-size="10" fill="var(--muted)" text-anchor="end">→ the app</text>
+    </svg>
+    <figcaption>Every visit walks this same corridor. A stolen key card (token) can be cut remotely; too many wrong knocks locks the front door for a while; a copycat website can't slip a fake request past the corridor sensors.</figcaption>
+  </figure>
+
+  <div class="gate-grid">
+    <div class="gate-card"><p class="gate-num">01</p><h3>Front Door</h3><p>Username + password, plus an optional second step: a 6-digit code from an authenticator app, like the ones banks use. Turning it on is a 3-step handshake — see a QR code, prove a live code works, then it's required every time. Turning it off needs your password again, and either way you get an email.</p><p class="gate-tech">(login + TOTP multi-factor authentication)</p></div>
+    <div class="gate-card"><p class="gate-num">02</p><h3>Visitor Pass</h3><p>Signing in issues a short-lived pass good for 1 hour, and a longer one good for 7 days that quietly renews it. Every pass is on a list, so a lost or stolen one can be cut off immediately, from anywhere.</p><p class="gate-tech">(JWT access + refresh tokens, server-revocable sessions)</p></div>
+    <div class="gate-card"><p class="gate-num">03</p><h3>Corridor Sensors</h3><p>Too many login attempts in a row locks that door for a while, slowing down password guessing. A hidden stamp on every form-submission has to match, so a malicious website can't secretly act on your behalf using your open session.</p><p class="gate-tech">(rate limiting + CSRF protection)</p></div>
+    <div class="gate-card"><p class="gate-num">04</p><h3>Room Access</h3><p>Your badge only opens rooms you're cleared for. Most staff see only the modules they're granted; the admin console needs the admin badge specifically.</p><p class="gate-tech">(role-based access control)</p></div>
+    <div class="gate-card"><p class="gate-num">05</p><h3>Package Check</h3><p>Anything brought in gets inspected: only the right kind of file for the job (photos for tickets, spreadsheets for bulk imports), nothing over the size limit, and no sneaky filenames that try to reach outside their folder.</p><p class="gate-tech">(file-type validation, size limits, path-traversal protection)</p></div>
+  </div>
+
+  <div class="sub-head">
+    <span class="eyebrow">WHO CAN SEE WHAT</span>
+    <h2>Two kinds of badge, and nothing is open by default</h2>
+    <p>A new account starts with nothing switched on. Someone with an admin badge turns on only the modules that person actually needs — so a cleaning supervisor never sees payroll paperwork, and a technician never sees the deal pipeline.</p>
+  </div>
+
+  <div class="badge-grid">
+    <div class="badge-card admin">
+      <div class="badge-head">
+        <span class="badge-ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l3 3"/></svg></span>
+        <div><h3>Admin badge</h3><span>a small, named group</span></div>
+      </div>
+      <p>Opens every door, including the control room itself — creating accounts, granting other people access, and viewing every site's data.</p>
+      <p class="perm-label">Admin badge only</p>
+      <div class="perm-tags">
+        <span class="ptag adm">Create &amp; disable accounts</span>
+        <span class="ptag adm">Grant module access</span>
+        <span class="ptag adm">Device fleet</span>
+        <span class="ptag adm">Team management</span>
+        <span class="ptag adm">BD deal pipeline</span>
+        <span class="ptag adm">Database backups</span>
+        <span class="ptag adm">The AI's knowledge base</span>
+      </div>
+    </div>
+
+    <div class="badge-card">
+      <div class="badge-head">
+        <span class="badge-ico"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 21c0-4 3-6.5 7-6.5s7 2.5 7 6.5"/></svg></span>
+        <div><h3>Staff badge</h3><span>everyone else</span></div>
+      </div>
+      <p>Opens only the modules an admin has switched on for that person, one by one. Everything else simply isn't there when they sign in.</p>
+      <p class="perm-label">Switches an admin can turn on, per person</p>
+      <div class="perm-tags">
+        <span class="ptag on">HR</span><span class="ptag on">Hiring</span><span class="ptag on">Ticketing</span>
+        <span class="ptag on">Procurement</span><span class="ptag on">QHSI</span><span class="ptag on">Files</span>
+        <span class="ptag on">Business development</span><span class="ptag on">Sales</span><span class="ptag on">Quotations</span>
+        <span class="ptag on">Report generation</span><span class="ptag on">Submitted forms</span>
+        <span class="ptag on">HVAC</span><span class="ptag on">Civil</span><span class="ptag on">Cleaning</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sub-head">
+    <span class="eyebrow">ON THE WIRE</span>
+    <h2>Scrambled the whole way, and unreadable at rest</h2>
+    <p>Information is encrypted while it travels, and the one thing that must never leak — the password — is stored in a form that cannot be turned back into the original, by anyone.</p>
+  </div>
+
+  <figure class="diagram" style="margin-top:20px;">
+    <svg viewBox="0 0 960 190" role="img" aria-label="A staff member's browser connects over encrypted HTTPS to the application, which connects over a private encrypted link to the database; passwords are stored only as irreversible one-way hashes.">
+      <defs><marker id="arE" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="var(--teal)"/></marker></defs>
+      <g stroke="var(--teal)" stroke-width="1.8">
+        <line x1="212" y1="72" x2="352" y2="72" marker-end="url(#arE)"/>
+        <line x1="608" y1="72" x2="748" y2="72" marker-end="url(#arE)"/>
+      </g>
+      <g text-anchor="middle">
+        <rect x="228" y="42" width="108" height="18" rx="5" fill="var(--card)"/>
+        <text x="282" y="55" font-size="10.5" fill="var(--teal)">HTTPS, encrypted</text>
+        <rect x="624" y="42" width="108" height="18" rx="5" fill="var(--card)"/>
+        <text x="678" y="55" font-size="10.5" fill="var(--teal)">private, encrypted</text>
+      </g>
+
+      <rect x="30" y="30" width="182" height="84" rx="13" fill="var(--card2)" stroke="var(--line)" stroke-width="1.4"/>
+      <rect x="104" y="48" width="34" height="24" rx="3" fill="none" stroke="var(--ink2)" stroke-width="1.5"/><path d="M114,72v6h14v-6" fill="none" stroke="var(--ink2)" stroke-width="1.5"/>
+      <text x="121" y="97" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">Your staff</text>
+
+      <rect x="352" y="30" width="256" height="84" rx="13" fill="rgba(var(--teal-rgb),.09)" stroke="var(--teal)" stroke-width="1.6"/>
+      <text x="480" y="62" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">Kynvera Operations</text>
+      <text x="480" y="80" text-anchor="middle" font-size="10.5" fill="var(--muted)">checks your badge on every request</text>
+      <text x="480" y="97" text-anchor="middle" font-size="10.5" fill="var(--muted)">operations.kynvera.net</text>
+
+      <rect x="748" y="30" width="182" height="84" rx="13" fill="rgba(var(--taupe-rgb),.1)" stroke="var(--taupe)" stroke-width="1.6"/>
+      <ellipse cx="839" cy="52" rx="17" ry="6" fill="none" stroke="var(--taupe)" stroke-width="1.5"/>
+      <path d="M822,52v14c0,3.3 7.6,6 17,6s17,-2.7 17,-6V52" fill="none" stroke="var(--taupe)" stroke-width="1.5"/>
+      <text x="839" y="97" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">The database</text>
+
+      <rect x="30" y="138" width="900" height="36" rx="10" fill="rgba(var(--coral-rgb),.08)" stroke="var(--coral)" stroke-width="1.2" stroke-dasharray="5 4"/>
+      <text x="480" y="161" text-anchor="middle" font-size="11.5" fill="var(--coral)">Passwords are scrambled one way before storage — even with the full database in hand, the original cannot be recovered</text>
+    </svg>
+    <figcaption>The address bar's padlock is the first encrypted hop; the second, between the application and the database, is a private link the public internet cannot reach at all.</figcaption>
+  </figure>
+
+  <div class="sub-head">
+    <span class="eyebrow">THE RULES BEHIND THE DOORS</span>
+    <h2>Password policy, and the protections that never switch off</h2>
+  </div>
+
+  <div class="plaque-grid" style="margin-top:20px;">
+    <div class="plaque"><h3>Passwords</h3><ul>
+      <li>At least 8 characters, with upper case, lower case and a digit.</li>
+      <li>Stored only as an irreversible scramble — nobody can read the original, ever.</li>
+      <li>New accounts get a random one-time password, never a shared default.</li>
+      <li>A "forgot password" reply looks identical whether or not the account exists, so nobody can fish for valid staff emails.</li>
+      <li>Changing a password signs that person out of every other device immediately.</li>
+    </ul></div>
+    <div class="plaque"><h3>Always on, every page</h3><ul>
+      <li>The site cannot be secretly framed inside another website to trick a member of staff.</li>
+      <li>Browsers are told exactly what each file is, so a disguised file can't be misread as something else.</li>
+      <li>Encrypted connections are enforced — an unencrypted one is refused, not downgraded.</li>
+      <li>After signing out, the back button cannot reopen a sensitive page.</li>
+      <li>Only the small public pages are reachable without signing in at all.</li>
+    </ul></div>
+  </div>
+
+  <div class="sub-head">
+    <span class="eyebrow">WHEN SOMETHING GOES WRONG</span>
+    <h2>Four questions you'll eventually need answered</h2>
+    <p>Security isn't only about prevention — it's about what you can actually do on the day something happens.</p>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-card">
+      <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>A phone is lost or stolen</h4>
+      <p>Every signed-in pass is on a list. Any one of them can be cut off remotely and immediately — the device is locked out even if it's still switched on.</p>
+    </div>
+    <div class="info-card">
+      <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 17l5-5-5-5M21 12H9M12 3H6a2 2 0 00-2 2v14a2 2 0 002 2h6"/></svg>Someone leaves the organisation</h4>
+      <p>Switching their account off ends their access everywhere at once — every module, every site, every device. There is no second login to remember to close.</p>
+    </div>
+    <div class="info-card">
+      <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16 16l5 5"/></svg>"Who changed this, and when?"</h4>
+      <p>The audit log records sign-ins and account changes with the person, the action, the time and the network address. The AI's suggestions are logged separately, including whether a human accepted or overrode each one.</p>
+    </div>
+    <div class="info-card">
+      <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 11-3-6.7M21 3v6h-6"/></svg>Something needs restoring</h4>
+      <p>The database is backed up automatically by the hosting platform, and the system runs its own scheduled backup job on top of that. Uploaded files sit on storage that survives every software update.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= DATA ======================= -->
+<section id="data" class="view">
+  <div class="eyebrow">WHERE YOUR INFORMATION IS KEPT</div>
+  <h1 class="thesis">Three stores, each for a different kind of thing — and we can tell you exactly what's in each.</h1>
+  <p class="thesis-sub">Text and numbers live in the database. Documents the system generates live on disk. Photos your staff take live in cloud storage. Nothing is scattered, and nothing is stored twice.</p>
+
+  <div class="spec-strip">
+    <div class="spec"><span class="n">PostgreSQL 18</span><span class="l">The database engine</span></div>
+    <div class="spec"><span class="n">Oregon, US</span><span class="l">Where it is hosted</span></div>
+    <div class="spec"><span class="n">~85</span><span class="l">Kinds of record, in 10 departments</span></div>
+    <div class="spec"><span class="n">10 GB</span><span class="l">Document storage, kept through updates</span></div>
+  </div>
+
+  <div class="sub-head">
+    <span class="eyebrow">WHAT GOES WHERE</span>
+    <h2>The database holds the facts; the heavy files sit beside it</h2>
+    <p>A photo is never stuffed inside the database. Instead the ticket's record keeps a pointer to where that photo lives — which is why pages load quickly even when a job has twenty site pictures attached.</p>
+  </div>
+
+  <figure class="diagram" style="margin-top:20px;">
+    <svg viewBox="0 0 960 270" role="img" aria-label="Three stores side by side: a document disk on the left, the database in the centre, and cloud media storage on the right, with the database pointing to both file stores.">
+      <defs><marker id="arSt" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="var(--ink2)"/></marker></defs>
+
+      <g stroke="var(--ink2)" stroke-width="1.4" opacity=".8">
+        <line x1="341" y1="120" x2="296" y2="120" marker-end="url(#arSt)"/>
+        <line x1="619" y1="120" x2="664" y2="120" marker-end="url(#arSt)"/>
+      </g>
+      <g text-anchor="middle" font-size="10">
+        <rect x="286" y="96" width="66" height="16" rx="4" fill="var(--card)"/><text x="319" y="108" fill="var(--muted)">points to</text>
+        <rect x="608" y="96" width="66" height="16" rx="4" fill="var(--card)"/><text x="641" y="108" fill="var(--muted)">points to</text>
+      </g>
+
+      <!-- file disk -->
+      <rect x="20" y="40" width="270" height="164" rx="14" fill="rgba(var(--taupe-rgb),.08)" stroke="var(--taupe)" stroke-width="1.5"/>
+      <g transform="translate(155,74)">
+        <rect x="-16" y="-12" width="32" height="24" rx="4" fill="none" stroke="var(--taupe)" stroke-width="1.6"/>
+        <line x1="-16" y1="0" x2="16" y2="0" stroke="var(--taupe)" stroke-width="1.4"/>
+        <circle cx="9" cy="6" r="2" fill="var(--taupe)"/>
+      </g>
+      <text x="155" y="112" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">Documents on disk</text>
+      <text x="155" y="132" text-anchor="middle" font-size="10.8" fill="var(--ink2)">PDFs, monthly reports and exported</text>
+      <text x="155" y="147" text-anchor="middle" font-size="10.8" fill="var(--ink2)">spreadsheets the system generates</text>
+      <text x="155" y="178" text-anchor="middle" font-size="10" class="mono" fill="var(--muted)">10 GB · survives every update</text>
+
+      <!-- database -->
+      <rect x="345" y="24" width="270" height="196" rx="14" fill="rgba(var(--teal-rgb),.11)" stroke="var(--teal)" stroke-width="2"/>
+      <g transform="translate(480,66)">
+        <ellipse cx="0" cy="-12" rx="20" ry="7" fill="none" stroke="var(--teal)" stroke-width="1.7"/>
+        <path d="M-20,-12v22c0,3.9 9,7 20,7s20,-3.1 20,-7v-22" fill="none" stroke="var(--teal)" stroke-width="1.7"/>
+        <path d="M-20,-1c0,3.9 9,7 20,7s20,-3.1 20,-7" fill="none" stroke="var(--teal)" stroke-width="1.4"/>
+      </g>
+      <text x="480" y="112" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink)">The database</text>
+      <text x="480" y="134" text-anchor="middle" font-size="10.8" fill="var(--ink2)">Every record: people, tickets, equipment,</text>
+      <text x="480" y="149" text-anchor="middle" font-size="10.8" fill="var(--ink2)">leave, quotes, approvals, the audit log</text>
+      <text x="480" y="172" text-anchor="middle" font-size="10.8" fill="var(--muted)">Text and numbers only — never the files themselves</text>
+      <text x="480" y="196" text-anchor="middle" font-size="10" class="mono" fill="var(--muted)">~85 record types · backed up daily</text>
+
+      <!-- cloud media -->
+      <rect x="670" y="40" width="270" height="164" rx="14" fill="rgba(var(--taupe-rgb),.08)" stroke="var(--taupe)" stroke-width="1.5"/>
+      <g transform="translate(805,74)">
+        <path d="M-18,8 a9,9 0 0 1 2,-17.5 a12,12 0 0 1 22,3 a8,8 0 0 1 -1,14.5 Z" fill="none" stroke="var(--taupe)" stroke-width="1.6" stroke-linejoin="round"/>
+      </g>
+      <text x="805" y="112" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">Photos in cloud storage</text>
+      <text x="805" y="132" text-anchor="middle" font-size="10.8" fill="var(--ink2)">Site pictures and attachments your</text>
+      <text x="805" y="147" text-anchor="middle" font-size="10.8" fill="var(--ink2)">staff upload from the field</text>
+      <text x="805" y="178" text-anchor="middle" font-size="10" class="mono" fill="var(--muted)">served fast, stored off-server</text>
+
+      <text x="480" y="248" text-anchor="middle" font-size="11" fill="var(--muted)">One record, one home — the database is the index that ties all three together</text>
+    </svg>
+    <figcaption>Keeping files out of the database is what makes it small, fast and quick to back up: the whole database is a fraction of a gigabyte, even though the documents and photos it points to are far larger.</figcaption>
+  </figure>
+
+  <div class="sub-head">
+    <span class="eyebrow">HOW THE RECORDS CONNECT</span>
+    <h2>The work order sits at the centre of everything</h2>
+    <p>Almost every other record either feeds a ticket or hangs off one. Read this outward from the middle.</p>
+  </div>
+
+  <figure class="diagram" style="margin-top:20px;">
+    <svg viewBox="0 0 940 450" role="img" aria-label="The Ticket record at the centre, with User creating it, a Technician assigned to it, a Project owning it, an Asset whose history it looks up, its own photos and notes, and the AI's logged suggestion above it.">
+      <defs><marker id="ard" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="var(--ink2)"/></marker>
+      <marker id="ardc" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="var(--coral)"/></marker></defs>
+
+      <!-- connectors first, so nodes sit on top -->
+      <g stroke="var(--ink2)" stroke-width="1.4" opacity=".75">
+        <line x1="192" y1="146" x2="418" y2="203" marker-end="url(#ard)"/>
+        <line x1="192" y1="314" x2="418" y2="257" marker-end="url(#ard)"/>
+        <line x1="522" y1="203" x2="746" y2="146" marker-end="url(#ard)"/>
+        <line x1="522" y1="257" x2="746" y2="314" marker-end="url(#ard)"/>
+        <line x1="470" y1="286" x2="470" y2="374" marker-end="url(#ard)"/>
+      </g>
+      <line x1="470" y1="86" x2="470" y2="172" stroke="var(--coral)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#ardc)"/>
+
+      <!-- edge labels, knocked out of the lines -->
+      <g font-size="10.5" text-anchor="middle">
+        <rect x="266" y="162" width="56" height="16" rx="4" fill="var(--card)"/><text x="294" y="174" fill="var(--ink2)">creates</text>
+        <rect x="252" y="274" width="84" height="16" rx="4" fill="var(--card)"/><text x="294" y="286" fill="var(--ink2)">assigned to</text>
+        <rect x="600" y="162" width="76" height="16" rx="4" fill="var(--card)"/><text x="638" y="174" fill="var(--ink2)">belongs to</text>
+        <rect x="588" y="274" width="100" height="16" rx="4" fill="var(--card)"/><text x="638" y="286" fill="var(--ink2)">looks up history</text>
+        <rect x="440" y="320" width="62" height="16" rx="4" fill="var(--card)"/><text x="471" y="332" fill="var(--ink2)">has many</text>
+        <rect x="418" y="120" width="106" height="16" rx="4" fill="var(--card)"/><text x="471" y="132" fill="var(--coral)">logged, not applied</text>
+      </g>
+
+      <!-- AI suggestion -->
+      <rect x="356" y="38" width="228" height="48" rx="12" fill="rgba(var(--coral-rgb),.09)" stroke="var(--coral)" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="470" y="60" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">The AI's suggestion</text>
+      <text x="470" y="76" text-anchor="middle" font-size="10" fill="var(--muted)">priority, technician, parts — recorded either way</text>
+
+      <!-- hub -->
+      <circle cx="470" cy="230" r="56" fill="rgba(var(--teal-rgb),.12)" stroke="var(--teal)" stroke-width="2"/>
+      <text x="470" y="226" text-anchor="middle" font-size="16" font-weight="700" fill="var(--ink)">Ticket</text>
+      <text x="470" y="245" text-anchor="middle" font-size="10" fill="var(--muted)">one work order</text>
+
+      <!-- satellites -->
+      <circle cx="148" cy="120" r="44" fill="var(--card)" stroke="var(--ink)" stroke-width="1.8"/>
+      <text x="148" y="125" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">User</text>
+      <text x="148" y="182" text-anchor="middle" font-size="10.5" fill="var(--muted)">every person who signs in</text>
+
+      <circle cx="148" cy="340" r="44" fill="var(--card)" stroke="var(--indigo)" stroke-width="1.8"/>
+      <text x="148" y="345" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">Technician</text>
+      <text x="148" y="402" text-anchor="middle" font-size="10.5" fill="var(--muted)">the field-worker roster</text>
+
+      <circle cx="790" cy="120" r="44" fill="var(--card)" stroke="var(--teal)" stroke-width="1.8"/>
+      <text x="790" y="125" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">Project</text>
+      <text x="790" y="182" text-anchor="middle" font-size="10.5" fill="var(--muted)">a client site or contract</text>
+
+      <circle cx="790" cy="340" r="44" fill="var(--card)" stroke="var(--teal)" stroke-width="1.8"/>
+      <text x="790" y="345" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">Asset</text>
+      <text x="790" y="402" text-anchor="middle" font-size="10.5" fill="var(--muted)">a chiller, pump or AHU</text>
+
+      <rect x="344" y="374" width="252" height="46" rx="12" fill="var(--card2)" stroke="var(--line)" stroke-width="1.4"/>
+      <text x="470" y="396" text-anchor="middle" font-size="11.5" font-weight="600" fill="var(--ink)">Photos, notes, parts used</text>
+      <text x="470" y="411" text-anchor="middle" font-size="10" fill="var(--muted)">many of each, per ticket</text>
+    </svg>
+    <figcaption>Read it outward from the middle: a person creates a ticket, a technician is assigned to it, it belongs to one site, it looks up the equipment's repair history, and it collects photos and parts as work happens. The AI's suggestion sits above it — recorded, but only applied if someone accepts it.</figcaption>
+  </figure>
+
+  <div class="grp-heading" style="--gc:var(--muted); margin-top:44px;"><span class="dot"></span><h2 style="color:var(--ink)">The ten record-keeping departments</h2><span class="count">≈85 record types</span><span class="rule"></span></div>
+
+  <div class="dist-grid">
+    <div class="dist-card" style="--gc:var(--taupe)">
+      <div class="dist-top"><h3>User &amp; Sign-in</h3><span class="cnt">4 types</span></div>
+      <ul class="dist-list">
+        <li class="key">User — every person in the system</li>
+        <li>Active sign-in sessions</li>
+        <li>Admin approval codes</li>
+        <li>Phone notification tokens</li>
+      </ul>
+    </div>
+
+    <div class="dist-card" style="--gc:var(--teal)">
+      <div class="dist-top"><h3>Ticketing</h3><span class="cnt">~25 types</span></div>
+      <ul class="dist-list">
+        <li class="key">Ticket — one work order</li>
+        <li>Photos, notes, materials, manpower</li>
+        <li>The AI's triage suggestions</li>
+        <li>Emails that became tickets</li>
+        <li>Setup lists: sites, zones, fault codes, vendors, priorities</li>
+      </ul>
+    </div>
+
+    <div class="dist-card" style="--gc:var(--teal)">
+      <div class="dist-top"><h3>Assets</h3><span class="cnt">4 types</span></div>
+      <ul class="dist-list">
+        <li class="key">Asset — one piece of equipment</li>
+        <li>AI failure predictions</li>
+        <li>Floor plans / digital twin</li>
+        <li>Budget &amp; spares forecasts</li>
+      </ul>
+    </div>
+
+    <div class="dist-card" style="--gc:var(--teal)">
+      <div class="dist-top"><h3>Devices</h3><span class="cnt">2 types</span></div>
+      <ul class="dist-list">
+        <li class="key">Device — a company phone or tablet</li>
+        <li>Handover paperwork</li>
+      </ul>
+      <p class="dist-foot">Company IT hardware — separate from the equipment in Assets.</p>
+    </div>
+
+    <div class="dist-card" style="--gc:var(--indigo)">
+      <div class="dist-top"><h3>HR &amp; Workforce</h3><span class="cnt">~10 types</span></div>
+      <ul class="dist-list">
+        <li class="key">Technician — the field-worker roster</li>
+        <li class="key">Leave profile — per employee</li>
+        <li>Leave requests, balances and plans</li>
+        <li>Hiring candidates, documents, offer letters</li>
+        <li>Manpower trades and open vacancies</li>
+      </ul>
+    </div>
+
+    <div class="dist-card" style="--gc:var(--indigo)">
+      <div class="dist-top"><h3>QHSI</h3><span class="cnt">3 types</span></div>
+      <ul class="dist-list">
+        <li class="key">Staff compliance records</li>
+        <li>Training and meeting bookings</li>
+        <li>Bulk compliance imports</li>
+      </ul>
+    </div>
+
+    <div class="dist-card" style="--gc:var(--taupe)">
+      <div class="dist-top"><h3>Procurement &amp; BD</h3><span class="cnt">~7 types</span></div>
+      <ul class="dist-list">
+        <li class="key">Quotation — a customer price quote</li>
+        <li>Quote line items</li>
+        <li>BD projects, contacts, follow-ups</li>
+        <li>Sales activity history</li>
+      </ul>
+    </div>
+
+    <div class="dist-card" style="--gc:var(--taupe)">
+      <div class="dist-top"><h3>Files &amp; DocHub</h3><span class="cnt">~7 types</span></div>
+      <ul class="dist-list">
+        <li class="key">DocHub document — draft → review → published</li>
+        <li>Who may see each document</li>
+        <li>Shared folders and files</li>
+        <li>Google Drive connections</li>
+        <li>The AI's knowledge-base articles</li>
+      </ul>
+    </div>
+
+    <div class="dist-card" style="--gc:var(--coral)">
+      <div class="dist-top"><h3>Assistant</h3><span class="cnt">3 types</span></div>
+      <ul class="dist-list">
+        <li class="key">Chat session — one conversation</li>
+        <li>The messages inside it</li>
+        <li>Drafts waiting for someone to confirm</li>
+      </ul>
+      <p class="dist-foot">Nothing here becomes real until a person confirms it.</p>
+    </div>
+
+    <div class="dist-card" style="--gc:var(--taupe)">
+      <div class="dist-top"><h3>Admin &amp; Audit</h3><span class="cnt">~10 types</span></div>
+      <ul class="dist-list">
+        <li class="key">Audit log — who did what, when</li>
+        <li>Scheduled job history</li>
+        <li>Sent-email records</li>
+        <li>Notification settings and API keys</li>
+        <li>Database backups</li>
+      </ul>
+      <p class="dist-foot">Records activity from every department above.</p>
+    </div>
+  </div>
+
+  <div class="glossary">
+    <span><b>has many</b> — one record can have several of another kind (one ticket, many photos)</span>
+    <span><b>belongs to</b> — every one of these points back to exactly one of those (every ticket belongs to a site)</span>
+    <span><b>●</b> — a filled dot marks the central record that department is built around</span>
+  </div>
+
+  <div class="sub-head">
+    <span class="eyebrow">FOLLOW ONE JOB THROUGH</span>
+    <h2>What actually gets written, step by step</h2>
+    <p>A real example: an air conditioner stops cooling in a municipal building. Here is every piece of information the system writes down, and where each piece goes.</p>
+  </div>
+
+  <div class="steps">
+    <div class="step"><span class="step-n">01</span><div class="step-b">
+      <h4>Someone reports the fault</h4>
+      <p>A ticket record is created, stamped with who reported it, when, which site and which building zone.</p>
+      <span class="where">→ database</span>
+    </div></div>
+    <div class="step"><span class="step-n">02</span><div class="step-b">
+      <h4>They attach a photo of the unit</h4>
+      <p>The picture itself goes to cloud storage. The ticket keeps only a short pointer to it, plus the caption and who uploaded it.</p>
+      <span class="where">→ photo to cloud storage · pointer to database</span>
+    </div></div>
+    <div class="step"><span class="step-n">03</span><div class="step-b">
+      <h4>The AI suggests a priority and a technician</h4>
+      <p>Written to a separate suggestion log — <strong>not</strong> to the ticket. At this point the ticket itself is completely unchanged.</p>
+      <span class="where">→ suggestion log, database</span>
+    </div></div>
+    <div class="step"><span class="step-n">04</span><div class="step-b">
+      <h4>A supervisor accepts the suggestion</h4>
+      <p>Only now does the ticket change. The log also records that a human accepted it, and which one — so the decision is traceable to a person, not to the software.</p>
+      <span class="where">→ ticket updated · acceptance recorded</span>
+    </div></div>
+    <div class="step"><span class="step-n">05</span><div class="step-b">
+      <h4>The technician uses two parts from the store</h4>
+      <p>Each part becomes its own linked record with quantity and cost, and stock levels drop accordingly. Labour hours are recorded the same way.</p>
+      <span class="where">→ database, linked to the ticket</span>
+    </div></div>
+    <div class="step"><span class="step-n">06</span><div class="step-b">
+      <h4>The job is closed and signed off</h4>
+      <p>A PDF report is generated and filed. The ticket is marked closed — nothing is erased, so the full history stays readable a year later.</p>
+      <span class="where">→ PDF to document storage · ticket kept</span>
+    </div></div>
+  </div>
+
+  <p class="m-note" style="margin-top:14px; font-size:12.5px;">Nothing in this sequence overwrites anything quietly. Each step <em>adds</em> a record rather than replacing one, which is why the audit trail can reconstruct exactly what happened and in which order.</p>
+
+  <div class="sub-head">
+    <span class="eyebrow">KEEPING IT SAFE</span>
+    <h2>Backups, and what happens to information over time</h2>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-card">
+      <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 11-3-6.7M21 3v6h-6"/></svg>Automatic daily backups</h4>
+      <p>The hosting platform backs up the entire database on a daily schedule, and the system runs its own scheduled backup job in addition to that.</p>
+    </div>
+    <div class="info-card">
+      <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg>Files survive every update</h4>
+      <p>Documents and photos sit on storage that is deliberately kept separate from the application, so releasing new software never touches them.</p>
+    </div>
+    <div class="info-card">
+      <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v5l3 2"/><circle cx="12" cy="12" r="9"/></svg>Nothing is quietly deleted</h4>
+      <p>Closed tickets, approved forms and completed reports are kept, not purged. History stays available for audits and for year-on-year comparison.</p>
+    </div>
+    <div class="info-card">
+      <h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l8 4v5c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V7l8-4Z"/></svg>Your data stays yours</h4>
+      <p>Every module can export what it holds as a spreadsheet or PDF on demand, so the information is never locked inside the system.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= AI ======================= -->
+<section id="ai" class="view">
+  <div class="eyebrow">HOW AI IS USED — AND KEPT ON A LEASH</div>
+  <h1 class="thesis">Kynvera's AI only ever suggests. A person always says yes or no.</h1>
+  <p class="thesis-sub">This one rule applies everywhere AI touches the system — there is no exception drawn anywhere else in this document. AI is Anthropic's Claude, the same family of AI used by companies worldwide for this kind of work.</p>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 900 220" role="img" aria-label="The universal AI pattern: an idea from AI, a dashed arrow to a suggestion bubble, a human at a gate who confirms, leading to it happening, or rejects, leading to nothing happening.">
+      <defs><marker id="arAI" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="currentColor"/></marker></defs>
+      <g transform="translate(60,90)">
+        <circle r="30" fill="rgba(var(--coral-rgb),.14)" stroke="var(--coral)" stroke-width="1.8"/>
+        <path d="M-8,10 l5,-20 4,8 4,-8 5,20" stroke="var(--coral)" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="scale(.55) translate(0,-4)"/>
+        <path d="M0,-16 l3,-6 3,6 6,3 -6,3 -3,6 -3,-6 -6,-3Z" fill="var(--coral)" transform="translate(0,-2) scale(.65)"/>
+        <text y="48" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">AI</text>
+      </g>
+      <line x1="96" y1="90" x2="185" y2="90" stroke="var(--coral)" stroke-width="1.8" stroke-dasharray="4 5" marker-end="url(#arAI)"/>
+      <g transform="translate(280,90)">
+        <rect x="-95" y="-34" width="190" height="68" rx="14" fill="var(--card)" stroke="var(--coral)" stroke-width="1.6" stroke-dasharray="5 5"/>
+        <text y="-8" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">AI's suggestion</text>
+        <text y="10" text-anchor="middle" font-size="10.5" fill="var(--muted)">"priority: high</text>
+        <text y="24" text-anchor="middle" font-size="10.5" fill="var(--muted)">technician: Ahmed"</text>
+      </g>
+      <line x1="375" y1="90" x2="440" y2="90" stroke="var(--ink2)" stroke-width="1.6" marker-end="url(#arAI)"/>
+      <g transform="translate(500,90)">
+        <polygon points="-15,-38 15,-38 44,0 15,38 -15,38 -44,0" fill="var(--card)" stroke="var(--ink)" stroke-width="1.8"/>
+        <circle cy="-8" r="7" fill="none" stroke="var(--ink)" stroke-width="1.6"/><path d="M-8,14c0,-9 16,-9 16,0" stroke="var(--ink)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        <text y="52" text-anchor="middle" font-size="11.5" font-weight="700" fill="var(--ink)">A person decides</text>
+      </g>
+      <line x1="546" y1="70" x2="650" y2="35" stroke="var(--coral)" stroke-width="1.8" marker-end="url(#arAI)"/>
+      <text x="600" y="24" font-size="11" fill="var(--coral)" font-weight="600">Confirm</text>
+      <g transform="translate(760,35)">
+        <rect x="-90" y="-24" width="180" height="48" rx="12" fill="rgba(var(--coral-rgb),.1)" stroke="var(--coral)" stroke-width="1.8"/>
+        <path d="M-14,0 l8,9 20,-20" stroke="var(--coral)" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="18" y="6" font-size="12.5" font-weight="700" fill="var(--ink)">It happens</text>
+      </g>
+      <line x1="546" y1="110" x2="650" y2="150" stroke="var(--ink2)" stroke-width="1.6" marker-end="url(#arAI)"/>
+      <text x="600" y="172" font-size="11" fill="var(--ink2)" font-weight="600">Reject</text>
+      <g transform="translate(770,158)">
+        <rect x="-100" y="-22" width="200" height="44" rx="12" fill="var(--card2)" stroke="var(--line)" stroke-width="1.6"/>
+        <text text-anchor="middle" y="5" font-size="11" fill="var(--ink2)">Nothing happens — no harm done</text>
+      </g>
+      <path d="M760,180 q-260,40 -520,-70" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="2 4" fill="none" marker-end="url(#arAI)" opacity=".6"/>
+      <text x="470" y="205" font-size="9.5" fill="var(--muted)">try again</text>
+    </svg>
+    <figcaption>Every AI suggestion in Kynvera Operations follows this exact path. The AI never saves, sends, or changes anything by itself — and every suggestion is written down, whether a person accepts it or not.</figcaption>
+  </figure>
+
+  <div class="grp-heading" style="--gc:var(--coral); margin-top:40px;"><span class="dot"></span><h2>Where AI is actually used</h2><span class="rule"></span></div>
+  <div class="ai-grid">
+    <div class="ai-tile"><span class="ai-corner"></span><h3>Ticket triage</h3><p>Suggests priority, a deadline, the best-fit technician, and likely parts needed — from the ticket, the equipment's history, and who's available.</p></div>
+    <div class="ai-tile"><span class="ai-corner"></span><h3>Ticket classification</h3><p>Suggests which category a new problem belongs to, out of the full fault-code catalog, so nobody has to search it by hand.</p></div>
+    <div class="ai-tile"><span class="ai-corner"></span><h3>Chat assistant</h3><p>Answers questions using live data across the system, and can draft — never submit — a new ticket or leave request.</p></div>
+    <div class="ai-tile"><span class="ai-corner"></span><h3>Asset intelligence</h3><p>Predicts which equipment might fail next, and forecasts next quarter's likely budget and spare-parts demand.</p></div>
+    <div class="ai-tile"><span class="ai-corner"></span><h3>Device fleet summary</h3><p>Writes a one-line health summary of the company's phones and tablets for the admin dashboard.</p></div>
+    <div class="ai-tile"><span class="ai-corner"></span><h3>Chat naming</h3><p>Titles a new conversation with the assistant automatically, so chat history stays easy to scan.</p></div>
+  </div>
+</section>
+
+</main>
+
+<footer class="sheet-footer">
+  <span>Kynvera Operations — plain-English architecture overview</span>
+  <span id="sheetnum" class="mono">Sheet 1 of 5 — Overview</span>
+</footer>
+
+<script>
+  var order = ['overview','modules','security','data','ai'];
+  var titles = {overview:'Overview', modules:'Modules', security:'Security', data:'Data', ai:'AI'};
+  var buttons = document.querySelectorAll('.tab-btn');
+  var views = document.querySelectorAll('.view');
+
+  function show(id, skipHash){
+    views.forEach(function(v){ v.classList.toggle('active', v.id === id); });
+    buttons.forEach(function(b){
+      var on = b.dataset.view === id;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    var idx = order.indexOf(id);
+    document.getElementById('sheetnum').textContent = 'Sheet ' + (idx+1) + ' of ' + order.length + ' — ' + titles[id];
+    if(!skipHash){ history.replaceState(null,'','#'+id); }
+    window.scrollTo({top:0, behavior:'auto'});
+  }
+
+  buttons.forEach(function(b){
+    b.addEventListener('click', function(){ show(b.dataset.view); });
+  });
+
+  function goTo(viewId, anchorId){
+    show(viewId);
+    requestAnimationFrame(function(){
+      var el = document.getElementById(anchorId);
+      if(el){
+        el.scrollIntoView({behavior:'smooth', block:'center'});
+        if(el.classList.contains('m-card')){
+          el.classList.add('highlight');
+          setTimeout(function(){ el.classList.remove('highlight'); }, 1200);
+        }
+      }
+    });
+  }
+  window.goTo = goTo;
+
+  var start = (location.hash || '').replace('#','');
+  if(order.indexOf(start) === -1){ start = 'overview'; }
+  show(start, true);
+</script>
+</body>
+</html>

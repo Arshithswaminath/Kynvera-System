@@ -277,6 +277,10 @@ def _build_summary(vacancies: list[ManpowerVacancy], trades: list[ManpowerTrade]
     total = len(vacancies)
     joined = sum(1 for v in vacancies if v.normalized_status() == 'joined')
     open_n = sum(1 for v in vacancies if v.normalized_status() == 'open')
+    interviewing_n = sum(1 for v in vacancies if v.normalized_status() == 'interviewing')
+    selected_n = sum(1 for v in vacancies if v.normalized_status() == 'selected')
+    filled_n = sum(1 for v in vacancies if v.normalized_status() == 'filled')
+    on_hold_n = sum(1 for v in vacancies if v.normalized_status() == 'on_hold')
     in_progress = sum(
         1 for v in vacancies if v.normalized_status() in MANPOWER_IN_PROGRESS_STATUSES
     )
@@ -363,6 +367,10 @@ def _build_summary(vacancies: list[ManpowerVacancy], trades: list[ManpowerTrade]
         'joined': joined,
         'in_progress': in_progress,
         'still_open': open_n,
+        'interviewing': interviewing_n,
+        'selected': selected_n,
+        'filled': filled_n,
+        'on_hold': on_hold_n,
         'matrix_trades': matrix_trades,
         'matrix_projects': matrix_projects,
         'matrix': matrix,

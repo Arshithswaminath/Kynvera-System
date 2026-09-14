@@ -54,6 +54,7 @@ from module_hr.hr_management_chain import (
     notify_submitter_management_progress,
     pending_management_step_for_user,
     reject_management_submission,
+    rm_gm_dual_role_hint_for_user,
     submitter_id_from_fd,
     user_is_hr_head,
     user_is_mgmt_chain_participant,
@@ -453,10 +454,18 @@ def _notify_hr_staff_new_submission(submission_id, module_type_full, employee_na
         )
     if submission is not None:
         from module_hr.hr_lifecycle_emails import pending_review_url, send_action_required_to_users
+        from common.email_service import run_email_task_later
         app = current_app._get_current_object()
-        send_action_required_to_users(
-            app, submission, hr_users, role_label='HR', sign_url=pending_review_url(app)
-        )
+        submission_pk = submission.id
+        hr_user_ids = [u.id for u in hr_users]
+        def _send_hr_action_required():
+            sub = db.session.get(Submission, submission_pk)
+            users = [u for u in (db.session.get(User, uid) for uid in hr_user_ids) if u]
+            if sub and users:
+                send_action_required_to_users(
+                    app, sub, users, role_label='HR', sign_url=pending_review_url(app)
+                )
+        run_email_task_later(app, _send_hr_action_required)
 
 
 def _advance_hr_after_all_replacements_signed(submission):
@@ -990,7 +999,15 @@ def submit_hr_form():
     db.session.commit()
 
     from module_hr.hr_lifecycle_emails import send_submitter_confirmation
-    send_submitter_confirmation(current_app._get_current_object(), submission, user)
+    from common.email_service import run_email_task_later
+    _app_obj = current_app._get_current_object()
+    _submission_pk, _submitter_id = submission.id, user.id
+    def _send_confirmation():
+        sub = db.session.get(Submission, _submission_pk)
+        submitter = db.session.get(User, _submitter_id)
+        if sub and submitter:
+            send_submitter_confirmation(_app_obj, sub, submitter)
+    run_email_task_later(_app_obj, _send_confirmation)
 
     form_type_display = get_form_type_display(f'hr_{form_type}')
     employee_name = (
@@ -1018,7 +1035,14 @@ def submit_hr_form():
                 notification_type='hr_replacement_signoff',
                 submission_id=submission_id
             )
-        email_all_routed_assignees(current_app._get_current_object(), submission, form_type_display)
+        from common.email_service import run_email_task_later
+        _app_obj = current_app._get_current_object()
+        _submission_pk = submission.id
+        def _send_routed_emails():
+            sub = db.session.get(Submission, _submission_pk)
+            if sub:
+                email_all_routed_assignees(_app_obj, sub, form_type_display)
+        run_email_task_later(_app_obj, _send_routed_emails)
         db.session.commit()
         return jsonify({
             'success': True,
@@ -1450,6 +1474,7 @@ def mgmt_signoff_detail(submission_id):
         'form_type_display': get_form_type_display(submission.module_type),
         'workflow_status': submission.workflow_status,
         'reporting_to_dual_role_hint': dual_role_hint_for_user(fd, user.id),
+        'rm_gm_dual_role_hint': rm_gm_dual_role_hint_for_user(fd, user.id),
     })
 
 

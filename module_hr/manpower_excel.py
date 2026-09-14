@@ -186,6 +186,13 @@ def _style_header_row(ws, row: int, cols: int):
     style_header_row(ws, row, cols)
 
 
+_RESERVED_PROJECT_NAMES = frozenset(
+    {_norm(k) for k in MANPOWER_REQUIREMENT_TYPES}
+    | {_norm(v) for v in MANPOWER_REQUIREMENT_TYPE_LABELS.values()}
+    | {_norm(k) for k in MANPOWER_STATUSES}
+    | {_norm(v) for v in MANPOWER_STATUS_LABELS.values()}
+)
+
 _INVALID_SHEET_CHARS = set(r':\/?*[]')
 _RESERVED_SHEET_TITLES = frozenset({'all trades', 'lists', 'instructions'})
 _VACANCY_COL_WIDTHS = [22, 22, 16, 20, 14, 28, 18, 14, 14, 28, 16]
@@ -451,7 +458,10 @@ def build_manpower_workbook(
     )
 
     used_titles = {'All Trades', 'Lists', 'Instructions'}
-    project_sheets = _projects_for_sheets(project_rows, None if template_only else vacancies)
+    project_sheets = [
+        p for p in _projects_for_sheets(project_rows, None if template_only else vacancies)
+        if _norm(getattr(p, 'name', None) or str(p)) not in _RESERVED_PROJECT_NAMES
+    ]
     for offset, project in enumerate(project_sheets, start=1):
         project_name = (project.name if hasattr(project, 'name') else str(project)).strip()
         title = _safe_sheet_title(project_name, used_titles)
@@ -474,6 +484,26 @@ def build_manpower_workbook(
             ),
             index=offset,
             vacancies=project_vacancies,
+            **sheet_kwargs,
+        )
+
+    status_base_index = len(project_sheets) + 1
+    for offset, status_key in enumerate(MANPOWER_STATUSES, start=0):
+        status_label = MANPOWER_STATUS_LABELS[status_key]
+        title = _safe_sheet_title(f'Status — {status_label}', used_titles)
+        status_vacancies = _sort_vacancies(
+            [v for v in all_rows if v.normalized_status() == status_key]
+        )
+        _write_vacancy_sheet(
+            wb,
+            sheet_title=title,
+            heading=f'Kynvera — {status_label}',
+            subtitle=(
+                f'Status-wise view: all projects and trades currently {status_label}. '
+                'Same columns as All Trades. To re-import, edit and upload the All Trades sheet.'
+            ),
+            index=status_base_index + offset,
+            vacancies=status_vacancies,
             **sheet_kwargs,
         )
 
@@ -544,6 +574,8 @@ def _manpower_instruction_spec() -> InstructionSpec:
                 (
                     'All Trades — every vacancy across every project and trade. This is the sheet used on import.',
                     'One tab per project — the same vacancies filtered to that site, still covering all trades.',
+                    'One tab per status (Status — Open, Status — Interviewing, Status — Selected, Status — Filled, '
+                    'Status — Joined, Status — On Hold) — the same vacancies filtered to that status, across every project.',
                     'Lists — dropdown values for trades, projects, status, and requirement type.',
                 ),
             ),
@@ -903,6 +935,16 @@ def apply_manpower_import(file_storage, *, replace: bool = False, created_by: Op
         try:
             remarks = (row.get('remarks') or '').lower()
             if 'example row' in remarks or '[sample]' in remarks:
+                continue
+            project_raw_name = row['project']
+            if (
+                _norm(project_raw_name) in _RESERVED_PROJECT_NAMES
+                and project_raw_name.strip().lower() not in project_cache
+            ):
+                errors.append(
+                    f'Row {i}: project "{project_raw_name}" looks like a status or requirement-type '
+                    'value, not a site name — skipped (check for shifted columns in the source file)'
+                )
                 continue
             trade = _get_or_create_trade(row['trade'], trade_cache, trade_sort)
             project = _get_or_create_project(row['project'], project_cache, project_sort)

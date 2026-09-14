@@ -556,6 +556,39 @@ def send_email(
     return ok
 
 
+def run_email_task_later(app, fn):
+    """Run fn() in the background so a slow/hanging mail send can't block the request.
+
+    The SMTP fallback path opens a raw socket with no connect timeout (see
+    SMTPIPv4/_smtp_socket_ipv4 below); if that host is unreachable — a common
+    failure mode on hosts that silently drop outbound SMTP instead of refusing
+    it — the connection can hang indefinitely. A request thread calling a mail
+    sender inline then never returns, and the caller's fetch just sits there.
+    Route notification email sends through here so a submit/action endpoint
+    always responds promptly regardless of mail delivery health.
+
+    fn takes no arguments; it must look up any records it needs itself (by id,
+    via db.session.get) since it runs in its own app/db context, not the
+    request's. Tests run fn() synchronously, same thread, so assertions can
+    still see what the mailer sent.
+    """
+    if app.config.get('TESTING'):
+        # Already inside the caller's request/app context here — do not push
+        # another one. Flask-SQLAlchemy tears down (db.session.remove()) on
+        # every app context pop, including a manually-entered `with
+        # app.app_context()`, which would silently discard the outer
+        # request's still-uncommitted session/transaction.
+        fn()
+        return
+    def _run():
+        with app.app_context():
+            try:
+                fn()
+            except Exception:
+                logger.exception('Background email task failed')
+    threading.Thread(target=_run, daemon=True, name='kynvera-hr-mail').start()
+
+
 def _send_email_smtp(app, recipient, subject, body, html_body=None, cc=None, attachments=None):
     """Send via MAIL_SERVER. Used locally when Brevo HTTPS is IP-blocked."""
     mj = mailjet_credentials(app)

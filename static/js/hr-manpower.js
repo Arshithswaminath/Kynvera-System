@@ -331,6 +331,15 @@
     document.querySelectorAll('#mpStatusChips .mp-chip').forEach(function (btn) {
       btn.classList.toggle('is-active', btn.getAttribute('data-status') === status);
     });
+    document.querySelectorAll('#mpStatsRow .mp-stat').forEach(function (tile) {
+      tile.classList.toggle('is-active', tile.getAttribute('data-status-filter') === status);
+    });
+  }
+
+  function setStatusFilter(status) {
+    state.status = status || 'all';
+    syncFilterChrome();
+    loadVacancies();
   }
 
   function syncFilterChrome() {
@@ -527,8 +536,11 @@
     var s = state.summary || {};
     if ($('mpStatTotal')) $('mpStatTotal').textContent = s.total_required != null ? s.total_required : '—';
     if ($('mpStatJoined')) $('mpStatJoined').textContent = s.joined != null ? s.joined : '—';
-    if ($('mpStatProgress')) $('mpStatProgress').textContent = s.in_progress != null ? s.in_progress : '—';
     if ($('mpStatOpen')) $('mpStatOpen').textContent = s.still_open != null ? s.still_open : '—';
+    if ($('mpStatInterviewing')) $('mpStatInterviewing').textContent = s.interviewing != null ? s.interviewing : '—';
+    if ($('mpStatSelected')) $('mpStatSelected').textContent = s.selected != null ? s.selected : '—';
+    if ($('mpStatFilled')) $('mpStatFilled').textContent = s.filled != null ? s.filled : '—';
+    if ($('mpStatHold')) $('mpStatHold').textContent = s.on_hold != null ? s.on_hold : '—';
   }
 
   function matrixNum(v) {
@@ -1976,8 +1988,29 @@
       $('mpStatusChips').addEventListener('click', function (e) {
         var chip = e.target.closest('[data-status]');
         if (!chip) return;
-        state.status = chip.getAttribute('data-status') || 'all';
-        loadVacancies();
+        setStatusFilter(chip.getAttribute('data-status'));
+      });
+    }
+
+    if ($('mpStatsRow')) {
+      $('mpStatsRow').addEventListener('click', function (e) {
+        var tile = e.target.closest('[data-status-filter]');
+        if (!tile) return;
+        setStatusFilter(tile.getAttribute('data-status-filter'));
+        var panel = $('mpFiltersPanel');
+        var toggle = $('mpFiltersToggle');
+        if (panel && panel.hidden && toggle) {
+          panel.hidden = false;
+          toggle.setAttribute('aria-expanded', 'true');
+          toggle.classList.add('is-open');
+        }
+      });
+      $('mpStatsRow').addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var tile = e.target.closest('[data-status-filter]');
+        if (!tile) return;
+        e.preventDefault();
+        tile.click();
       });
     }
 

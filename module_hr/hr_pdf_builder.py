@@ -673,10 +673,10 @@ def _append_management_chain_pdf(story, fd, styles, form_type=None):
     rows = [hdr]
     cw = [CONTENT_W * 0.18, CONTENT_W * 0.22, CONTENT_W * 0.26, CONTENT_W * 0.26, CONTENT_W * 0.08]
 
-    for i, step in enumerate(steps):
-        if not isinstance(step, dict):
-            continue
-        lbl_txt = mgmt_step_display_label(step, default=str(step.get("key") or f"Step {i+1}"))
+    def _row_for_step(step, label_override=None):
+        lbl_txt = label_override or mgmt_step_display_label(
+            step, default=str(step.get("key") or "Step")
+        )
         lbl = Paragraph(f"<b>{_esc(lbl_txt)}</b>", ps_body)
         signer_name = "—"
         if step.get("signed_by_name"):
@@ -695,7 +695,16 @@ def _append_management_chain_pdf(story, fd, styles, form_type=None):
         sig_img = _mgmt_chain_signature_cell_plain(step.get("signature"))
 
         dt = Paragraph(_fmt(step.get("signed_at")), ps_body)
-        rows.append([lbl, sign_nm, comments_cell, sig_img, dt])
+        return [lbl, sign_nm, comments_cell, sig_img, dt]
+
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        rows.append(_row_for_step(step))
+        if step.get("also_mirrors_gm_fields"):
+            # Same person, same signature — recorded again under the GM role so
+            # the trail shows both sign-offs were actually satisfied.
+            rows.append(_row_for_step(step, label_override="General manager (same signature)"))
 
     nrows = len(rows)
     t = Table(rows, colWidths=cw, repeatRows=1)

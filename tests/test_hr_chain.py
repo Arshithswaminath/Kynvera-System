@@ -210,13 +210,12 @@ def test_canonical_hr_falls_back_to_admin_when_no_hr_manager(app, chain_users):
             db.session.commit()
 
 
-def test_office_staff_with_reporting_manager_lists_them_separately(app, chain_users):
-    """Reporting manager is its own step; they are not also listed under GM."""
+def test_office_staff_with_reporting_manager_who_is_gm_merges_signoff(app, chain_users):
+    """Reporting manager who also holds the GM designation signs once for both roles."""
     from app.models import db, User
     from module_hr.hr_management_chain import (
         _build_chain_for_submitter,
         get_mgmt_chain_ui_context,
-        user_allowed_to_sign_step,
     )
 
     with app.app_context():
@@ -229,6 +228,7 @@ def test_office_staff_with_reporting_manager_lists_them_separately(app, chain_us
         assert err is None
         assert _chain_keys(steps) == ["reporting_manager", "hr_head_office"]
         assert steps[0]["signer_id"] == gm.id
+        assert steps[0]["also_mirrors_gm_fields"] is True
 
         ctx = get_mgmt_chain_ui_context(emp)
         assert [c["key"] for c in ctx["chain"]] == ["reporting_manager", "hr_head_office"]
@@ -236,7 +236,9 @@ def test_office_staff_with_reporting_manager_lists_them_separately(app, chain_us
         assert ctx["lane_flow"].startswith("Reporting manager")
 
 
-def test_office_staff_reporting_manager_excluded_from_gm_pool(app, chain_users):
+def test_office_staff_reporting_manager_who_is_gm_merges_despite_other_gm(app, chain_users):
+    """Merge happens even when a different, unrelated GM exists org-wide —
+    the RM's own dual role is what matters, not whether the GM pool is empty."""
     from app.models import db, User
     from module_hr.hr_management_chain import (
         _build_chain_for_submitter,
@@ -266,21 +268,16 @@ def test_office_staff_reporting_manager_excluded_from_gm_pool(app, chain_users):
 
         steps, err = _build_chain_for_submitter(emp)
         assert err is None
-        assert _chain_keys(steps) == [
-            "reporting_manager",
-            "general_manager",
-            "hr_head_office",
-        ]
-        gm_step = steps[1]
-        assert rm.id in (gm_step.get("exclude_signer_ids") or [])
-        assert user_allowed_to_sign_step(rm, gm_step) is False
-        assert user_allowed_to_sign_step(other_gm, gm_step) is True
+        assert _chain_keys(steps) == ["reporting_manager", "hr_head_office"]
+        rm_step = steps[0]
+        assert rm_step["signer_id"] == rm.id
+        assert rm_step["also_mirrors_gm_fields"] is True
+        assert user_allowed_to_sign_step(rm, rm_step) is True
+        # The other GM has no step of their own on this chain at all.
+        assert user_allowed_to_sign_step(other_gm, rm_step) is False
 
         ctx = get_mgmt_chain_ui_context(emp)
-        gm_row = next(c for c in ctx["chain"] if c["key"] == "general_manager")
-        assert "Other GM" in gm_row["who_label"]
-        assert (rm.full_name or rm.username) not in gm_row["who_label"]
-        assert "Either may sign" not in (gm_row.get("who_detail") or "")
+        assert [c["key"] for c in ctx["chain"]] == ["reporting_manager", "hr_head_office"]
 
         db.session.delete(other_gm)
         db.session.commit()
@@ -539,6 +536,103 @@ def test_prior_signer_cannot_sign_later_hr_step(app, chain_users):
         assert pending_management_step_for_user(
             payload, WF_MGMT_HR, hr, submitter_id=emp.id
         ) is not None
+
+
+def test_rm_who_is_gm_signature_mirrors_and_hints(app, chain_users):
+    """Signing the merged reporting-manager step also records the GM fields and
+    surfaces the dual-role hint to that signer, then completes straight to HR."""
+    from app.models import db, Submission, User
+    from module_hr.hr_management_chain import (
+        MGMT_CHAIN_KEY,
+        WF_MGMT_HR,
+        WF_MGMT_RM,
+        apply_management_signature,
+        init_management_chain_on_submit,
+        rm_gm_dual_role_hint_for_user,
+    )
+
+    sig = (
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+        "AAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+    )
+    with app.app_context():
+        emp = db.session.get(User, chain_users["emp"].id)
+        gm = chain_users["gm"]
+        emp.reporting_manager_id = gm.id
+        db.session.commit()
+
+        payload = {"employee_name": "Merged RM Test", "submitted_by_id": emp.id}
+        assert init_management_chain_on_submit(payload, emp) is None
+        block = payload[MGMT_CHAIN_KEY]
+        assert block["pdf_hints"], "expected a pdf hint for the merged RM/GM step"
+        assert "General Manager" in block["pdf_hints"][0]
+
+        hint = rm_gm_dual_role_hint_for_user(payload, gm.id)
+        assert hint is not None
+        assert "Merged RM Test" in hint["message"]
+        assert rm_gm_dual_role_hint_for_user(payload, emp.id) is None
+
+        sub = Submission(
+            submission_id=f"HR-LEAVE_APPLICATION-{uuid.uuid4().hex[:8].upper()}",
+            user_id=emp.id,
+            module_type="hr_leave_application",
+            site_name="Merged RM Test",
+            status="submitted",
+            workflow_status=WF_MGMT_RM,
+            form_data=payload,
+        )
+        db.session.add(sub)
+        db.session.flush()
+
+        ok, err = apply_management_signature(sub, gm, sig, "approved")
+        assert ok is True, err
+
+        fd = sub.form_data
+        assert fd["gm_signature"] == sig
+        assert fd[MGMT_CHAIN_KEY]["steps"][0]["signature"] == sig
+        assert sub.general_manager_id == gm.id
+        assert sub.workflow_status == WF_MGMT_HR
+        db.session.rollback()
+
+
+def test_mgmt_signoff_detail_api_surfaces_rm_gm_dual_role_hint(client, app, chain_users):
+    """The mgmt-signoff-detail endpoint exposes the merge hint to the RM/GM signer."""
+    from app.models import db, Submission
+    from module_hr.hr_management_chain import MGMT_CHAIN_KEY, init_management_chain_on_submit
+
+    with app.app_context():
+        emp = chain_users["emp"]
+        gm = chain_users["gm"]
+        emp.reporting_manager_id = gm.id
+        db.session.commit()
+        payload = {
+            "employee_name": "Arshith",
+            "submitted_by_id": emp.id,
+            "submitted_by_name": "Arshith",
+        }
+        assert init_management_chain_on_submit(payload, emp) is None
+        block = payload[MGMT_CHAIN_KEY]
+        sub = Submission(
+            submission_id=f"HR-LEAVE_APPLICATION-{uuid.uuid4().hex[:8].upper()}",
+            user_id=emp.id,
+            module_type="hr_leave_application",
+            site_name="Arshith",
+            status="submitted",
+            workflow_status=block["steps"][0]["wf"],
+            form_data=payload,
+        )
+        db.session.add(sub)
+        db.session.commit()
+        sid = sub.submission_id
+        gm_name = gm.username
+
+    gm_h = _login_headers(client, gm_name)
+    detail = client.get(f"/hr/api/mgmt-signoff-detail/{sid}", headers=gm_h).get_json()
+    assert detail["success"] is True
+    assert detail["can_sign"] is True
+    hint = detail.get("rm_gm_dual_role_hint")
+    assert hint is not None
+    assert "Reporting Manager and General Manager" in hint["message"]
 
 
 def test_apply_management_signature_refuses_submitter(app, chain_users):

@@ -490,10 +490,17 @@ async function boot(){
     return;
   }
 
+  var dualRoleMessages = [];
   if (j.reporting_to_dual_role_hint && j.reporting_to_dual_role_hint.message) {
+    dualRoleMessages.push(j.reporting_to_dual_role_hint.message);
+  }
+  if (j.rm_gm_dual_role_hint && j.rm_gm_dual_role_hint.message) {
+    dualRoleMessages.push(j.rm_gm_dual_role_hint.message);
+  }
+  if (dualRoleMessages.length) {
     var dualEl = document.getElementById('rspDualRoleBanner');
     if (dualEl) {
-      dualEl.textContent = j.reporting_to_dual_role_hint.message;
+      dualEl.textContent = dualRoleMessages.join(' ');
       dualEl.classList.add('is-visible');
     }
   }

@@ -396,6 +396,7 @@ def _build_chain_for_submitter(submitter: User) -> tuple[list[dict[str, Any]], s
     elif lane == "office_staff":
         rm = _supervisor_for(submitter)
         exclude_gm: set[int] = {int(submitter.id)}
+        rm_is_gm = bool(rm) and rm.id != submitter.id and _desig(rm) == "general_manager"
         if rm and rm.id != submitter.id:
             steps.append(
                 _step(
@@ -404,20 +405,26 @@ def _build_chain_for_submitter(submitter: User) -> tuple[list[dict[str, Any]], s
                     "Reporting manager",
                     signer_mode="fixed_user",
                     signer_id=rm.id,
+                    also_mirrors_gm_fields=rm_is_gm,
                 )
             )
             exclude_gm.add(rm.id)
-        gm_pool = _gm_pool(exclude=exclude_gm)
-        if gm_pool:
-            gm_step = _step(
-                "general_manager",
-                WF_MGMT_GM,
-                "General manager",
-                signer_mode="designation",
-                designation_gate="general_manager",
-            )
-            gm_step["exclude_signer_ids"] = sorted(exclude_gm)
-            steps.append(gm_step)
+        # When the reporting manager themself holds the General Manager
+        # designation, their one signature covers both roles — no separate
+        # GM step, and no other GM is asked to review this employee's forms
+        # (even if other GM-designated users exist org-wide).
+        if not rm_is_gm:
+            gm_pool = _gm_pool(exclude=exclude_gm)
+            if gm_pool:
+                gm_step = _step(
+                    "general_manager",
+                    WF_MGMT_GM,
+                    "General manager",
+                    signer_mode="designation",
+                    designation_gate="general_manager",
+                )
+                gm_step["exclude_signer_ids"] = sorted(exclude_gm)
+                steps.append(gm_step)
 
     steps.append(
         _step(
@@ -578,8 +585,51 @@ def init_management_chain_on_submit(
         "steps": steps,
         "reporting_contact_id": (sup_step or {}).get("signer_id"),
         "reporting_contact_name": (sup_step or {}).get("pdf_label"),
-        "pdf_hints": [],
+        "pdf_hints": _pdf_hints_for_steps(steps),
     }
+    return None
+
+
+def _pdf_hints_for_steps(steps: list[dict[str, Any]]) -> list[str]:
+    """Muted footnotes printed above the sign-off trail table on the PDF."""
+    hints: list[str] = []
+    for s in steps:
+        if not isinstance(s, dict) or not s.get("also_mirrors_gm_fields"):
+            continue
+        if s.get("key") != "reporting_manager":
+            continue
+        signer = db.session.get(User, s["signer_id"]) if s.get("signer_id") else None
+        name = (signer.full_name or signer.username) if signer else "The reporting manager"
+        hints.append(
+            f"{name} is both the Reporting Manager and General Manager for this employee — "
+            "one signature covers both approval steps."
+        )
+    return hints
+
+
+def rm_gm_dual_role_hint_for_user(fd: dict[str, Any] | None, user_id: int) -> dict[str, Any] | None:
+    """Hint payload for the mgmt sign UI: this signer's step also covers the GM sign-off."""
+    if not has_management_chain(fd):
+        return None
+    steps = fd[MGMT_CHAIN_KEY].get("steps") or []
+    for step in steps:
+        if not isinstance(step, dict) or not step.get("also_mirrors_gm_fields"):
+            continue
+        if step.get("key") != "reporting_manager":
+            continue
+        try:
+            if int(step.get("signer_id") or -1) != int(user_id):
+                continue
+        except (TypeError, ValueError):
+            continue
+        employee = str(fd.get("employee_name") or "this employee").strip() or "this employee"
+        return {
+            "employee_name": employee,
+            "message": (
+                f"You are both the Reporting Manager and General Manager for {employee}. "
+                "Your signature below covers both approval steps."
+            ),
+        }
     return None
 
 
@@ -907,7 +957,15 @@ def notify_current_management_signers(app: Flask, submission: Submission) -> Non
             )
         _notify_user(app, recipient.id, title, msg, submission_id, n_type)
     from module_hr.hr_lifecycle_emails import send_action_required_to_users
-    send_action_required_to_users(app, submission, recipients, role_label=role)
+    from common.email_service import run_email_task_later
+    submission_pk = submission.id
+    recipient_ids = [r.id for r in recipients]
+    def _send_action_required():
+        sub = db.session.get(Submission, submission_pk)
+        users = [u for u in (db.session.get(User, rid) for rid in recipient_ids) if u]
+        if sub and users:
+            send_action_required_to_users(app, sub, users, role_label=role)
+    run_email_task_later(app, _send_action_required)
 
 
 def attach_submission_enter_management(fd: dict[str, Any], submission_id: str) -> str | None:

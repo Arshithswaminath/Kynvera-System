@@ -1,6 +1,7 @@
 {# Shared HR submit success dialog. Optional: success_title, success_lead #}
 <div class="success-bg hr-success-modal" id="successModal" role="dialog" aria-modal="true" aria-hidden="true" inert aria-labelledby="hrSuccessTitle" aria-describedby="successMsgLead">
   <div class="success-box">
+    <button type="button" class="success-close" onclick="hrHideSuccessModal()" aria-label="Close">&times;</button>
     <div class="success-icon" aria-hidden="true">
       <svg width="28" height="28" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M5 13l4 4L19 7"/></svg>
     </div>
@@ -24,5 +25,12 @@ window.hrShowSuccessModal = window.hrShowSuccessModal || function () {
   el.removeAttribute('inert');
   el.setAttribute('aria-hidden', 'false');
   el.classList.add('show');
+};
+window.hrHideSuccessModal = window.hrHideSuccessModal || function () {
+  var el = document.getElementById('successModal');
+  if (!el) return;
+  el.classList.remove('show');
+  el.setAttribute('aria-hidden', 'true');
+  try { el.setAttribute('inert', ''); } catch (_) {}
 };
 </script>
