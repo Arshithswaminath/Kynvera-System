@@ -50,6 +50,7 @@ def _ensure_sales_ops_columns():
         insp = inspect(db.engine)
         tables = set(insp.get_table_names())
         alters = []
+        backfills = []
         hiring_was_missing = False
         if 'users' in tables:
             cols = {c['name'] for c in insp.get_columns('users')}
@@ -64,8 +65,59 @@ def _ensure_sales_ops_columns():
             cols = {c['name'] for c in insp.get_columns('bd_projects')}
             if 'owner_user_id' not in cols:
                 alters.append('ALTER TABLE bd_projects ADD COLUMN owner_user_id INTEGER')
+            if 'stage_changed_at' not in cols:
+                alters.append('ALTER TABLE bd_projects ADD COLUMN stage_changed_at TIMESTAMP')
+                # Seed from updated_at, not now(): sample_data backdates updated_at
+                # and that is what makes the stalled-deals card show anything.
+                backfills.append(
+                    'UPDATE bd_projects SET stage_changed_at = updated_at '
+                    'WHERE stage_changed_at IS NULL'
+                )
+        if 'bd_followups' in tables:
+            cols = {c['name'] for c in insp.get_columns('bd_followups')}
+            if 'outcome' not in cols:
+                alters.append('ALTER TABLE bd_followups ADD COLUMN outcome TEXT')
+            if 'outcome_code' not in cols:
+                alters.append('ALTER TABLE bd_followups ADD COLUMN outcome_code VARCHAR(20)')
+            if 'completed_at' not in cols:
+                alters.append('ALTER TABLE bd_followups ADD COLUMN completed_at TIMESTAMP')
+                backfills.append(
+                    "UPDATE bd_followups SET completed_at = updated_at "
+                    "WHERE completed_at IS NULL AND status = 'done'"
+                )
+            if 'original_due_at' not in cols:
+                alters.append('ALTER TABLE bd_followups ADD COLUMN original_due_at TIMESTAMP')
+                backfills.append(
+                    'UPDATE bd_followups SET original_due_at = due_at WHERE original_due_at IS NULL'
+                )
+            if 'snooze_count' not in cols:
+                alters.append('ALTER TABLE bd_followups ADD COLUMN snooze_count INTEGER DEFAULT 0')
+                backfills.append('UPDATE bd_followups SET snooze_count = 0 WHERE snooze_count IS NULL')
+            if 'assigned_to_user_id' not in cols:
+                alters.append('ALTER TABLE bd_followups ADD COLUMN assigned_to_user_id INTEGER')
+                alters.append(
+                    'CREATE INDEX IF NOT EXISTS ix_bd_followups_assigned_to_user_id '
+                    'ON bd_followups (assigned_to_user_id)'
+                )
+                backfills.append(
+                    'UPDATE bd_followups SET assigned_to_user_id = created_by '
+                    'WHERE assigned_to_user_id IS NULL'
+                )
+        if 'bd_activities' in tables:
+            cols = {c['name'] for c in insp.get_columns('bd_activities')}
+            if 'project_id' not in cols:
+                alters.append('ALTER TABLE bd_activities ADD COLUMN project_id INTEGER')
+                alters.append(
+                    'CREATE INDEX IF NOT EXISTS ix_bd_activities_project_id '
+                    'ON bd_activities (project_id)'
+                )
         with db.engine.begin() as conn:
             for sql in alters:
+                try:
+                    conn.execute(text(sql))
+                except Exception:
+                    pass
+            for sql in backfills:
                 try:
                     conn.execute(text(sql))
                 except Exception:
@@ -3599,13 +3651,15 @@ def _parse_iso_datetime(value):
         return None
 
 
-def _bd_activity(icon, title, description='', badge='', bg='#fff4ef', event_time=None, user_id=None):
+def _bd_activity(icon, title, description='', badge='', bg='#fff4ef', event_time=None,
+                 user_id=None, project_id=None):
     activity = BDActivity(
         icon=icon,
         bg=bg,
         title=title,
         description=description,
         badge=badge,
+        project_id=project_id,
         event_time=event_time or utc_now_naive(),
         created_by=user_id
     )
@@ -3665,10 +3719,108 @@ def _parse_excel_float(value, default=0.0):
         return float(default)
 
 
+_bd_seed_checked = False
+
+
 def _seed_bd_data_if_empty(user_id):
-    """Top up the BD pipeline with sample deals, quotes, follow-ups, and contacts."""
+    """Seed the sample BD pipeline, but only into an empty table.
+
+    This used to run on every dashboard load and re-created rows by matching on
+    name/title, so deleting a sample deal or follow-up silently undid itself on
+    the next refresh. Honouring the "if empty" in the name makes deletes stick,
+    while a fresh database still gets the full demo pipeline.
+    """
+    global _bd_seed_checked
+    if _bd_seed_checked:
+        return
+    _bd_seed_checked = True
+    if BDProject.query.first() is not None:
+        return
     from app.bd.sample_data import ensure_bd_sample_pipeline
     ensure_bd_sample_pipeline(user_id)
+
+
+def _bd_filter_projects_by_view(projects, view):
+    """Narrow an already-scoped deal list to one of the dashboard's status views."""
+    view = (view or 'all').strip().lower()
+    if view == 'active':
+        return [p for p in projects if (p.status or '') in ('active', 'proposal', 'prospect')]
+    if view == 'lost':
+        return [p for p in projects if (p.status or '') == 'lost']
+    if view in ('renewal', 'under_renewal'):
+        return [p for p in projects if (p.status or '') == 'under_renewal']
+    return projects
+
+
+def _bd_scoped_project_list(user, view='all', owner_id=None):
+    """Deals visible to `user`, narrowed by owner and status view.
+
+    Does not seed sample data or run the under-renewal auto-flip; those stay in
+    bd_dashboard_data so that read-only stat recomputes never mutate rows.
+    """
+    q = _bd_scoped_projects_query(user).order_by(BDProject.updated_at.desc())
+    if user_sees_all_bd_deals(user) and owner_id:
+        q = q.filter(BDProject.owner_user_id == owner_id)
+    return _bd_filter_projects_by_view(q.all(), view)
+
+
+def _bd_scoped_followups(user, project_ids=None):
+    """Follow-ups visible to `user`: created by, assigned to, or on a visible deal."""
+    q = BDFollowUp.query
+    if not user_sees_all_bd_deals(user):
+        q = q.filter(db.or_(
+            BDFollowUp.created_by == user.id,
+            BDFollowUp.assigned_to_user_id == user.id,
+            BDFollowUp.project_id.in_(project_ids or [-1]),
+        ))
+    return q.order_by(BDFollowUp.created_at.desc()).all()
+
+
+def _bd_compute_stats(projects, followups, ticket_projects=None):
+    """Build the dashboard `stats` block from already-scoped lists.
+
+    Shared by bd_dashboard_data and the stage endpoint so a drag-and-drop move
+    gets exact server numbers back without a second round-trip.
+    """
+    from app.bd import analytics as BDA
+
+    total_value = sum(float(p.value_amount or 0) for p in projects)
+    active_deals = len([p for p in projects if p.status in ['active', 'proposal', 'prospect', 'under_renewal']])
+    won = len([p for p in projects if p.status == 'won'])
+    lost = len([p for p in projects if p.status == 'lost'])
+    under_renewal = len([p for p in projects if p.status == 'under_renewal'])
+    win_rate = int(round((won / (won + lost)) * 100)) if (won + lost) > 0 else 0
+    avg_deal_size = int(round(total_value / len(projects))) if projects else 0
+    overdue_followups = len([
+        f for f in followups
+        if f.status != 'done' and f.due_at and f.due_at < utc_now_naive()
+    ])
+
+    stage_stats = []
+    for stage in BDA.STAGE_ORDER:
+        items = [p for p in projects if (p.stage or '').lower() == stage]
+        stage_stats.append({
+            'stage': stage,
+            'count': len(items),
+            'value': sum(float(p.value_amount or 0) for p in items),
+        })
+
+    if ticket_projects is None:
+        ticket_projects = TicketProject.query.all()
+
+    return {
+        'total_pipeline': total_value,
+        'active_deals': active_deals,
+        'under_renewal': under_renewal,
+        'win_rate': win_rate,
+        'avg_deal_size': avg_deal_size,
+        'overdue_followups': overdue_followups,
+        'stage_stats': stage_stats,
+        'forecast': BDA.weighted_forecast(projects),
+        'funnel': BDA.conversion_funnel(projects),
+        'stalled': BDA.stalled_deals(projects),
+        'outcome': BDA.outcome_loop(ticket_projects),
+    }
 
 
 @admin_bp.route('/bd/dashboard-data', methods=['GET'])
@@ -3703,56 +3855,20 @@ def bd_dashboard_data():
         except Exception:
             db.session.rollback()
 
-        if view == 'active':
-            projects = [p for p in projects if (p.status or '') in ('active', 'proposal', 'prospect')]
-        elif view == 'lost':
-            projects = [p for p in projects if (p.status or '') == 'lost']
-        elif view in ('renewal', 'under_renewal'):
-            projects = [p for p in projects if (p.status or '') == 'under_renewal']
+        projects = _bd_filter_projects_by_view(projects, view)
 
         project_ids = {p.id for p in projects}
+        followups = _bd_scoped_followups(user, project_ids)
         if user_sees_all_bd_deals(user):
-            followups = BDFollowUp.query.order_by(BDFollowUp.created_at.desc()).all()
             contacts = BDContact.query.order_by(BDContact.updated_at.desc()).all()
             activities = BDActivity.query.order_by(BDActivity.event_time.desc()).limit(50).all()
         else:
-            followups = BDFollowUp.query.filter(
-                db.or_(BDFollowUp.created_by == user.id, BDFollowUp.project_id.in_(project_ids or [-1]))
-            ).order_by(BDFollowUp.created_at.desc()).all()
             contacts = BDContact.query.filter(BDContact.created_by == user.id).order_by(BDContact.updated_at.desc()).all()
             activities = BDActivity.query.filter(BDActivity.created_by == user.id).order_by(
                 BDActivity.event_time.desc()
             ).limit(50).all()
 
-        total_value = sum(float(p.value_amount or 0) for p in projects)
-        active_deals = len([p for p in projects if p.status in ['active', 'proposal', 'prospect', 'under_renewal']])
-        won = len([p for p in projects if p.status == 'won'])
-        lost = len([p for p in projects if p.status == 'lost'])
-        under_renewal = len([p for p in projects if p.status == 'under_renewal'])
-        win_rate = int(round((won / (won + lost)) * 100)) if (won + lost) > 0 else 0
-        avg_deal_size = int(round(total_value / len(projects))) if projects else 0
-        overdue_followups = len([
-            f for f in followups
-            if f.status != 'done' and f.due_at and f.due_at < utc_now_naive()
-        ])
-
-        stage_order = ['prospecting', 'qualifying', 'proposal', 'negotiation', 'closing']
-        stage_stats = []
-        for stage in stage_order:
-            items = [p for p in projects if (p.stage or '').lower() == stage]
-            stage_value = sum(float(p.value_amount or 0) for p in items)
-            stage_stats.append({
-                'stage': stage,
-                'count': len(items),
-                'value': stage_value
-            })
-
-        from app.bd import analytics as BDA
-        ticket_projects = TicketProject.query.all()
-        forecast = BDA.weighted_forecast(projects)
-        funnel = BDA.conversion_funnel(projects)
-        stalled = BDA.stalled_deals(projects)
-        outcome = BDA.outcome_loop(ticket_projects)
+        stats = _bd_compute_stats(projects, followups)
 
         owners = []
         if user_sees_all_bd_deals(user):
@@ -3785,19 +3901,7 @@ def bd_dashboard_data():
                 'sees_all': user_sees_all_bd_deals(user),
                 'view': view,
             },
-            'stats': {
-                'total_pipeline': total_value,
-                'active_deals': active_deals,
-                'under_renewal': under_renewal,
-                'win_rate': win_rate,
-                'avg_deal_size': avg_deal_size,
-                'overdue_followups': overdue_followups,
-                'stage_stats': stage_stats,
-                'forecast': forecast,
-                'funnel': funnel,
-                'stalled': stalled,
-                'outcome': outcome,
-            }
+            'stats': stats,
         })
     except Exception as e:
         current_app.logger.error(f"Error fetching BD dashboard data: {str(e)}", exc_info=True)
@@ -3924,16 +4028,24 @@ def bd_get_project(project_id):
         )
         company = (project.company or '').strip()
         activities_q = BDActivity.query
+        # Newer rows carry project_id; the name/company matching stays as the
+        # fallback for history written before that column existed.
         if company:
             activities_q = activities_q.filter(
                 db.or_(
+                    BDActivity.project_id == project.id,
                     BDActivity.badge == company,
                     BDActivity.title.ilike(f'%{project.name}%'),
                     BDActivity.description.ilike(f'%{company}%'),
                 )
             )
         else:
-            activities_q = activities_q.filter(BDActivity.title.ilike(f'%{project.name}%'))
+            activities_q = activities_q.filter(
+                db.or_(
+                    BDActivity.project_id == project.id,
+                    BDActivity.title.ilike(f'%{project.name}%'),
+                )
+            )
         activities = activities_q.order_by(BDActivity.event_time.desc()).limit(40).all()
 
         contacts = []
@@ -4053,6 +4165,121 @@ def bd_update_project(project_id):
         db.session.rollback()
         current_app.logger.error(f"Error updating BD project: {str(e)}", exc_info=True)
         return error_response('Failed to update project', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/bd/projects/<int:project_id>/stage', methods=['POST'])
+@jwt_required()
+@bd_access_required
+def bd_move_project_stage(project_id):
+    """Move a deal to another pipeline stage (kanban drag/drop).
+
+    Kept separate from the full PUT: that one logs a generic "Project updated"
+    activity on every call and re-runs contact/owner sync, neither of which is
+    wanted on a drag. Returns the recomputed stats block so the board can update
+    the dashboard funnel without a second round-trip.
+    """
+    from app.bd import analytics as BDA
+    try:
+        user = _bd_current_user()
+        project = db.session.get(BDProject, project_id)
+        if not project:
+            return error_response('Project not found', status_code=404, error_code='NOT_FOUND')
+        if not _can_access_bd_project(user, project):
+            return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+
+        data = request.get_json(silent=True) or {}
+        stage = (data.get('stage') or '').strip().lower()
+        if stage not in BDA.BD_STAGES:
+            return error_response(
+                'Stage must be one of: ' + ', '.join(BDA.STAGE_ORDER),
+                status_code=400, error_code='VALIDATION_ERROR'
+            )
+
+        view = (data.get('view') or 'all')
+        owner_id = data.get('owner_id')
+        old_stage = (project.stage or '').strip().lower()
+
+        # Idempotent no-op: a rolled-back optimistic move may retry the same stage.
+        if old_stage != stage:
+            project.stage = stage
+            project.stage_changed_at = utc_now_naive()
+            _bd_activity(
+                icon='📊',
+                title=f'Stage moved to {stage.title()} — {project.name}',
+                description=f'{(old_stage or "unset").title()} → {stage.title()}',
+                badge=project.company,
+                bg='#fef6e4',
+                user_id=user.id,
+                project_id=project.id,
+            )
+            db.session.commit()
+
+        projects = _bd_scoped_project_list(user, view, owner_id)
+        followups = _bd_scoped_followups(user, {p.id for p in projects})
+        return success_response({
+            'project': project.to_dict(),
+            'stats': _bd_compute_stats(projects, followups),
+        }, message='Stage updated')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error moving BD project {project_id} stage: {str(e)}", exc_info=True)
+        return error_response('Failed to update stage', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/bd/projects/<int:project_id>/status', methods=['POST'])
+@jwt_required()
+@bd_access_required
+def bd_set_project_status(project_id):
+    """Set a deal's status. 'won' is rejected: it must go through /promote so the
+    delivery TicketProject is created on the single won path."""
+    from app.bd import analytics as BDA
+    try:
+        user = _bd_current_user()
+        project = db.session.get(BDProject, project_id)
+        if not project:
+            return error_response('Project not found', status_code=404, error_code='NOT_FOUND')
+        if not _can_access_bd_project(user, project):
+            return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+
+        data = request.get_json(silent=True) or {}
+        status = (data.get('status') or '').strip().lower()
+        if status == 'won':
+            return error_response(
+                'Use the promote action to mark a deal won',
+                status_code=400, error_code='VALIDATION_ERROR'
+            )
+        if status not in BDA.BD_STATUSES:
+            return error_response(
+                'Status must be one of: ' + ', '.join(sorted(BDA.BD_STATUSES)),
+                status_code=400, error_code='VALIDATION_ERROR'
+            )
+
+        reason = (data.get('reason') or '').strip()
+        old_status = (project.status or '').strip().lower()
+        if old_status != status:
+            project.status = status
+            is_lost = status == 'lost'
+            _bd_activity(
+                icon='📉' if is_lost else '🔄',
+                title=('Deal marked lost — ' if is_lost else 'Status updated — ') + project.name,
+                description=reason or f'{(old_status or "unset").title()} → {status.title()}',
+                badge=project.company,
+                bg='#fdf0ee' if is_lost else '#fef6e4',
+                user_id=user.id,
+                project_id=project.id,
+            )
+            db.session.commit()
+
+        projects = _bd_scoped_project_list(user, data.get('view') or 'all', data.get('owner_id'))
+        followups = _bd_scoped_followups(user, {p.id for p in projects})
+        return success_response({
+            'project': project.to_dict(),
+            'stats': _bd_compute_stats(projects, followups),
+        }, message='Status updated')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error setting BD project {project_id} status: {str(e)}", exc_info=True)
+        return error_response('Failed to update status', status_code=500, error_code='DATABASE_ERROR')
 
 
 @admin_bp.route('/bd/projects/<int:project_id>', methods=['DELETE'])
@@ -4350,14 +4577,18 @@ def bd_create_followup():
         if not title:
             return error_response('Follow-up title is required', status_code=400, error_code='VALIDATION_ERROR')
 
+        due_at = _parse_iso_datetime(data.get('due_at'))
+        raw_assignee = data.get('assigned_to_user_id', data.get('assignedToUserId'))
         followup = BDFollowUp(
             title=title,
             company=(data.get('company') or '').strip() or None,
             followup_type=(data.get('followup_type') or 'note').strip().lower(),
-            due_at=_parse_iso_datetime(data.get('due_at')),
+            due_at=due_at,
+            original_due_at=due_at,
             status='open',
             details=(data.get('details') or '').strip() or None,
             project_id=data.get('project_id'),
+            assigned_to_user_id=int(raw_assignee) if raw_assignee else user_id,
             created_by=user_id
         )
         db.session.add(followup)
@@ -4381,6 +4612,8 @@ def _can_access_followup(user, followup):
     if user_sees_all_bd_deals(user):
         return True
     if followup.created_by == user.id:
+        return True
+    if followup.assigned_to_user_id == user.id:
         return True
     if followup.project_id:
         project = BDProject.query.get(followup.project_id)
@@ -4418,11 +4651,15 @@ def bd_update_followup(followup_id):
             followup.details = (data.get('details') or '').strip() or None
         if 'project_id' in data:
             followup.project_id = data.get('project_id') or None
+        if 'assigned_to_user_id' in data or 'assignedToUserId' in data:
+            raw_assignee = data.get('assigned_to_user_id', data.get('assignedToUserId'))
+            followup.assigned_to_user_id = int(raw_assignee) if raw_assignee else None
         if 'status' in data:
             status = (data.get('status') or '').strip().lower()
             if status not in ('open', 'done'):
                 return error_response('Status must be open or done', status_code=400, error_code='VALIDATION_ERROR')
             followup.status = status
+            followup.completed_at = utc_now_naive() if status == 'done' else None
 
         done_now = followup.status == 'done'
         _bd_activity(
@@ -4439,6 +4676,315 @@ def bd_update_followup(followup_id):
         db.session.rollback()
         current_app.logger.error(f"Error updating BD follow-up {followup_id}: {str(e)}", exc_info=True)
         return error_response('Failed to update follow-up', status_code=500, error_code='DATABASE_ERROR')
+
+
+def _bd_snooze_due_at(data, followup):
+    """Resolve a snooze target from {until: ISO} or {days: N}. Raises ValueError."""
+    raw_until = data.get('until') or data.get('due_at')
+    if raw_until:
+        parsed = _parse_iso_datetime(raw_until)
+        if not parsed:
+            raise ValueError('Could not read the snooze date')
+        return parsed
+    days = data.get('days')
+    if days is None:
+        raise ValueError('Provide either an until date or a number of days')
+    try:
+        days = int(days)
+    except (TypeError, ValueError):
+        raise ValueError('Days must be a whole number')
+    if days < 1 or days > 365:
+        raise ValueError('Days must be between 1 and 365')
+    now = utc_now_naive()
+    base = followup.due_at if (followup.due_at and followup.due_at > now) else now
+    return (base + timedelta(days=days)).replace(hour=9, minute=0, second=0, microsecond=0)
+
+
+def _bd_apply_snooze(followup, new_due):
+    """Push a follow-up's due date, preserving the first due date it ever had."""
+    if followup.original_due_at is None:
+        followup.original_due_at = followup.due_at
+    followup.due_at = new_due
+    followup.snooze_count = int(followup.snooze_count or 0) + 1
+    followup.status = 'open'
+    followup.completed_at = None
+
+
+def _bd_apply_complete(followup, outcome=None, outcome_code=None):
+    followup.status = 'done'
+    followup.completed_at = utc_now_naive()
+    if outcome:
+        followup.outcome = outcome
+    if outcome_code:
+        followup.outcome_code = outcome_code
+
+
+@admin_bp.route('/bd/followups/<int:followup_id>', methods=['DELETE'])
+@jwt_required()
+@bd_access_required
+def bd_delete_followup(followup_id):
+    """Delete a follow-up."""
+    try:
+        user = _bd_current_user()
+        followup = db.session.get(BDFollowUp, followup_id)
+        if not followup:
+            return error_response('Follow-up not found', status_code=404, error_code='NOT_FOUND')
+        if not _can_access_followup(user, followup):
+            return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+
+        title = followup.title
+        company = followup.company
+        db.session.delete(followup)
+        _bd_activity(
+            icon='🗑️',
+            title=f'Follow-up deleted — {title}',
+            description='',
+            badge=(company or 'Follow-up'),
+            bg='#fdf0ee',
+            user_id=user.id,
+        )
+        db.session.commit()
+        return success_response({'deleted_id': followup_id}, message='Follow-up deleted')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting BD follow-up {followup_id}: {str(e)}", exc_info=True)
+        return error_response('Failed to delete follow-up', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/bd/followups/<int:followup_id>/complete', methods=['POST'])
+@jwt_required()
+@bd_access_required
+def bd_complete_followup(followup_id):
+    """Complete a follow-up with an outcome, optionally chaining the next one."""
+    from app.bd import analytics as BDA
+    try:
+        user = _bd_current_user()
+        followup = db.session.get(BDFollowUp, followup_id)
+        if not followup:
+            return error_response('Follow-up not found', status_code=404, error_code='NOT_FOUND')
+        if not _can_access_followup(user, followup):
+            return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+
+        data = request.get_json(silent=True) or {}
+        outcome = (data.get('outcome') or '').strip() or None
+        outcome_code = (data.get('outcome_code') or '').strip().lower() or None
+        if outcome_code and outcome_code not in BDA.FOLLOWUP_OUTCOME_CODES:
+            return error_response(
+                'Unknown outcome code', status_code=400, error_code='VALIDATION_ERROR'
+            )
+
+        # Validate the chained follow-up before mutating anything: completing and
+        # scheduling the next one is a single action to the user, so a bad date
+        # must not leave the parent silently completed with no chain.
+        nxt = data.get('next') or {}
+        next_title = (nxt.get('title') or '').strip() if isinstance(nxt, dict) else ''
+        next_due = None
+        if next_title:
+            raw_due = nxt.get('due_at')
+            if raw_due:
+                next_due = _parse_iso_datetime(raw_due)
+                if not next_due:
+                    return error_response(
+                        'Could not read the date for the next follow-up',
+                        status_code=400, error_code='VALIDATION_ERROR'
+                    )
+            next_type = (nxt.get('followup_type') or followup.followup_type or 'note').strip().lower()
+            if next_type not in BDA.FOLLOWUP_TYPES:
+                next_type = 'note'
+
+        _bd_apply_complete(followup, outcome, outcome_code)
+        _bd_activity(
+            icon='✅',
+            title=f'Follow-up completed — {followup.title}',
+            description=outcome or (followup.details or ''),
+            badge=(followup.company or 'Follow-up'),
+            bg='#e8f5ee',
+            user_id=user.id,
+            project_id=followup.project_id,
+        )
+
+        next_followup = None
+        if next_title:
+            next_followup = BDFollowUp(
+                title=next_title,
+                company=followup.company,
+                followup_type=next_type,
+                due_at=next_due,
+                status='open',
+                details=(nxt.get('details') or '').strip() or None,
+                project_id=followup.project_id,
+                assigned_to_user_id=followup.assigned_to_user_id,
+                original_due_at=next_due,
+                created_by=user.id,
+            )
+            db.session.add(next_followup)
+            _bd_activity(
+                icon='🔔',
+                title=f'Follow-up added — {next_title}',
+                description='Chained from a completed follow-up',
+                badge=(followup.company or 'Follow-up'),
+                bg='#fef6e4',
+                user_id=user.id,
+                project_id=followup.project_id,
+            )
+
+        db.session.commit()
+        return success_response({
+            'followup': followup.to_dict(),
+            'next_followup': next_followup.to_dict() if next_followup else None,
+        }, message='Follow-up completed')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error completing BD follow-up {followup_id}: {str(e)}", exc_info=True)
+        return error_response('Failed to complete follow-up', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/bd/followups/<int:followup_id>/snooze', methods=['POST'])
+@jwt_required()
+@bd_access_required
+def bd_snooze_followup(followup_id):
+    """Reschedule a follow-up. Snooze and 'pick a new date' are the same action."""
+    try:
+        user = _bd_current_user()
+        followup = db.session.get(BDFollowUp, followup_id)
+        if not followup:
+            return error_response('Follow-up not found', status_code=404, error_code='NOT_FOUND')
+        if not _can_access_followup(user, followup):
+            return error_response('Access denied', status_code=403, error_code='OWNERSHIP_REQUIRED')
+
+        data = request.get_json(silent=True) or {}
+        try:
+            new_due = _bd_snooze_due_at(data, followup)
+        except ValueError as ve:
+            return error_response(str(ve), status_code=400, error_code='VALIDATION_ERROR')
+
+        _bd_apply_snooze(followup, new_due)
+        _bd_activity(
+            icon='💤',
+            title=f'Follow-up snoozed — {followup.title}',
+            description=f'Now due {new_due.strftime("%d %b %Y")} · rescheduled {followup.snooze_count}×',
+            badge=(followup.company or 'Follow-up'),
+            bg='#fef6e4',
+            user_id=user.id,
+            project_id=followup.project_id,
+        )
+        db.session.commit()
+        return success_response({'followup': followup.to_dict()}, message='Follow-up rescheduled')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error snoozing BD follow-up {followup_id}: {str(e)}", exc_info=True)
+        return error_response('Failed to reschedule follow-up', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/bd/followups/bulk', methods=['POST'])
+@jwt_required()
+@bd_access_required
+def bd_bulk_followups():
+    """Apply one action to many follow-ups, skipping and reporting what fails."""
+    try:
+        user = _bd_current_user()
+        data = request.get_json(silent=True) or {}
+        action = (data.get('action') or '').strip().lower()
+        if action not in ('complete', 'snooze', 'reopen', 'delete', 'reassign'):
+            return error_response(
+                'Unknown bulk action', status_code=400, error_code='VALIDATION_ERROR'
+            )
+
+        ids = data.get('ids') or []
+        if not isinstance(ids, list) or not ids:
+            return error_response(
+                'Select at least one follow-up', status_code=400, error_code='VALIDATION_ERROR'
+            )
+        if len(ids) > 200:
+            return error_response(
+                'Too many follow-ups selected (max 200)',
+                status_code=400, error_code='VALIDATION_ERROR'
+            )
+        try:
+            ids = [int(i) for i in ids]
+        except (TypeError, ValueError):
+            return error_response(
+                'Follow-up ids must be numbers', status_code=400, error_code='VALIDATION_ERROR'
+            )
+
+        params = data.get('params') or {}
+
+        # Resolve the assignee once, before touching any row, so an invalid one
+        # fails the whole call rather than half-applying.
+        assignee = None
+        if action == 'reassign':
+            assignee_id = params.get('assignee_id')
+            assignee = db.session.get(User, int(assignee_id)) if assignee_id else None
+            if not assignee or not assignee.is_active or not user_has_bd_access(assignee):
+                return error_response(
+                    'Pick an active user with business development access',
+                    status_code=400, error_code='VALIDATION_ERROR'
+                )
+
+        succeeded, failed, updated = [], [], []
+        for fid in ids:
+            followup = db.session.get(BDFollowUp, fid)
+            if not followup:
+                failed.append({'id': fid, 'error': 'Follow-up not found', 'code': 'NOT_FOUND'})
+                continue
+            if not _can_access_followup(user, followup):
+                failed.append({'id': fid, 'error': 'Access denied', 'code': 'OWNERSHIP_REQUIRED'})
+                continue
+
+            if action == 'complete':
+                _bd_apply_complete(followup)
+            elif action == 'reopen':
+                followup.status = 'open'
+                followup.completed_at = None
+            elif action == 'reassign':
+                followup.assigned_to_user_id = assignee.id
+            elif action == 'snooze':
+                try:
+                    _bd_apply_snooze(followup, _bd_snooze_due_at(params, followup))
+                except ValueError as ve:
+                    return error_response(str(ve), status_code=400, error_code='VALIDATION_ERROR')
+            elif action == 'delete':
+                db.session.delete(followup)
+                succeeded.append(fid)
+                continue
+
+            succeeded.append(fid)
+            updated.append(followup)
+
+        if succeeded:
+            verb = {
+                'complete': 'completed', 'snooze': 'rescheduled', 'reopen': 'reopened',
+                'delete': 'deleted', 'reassign': 'reassigned',
+            }[action]
+            # One summary row, not one per follow-up, so a 20-item bulk action
+            # does not bury the activity feed.
+            _bd_activity(
+                icon='📋',
+                title=f'{len(succeeded)} follow-ups {verb}',
+                description=(f'Reassigned to {assignee.full_name or assignee.username}'
+                             if action == 'reassign' else ''),
+                badge='Bulk action',
+                bg='#e8f0fb',
+                user_id=user.id,
+            )
+            db.session.commit()
+
+        total = len(ids)
+        message = (f'{len(succeeded)} of {total} follow-ups updated'
+                   if failed else f'{len(succeeded)} follow-ups updated')
+        return success_response({
+            'result': {
+                'action': action,
+                'requested': total,
+                'succeeded': succeeded,
+                'failed': failed,
+            },
+            'followups': [f.to_dict() for f in updated],
+        }, message=message)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error in BD bulk follow-up action: {str(e)}", exc_info=True)
+        return error_response('Failed to update follow-ups', status_code=500, error_code='DATABASE_ERROR')
 
 
 @admin_bp.route('/bd/contacts', methods=['POST'])

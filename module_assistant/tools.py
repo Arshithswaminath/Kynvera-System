@@ -899,7 +899,7 @@ def get_bd_pipeline_summary(user):
     if not user_has_bd_access(user):
         return {'allowed': False}
     try:
-        from app.models import BDFollowUp, BDProject
+        from app.models import BDFollowUp, BDProject, db
 
         scoped_to_self = not user_sees_all_bd_deals(user)
         q = BDProject.query
@@ -925,7 +925,11 @@ def get_bd_pipeline_summary(user):
 
         fu_q = BDFollowUp.query.filter(BDFollowUp.status == 'open')
         if scoped_to_self:
-            fu_q = fu_q.filter(BDFollowUp.created_by == user.id)
+            # Follow-ups can be reassigned, so ownership is assignee OR creator.
+            fu_q = fu_q.filter(db.or_(
+                BDFollowUp.assigned_to_user_id == user.id,
+                BDFollowUp.created_by == user.id,
+            ))
         overdue = fu_q.filter(
             BDFollowUp.due_at.isnot(None), BDFollowUp.due_at < datetime.utcnow()
         ).count()

@@ -637,6 +637,7 @@ class BDProject(db.Model):
     notes = db.Column(db.Text, nullable=True)
     primary_contact_name = db.Column(db.String(120), nullable=True)
     primary_contact_email = db.Column(db.String(255), nullable=True)
+    stage_changed_at = db.Column(db.DateTime, nullable=True)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=_utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
@@ -672,6 +673,7 @@ class BDProject(db.Model):
             'notes': self.notes,
             'primaryContactName': self.primary_contact_name,
             'primaryContactEmail': self.primary_contact_email,
+            'stageChangedAt': self.stage_changed_at.isoformat() if self.stage_changed_at else None,
             'createdBy': self.created_by,
             'createdAt': self.created_at.isoformat() if self.created_at else None,
             'updatedAt': self.updated_at.isoformat() if self.updated_at else None
@@ -692,15 +694,27 @@ class BDFollowUp(db.Model):
     due_at = db.Column(db.DateTime, nullable=True, index=True)
     status = db.Column(db.String(20), default='open', index=True)  # open, done
     details = db.Column(db.Text, nullable=True)
+    outcome = db.Column(db.Text, nullable=True)
+    outcome_code = db.Column(db.String(20), nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    original_due_at = db.Column(db.DateTime, nullable=True)
+    snooze_count = db.Column(db.Integer, default=0)
     project_id = db.Column(db.Integer, db.ForeignKey('bd_projects.id'), nullable=True)
+    assigned_to_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=_utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
 
     project = db.relationship('BDProject', backref=db.backref('followups', lazy='dynamic'))
+    assignee = db.relationship('User', foreign_keys=[assigned_to_user_id])
 
     def to_dict(self):
         icon_map = {'call': '📞', 'email': '📧', 'meeting': '🤝', 'note': '📝'}
+        assigned_name = None
+        if self.assigned_to_user_id:
+            assignee = self.assignee
+            if assignee:
+                assigned_name = assignee.full_name or assignee.username
         return {
             'id': self.id,
             'icon': icon_map.get(self.followup_type, '📝'),
@@ -710,7 +724,16 @@ class BDFollowUp(db.Model):
             'type': self.followup_type,
             'status': self.status,
             'details': self.details,
+            'outcome': self.outcome,
+            'outcomeCode': self.outcome_code,
+            'completedAt': self.completed_at.isoformat() if self.completed_at else None,
+            'originalDueAt': self.original_due_at.isoformat() if self.original_due_at else None,
+            'snoozeCount': int(self.snooze_count or 0),
             'projectId': self.project_id,
+            'projectName': self.project.name if self.project else None,
+            'assignedToUserId': self.assigned_to_user_id,
+            'assignedTo': assigned_name or 'Unassigned',
+            'createdBy': self.created_by,
             'createdAt': self.created_at.isoformat() if self.created_at else None,
             'updatedAt': self.updated_at.isoformat() if self.updated_at else None
         }
@@ -765,6 +788,7 @@ class BDActivity(db.Model):
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=True)
     badge = db.Column(db.String(120), nullable=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('bd_projects.id'), nullable=True, index=True)
     event_time = db.Column(db.DateTime, default=_utcnow, index=True)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=_utcnow, index=True)

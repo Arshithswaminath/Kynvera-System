@@ -187,7 +187,10 @@ class TestCurrentUpload:
         assert response.status_code == 200
         body = response.get_json()
         assert body['has_file'] is True
-        assert body['total'] == 1
+        # Compare against the upload's own total: the `uploaded` fixture prefers the
+        # checked-in workbook over the 1-row in-memory builder, so a literal here
+        # goes stale whenever that fixture gains a row.
+        assert body['total'] == uploaded['total']
 
 
 class TestClearUpload:
@@ -338,7 +341,7 @@ class TestReportFolder:
         assert response.status_code == 200, response.get_json()
         body = response.get_json()
         assert body['success'] is True
-        assert body['total'] == 1
+        assert body['total'] == uploaded['total']
 
     def test_open_unknown_file_404(self, client, admin_auth_headers):
         response = client.get(

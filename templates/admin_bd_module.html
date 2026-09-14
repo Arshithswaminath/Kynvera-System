@@ -662,6 +662,121 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
   .bf-closing-card .bf-closing-end{flex-wrap:nowrap}
   .bf-closing-card .bf-closing-facts{flex-wrap:wrap}
 }
+
+/* ============ Pipeline kanban ============
+   .bf-kanban-scroll is the only scroll container and deliberately matches none
+   of the mobile overflow:visible!important resets above — it must never be a
+   .bf-card / .bf-table-wrap, and must never carry an inline style containing
+   the string "overflow". Flex lives on .bf-kanban-board, which is unmatched,
+   because .bf-kanban-card IS a .bf-card and gets flex:none forced on it. */
+.bf-kanban-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line)}
+.bf-kanban-search{flex:1;min-width:150px;height:36px;padding:0 12px;font-size:13px;font-family:inherit;color:var(--ink);background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);outline:none}
+.bf-kanban-search:focus{border-color:var(--g400);box-shadow:var(--sh-glow)}
+.bf-kanban-select{height:36px;padding:0 8px;font-size:12.5px;font-weight:600;font-family:inherit;color:var(--ink2);background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);cursor:pointer;outline:none}
+.bf-kanban-select:focus{border-color:var(--g400)}
+.bf-kanban-scope{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--g100);color:var(--g800);white-space:nowrap}
+.bf-kanban-scroll{max-width:100%;overflow-x:auto;overflow-y:visible;padding:14px 16px 16px;scrollbar-width:thin;scrollbar-color:var(--g300) transparent}
+.bf-kanban-board{display:flex;align-items:flex-start;gap:12px;min-width:min-content}
+.bf-kan-col{display:flex;flex-direction:column;flex:1 1 0;min-width:210px;background:var(--bg);border:1.5px solid var(--line);border-radius:var(--r-md);overflow:hidden;transition:background .15s,border-color .15s}
+.bf-kan-col.is-drop-target{background:var(--g50);border-color:var(--g400);box-shadow:var(--sh-glow)}
+/* Headers step through the existing coral ramp so the funnel reads as heat,
+   earliest stage lightest. Staying on one hue keeps coral the only loud colour. */
+.bf-kan-head{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;padding:10px 12px;background:var(--g100);border-bottom:2px solid var(--g400)}
+.bf-kan-col[data-stage="qualifying"] .bf-kan-head{background:var(--g200);border-bottom-color:var(--g500)}
+.bf-kan-col[data-stage="proposal"] .bf-kan-head{background:var(--g300);border-bottom-color:var(--g600)}
+.bf-kan-col[data-stage="negotiation"] .bf-kan-head{background:var(--g400);border-bottom-color:var(--g800)}
+.bf-kan-col[data-stage="closing"] .bf-kan-head{background:#f9a888;border-bottom-color:var(--g900)}
+.bf-kan-head-name{font-size:12px;font-weight:800;color:var(--ink);text-transform:uppercase;letter-spacing:.04em}
+/* Ink, not coral: coral on white is only ~3.6:1, below AA for text this small. */
+.bf-kan-head-count{font-size:11px;font-weight:800;color:var(--ink);background:var(--white);padding:1px 7px;border-radius:999px}
+.bf-kan-head-val{margin-left:auto;font-size:12px;font-weight:700;color:var(--ink2);font-variant-numeric:tabular-nums}
+.bf-kan-list{display:flex;flex-direction:column;gap:8px;padding:10px;min-height:90px;max-height:calc(100vh - var(--bf-nav-top, 56px) - 300px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--g300) transparent}
+.bf-kan-card{background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:10px;cursor:grab;transition:box-shadow .12s,border-color .12s,opacity .12s;box-shadow:var(--sh-xs)}
+.bf-kan-card:hover{border-color:var(--g300);box-shadow:var(--sh-sm)}
+.bf-kan-card:focus-visible{outline:none;border-color:var(--g500);box-shadow:var(--sh-glow)}
+.bf-kan-card.is-dragging{opacity:.4;cursor:grabbing}
+.bf-kan-card.is-pending{opacity:.6}
+.bf-kan-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
+.bf-kan-card-name{font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.3;min-width:0;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.bf-kan-card-co{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bf-kan-card-val{font-size:13.5px;font-weight:800;color:var(--g800);font-variant-numeric:tabular-nums;margin-top:6px}
+.bf-kan-card-foot{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px}
+.bf-kan-menu-btn{flex-shrink:0;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1;color:var(--subtle);background:transparent;border:none;border-radius:6px;cursor:pointer;font-family:inherit}
+.bf-kan-menu-btn:hover{background:var(--g100);color:var(--g800)}
+.bf-kan-stage-btn{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--g50);color:var(--g800);border:1px solid var(--g200);cursor:pointer;font-family:inherit;text-transform:capitalize}
+.bf-kan-stage-btn:hover{background:var(--g100)}
+.bf-kan-empty{padding:14px 8px;text-align:center;font-size:12px;color:var(--subtle)}
+/* The shared 38% cap truncates owner names to "Demo …" in a narrow card. */
+.bf-kan-card .bf-closing-owner{max-width:58%;font-size:12px}
+.bf-kan-card .bf-closing-progress{min-width:52px}
+.bf-kan-drop-hint{padding:12px 8px;text-align:center;font-size:11.5px;font-weight:700;color:var(--g800);border:1.5px dashed var(--g400);border-radius:var(--r-sm);background:var(--white)}
+
+/* Card action sheet — also the touch and keyboard path for changing stage */
+.bf-sheet-veil{position:fixed;inset:0;background:rgba(25,27,35,.34);z-index:10055;display:none;align-items:center;justify-content:center;padding:16px}
+.bf-sheet-veil.open{display:flex}
+.bf-sheet{width:min(320px,100%);max-height:85vh;overflow-y:auto;background:var(--white);border-radius:var(--r-lg);box-shadow:var(--sh-lg);padding:8px}
+.bf-sheet-hd{padding:10px 12px 6px;font-size:12px;font-weight:800;color:var(--subtle);text-transform:uppercase;letter-spacing:.05em}
+.bf-sheet-hd.name{font-size:14px;color:var(--ink);text-transform:none;letter-spacing:0;padding-bottom:8px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.bf-sheet-opt{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:10px 12px;font-size:13.5px;font-weight:600;font-family:inherit;color:var(--ink);background:transparent;border:none;border-radius:var(--r-sm);cursor:pointer;text-align:left}
+.bf-sheet-opt:hover{background:var(--g50)}
+.bf-sheet-opt.is-current{background:var(--g100);color:var(--g900);font-weight:800}
+.bf-sheet-opt.danger{color:#b91c1c}
+.bf-sheet-sep{height:1px;margin:6px 10px;background:var(--line)}
+
+/* ============ Follow-ups workspace ============ */
+.bf-fu-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line)}
+.bf-fu-search{flex:1;min-width:150px;height:36px;padding:0 12px;font-size:13px;font-family:inherit;color:var(--ink);background:var(--white);border:1.5px solid var(--line);border-radius:var(--r-sm);outline:none}
+.bf-fu-search:focus{border-color:var(--g400);box-shadow:var(--sh-glow)}
+.bf-fu-bulkbar{display:none;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px;background:var(--g50);border-bottom:1px solid var(--g200)}
+.bf-fu-bulkbar.open{display:flex}
+.bf-fu-bulk-count{font-size:12.5px;font-weight:800;color:var(--g900);margin-right:2px}
+.bf-fu-group{border-bottom:1px solid var(--line)}
+.bf-fu-group:last-child{border-bottom:none}
+.bf-fu-group-hd{display:flex;align-items:center;gap:8px;padding:9px 16px;background:var(--g50);cursor:pointer;user-select:none}
+.bf-fu-group-hd:hover{background:var(--g100)}
+.bf-fu-group-caret{font-size:10px;color:var(--subtle);transition:transform .15s;flex-shrink:0}
+.bf-fu-group.collapsed .bf-fu-group-caret{transform:rotate(-90deg)}
+.bf-fu-group.collapsed .bf-fu-group-body{display:none}
+.bf-fu-group-name{font-size:12px;font-weight:800;color:var(--ink);text-transform:uppercase;letter-spacing:.04em}
+.bf-fu-group-count{font-size:11px;font-weight:700;color:var(--g800);background:var(--g100);padding:1px 7px;border-radius:999px}
+.bf-fu-group.bucket-overdue .bf-fu-group-count{background:var(--rose-bg);color:var(--rose)}
+.bf-fu-group.bucket-today .bf-fu-group-count{background:var(--amber-bg);color:var(--amber)}
+.bf-fu-group-all{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--g800);background:transparent;border:none;cursor:pointer;font-family:inherit;padding:4px 6px;border-radius:6px}
+.bf-fu-group-all:hover{background:var(--white)}
+.bf-fu-group-body{padding:4px 16px 8px}
+.bf-fu-check{width:18px;height:18px;flex-shrink:0;accent-color:var(--g700);cursor:pointer}
+.bf-fu-deal{font-size:11.5px;font-weight:600;color:var(--g800);background:var(--g50);padding:2px 7px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+.bf-fu-snoozed{font-size:11.5px;font-weight:700;color:var(--amber);background:var(--amber-bg);padding:2px 7px;border-radius:5px;white-space:nowrap}
+.bf-fu-outcome{font-size:12px;color:var(--muted);margin-top:3px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bf-fu-empty{padding:26px 16px;text-align:center;color:var(--subtle);font-size:13px}
+
+@media(max-width:900px){
+  /* Re-assert the board scroller: it is unmatched by the resets above, so no
+     !important is needed — source order after them is enough. */
+  .bf-kanban-scroll{
+    max-width:100%;
+    overflow-x:auto;
+    overflow-y:visible;
+    scroll-snap-type:x mandatory;
+    overscroll-behavior-x:contain;
+    touch-action:pan-x pan-y;
+    -webkit-overflow-scrolling:touch;
+    padding:12px;
+  }
+  .bf-kanban-board{display:flex;min-width:min-content}
+  .bf-kan-col{flex:0 0 min(86vw,300px);scroll-snap-align:start}
+  .bf-kan-list{max-height:none;overflow-y:visible}
+  .bf-kan-card{cursor:pointer}
+}
+@media(max-width:768px){
+  .bf-kanban-toolbar,.bf-fu-toolbar,.bf-fu-bulkbar{padding:10px 12px}
+  .bf-kanban-search,.bf-fu-search,.bf-kanban-select{font-size:16px;min-height:44px}
+  .bf-kanban-search,.bf-fu-search{flex:1 1 100%}
+  .bf-fu-group-body{padding:4px 12px 8px}
+  .bf-sheet{width:100%;max-height:70vh}
+  .bf-sheet-veil{align-items:flex-end;padding:0}
+  .bf-sheet{border-radius:var(--r-lg) var(--r-lg) 0 0}
+}
   </style>
 </head>
 <body class="has-main-nav">
@@ -906,9 +1021,58 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
           {% include 'partials/bd_project_workspace.html' %}
         </div>
 
-        <div class="bf-view-section" id="bf-v-pipeline"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Deal Pipeline</div><div class="bf-card-hd-sub">Grouped by stage with values and counts</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenModal()">＋ New Deal</button></div></div><div class="bf-table-wrap"><table class="bf-proj-table"><thead><tr><th>Stage</th><th>Deals</th><th>Total Value</th><th>Share</th></tr></thead><tbody id="bfPipelineTbody"></tbody></table></div></div></div>
+        <div class="bf-view-section" id="bf-v-pipeline">
+          <div class="bf-card bf-kanban-card">
+            <div class="bf-card-hd">
+              <div class="bf-card-hd-info"><div class="bf-card-hd-title">Deal Pipeline</div><div class="bf-card-hd-sub" id="bfKanbanSub">Drag a deal to move it between stages</div></div>
+              <div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenModal()">＋ New Deal</button></div>
+            </div>
+            <div class="bf-kanban-toolbar">
+              <input type="search" id="bfKanbanSearch" class="bf-kanban-search" placeholder="Search deals, companies, contacts…" oninput="bfKanbanFilter()" aria-label="Search deals">
+              <select id="bfKanbanOwner" class="bf-kanban-select" onchange="bfKanbanFilter()" aria-label="Filter by owner"><option value="">All owners</option></select>
+              <select id="bfKanbanPriority" class="bf-kanban-select" onchange="bfKanbanFilter()" aria-label="Filter by priority">
+                <option value="">All priorities</option><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option>
+              </select>
+              <select id="bfKanbanSort" class="bf-kanban-select" onchange="bfKanbanSort(this.value)" aria-label="Sort deals">
+                <option value="close">Close date</option><option value="value">Value</option><option value="priority">Priority</option><option value="idle">Idle time</option>
+              </select>
+              <button type="button" class="bf-tb-cta sm ghost" onclick="bfKanbanClearFilters()">Clear</button>
+              <span class="bf-kanban-scope" id="bfKanbanScope" hidden></span>
+            </div>
+            <div class="bf-kanban-scroll" id="bfKanbanScroll"><div class="bf-kanban-board" id="bfKanbanBoard"></div></div>
+          </div>
+        </div>
 
-        <div class="bf-view-section" id="bf-v-followups"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">All Follow-ups</div><div class="bf-card-hd-sub">Track calls, emails and tasks</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenFollowupPrompt()">＋ Add Follow-up</button></div></div><div class="bf-fu-list" id="bfFuList"></div></div></div>
+        <div class="bf-view-section" id="bf-v-followups">
+          <div class="bf-card">
+            <div class="bf-card-hd">
+              <div class="bf-card-hd-info"><div class="bf-card-hd-title">All Follow-ups</div><div class="bf-card-hd-sub" id="bfFuSub">Track calls, emails and tasks</div></div>
+              <div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenFollowupPrompt()">＋ Add Follow-up</button></div>
+            </div>
+            <div class="bf-fu-toolbar">
+              <div class="bf-pill-tabs" role="group" aria-label="Follow-up scope">
+                <button type="button" class="bf-pill-tab active" data-fu-scope="open" onclick="bfFuSetScope('open',this)">Open</button>
+                <button type="button" class="bf-pill-tab" data-fu-scope="all" onclick="bfFuSetScope('all',this)">All</button>
+                <button type="button" class="bf-pill-tab" data-fu-scope="done" onclick="bfFuSetScope('done',this)">Done</button>
+              </div>
+              <input type="search" id="bfFuSearch" class="bf-fu-search" placeholder="Search follow-ups…" oninput="bfFuFilter()" aria-label="Search follow-ups">
+              <select id="bfFuType" class="bf-kanban-select" onchange="bfFuFilter()" aria-label="Filter by type">
+                <option value="">All types</option><option value="call">Call</option><option value="email">Email</option><option value="meeting">Meeting</option><option value="note">Note</option>
+              </select>
+              <select id="bfFuOwner" class="bf-kanban-select" onchange="bfFuFilter()" aria-label="Filter by assignee"><option value="">Anyone</option></select>
+            </div>
+            <div class="bf-fu-bulkbar" id="bfFuBulkbar">
+              <span class="bf-fu-bulk-count" id="bfFuBulkCount">0 selected</span>
+              <button type="button" class="bf-act-btn" onclick="bfFuBulk('complete')">Complete</button>
+              <button type="button" class="bf-act-btn" onclick="bfOpenFuSnooze('bulk')">Snooze</button>
+              <button type="button" class="bf-act-btn" onclick="bfFuBulkReassign()">Reassign</button>
+              <button type="button" class="bf-act-btn" onclick="bfFuBulk('reopen')">Reopen</button>
+              <button type="button" class="bf-act-btn danger" onclick="bfFuBulk('delete')">Delete</button>
+              <button type="button" class="bf-tb-cta sm ghost" onclick="bfFuClearSelection()">Clear</button>
+            </div>
+            <div class="bf-fu-list" id="bfFuList"></div>
+          </div>
+        </div>
 
         <div class="bf-view-section" id="bf-v-contacts"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Key Contacts</div><div class="bf-card-hd-sub">Decision makers &amp; champions</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenContactPrompt()">＋ Add Contact</button></div></div><div class="bf-contacts-grid" id="bfContactsGrid"></div></div></div>
 
@@ -992,18 +1156,89 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
       <div class="bf-modal-head">
         <div class="bf-modal-head-ico">🗓️</div>
         <div>
-          <div class="bf-modal-head-title">Add Follow-up</div>
+          <div class="bf-modal-head-title" id="bfFollowupModalTitle">Add Follow-up</div>
           <div class="bf-modal-head-sub">Schedule a reminder for your pipeline</div>
         </div>
         <div class="bf-modal-close" onclick="bfCloseFollowupModal()">✕</div>
       </div>
       <div class="bf-modal-body">
         <div class="bf-field-grid solo"><div class="bf-fld"><label>Follow-up title</label><input id="bfFollowupTitle" placeholder="e.g. Send revised proposal"></div></div>
-        <div class="bf-field-grid"><div class="bf-fld"><label>Company</label><input id="bfFollowupCompany" placeholder="Company (optional)"></div><div class="bf-fld"><label>Due date</label><input id="bfFollowupDue" type="date"></div></div>
+        <div class="bf-field-grid"><div class="bf-fld"><label>Type</label><select id="bfFollowupType"><option value="call">Call</option><option value="email">Email</option><option value="meeting">Meeting</option><option value="note">Note</option></select></div><div class="bf-fld"><label>Due date</label><input id="bfFollowupDue" type="date"></div></div>
+        <div class="bf-field-grid"><div class="bf-fld"><label>Company</label><input id="bfFollowupCompany" placeholder="Company (optional)"></div><div class="bf-fld"><label>Linked deal</label><select id="bfFollowupProject"><option value="">No linked deal</option></select></div></div>
+        <div class="bf-field-grid solo"><div class="bf-fld"><label>Details</label><textarea id="bfFollowupDetails" rows="2" placeholder="Context, what to cover…"></textarea></div></div>
       </div>
       <div class="bf-modal-foot">
         <button type="button" class="bf-btn-cancel" onclick="bfCloseFollowupModal()">Cancel</button>
-        <button type="button" class="bf-btn-primary" onclick="bfSaveFollowup()">Save Follow-up</button>
+        <button type="button" class="bf-btn-primary" id="bfFollowupSaveBtn" onclick="bfSaveFollowup()">Save Follow-up</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bf-sheet-veil" id="bfCardSheet" onclick="if(event.target===this)bfKanbanCloseMenu()">
+    <div class="bf-sheet" onclick="event.stopPropagation()" role="menu" aria-label="Deal actions">
+      <div class="bf-sheet-hd name" id="bfCardSheetTitle">Deal</div>
+      <div id="bfCardSheetBody"></div>
+    </div>
+  </div>
+
+  <div class="bf-modal-veil" id="bfFuOutcomeModal" onclick="if(event.target===this)bfCloseFuOutcome()">
+    <div class="bf-modal-box" onclick="event.stopPropagation()">
+      <div class="bf-modal-head">
+        <div class="bf-modal-head-ico">✅</div>
+        <div>
+          <div class="bf-modal-head-title">Complete follow-up</div>
+          <div class="bf-modal-head-sub" id="bfFuOutcomeSub">Record what happened</div>
+        </div>
+        <div class="bf-modal-close" onclick="bfCloseFuOutcome()">✕</div>
+      </div>
+      <div class="bf-modal-body">
+        <div class="bf-field-grid solo"><div class="bf-fld"><label>Outcome</label><select id="bfFuOutcomeCode">
+          <option value="">Not recorded</option>
+          <option value="connected">Connected</option>
+          <option value="no_answer">No answer</option>
+          <option value="rescheduled">Rescheduled</option>
+          <option value="info_sent">Info sent</option>
+          <option value="meeting_set">Meeting set</option>
+          <option value="not_interested">Not interested</option>
+          <option value="won">Won</option>
+          <option value="lost">Lost</option>
+        </select></div></div>
+        <div class="bf-field-grid solo"><div class="bf-fld"><label>Notes</label><textarea id="bfFuOutcomeNotes" rows="3" placeholder="What was discussed, what happens next…"></textarea></div></div>
+        <div class="bf-section-divider">Next step</div>
+        <div class="bf-field-grid solo"><div class="bf-fld"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="bfFuChainToggle" onchange="bfFuToggleChain()" style="width:16px;height:16px;accent-color:var(--g700)">Schedule the next follow-up</label></div></div>
+        <div id="bfFuChainFields" hidden>
+          <div class="bf-field-grid solo"><div class="bf-fld"><label>Title</label><input id="bfFuChainTitle" placeholder="e.g. Send revised pricing"></div></div>
+          <div class="bf-field-grid"><div class="bf-fld"><label>Type</label><select id="bfFuChainType"><option value="call">Call</option><option value="email">Email</option><option value="meeting">Meeting</option><option value="note" selected>Note</option></select></div><div class="bf-fld"><label>Due date</label><input id="bfFuChainDue" type="date"></div></div>
+        </div>
+      </div>
+      <div class="bf-modal-foot">
+        <button type="button" class="bf-btn-cancel" onclick="bfCloseFuOutcome()">Cancel</button>
+        <button type="button" class="bf-btn-primary" onclick="bfSaveFuOutcome()">Complete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bf-modal-veil" id="bfFuSnoozeModal" onclick="if(event.target===this)bfCloseFuSnooze()">
+    <div class="bf-modal-box" onclick="event.stopPropagation()" style="width:min(400px,96vw)">
+      <div class="bf-modal-head">
+        <div class="bf-modal-head-ico">💤</div>
+        <div>
+          <div class="bf-modal-head-title">Reschedule</div>
+          <div class="bf-modal-head-sub" id="bfFuSnoozeSub">Push this follow-up to a later date</div>
+        </div>
+        <div class="bf-modal-close" onclick="bfCloseFuSnooze()">✕</div>
+      </div>
+      <div class="bf-modal-body">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button type="button" class="bf-act-btn" onclick="bfFuSnoozePreset(1)">Tomorrow</button>
+          <button type="button" class="bf-act-btn" onclick="bfFuSnoozePreset(3)">In 3 days</button>
+          <button type="button" class="bf-act-btn" onclick="bfFuSnoozePreset(7)">Next week</button>
+        </div>
+        <div class="bf-field-grid solo"><div class="bf-fld"><label>Or pick a date</label><input id="bfFuSnoozeDate" type="date"></div></div>
+      </div>
+      <div class="bf-modal-foot">
+        <button type="button" class="bf-btn-cancel" onclick="bfCloseFuSnooze()">Cancel</button>
+        <button type="button" class="bf-btn-primary" onclick="bfApplyFuSnooze()">Reschedule</button>
       </div>
     </div>
   </div>
@@ -1031,6 +1266,13 @@ let bdStats = { total_pipeline: 0, active_deals: 0, win_rate: 0, avg_deal_size: 
 let pipelineDisplayMode = 'value';
 let editingProjectId = null;
 
+const KANBAN_STAGES=['prospecting','qualifying','proposal','negotiation','closing'];
+let kanbanSearch='', kanbanOwner='', kanbanPriority='', kanbanSortBy='close';
+let kanbanPending=new Map(), kanbanSeq=0, kanbanJustDragged=false, kanbanDragId=null;
+let fuScope='open', fuSearch='', fuOwner='', fuType='';
+let fuSelected=new Set(), fuCollapsed=new Set();
+let fuCompletingId=null, fuSnoozeTarget=null;
+
 function esc(t){if(t===null||t===undefined)return'';const d=document.createElement('div');d.textContent=String(t);return d.innerHTML}
 function money(n){const v=Number(n||0);return 'AED '+v.toLocaleString(undefined,{maximumFractionDigits:0})}
 const STAGE_WIN={prospecting:10,qualifying:25,proposal:50,negotiation:70,closing:90};
@@ -1054,49 +1296,81 @@ function statusLabel(s){
 function prioritySlug(p){return p==='high'?'high':p==='low'?'low':'med'}
 function authHeaders(){const token=localStorage.getItem('access_token');return{'Content-Type':'application/json','Authorization':'Bearer '+token}}
 
-async function apiGet(url){
-  const r=await fetch(url,{headers:authHeaders()});
+// The rate limiter returns an HTML body, so r.json() yields {} and the generic
+// "Request failed" hides the real cause. Name it explicitly.
+async function apiUnwrap(r){
+  if(r.status===429) throw new Error('Too many requests — wait a minute and try again');
   const j=await r.json().catch(()=>({}));
   if(!r.ok||j.success===false){throw new Error(j.error||'Request failed');}
   return j.data||j;
+}
+
+async function apiGet(url){
+  return apiUnwrap(await fetch(url,{headers:authHeaders()}));
 }
 
 async function apiPost(url,payload){
-  const r=await fetch(url,{method:'POST',headers:authHeaders(),body:JSON.stringify(payload||{})});
-  const j=await r.json().catch(()=>({}));
-  if(!r.ok||j.success===false){throw new Error(j.error||'Request failed');}
-  return j.data||j;
+  return apiUnwrap(await fetch(url,{method:'POST',headers:authHeaders(),body:JSON.stringify(payload||{})}));
 }
 
 async function apiPut(url,payload){
-  const r=await fetch(url,{method:'PUT',headers:authHeaders(),body:JSON.stringify(payload||{})});
-  const j=await r.json().catch(()=>({}));
-  if(!r.ok||j.success===false){throw new Error(j.error||'Request failed');}
-  return j.data||j;
+  return apiUnwrap(await fetch(url,{method:'PUT',headers:authHeaders(),body:JSON.stringify(payload||{})}));
 }
 
 async function apiDelete(url){
-  const r=await fetch(url,{method:'DELETE',headers:authHeaders()});
-  const j=await r.json().catch(()=>({}));
-  if(!r.ok||j.success===false){throw new Error(j.error||'Request failed');}
-  return j.data||j;
+  return apiUnwrap(await fetch(url,{method:'DELETE',headers:authHeaders()}));
+}
+
+// Whole-day difference between two dates, ignoring clock time. Comparing raw
+// millisecond deltas made anything due earlier today read as "Overdue · 0d".
+function daysBetween(iso){
+  const d=new Date(iso);
+  if(isNaN(d)) return null;
+  const due=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  const n=new Date();
+  const today=new Date(n.getFullYear(),n.getMonth(),n.getDate());
+  return Math.round((due-today)/86400000);
 }
 
 function dueLabel(iso){
-  if(!iso) return {label:'No due date',cls:'soon'};
-  const due=new Date(iso);
-  const now=new Date();
-  const dayMs=24*60*60*1000;
-  const delta=Math.floor((due-now)/dayMs);
+  if(!iso) return {label:'No due date',cls:'later'};
+  const delta=daysBetween(iso);
+  if(delta===null) return {label:'No due date',cls:'later'};
   if(delta<0) return {label:`Overdue · ${Math.abs(delta)}d`,cls:'overdue'};
   if(delta===0) return {label:'Today',cls:'today'};
   if(delta===1) return {label:'Tomorrow',cls:'soon'};
-  return {label:due.toLocaleDateString(),cls:'soon'};
+  if(delta<=7) return {label:`In ${delta}d`,cls:'soon'};
+  const d=new Date(iso);
+  const opts={day:'numeric',month:'short'};
+  if(d.getFullYear()!==new Date().getFullYear()) opts.year='numeric';
+  return {label:d.toLocaleDateString(undefined,opts),cls:'later'};
+}
+
+const FU_BUCKETS=[
+  {key:'overdue',label:'Overdue'},{key:'today',label:'Today'},
+  {key:'week',label:'This week'},{key:'later',label:'Later'},
+  {key:'none',label:'No due date'},{key:'done',label:'Done'}
+];
+
+function fuBucket(f){
+  if((f.status||'open')==='done') return 'done';
+  if(!f.date) return 'none';
+  const delta=daysBetween(f.date);
+  if(delta===null) return 'none';
+  if(delta<0) return 'overdue';
+  if(delta===0) return 'today';
+  if(delta<=7) return 'week';
+  return 'later';
 }
 
 function normalizeFollowup(f){
   const due=dueLabel(f.date);
   return {...f,dateLabel:due.label,dateClass:due.cls};
+}
+
+function debounce(fn,wait){
+  let t;
+  return function(){const a=arguments;clearTimeout(t);t=setTimeout(()=>fn.apply(this,a),wait||200)};
 }
 
 function getPipelineMetric(item){
@@ -1173,16 +1447,155 @@ function renderProjects(){
   }).join('')||'<tr><td colspan="8" style="padding:16px;color:var(--subtle)">No projects yet. Add your first project.</td></tr>';
 }
 
-function renderFollowups(targetId='bfFuList',limit=null){
-  const list=document.getElementById(targetId);if(!list)return;
-  const items=(limit?followups.slice(0,limit):followups).map(normalizeFollowup);
-  list.innerHTML=items.map(f=>{
+function fuVisibleItems(){
+  const q=fuSearch.trim().toLowerCase();
+  return followups.filter(f=>{
     const done=(f.status||'open')==='done';
-    const btn=done
-      ? `<button type="button" class="bf-act-btn" onclick="event.stopPropagation();bfSetFollowupStatus(${Number(f.id||0)},'open')">Reopen</button>`
-      : `<button type="button" class="bf-act-btn" onclick="event.stopPropagation();bfSetFollowupStatus(${Number(f.id||0)},'done')">Mark done</button>`;
-    return `<div class="bf-fu-item"><span class="bf-fu-type-icon">${f.icon||'📝'}</span><div class="bf-fu-body"><div class="bf-fu-title${done?' done':''}">${esc(f.title)}</div><div class="bf-fu-meta"><span class="bf-fu-company">${esc(f.co||'')}</span><span class="bf-fu-date ${f.dateClass}">${esc(f.dateLabel)}</span></div></div><div class="bf-fu-actions">${f.id?btn:''}</div></div>`;
-  }).join('')||'<div style="padding:16px;color:var(--subtle)">No follow-ups yet.</div>';
+    if(fuScope==='open'&&done) return false;
+    if(fuScope==='done'&&!done) return false;
+    if(fuType&&(f.type||'')!==fuType) return false;
+    if(fuOwner&&String(f.assignedToUserId||'')!==String(fuOwner)) return false;
+    if(q){
+      const hay=`${f.title||''} ${f.co||''} ${f.projectName||''} ${f.details||''}`.toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  }).map(normalizeFollowup);
+}
+
+function fuRowHtml(f){
+  const id=Number(f.id||0);
+  const done=(f.status||'open')==='done';
+  const snoozed=Number(f.snoozeCount||0);
+  const checked=fuSelected.has(id)?' checked':'';
+  return `<div class="bf-fu-item">
+    <input type="checkbox" class="bf-fu-check"${checked} aria-label="Select ${esc(f.title)}"
+      onclick="event.stopPropagation();bfFuToggleOne(${id},this.checked)">
+    <span class="bf-fu-type-icon">${f.icon||'📝'}</span>
+    <div class="bf-fu-body">
+      <div class="bf-fu-title${done?' done':''}">${esc(f.title)}</div>
+      <div class="bf-fu-meta">
+        ${f.co?`<span class="bf-fu-company">${esc(f.co)}</span>`:''}
+        <span class="bf-fu-date ${f.dateClass}">${esc(f.dateLabel)}</span>
+        ${f.projectId?`<span class="bf-fu-deal" title="Open deal">${esc(f.projectName||'Linked deal')}</span>`:''}
+        ${snoozed?`<span class="bf-fu-snoozed" title="${f.originalDueAt?'Originally due '+esc(fmtShortDate(f.originalDueAt)):''}">↻ ${snoozed}×</span>`:''}
+        ${f.assignedTo&&f.assignedTo!=='Unassigned'?`<span class="bf-fu-company">· ${esc(f.assignedTo)}</span>`:''}
+      </div>
+      ${f.outcome?`<div class="bf-fu-outcome">${esc(f.outcome)}</div>`:''}
+    </div>
+    <div class="bf-fu-actions">
+      ${done
+        ? `<button type="button" class="bf-act-btn" onclick="event.stopPropagation();bfSetFollowupStatus(${id},'open')">Reopen</button>`
+        : `<button type="button" class="bf-act-btn" onclick="event.stopPropagation();bfOpenFuOutcome(${id})">Complete</button>
+           <button type="button" class="bf-act-btn" onclick="event.stopPropagation();bfOpenFuSnooze(${id})">Snooze</button>`}
+      <button type="button" class="bf-act-btn" onclick="event.stopPropagation();bfOpenFuEdit(${id})">Edit</button>
+      <button type="button" class="bf-act-btn danger" onclick="event.stopPropagation();bfDeleteFollowup(${id})">Delete</button>
+    </div>
+  </div>`;
+}
+
+function renderFollowups(targetId='bfFuList'){
+  const list=document.getElementById(targetId);if(!list)return;
+  const items=fuVisibleItems();
+  const groups={};
+  FU_BUCKETS.forEach(b=>groups[b.key]=[]);
+  items.forEach(f=>{const b=fuBucket(f); if(groups[b]) groups[b].push(f);});
+  Object.keys(groups).forEach(k=>groups[k].sort((a,b)=>
+    String(a.date||'9999').localeCompare(String(b.date||'9999'))));
+
+  const html=FU_BUCKETS.filter(b=>groups[b.key].length).map(b=>{
+    const rows=groups[b.key];
+    const collapsed=fuCollapsed.has(b.key)?' collapsed':'';
+    return `<section class="bf-fu-group bucket-${b.key}${collapsed}">
+      <div class="bf-fu-group-hd" onclick="bfFuToggleGroup('${b.key}')" role="button" tabindex="0"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();bfFuToggleGroup('${b.key}')}">
+        <span class="bf-fu-group-caret">▼</span>
+        <span class="bf-fu-group-name">${b.label}</span>
+        <span class="bf-fu-group-count">${rows.length}</span>
+        <button type="button" class="bf-fu-group-all" onclick="event.stopPropagation();bfFuToggleAll('${b.key}')">Select all</button>
+      </div>
+      <div class="bf-fu-group-body">${rows.map(fuRowHtml).join('')}</div>
+    </section>`;
+  }).join('');
+
+  list.innerHTML=html||`<div class="bf-fu-empty">${
+    followups.length?'No follow-ups match these filters.':'No follow-ups yet.'}</div>`;
+
+  const sub=document.getElementById('bfFuSub');
+  if(sub){
+    const overdue=items.filter(f=>fuBucket(f)==='overdue').length;
+    sub.textContent=`${items.length} shown${overdue?` · ${overdue} overdue`:''}`;
+  }
+  renderFuBulkbar();
+}
+
+function renderFuBulkbar(){
+  const bar=document.getElementById('bfFuBulkbar');
+  const count=document.getElementById('bfFuBulkCount');
+  if(!bar) return;
+  bar.classList.toggle('open',fuSelected.size>0);
+  if(count) count.textContent=`${fuSelected.size} selected`;
+}
+
+function bfFuSetScope(scope,btn){
+  fuScope=scope;
+  document.querySelectorAll('[data-fu-scope]').forEach(b=>b.classList.toggle('active',b===btn));
+  fuSelected.clear();
+  renderFollowups('bfFuList');
+}
+
+const bfFuFilterNow=()=>{
+  fuSearch=document.getElementById('bfFuSearch')?.value||'';
+  fuType=document.getElementById('bfFuType')?.value||'';
+  fuOwner=document.getElementById('bfFuOwner')?.value||'';
+  renderFollowups('bfFuList');
+};
+const bfFuFilter=debounce(bfFuFilterNow,180);
+
+function bfFuToggleGroup(key){
+  if(fuCollapsed.has(key)) fuCollapsed.delete(key); else fuCollapsed.add(key);
+  renderFollowups('bfFuList');
+}
+
+function bfFuToggleOne(id,on){
+  if(on) fuSelected.add(Number(id)); else fuSelected.delete(Number(id));
+  renderFuBulkbar();
+}
+
+function bfFuToggleAll(bucket){
+  const rows=fuVisibleItems().filter(f=>fuBucket(f)===bucket);
+  const allOn=rows.every(f=>fuSelected.has(Number(f.id)));
+  rows.forEach(f=>{if(allOn) fuSelected.delete(Number(f.id)); else fuSelected.add(Number(f.id))});
+  renderFollowups('bfFuList');
+}
+
+function bfFuClearSelection(){
+  fuSelected.clear();
+  renderFollowups('bfFuList');
+}
+
+async function bfFuBulk(action,params){
+  if(!fuSelected.size){bfToast('Select at least one follow-up');return;}
+  if(action==='delete'&&!window.confirm(`Delete ${fuSelected.size} follow-up(s)? This cannot be undone.`)) return;
+  try{
+    const res=await apiPost('/api/admin/bd/followups/bulk',{
+      action, ids:Array.from(fuSelected), params:params||{}
+    });
+    fuSelected.clear();
+    bfToast('✅ '+(res.message||'Follow-ups updated'));
+    await loadBDData();
+  }catch(e){bfToast('❌ '+(e.message||'Could not update the follow-ups'));}
+}
+
+function bfFuBulkReassign(){
+  if(!fuSelected.size){bfToast('Select at least one follow-up');return;}
+  if(!bdOwners.length){bfToast('No assignable users available');return;}
+  const list=bdOwners.map((o,i)=>`${i+1}. ${o.name}`).join('\n');
+  const pick=window.prompt(`Reassign ${fuSelected.size} follow-up(s) to:\n\n${list}\n\nEnter a number:`);
+  if(pick===null) return;
+  const owner=bdOwners[parseInt(pick,10)-1];
+  if(!owner){bfToast('❌ That is not one of the listed numbers');return;}
+  bfFuBulk('reassign',{assignee_id:owner.id});
 }
 
 function renderTodayFollowups(){
@@ -1201,11 +1614,323 @@ function renderContacts(){
   grid.innerHTML=contacts.map(c=>`<div class="bf-contact-card"><div class="bf-cc-top"><div class="bf-cc-identity"><div class="bf-cc-av">${esc(c.initials||'NA')}</div><div><div class="bf-cc-name">${esc(c.name)}</div><div class="bf-cc-title">${esc(c.title||'Contact')}</div></div></div>${c.id?`<button type="button" class="bf-act-btn danger" onclick="event.stopPropagation();bfDeleteContact(${Number(c.id)})">Delete</button>`:''}</div><div class="bf-cc-company">🏢 ${esc(c.co||'')}</div><div class="bf-cc-tags">${(c.tags||[]).map(t=>`<span class="bf-cc-tag">${esc(t)}</span>`).join('')}</div></div>`).join('')||'<div style="padding:16px;color:var(--subtle)">No contacts yet.</div>';
 }
 
+const PRIORITY_RANK={high:0,med:1,low:2};
+
+function kanbanIdleDays(p){
+  const iso=p.stageChangedAt||p.updatedAt;
+  if(!iso) return null;
+  const d=new Date(iso);
+  if(isNaN(d)) return null;
+  return Math.floor((Date.now()-d.getTime())/86400000);
+}
+
+function kanbanVisibleDeals(){
+  const q=kanbanSearch.trim().toLowerCase();
+  let rows=projects.filter(p=>{
+    if(!KANBAN_STAGES.includes((p.stage||'').toLowerCase())) return false;
+    if(['won','lost'].includes((p.status||'').toLowerCase())) return false;
+    if(kanbanOwner && String(p.ownerUserId||'')!==String(kanbanOwner)) return false;
+    if(kanbanPriority && prioritySlug(p.priority)!==kanbanPriority) return false;
+    if(q){
+      const hay=`${p.name||''} ${p.company||p.co||''} ${p.primaryContactName||''} ${p.owner||''}`.toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  const far='9999-12-31';
+  rows.sort((a,b)=>{
+    if(kanbanSortBy==='value') return Number(b.valueAmount||0)-Number(a.valueAmount||0);
+    if(kanbanSortBy==='priority'){
+      const d=(PRIORITY_RANK[prioritySlug(a.priority)]??1)-(PRIORITY_RANK[prioritySlug(b.priority)]??1);
+      return d||Number(b.valueAmount||0)-Number(a.valueAmount||0);
+    }
+    if(kanbanSortBy==='idle') return (kanbanIdleDays(b)??-1)-(kanbanIdleDays(a)??-1);
+    return String(a.expectedCloseDate||a.nextDate||far).localeCompare(String(b.expectedCloseDate||b.nextDate||far));
+  });
+  return rows;
+}
+
+function kanbanCardHtml(p){
+  const id=Number(p.id||0);
+  const stage=(p.stage||'').toLowerCase();
+  const pri=prioritySlug(p.priority);
+  const due=p.expectedCloseDate||p.nextDate;
+  const dl=due?dueLabel(due):null;
+  const idle=kanbanIdleDays(p);
+  const pending=kanbanPending.has(id);
+  const quote=quotations.find(q=>Number(q.bd_project_id||0)===id&&!['cancelled','invoiced'].includes(q.status));
+  return `<article class="bf-kan-card${pending?' is-pending':''}" draggable="true" tabindex="0" role="listitem"
+    data-id="${id}" data-stage="${esc(stage)}"
+    onclick="bfKanbanCardClick(${id})" onkeydown="bfKanbanCardKey(event,${id})"
+    aria-label="${esc(p.name)} — ${esc(stage)}">
+    <div class="bf-kan-card-top">
+      <div style="min-width:0">
+        <div class="bf-kan-card-name">${esc(p.name)}</div>
+        <div class="bf-kan-card-co">${esc(p.company||p.co||'')}</div>
+      </div>
+      <button type="button" class="bf-kan-menu-btn" aria-label="Deal actions"
+        onclick="event.stopPropagation();bfKanbanMenu(${id})">⋯</button>
+    </div>
+    <div class="bf-kan-card-val">${money(p.valueAmount)}</div>
+    <div class="bf-kan-card-foot">
+      <button type="button" class="bf-kan-stage-btn" onclick="event.stopPropagation();bfKanbanMenu(${id},'stage')"
+        aria-label="Change stage">${esc(stage)} ▾</button>
+      <span class="bf-closing-chip pri-${esc(pri)}">${esc({high:'High',med:'Medium',low:'Low'}[pri]||pri)}</span>
+      ${dl?`<span class="bf-closing-due ${dl.cls==='later'?'week':dl.cls}">${esc(dl.label)}</span>`:''}
+      ${idle!==null&&idle>=14?`<span class="bf-closing-chip idle">Idle ${idle}d</span>`:''}
+      ${quote?`<span class="bf-closing-chip quote${quote.status==='approved'?' ok':''}">${esc(statusLabel(quote.status))}</span>`:''}
+    </div>
+    <div class="bf-kan-card-foot">
+      <span class="bf-closing-owner"><span class="bf-closing-av">${esc(personInitials(p.owner))}</span><span>${esc(p.owner||'Unassigned')}</span></span>
+      <span class="bf-closing-progress"><span class="bf-closing-bar"><i style="width:${Math.max(0,Math.min(100,Number(p.progress||0)))}%"></i></span><span class="bf-closing-pct">${Number(p.progress||0)}%</span></span>
+    </div>
+  </article>`;
+}
+
+function renderKanbanShell(){
+  const board=document.getElementById('bfKanbanBoard'); if(!board) return;
+  if(board.children.length===KANBAN_STAGES.length && board._bfKanbanBound) return;
+  board.innerHTML=KANBAN_STAGES.map(s=>`<section class="bf-kan-col" data-stage="${s}">
+    <header class="bf-kan-head">
+      <span class="bf-kan-head-name">${s}</span>
+      <span class="bf-kan-head-count" data-count>0</span>
+      <span class="bf-kan-head-val" data-value>AED 0</span>
+    </header>
+    <div class="bf-kan-list" data-stage="${s}" role="list"></div>
+  </section>`).join('');
+  bindKanbanDnD(board);
+}
+
+function renderKanban(){
+  const board=document.getElementById('bfKanbanBoard'); if(!board) return;
+  const rows=kanbanVisibleDeals();
+  const byStage={};
+  KANBAN_STAGES.forEach(s=>byStage[s]=[]);
+  rows.forEach(p=>{const s=(p.stage||'').toLowerCase(); if(byStage[s]) byStage[s].push(p);});
+  KANBAN_STAGES.forEach(s=>{
+    const list=board.querySelector(`.bf-kan-list[data-stage="${s}"]`);
+    if(!list) return;
+    list.innerHTML=byStage[s].map(kanbanCardHtml).join('')
+      ||'<div class="bf-kan-empty">No deals here</div>';
+  });
+  renderKanbanHeaders(byStage);
+  const sub=document.getElementById('bfKanbanSub');
+  if(sub){
+    const total=rows.reduce((a,p)=>a+Number(p.valueAmount||0),0);
+    // Drag events never fire on touch, so point those users at the stage chip.
+    let how='drag a card to move it';
+    try{ if(window.matchMedia('(pointer: coarse)').matches) how='tap a stage chip to move a deal'; }catch(_){}
+    sub.textContent=`${rows.length} open ${rows.length===1?'deal':'deals'} · ${money(total)} · ${how}`;
+  }
+  const scope=document.getElementById('bfKanbanScope');
+  if(scope){
+    const on=bdScopeView&&bdScopeView!=='all';
+    scope.hidden=!on;
+    if(on) scope.textContent='Scope: '+statusLabel(bdScopeView);
+  }
+}
+
+function renderKanbanHeaders(byStage){
+  const board=document.getElementById('bfKanbanBoard'); if(!board) return;
+  if(!byStage){
+    byStage={};
+    KANBAN_STAGES.forEach(s=>byStage[s]=[]);
+    kanbanVisibleDeals().forEach(p=>{const s=(p.stage||'').toLowerCase(); if(byStage[s]) byStage[s].push(p);});
+  }
+  KANBAN_STAGES.forEach(s=>{
+    const col=board.querySelector(`.bf-kan-col[data-stage="${s}"]`);
+    if(!col) return;
+    const items=byStage[s]||[];
+    const c=col.querySelector('[data-count]'); if(c) c.textContent=items.length;
+    const v=col.querySelector('[data-value]');
+    if(v) v.textContent=compactMoney(items.reduce((a,p)=>a+Number(p.valueAmount||0),0));
+  });
+}
+
+// Kept as the renderAll() entry point so the call site stays unchanged.
 function renderPipeline(){
-  const body=document.getElementById('bfPipelineTbody'); if(!body) return;
-  const stats=bdStats.stage_stats||[];
-  const total=stats.reduce((a,s)=>a+Number(s.value||0),0)||1;
-  body.innerHTML=stats.map(s=>`<tr><td>${esc(s.stage.charAt(0).toUpperCase()+s.stage.slice(1))}</td><td>${Number(s.count||0)}</td><td>${money(s.value)}</td><td>${Math.round((Number(s.value||0)/total)*100)}%</td></tr>`).join('')||'<tr><td colspan="4" style="padding:16px;color:var(--subtle)">No pipeline data yet.</td></tr>';
+  renderKanbanShell();
+  renderKanban();
+}
+
+function bindKanbanDnD(board){
+  if(board._bfKanbanBound) return;
+  board._bfKanbanBound=true;
+
+  board.addEventListener('dragstart',e=>{
+    const card=e.target.closest && e.target.closest('.bf-kan-card');
+    if(!card) return;
+    // Don't start a drag from a control inside the card.
+    if(e.target.closest('button,a,input,select,textarea,label')){e.preventDefault();return;}
+    kanbanDragId=Number(card.dataset.id||0);
+    card.classList.add('is-dragging');
+    try{
+      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/plain',String(kanbanDragId));
+    }catch(_){}
+  });
+
+  board.addEventListener('dragover',e=>{
+    if(!kanbanDragId) return;
+    const col=e.target.closest && e.target.closest('.bf-kan-col');
+    if(!col) return;
+    e.preventDefault();
+    try{e.dataTransfer.dropEffect='move';}catch(_){}
+    board.querySelectorAll('.bf-kan-col.is-drop-target').forEach(c=>{if(c!==col)c.classList.remove('is-drop-target')});
+    col.classList.add('is-drop-target');
+  });
+
+  board.addEventListener('dragleave',e=>{
+    const col=e.target.closest && e.target.closest('.bf-kan-col');
+    if(!col) return;
+    if(e.relatedTarget && col.contains(e.relatedTarget)) return;
+    col.classList.remove('is-drop-target');
+  });
+
+  board.addEventListener('drop',e=>{
+    const col=e.target.closest && e.target.closest('.bf-kan-col');
+    if(!col||!kanbanDragId) return;
+    e.preventDefault();
+    col.classList.remove('is-drop-target');
+    const id=kanbanDragId;
+    kanbanDragId=null;
+    kanbanJustDragged=true;
+    setTimeout(()=>{kanbanJustDragged=false},0);
+    applyStageChange(id,col.dataset.stage);
+  });
+
+  board.addEventListener('dragend',()=>{
+    kanbanDragId=null;
+    board.querySelectorAll('.is-dragging').forEach(c=>c.classList.remove('is-dragging'));
+    board.querySelectorAll('.is-drop-target').forEach(c=>c.classList.remove('is-drop-target'));
+  });
+}
+
+async function applyStageChange(id,newStage){
+  const project=projects.find(p=>Number(p.id)===Number(id));
+  if(!project||!newStage||project.stage===newStage) return;
+  const prevStage=project.stage;
+  const seq=++kanbanSeq;
+  project.stage=newStage;
+  kanbanPending.set(Number(id),{prevStage,seq});
+  renderKanban();
+  try{
+    const res=await apiPost(`/api/admin/bd/projects/${id}/stage`,{
+      stage:newStage, view:bdScopeView, owner_id:bdOwnerFilter||null
+    });
+    const entry=kanbanPending.get(Number(id));
+    // A newer drag on the same card has already superseded this response.
+    if(!entry||entry.seq!==seq) return;
+    kanbanPending.delete(Number(id));
+    if(res&&res.project) Object.assign(project,res.project);
+    if(res&&res.stats){ bdStats=res.stats; updateDashboardStats(); renderAnalytics(); }
+    renderKanban();
+    bfToast(`Moved to ${newStage}`);
+  }catch(err){
+    const entry=kanbanPending.get(Number(id));
+    if(entry&&entry.seq===seq){
+      project.stage=entry.prevStage;
+      kanbanPending.delete(Number(id));
+      renderKanban();
+    }
+    bfToast('❌ '+(err.message||'Could not move the deal'));
+  }
+}
+
+const bfKanbanFilterNow=()=>{
+  kanbanSearch=document.getElementById('bfKanbanSearch')?.value||'';
+  kanbanOwner=document.getElementById('bfKanbanOwner')?.value||'';
+  kanbanPriority=document.getElementById('bfKanbanPriority')?.value||'';
+  renderKanban();
+};
+const bfKanbanFilter=debounce(bfKanbanFilterNow,180);
+
+function bfKanbanSort(mode){
+  kanbanSortBy=mode||'close';
+  try{localStorage.setItem('bfKanbanSort',kanbanSortBy)}catch(_){}
+  renderKanban();
+}
+
+function bfKanbanClearFilters(){
+  ['bfKanbanSearch','bfKanbanOwner','bfKanbanPriority'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  kanbanSearch=kanbanOwner=kanbanPriority='';
+  renderKanban();
+}
+
+function bfKanbanCardClick(id){
+  if(kanbanJustDragged) return;
+  bfOpenProjectDetail(id);
+}
+
+function bfKanbanCardKey(e,id){
+  if(e.key==='Enter'||e.key===' '){e.preventDefault();bfOpenProjectDetail(id);return;}
+  if((e.ctrlKey||e.metaKey)&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){
+    e.preventDefault();
+    const project=projects.find(p=>Number(p.id)===Number(id));
+    if(!project) return;
+    const i=KANBAN_STAGES.indexOf((project.stage||'').toLowerCase());
+    const next=KANBAN_STAGES[i+(e.key==='ArrowRight'?1:-1)];
+    if(next) applyStageChange(id,next);
+  }
+}
+
+function bfKanbanMenu(id,mode){
+  const project=projects.find(p=>Number(p.id)===Number(id));
+  if(!project) return;
+  const veil=document.getElementById('bfCardSheet');
+  const body=document.getElementById('bfCardSheetBody');
+  const title=document.getElementById('bfCardSheetTitle');
+  if(!veil||!body) return;
+  if(title) title.textContent=project.name||'Deal';
+  const cur=(project.stage||'').toLowerCase();
+  const stageOpts=KANBAN_STAGES.map(s=>`<button type="button" class="bf-sheet-opt${s===cur?' is-current':''}" role="menuitem"
+    onclick="bfKanbanMoveStage(${Number(id)},'${s}')"><span style="text-transform:capitalize">${s}</span>${s===cur?' ✓':''}</button>`).join('');
+  body.innerHTML = mode==='stage'
+    ? stageOpts
+    : `<button type="button" class="bf-sheet-opt" role="menuitem" onclick="bfKanbanCloseMenu();bfOpenProjectDetail(${Number(id)})">📂 Open workspace</button>
+       <button type="button" class="bf-sheet-opt" role="menuitem" onclick="bfKanbanCloseMenu();bfOpenProjectEditor(${Number(id)})">✏️ Edit deal</button>
+       <div class="bf-sheet-sep"></div>
+       <div class="bf-sheet-hd">Move to stage</div>
+       ${stageOpts}
+       <div class="bf-sheet-sep"></div>
+       <button type="button" class="bf-sheet-opt" role="menuitem" onclick="bfKanbanQuickWin(${Number(id)})">🏆 Mark won</button>
+       <button type="button" class="bf-sheet-opt danger" role="menuitem" onclick="bfKanbanQuickLost(${Number(id)})">📉 Mark lost</button>`;
+  veil.classList.add('open');
+}
+
+function bfKanbanCloseMenu(){
+  document.getElementById('bfCardSheet')?.classList.remove('open');
+}
+
+function bfKanbanMoveStage(id,stage){
+  bfKanbanCloseMenu();
+  applyStageChange(id,stage);
+}
+
+async function bfKanbanQuickWin(id){
+  bfKanbanCloseMenu();
+  if(!window.confirm('Mark this deal as won? This creates the linked delivery project.')) return;
+  try{
+    await apiPost(`/api/admin/bd/projects/${id}/promote`,{});
+    bfToast('🏆 Deal marked won');
+    await loadBDData();
+  }catch(e){bfToast('❌ '+(e.message||'Could not mark the deal won'));}
+}
+
+async function bfKanbanQuickLost(id){
+  bfKanbanCloseMenu();
+  const reason=window.prompt('Why was this deal lost? (optional)');
+  if(reason===null) return;
+  try{
+    const res=await apiPost(`/api/admin/bd/projects/${id}/status`,{status:'lost',reason:reason||'',view:bdScopeView,owner_id:bdOwnerFilter||null});
+    const project=projects.find(p=>Number(p.id)===Number(id));
+    if(project&&res&&res.project) Object.assign(project,res.project);
+    if(res&&res.stats) bdStats=res.stats;
+    renderAll();
+    bfToast('Deal marked lost');
+  }catch(e){bfToast('❌ '+(e.message||'Could not update the deal'));}
 }
 
 function renderProspectsAndProposals(){
@@ -1924,32 +2649,58 @@ async function bfSaveContact(){
   }catch(e){bfToast('❌ '+(e.message||'Failed to add contact'));}
 }
 
-function bfOpenFollowupPrompt(){
-  const titleEl=document.getElementById('bfFollowupTitle');
-  const companyEl=document.getElementById('bfFollowupCompany');
-  const dueEl=document.getElementById('bfFollowupDue');
-  if(titleEl)titleEl.value='';
-  if(companyEl)companyEl.value='';
-  if(dueEl)dueEl.value='';
-  const m=document.getElementById('bfFollowupModal');
-  if(m)m.classList.add('open');
-  if(titleEl)setTimeout(()=>titleEl.focus(),50);
+let editingFollowupId=null;
+
+function bfOpenFollowupPrompt(followup){
+  editingFollowupId=followup&&followup.id?Number(followup.id):null;
+  const set=(id,v)=>{const el=document.getElementById(id); if(el) el.value=v;};
+  set('bfFollowupTitle',followup?.title||'');
+  set('bfFollowupCompany',followup?.co||'');
+  set('bfFollowupDue',followup?.date?String(followup.date).slice(0,10):'');
+  set('bfFollowupType',followup?.type||'call');
+  set('bfFollowupDetails',followup?.details||'');
+
+  const dealSel=document.getElementById('bfFollowupProject');
+  if(dealSel){
+    dealSel.innerHTML='<option value="">No linked deal</option>'+
+      projects.map(p=>`<option value="${Number(p.id)}">${esc(p.name)}</option>`).join('');
+    dealSel.value=followup?.projectId?String(followup.projectId):'';
+  }
+
+  const t=document.getElementById('bfFollowupModalTitle');
+  if(t) t.textContent=editingFollowupId?'Edit follow-up':'Add Follow-up';
+  const btn=document.getElementById('bfFollowupSaveBtn');
+  if(btn) btn.textContent=editingFollowupId?'Save changes':'Save Follow-up';
+
+  document.getElementById('bfFollowupModal')?.classList.add('open');
+  setTimeout(()=>document.getElementById('bfFollowupTitle')?.focus(),50);
 }
 function bfCloseFollowupModal(){
+  editingFollowupId=null;
   const m=document.getElementById('bfFollowupModal');
   if(m)m.classList.remove('open');
 }
 async function bfSaveFollowup(){
   const title=(document.getElementById('bfFollowupTitle')?.value||'').trim();
   if(!title){bfToast('Follow-up title is required');return;}
-  const company=(document.getElementById('bfFollowupCompany')?.value||'').trim();
   const dueDate=(document.getElementById('bfFollowupDue')?.value||'').trim();
+  const projectId=document.getElementById('bfFollowupProject')?.value||'';
+  const payload={
+    title,
+    company:(document.getElementById('bfFollowupCompany')?.value||'').trim(),
+    due_at:dueDate?`${dueDate}T09:00:00`:null,
+    followup_type:document.getElementById('bfFollowupType')?.value||'call',
+    details:(document.getElementById('bfFollowupDetails')?.value||'').trim(),
+    project_id:projectId?Number(projectId):null
+  };
   try{
-    await apiPost('/api/admin/bd/followups',{title,company,due_at:dueDate?`${dueDate}T09:00:00`:null,followup_type:'note'});
+    if(editingFollowupId) await apiPut(`/api/admin/bd/followups/${editingFollowupId}`,payload);
+    else await apiPost('/api/admin/bd/followups',payload);
+    const wasEdit=!!editingFollowupId;
     bfCloseFollowupModal();
-    bfToast('✅ Follow-up added');
+    bfToast(wasEdit?'✅ Follow-up updated':'✅ Follow-up added');
     await loadBDData();
-  }catch(e){bfToast('❌ '+(e.message||'Failed to add follow-up'));}
+  }catch(e){bfToast('❌ '+(e.message||'Failed to save follow-up'));}
 }
 
 async function loadUser(){
@@ -2101,6 +2852,24 @@ function populateOwnerFilter(){
   const cur=bdOwnerFilter||sel.value||'';
   sel.innerHTML='<option value="">All salespeople</option>'+(bdOwners||[]).map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');
   if(cur)sel.value=cur;
+}
+
+// Board and follow-up filters are client-side and local to their tab, unlike
+// the dashboard's owner filter which refetches with ?owner_id=.
+function populateLocalOwnerSelects(){
+  const opts=(bdOwners||[]).map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');
+  const board=document.getElementById('bfKanbanOwner');
+  if(board){
+    const cur=kanbanOwner;
+    board.innerHTML='<option value="">All owners</option>'+opts;
+    board.value=cur||'';
+  }
+  const fu=document.getElementById('bfFuOwner');
+  if(fu){
+    const cur=fuOwner;
+    fu.innerHTML='<option value="">Anyone</option>'+opts;
+    fu.value=cur||'';
+  }
 }
 
 async function bfSetOwnerFilter(id){
@@ -2295,6 +3064,120 @@ async function bfSetFollowupStatus(id,status){
   }catch(e){bfToast(e.message||'Failed to update follow-up');}
 }
 
+function bfOpenFuOutcome(id){
+  const f=followups.find(x=>Number(x.id)===Number(id));
+  if(!f) return;
+  fuCompletingId=Number(id);
+  const sub=document.getElementById('bfFuOutcomeSub');
+  if(sub) sub.textContent=f.title||'Record what happened';
+  ['bfFuOutcomeNotes','bfFuChainTitle','bfFuChainDue'].forEach(k=>{
+    const el=document.getElementById(k); if(el) el.value='';
+  });
+  const code=document.getElementById('bfFuOutcomeCode'); if(code) code.value='';
+  const type=document.getElementById('bfFuChainType'); if(type) type.value=f.type||'note';
+  const chain=document.getElementById('bfFuChainToggle'); if(chain) chain.checked=false;
+  const fields=document.getElementById('bfFuChainFields'); if(fields) fields.hidden=true;
+  document.getElementById('bfFuOutcomeModal')?.classList.add('open');
+  setTimeout(()=>document.getElementById('bfFuOutcomeNotes')?.focus(),60);
+}
+
+function bfCloseFuOutcome(){
+  fuCompletingId=null;
+  document.getElementById('bfFuOutcomeModal')?.classList.remove('open');
+}
+
+function bfFuToggleChain(){
+  const on=document.getElementById('bfFuChainToggle')?.checked;
+  const fields=document.getElementById('bfFuChainFields');
+  if(fields) fields.hidden=!on;
+  if(on) setTimeout(()=>document.getElementById('bfFuChainTitle')?.focus(),40);
+}
+
+async function bfSaveFuOutcome(){
+  if(!fuCompletingId) return;
+  const payload={
+    outcome:(document.getElementById('bfFuOutcomeNotes')?.value||'').trim(),
+    outcome_code:document.getElementById('bfFuOutcomeCode')?.value||''
+  };
+  if(document.getElementById('bfFuChainToggle')?.checked){
+    const title=(document.getElementById('bfFuChainTitle')?.value||'').trim();
+    if(!title){bfToast('Give the next follow-up a title');return;}
+    const due=document.getElementById('bfFuChainDue')?.value||'';
+    payload.next={
+      title,
+      followup_type:document.getElementById('bfFuChainType')?.value||'note',
+      due_at:due?`${due}T09:00:00`:null
+    };
+  }
+  try{
+    const res=await apiPost(`/api/admin/bd/followups/${fuCompletingId}/complete`,payload);
+    bfCloseFuOutcome();
+    bfToast(res&&res.next_followup?'✅ Completed · next one scheduled':'✅ Follow-up completed');
+    await loadBDData();
+  }catch(e){bfToast('❌ '+(e.message||'Could not complete the follow-up'));}
+}
+
+function bfOpenFuSnooze(target){
+  if(target==='bulk'&&!fuSelected.size){bfToast('Select at least one follow-up');return;}
+  fuSnoozeTarget=target;
+  const sub=document.getElementById('bfFuSnoozeSub');
+  if(sub){
+    if(target==='bulk') sub.textContent=`${fuSelected.size} follow-up(s) selected`;
+    else{
+      const f=followups.find(x=>Number(x.id)===Number(target));
+      sub.textContent=f?f.title:'Push this follow-up to a later date';
+    }
+  }
+  const d=document.getElementById('bfFuSnoozeDate'); if(d) d.value='';
+  document.getElementById('bfFuSnoozeModal')?.classList.add('open');
+}
+
+function bfCloseFuSnooze(){
+  fuSnoozeTarget=null;
+  document.getElementById('bfFuSnoozeModal')?.classList.remove('open');
+}
+
+function bfFuSnoozePreset(days){ bfRunSnooze({days}); }
+
+function bfApplyFuSnooze(){
+  const val=document.getElementById('bfFuSnoozeDate')?.value||'';
+  if(!val){bfToast('Pick a date or use one of the presets');return;}
+  bfRunSnooze({until:`${val}T09:00:00`});
+}
+
+async function bfRunSnooze(params){
+  const target=fuSnoozeTarget;
+  if(!target) return;
+  try{
+    if(target==='bulk'){
+      bfCloseFuSnooze();
+      await bfFuBulk('snooze',params);
+      return;
+    }
+    await apiPost(`/api/admin/bd/followups/${target}/snooze`,params);
+    bfCloseFuSnooze();
+    bfToast('💤 Follow-up rescheduled');
+    await loadBDData();
+  }catch(e){bfToast('❌ '+(e.message||'Could not reschedule the follow-up'));}
+}
+
+function bfOpenFuEdit(id){
+  const f=followups.find(x=>Number(x.id)===Number(id));
+  if(!f) return;
+  bfOpenFollowupPrompt(f);
+}
+
+async function bfDeleteFollowup(id){
+  if(!id) return;
+  if(!window.confirm('Delete this follow-up?')) return;
+  try{
+    await apiDelete(`/api/admin/bd/followups/${id}`);
+    fuSelected.delete(Number(id));
+    bfToast('Follow-up deleted');
+    await loadBDData();
+  }catch(e){bfToast('❌ '+(e.message||'Could not delete the follow-up'));}
+}
+
 async function bfDeleteContact(id){
   if(!id) return;
   if(!window.confirm('Delete this contact?')) return;
@@ -2325,6 +3208,7 @@ function applyBdPayload(data,fromDemo){
   bdOwners=data.owners||[];
   populateOwnerSelect();
   populateOwnerFilter();
+  populateLocalOwnerSelects();
   renderAll();
   renderQuotations();
   if(fromDemo){
@@ -2384,6 +3268,46 @@ window.bfDeleteContact=bfDeleteContact;
 window.bfDeleteProject=bfDeleteProject;
 window.loadBDData=loadBDData;
 
+// Kanban board
+window.bfKanbanFilter=bfKanbanFilter;
+window.bfKanbanClearFilters=bfKanbanClearFilters;
+window.bfKanbanSort=bfKanbanSort;
+window.bfKanbanCardClick=bfKanbanCardClick;
+window.bfKanbanCardKey=bfKanbanCardKey;
+window.bfKanbanMenu=bfKanbanMenu;
+window.bfKanbanCloseMenu=bfKanbanCloseMenu;
+window.bfKanbanMoveStage=bfKanbanMoveStage;
+window.bfKanbanQuickWin=bfKanbanQuickWin;
+window.bfKanbanQuickLost=bfKanbanQuickLost;
+// Follow-ups workspace
+window.bfFuSetScope=bfFuSetScope;
+window.bfFuFilter=bfFuFilter;
+window.bfFuToggleGroup=bfFuToggleGroup;
+window.bfFuToggleOne=bfFuToggleOne;
+window.bfFuToggleAll=bfFuToggleAll;
+window.bfFuClearSelection=bfFuClearSelection;
+window.bfFuBulk=bfFuBulk;
+window.bfFuBulkReassign=bfFuBulkReassign;
+window.bfOpenFuOutcome=bfOpenFuOutcome;
+window.bfCloseFuOutcome=bfCloseFuOutcome;
+window.bfSaveFuOutcome=bfSaveFuOutcome;
+window.bfFuToggleChain=bfFuToggleChain;
+window.bfOpenFuSnooze=bfOpenFuSnooze;
+window.bfCloseFuSnooze=bfCloseFuSnooze;
+window.bfApplyFuSnooze=bfApplyFuSnooze;
+window.bfFuSnoozePreset=bfFuSnoozePreset;
+window.bfOpenFuEdit=bfOpenFuEdit;
+window.bfDeleteFollowup=bfDeleteFollowup;
+
+// One Escape handler for every overlay on the page.
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape') return;
+  const sheet=document.getElementById('bfCardSheet');
+  if(sheet&&sheet.classList.contains('open')){bfKanbanCloseMenu();return;}
+  const open=Array.from(document.querySelectorAll('.bf-modal-veil.open')).pop();
+  if(open) open.classList.remove('open');
+});
+
 function bfSyncNavOffset(){
   const nav=document.querySelector('.nav');
   if(!nav)return;
@@ -2436,6 +3360,15 @@ function bfOpenProjectFromQuery(){
     bfOpenProjectDetail(pid,panel);
   }catch(_){}
 }
+
+try{
+  const saved=localStorage.getItem('bfKanbanSort');
+  if(saved){
+    kanbanSortBy=saved;
+    const sel=document.getElementById('bfKanbanSort');
+    if(sel) sel.value=saved;
+  }
+}catch(_){}
 
 loadUser();
 loadBDData().then(bfOpenProjectFromQuery);

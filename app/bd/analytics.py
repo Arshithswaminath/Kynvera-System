@@ -24,6 +24,20 @@ _OPEN_STATUSES = {'active', 'prospect', 'proposal', 'under_renewal'}
 
 STALL_DAYS = 30
 
+# Allowed values for the free-text BDProject/BDFollowUp columns. The DB has no
+# enums or CHECK constraints, so an unvalidated write persists and then silently
+# disappears from any stage-grouped view.
+BD_STAGES = frozenset(STAGE_ORDER)
+BD_STATUSES = frozenset({'active', 'prospect', 'proposal', 'won', 'lost', 'under_renewal'})
+BD_OPEN_STATUSES = frozenset(_OPEN_STATUSES)
+BD_PRIORITIES = frozenset({'high', 'med', 'low'})
+FOLLOWUP_TYPES = frozenset({'call', 'email', 'meeting', 'note'})
+FOLLOWUP_STATUSES = frozenset({'open', 'done'})
+FOLLOWUP_OUTCOME_CODES = frozenset({
+    'connected', 'no_answer', 'rescheduled', 'info_sent',
+    'meeting_set', 'not_interested', 'won', 'lost',
+})
+
 
 def _as_dt(value):
     if value is None:
@@ -99,7 +113,9 @@ def stalled_deals(projects, limit=12):
     for p in projects:
         if not _is_open(p):
             continue
-        updated = _as_dt(p.updated_at)
+        # stage_changed_at measures time parked in the current stage; updated_at
+        # is bumped by any write (onupdate), so it under-reports idleness.
+        updated = _as_dt(getattr(p, 'stage_changed_at', None)) or _as_dt(p.updated_at)
         idle_days = int((now - updated).days) if updated else None
         overdue = bool(p.expected_close_date and p.expected_close_date < today)
         stale = bool(idle_days is not None and idle_days >= STALL_DAYS)
