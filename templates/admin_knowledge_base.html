@@ -98,14 +98,19 @@
     .kb-btn--outline:hover { background: var(--kb-brand); color: #fff; }
     .kb-btn svg { width: 17px; height: 17px; }
 
-    .kb-table { width: 100%; border-collapse: collapse; }
-    .kb-table th, .kb-table td { text-align: left; padding: 0.85rem 1.1rem; font-size: 0.875rem; border-bottom: 1px solid #f1f5f3; vertical-align: top; }
+    .kb-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .kb-table th, .kb-table td { text-align: left; padding: 0.85rem 1.1rem; font-size: 0.875rem; border-bottom: 1px solid #f1f5f3; vertical-align: middle; }
+    .kb-table th:first-child, .kb-table td:first-child { width: 42%; }
     .kb-table tbody tr:last-child td { border-bottom: none; }
-    .kb-table tbody tr { transition: background 0.12s; }
+    .kb-table tbody tr { transition: background 0.12s; cursor: pointer; }
     .kb-table tbody tr:hover { background: #f8fbf9; }
     .kb-table th { background: #f3f8f5; font-weight: 600; color: #4b5d54; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
     .kb-rec-title { font-weight: 600; color: var(--kb-ink); }
-    .kb-rec-excerpt { color: #94a3b8; font-size: 0.78rem; margin-top: 0.15rem; max-width: 52ch; }
+    .kb-rec-excerpt {
+      color: #94a3b8; font-size: 0.78rem; margin-top: 0.2rem; max-width: 52ch;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+      overflow: hidden; text-overflow: ellipsis; line-height: 1.4;
+    }
     .kb-tag { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; background: #e8f5ec; color: var(--kb-brand); }
     .kb-pill { display: inline-block; font-size: 0.68rem; font-weight: 600; padding: 0.18rem 0.5rem; border-radius: 6px; background: #eef2f0; color: #64748b; }
     .kb-row-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
@@ -124,8 +129,19 @@
     .kb-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.55); display: none; align-items: center; justify-content: center; z-index: 1050; padding: 1rem; backdrop-filter: blur(2px); }
     .kb-modal-overlay.open { display: flex; }
     .kb-modal { background: #fff; border-radius: 16px; width: min(560px, 100%); max-height: 92vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(15,23,42,0.25); }
+    .kb-modal--wide { width: min(700px, 100%); }
     .kb-modal-header { padding: 1.1rem 1.35rem; border-bottom: 1px solid var(--kb-border); font-weight: 700; font-size: 1.05rem; color: var(--kb-brand); }
     .kb-modal-body { padding: 1.25rem 1.35rem; }
+    .kb-view-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+    .kb-view-info { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; font-size: 0.82rem; color: #64748b; }
+    .kb-view-info strong { color: #334155; font-weight: 600; }
+    .kb-view-info a { color: var(--kb-brand); word-break: break-all; }
+    .kb-view-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; color: #94a3b8; margin-bottom: 0.4rem; }
+    .kb-view-content {
+      white-space: pre-wrap; line-height: 1.6; font-size: 0.88rem; color: var(--kb-ink);
+      background: #f8fbf9; border: 1px solid var(--kb-border); border-radius: 10px;
+      padding: 1rem; max-height: 42vh; overflow-y: auto;
+    }
     .kb-field { margin-bottom: 1rem; }
     .kb-field label { display: block; font-size: 0.78rem; font-weight: 600; color: #475569; margin-bottom: 0.35rem; }
     .kb-field input, .kb-field select, .kb-field textarea { width: 100%; min-height: 44px; padding: 0.6rem 0.85rem; font-size: 0.9rem; border: 1px solid #d8e0db; border-radius: 10px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
@@ -339,6 +355,22 @@
     </div>
   </div>
 
+  <!-- View modal -->
+  <div class="kb-modal-overlay" id="kbViewModal">
+    <div class="kb-modal kb-modal--wide" role="dialog" aria-modal="true">
+      <div class="kb-modal-header" id="kbViewTitle">Record</div>
+      <div class="kb-modal-body">
+        <div class="kb-view-meta" id="kbViewMeta"></div>
+        <div class="kb-view-info" id="kbViewInfo"></div>
+        <div class="kb-view-label">What the assistant has captured</div>
+        <div class="kb-view-content" id="kbViewContent">Loading…</div>
+      </div>
+      <div class="kb-modal-footer" id="kbViewFooter">
+        <button class="kb-btn kb-btn--outline" onclick="kbCloseModal('kbViewModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=16"></script>
   <script>
@@ -407,15 +439,15 @@
         }
         var titleHtml = kbEsc(e.title);
         if (e.source_type === 'link' && e.source_url) {
-          titleHtml = '<a href="' + kbEsc(e.source_url) + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">' + kbEsc(e.title) + '</a>';
+          titleHtml = '<a href="' + kbEsc(e.source_url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none;">' + kbEsc(e.title) + '</a>';
         }
         var safeTitle = kbEsc(e.title).replace(/'/g, "\\'");
-        return '<tr>' +
+        return '<tr onclick="kbView(' + e.id + ')" title="Click to view what the assistant has captured">' +
           '<td data-label="Title"><div class="kb-rec-title">' + titleHtml + '</div><div class="kb-rec-excerpt">' + kbEsc(e.excerpt || '') + '</div></td>' +
           '<td data-label="Category"><span class="kb-tag">' + kbEsc(e.category) + '</span></td>' +
           '<td data-label="Type">' + src + '</td>' +
-          '<td data-label="Status"><span class="' + toggleCls + '" onclick="kbToggle(' + e.id + ',' + (e.is_active ? 'false' : 'true') + ')">' + toggleTxt + '</span></td>' +
-          '<td data-label="Actions"><div class="kb-row-actions">' +
+          '<td data-label="Status"><span class="' + toggleCls + '" onclick="event.stopPropagation();kbToggle(' + e.id + ',' + (e.is_active ? 'false' : 'true') + ')">' + toggleTxt + '</span></td>' +
+          '<td data-label="Actions"><div class="kb-row-actions" onclick="event.stopPropagation()">' +
             (e.source_type === 'text' || e.source_type === 'auto' ? '<button class="kb-mini-btn" onclick="kbEdit(' + e.id + ')">Edit</button>' : '') +
             (e.source_type === 'link' ? '<button class="kb-mini-btn" onclick="kbRefetch(' + e.id + ')">Re-fetch</button>' : '') +
             '<button class="kb-mini-btn kb-mini-btn--danger" onclick="kbDelete(' + e.id + ',\'' + safeTitle + '\')">Delete</button>' +
@@ -472,6 +504,80 @@
         document.getElementById('kbTextModalTitle').textContent = 'Edit record';
         kbOpenModal('kbTextModal');
       } catch (err) { /* ignore */ }
+    }
+
+    function kbFmtDate(iso) {
+      if (!iso) return '';
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleString();
+    }
+
+    async function kbView(id) {
+      var titleEl = document.getElementById('kbViewTitle');
+      var metaEl = document.getElementById('kbViewMeta');
+      var infoEl = document.getElementById('kbViewInfo');
+      var contentEl = document.getElementById('kbViewContent');
+      titleEl.textContent = 'Loading…';
+      metaEl.innerHTML = '';
+      infoEl.innerHTML = '';
+      contentEl.textContent = 'Loading…';
+      kbOpenModal('kbViewModal');
+      try {
+        var res = await authenticatedFetch('/api/admin/knowledge-base/' + id);
+        if (!res.ok) { contentEl.textContent = 'Could not load this record.'; return; }
+        var data = await res.json();
+        var e = data.entry;
+
+        titleEl.textContent = e.title || 'Record';
+
+        var typeLabel = e.source_type === 'upload' ? (e.file_type || 'File')
+          : e.source_type === 'link' ? 'Link'
+          : e.source_type === 'auto' ? 'Auto (live app data)'
+          : 'Text';
+        var toggleCls = e.is_active ? 'kb-toggle kb-toggle--on' : 'kb-toggle kb-toggle--off';
+        metaEl.innerHTML =
+          '<span class="kb-tag">' + kbEsc(e.category) + '</span>' +
+          '<span class="kb-pill">' + kbEsc(typeLabel) + '</span>' +
+          '<span class="' + toggleCls + '">' + (e.is_active ? 'Active' : 'Hidden') + '</span>';
+
+        var info = [];
+        if (e.source_type === 'link' && e.source_url) {
+          info.push('<div><strong>Source:</strong> <a href="' + kbEsc(e.source_url) + '" target="_blank" rel="noopener">' + kbEsc(e.source_url) + '</a></div>');
+          if (e.fetched_at) info.push('<div><strong>Last fetched:</strong> ' + kbEsc(kbFmtDate(e.fetched_at)) + '</div>');
+        }
+        if (e.source_type === 'upload' && e.file_name) {
+          info.push('<div><strong>File:</strong> ' + kbEsc(e.file_name) + (e.file_type ? ' (' + kbEsc(e.file_type) + ')' : '') + '</div>');
+        }
+        if (e.answer_link) {
+          info.push('<div><strong>Answer link shown to users:</strong> ' + kbEsc(e.answer_link) + '</div>');
+        }
+        if (e.keywords && e.keywords.length) {
+          info.push('<div><strong>Keywords:</strong> ' + kbEsc(e.keywords.join(', ')) + '</div>');
+        }
+        var updatedLine = '<div><strong>Last updated:</strong> ' + (kbFmtDate(e.updated_at) || '—');
+        if (e.author_name) updatedLine += ' by ' + kbEsc(e.author_name);
+        updatedLine += '</div>';
+        info.push(updatedLine);
+        infoEl.innerHTML = info.join('');
+
+        contentEl.textContent = e.content && e.content.trim()
+          ? e.content
+          : 'No content has been captured for this record yet.';
+
+        var footer = document.getElementById('kbViewFooter');
+        var btns = '';
+        if (e.source_type === 'text' || e.source_type === 'auto') {
+          btns += '<button class="kb-btn kb-btn--outline" onclick="kbCloseModal(\'kbViewModal\');kbEdit(' + e.id + ')">Edit</button>';
+        }
+        if (e.source_type === 'link') {
+          btns += '<button class="kb-btn kb-btn--outline" onclick="kbRefetch(' + e.id + ')">Re-fetch</button>';
+        }
+        btns += '<button class="kb-btn kb-btn--outline" onclick="kbCloseModal(\'kbViewModal\')">Close</button>';
+        footer.innerHTML = btns;
+      } catch (err) {
+        contentEl.textContent = 'Could not load this record.';
+      }
     }
 
     async function kbSaveText() {

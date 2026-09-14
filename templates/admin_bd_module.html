@@ -1265,6 +1265,7 @@ let bdScopeView = 'all';
 let bdStats = { total_pipeline: 0, active_deals: 0, win_rate: 0, avg_deal_size: 0, overdue_followups: 0, stage_stats: [], my_outstanding: 0 };
 let pipelineDisplayMode = 'value';
 let editingProjectId = null;
+let bfProjectDetailReturnView = 'projects';
 
 const KANBAN_STAGES=['prospecting','qualifying','proposal','negotiation','closing'];
 let kanbanSearch='', kanbanOwner='', kanbanPriority='', kanbanSortBy='close';
@@ -1387,13 +1388,14 @@ function bfCloseProjectDetail(){
     url.hash='';
     history.replaceState(null,'',url.pathname+url.search);
   }catch(_){}
-  const tab=document.querySelector('.bf-view-tab[data-view="projects"]');
-  const nav=document.querySelector('.bf-sidebar .sb-nav-item[data-view="projects"]');
+  const view=bfProjectDetailReturnView||'projects';
+  const tab=document.querySelector(`.bf-view-tab[data-view="${view}"]`);
+  const nav=document.querySelector(`.bf-sidebar .sb-nav-item[data-view="${view}"]`);
   if(nav){
     document.querySelectorAll('.bf-sidebar .sb-nav-item[data-view]').forEach(n=>n.classList.remove('active'));
     nav.classList.add('active');
   }
-  bfSwitchView('projects',tab||null);
+  bfSwitchView(view,tab||null);
 }
 
 async function bfOpenProjectDetail(projectId, panel){
@@ -1403,12 +1405,16 @@ async function bfOpenProjectDetail(projectId, panel){
     window.location.href='/admin/bd?project='+id+(panel?'#'+panel:'');
     return;
   }
+  const activeTab=document.querySelector('.bf-view-tab.active');
+  if(activeTab&&activeTab.dataset.view&&activeTab.dataset.view!=='project-detail'){
+    bfProjectDetailReturnView=activeTab.dataset.view;
+  }
   document.querySelectorAll('.bf-view-section').forEach(v=>v.classList.remove('active'));
   const sec=document.getElementById('bf-v-project-detail');
   if(sec)sec.classList.add('active');
-  document.querySelectorAll('.bf-view-tab').forEach(t=>t.classList.toggle('active',t.dataset.view==='projects'));
+  document.querySelectorAll('.bf-view-tab').forEach(t=>t.classList.toggle('active',t.dataset.view===bfProjectDetailReturnView));
   document.querySelectorAll('.bf-sidebar .sb-nav-item[data-view]').forEach(n=>{
-    n.classList.toggle('active',n.dataset.view==='projects');
+    n.classList.toggle('active',n.dataset.view===bfProjectDetailReturnView);
   });
   try{
     const url=new URL(window.location.href);
