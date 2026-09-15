@@ -194,7 +194,7 @@
       isolation: isolate;
       border: none;
       background-color: #ff8e68;
-      background-image: url("{{ url_for('static', filename='images/auth/auth-brand-panel.png') }}");
+      background-image: url("{{ url_for('static', filename='images/kynvera/hr-card-texture.webp') }}");
       background-size: cover;
       background-position: center;
       box-shadow: 0 10px 28px rgba(224, 95, 54, 0.22);
@@ -317,7 +317,7 @@
         margin: 0 !important;
         box-shadow: none !important;
         background-color: #ff8e68 !important;
-        background-image: url("{{ url_for('static', filename='images/auth/auth-brand-panel.png') }}") !important;
+        background-image: url("{{ url_for('static', filename='images/kynvera/hr-card-texture.webp') }}") !important;
         background-size: cover !important;
         background-position: center !important;
         transform: none !important;
@@ -1052,65 +1052,57 @@
         let hasAnyAccess = false;
         const pendingIds = new Set();
 
-        if (perms.can_pending_forms || perms.can_review_hr || perms.can_approve_gm) {
+        const showsHrReview = !!(perms.can_pending_forms || perms.can_review_hr || perms.can_approve_gm);
+        const showsGmApproval = !!(perms.can_view_gm_approved || perms.can_approve_gm);
+
+        if (showsHrReview) {
           hasAnyAccess = true;
           document.getElementById('hrReviewCard').style.display = 'block';
+        }
+        if (showsGmApproval) {
+          hasAnyAccess = true;
+          document.getElementById('gmApprovalCard').style.display = 'block';
+        }
 
-          const inflight = await fetch('/hr/api/my-in-flight-hr', {
-            headers: { 'Authorization': `Bearer ${token}` }
+        // These count endpoints don't depend on each other — fire them
+        // together instead of one-by-one so the row's total wait is the
+        // slowest single call, not the sum of four sequential round trips.
+        const fetchJson = async (url) => {
+          const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+          return res.ok ? res.json() : null;
+        };
+        const [inflightData, mineData, hrData, gmData] = await Promise.all([
+          showsHrReview ? fetchJson('/hr/api/my-in-flight-hr') : Promise.resolve(null),
+          showsHrReview ? fetchJson('/hr/api/my-mgmt-signoffs') : Promise.resolve(null),
+          (showsHrReview && perms.can_review_hr) ? fetchJson('/hr/api/pending-hr-review') : Promise.resolve(null),
+          showsGmApproval ? fetchJson('/hr/api/pending-gm-approval') : Promise.resolve(null)
+        ]);
+
+        if (showsHrReview) {
+          (inflightData && inflightData.submissions || []).forEach((s) => {
+            if (s && s.submission_id) pendingIds.add(String(s.submission_id));
           });
-          if (inflight.ok) {
-            const inflightData = await inflight.json();
-            (inflightData.submissions || []).forEach((s) => {
-              if (s && s.submission_id) pendingIds.add(String(s.submission_id));
-            });
-          }
-          const mine = await fetch('/hr/api/my-mgmt-signoffs', {
-            headers: { 'Authorization': `Bearer ${token}` }
+          (mineData && mineData.submissions || []).forEach((s) => {
+            if (s && s.submission_id) pendingIds.add(String(s.submission_id));
           });
-          if (mine.ok) {
-            const mineData = await mine.json();
-            (mineData.submissions || []).forEach((s) => {
-              if (s && s.submission_id) pendingIds.add(String(s.submission_id));
-            });
-          }
-          if (perms.can_review_hr) {
-            const hrResponse = await fetch('/hr/api/pending-hr-review', {
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (hrResponse.ok) {
-              const hrData = await hrResponse.json();
-              (hrData.submissions || []).forEach((s) => {
-                if (s && s.submission_id) pendingIds.add(String(s.submission_id));
-              });
-            }
-          }
+          (hrData && hrData.submissions || []).forEach((s) => {
+            if (s && s.submission_id) pendingIds.add(String(s.submission_id));
+          });
           if (pendingIds.size > 0) {
             const badge = document.getElementById('pendingBadge');
             badge.textContent = String(pendingIds.size);
             badge.style.display = 'inline';
           }
         }
-        
-        if (perms.can_view_gm_approved || perms.can_approve_gm) {
-          hasAnyAccess = true;
-          document.getElementById('gmApprovalCard').style.display = 'block';
-          
-          const gmResponse = await fetch('/hr/api/pending-gm-approval', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (gmResponse.ok) {
-            const gmData = await gmResponse.json();
-            if (gmData.submissions && gmData.submissions.length > 0) {
-              const gmBadge = document.getElementById('gmPendingBadge');
-              if (gmBadge) {
-                gmBadge.textContent = gmData.submissions.length;
-                gmBadge.style.display = 'inline';
-              }
-            }
+
+        if (showsGmApproval && gmData && gmData.submissions && gmData.submissions.length > 0) {
+          const gmBadge = document.getElementById('gmPendingBadge');
+          if (gmBadge) {
+            gmBadge.textContent = gmData.submissions.length;
+            gmBadge.style.display = 'inline';
           }
         }
-        
+
         // Show the quick actions row and individual cards if user has any access
         if (hasAnyAccess) {
           document.getElementById('quickActionsRow').style.display = 'block';
