@@ -23,6 +23,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   {% endif %}
   {% if proc_head_extra is defined %}{{ proc_head_extra|safe }}{% endif %}
+  {# Proactively refreshes the access token before it expires. #}
+  <script src="{{ url_for('static', filename='js/token-refresh.js') }}"></script>
   <script>
     function procAuthHeaders(extra) {
       const h = Object.assign({ 'Content-Type': 'application/json' }, extra || {});

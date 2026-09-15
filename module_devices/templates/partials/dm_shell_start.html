@@ -19,6 +19,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/fm-assets.css') }}?v=71">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dm-devices.css') }}?v=16">
   {% if fm_head_extra is defined %}{{ fm_head_extra|safe }}{% endif %}
+  {# Proactively refreshes the access token before it expires. #}
+  <script src="{{ url_for('static', filename='js/token-refresh.js') }}"></script>
 </head>
 <body class="tkt-dh-page fm-assets-shell dm-devices-shell has-main-nav{% if fm_dash %} fm-dash-page{% endif %}">
 <div class="dh-overlay" id="tktDhOverlay" onclick="if(typeof tktCloseMobileSidebar==='function'){tktCloseMobileSidebar();}" aria-hidden="true"></div>
