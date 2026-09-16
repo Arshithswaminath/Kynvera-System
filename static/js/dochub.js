@@ -3230,7 +3230,8 @@ ${dhCanEdit ? `<span class="dh-sr-actions">
     const emptyState = document.getElementById('dhEmptyState');
     if (editorArea && emptyState) {
       const syncHomeChrome = () => {
-        editorArea.classList.toggle('dh-editor-area--home', emptyState.style.display === 'flex');
+        const shown = emptyState.style.display;
+        editorArea.classList.toggle('dh-editor-area--home', shown !== 'none');
       };
       syncHomeChrome();
       new MutationObserver(syncHomeChrome).observe(emptyState, {

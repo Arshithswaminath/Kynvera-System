@@ -3924,7 +3924,7 @@ body.dochub-page-v2 .modal-overlay .modal {
    DocHub Home — folder grid
    ───────────────────────────────────────────── */
 .dh-home {
-  /* JS toggles inline display:flex — keep it a vertical, scrollable column */
+  display: flex;
   flex: 1;
   min-height: 0;
   flex-direction: column;
@@ -3934,15 +3934,18 @@ body.dochub-page-v2 .modal-overlay .modal {
   padding: 0;
 }
 
-/* When the home/folder grid is showing, drop the white card chrome so the
-   grid sits directly on the page background (single background, no nested
-   card). Toggled by dochub.js via a MutationObserver on #dhEmptyState —
-   plain class match, not :has(), so it doesn't depend on selector engine
-   support or on catching every spot that flips that element's display. */
-body.dochub-page-v2 .editor-area.dh-editor-area--home {
+/* Home is the first paint. Keep the page canvas (not a white card) unless a
+   document is open. .dh-editor-area--home is on the markup so this applies
+   before JS; JS only removes it when the viewer/editor takes over. */
+body.dochub-page-v2 .editor-area {
   background: transparent;
   border-color: transparent;
   box-shadow: none;
+}
+
+body.dochub-page-v2 .editor-area:not(.dh-editor-area--home) {
+  background: var(--surface);
+  border: 1px solid var(--border);
 }
 
 .dh-home-inner {
@@ -4005,10 +4008,10 @@ body.dochub-page-v2 .editor-area.dh-editor-area--home {
 .dh-folder-card--skeleton {
   min-height: 148px;
   pointer-events: none;
-  background: linear-gradient(90deg, var(--surface) 0%, var(--surface-3, #f4f4f5) 50%, var(--surface) 100%);
+  background: linear-gradient(90deg, var(--surface-3, #f4f4f5) 0%, #fff 50%, var(--surface-3, #f4f4f5) 100%);
   background-size: 200% 100%;
   animation: dh-skel 1.2s ease-in-out infinite;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-2, rgba(255, 142, 104, 0.18));
 }
 
 @keyframes dh-skel {

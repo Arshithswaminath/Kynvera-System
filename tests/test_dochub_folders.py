@@ -121,4 +121,5 @@ class TestDocHubFoldersApi:
     def test_dochub_page_ships_collection_skeletons(self, client):
         html = client.get('/dochub').get_data(as_text=True)
         assert 'dh-folder-card--skeleton' in html
+        assert 'dh-editor-area--home' in html
         assert 'Browse your collections' in html
