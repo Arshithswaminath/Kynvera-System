@@ -709,16 +709,26 @@ def create_app():
                             'onboarding': 'Onboarding', 'contracts': 'Contracts',
                             'policies': 'Policies', 'manuals': 'Manuals', 'reports': 'Reports',
                         }
+                        # Reuse a same-named root folder if one is already there.
+                        # Gunicorn starts several workers and each one runs this
+                        # init, so a blind insert here gave every category two
+                        # folders on live — one holding the documents, one empty.
+                        def _root_folder(display_name):
+                            existing = DocHubFolder.query.filter_by(
+                                name=display_name, parent_id=None
+                            ).first()
+                            if existing:
+                                return existing
+                            created = DocHubFolder(name=display_name)
+                            db.session.add(created)
+                            db.session.flush()
+                            return created
+
                         folder_by_cat = {}
                         for cat in distinct_cats:
                             display_name = category_display_names.get(cat.lower(), cat)
-                            folder = DocHubFolder(name=display_name)
-                            db.session.add(folder)
-                            db.session.flush()
-                            folder_by_cat[cat] = folder.id
-                        uncategorized = DocHubFolder(name='Uncategorized')
-                        db.session.add(uncategorized)
-                        db.session.flush()
+                            folder_by_cat[cat] = _root_folder(display_name).id
+                        uncategorized = _root_folder('Uncategorized')
                         for cat, fid in folder_by_cat.items():
                             DocHubDocument.query.filter(
                                 DocHubDocument.folder_id.is_(None), DocHubDocument.category == cat
