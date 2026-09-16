@@ -3929,7 +3929,17 @@ body.dochub-page-v2 .modal-overlay .modal {
   min-height: 0;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* justify-content:center + overflow-y:auto is a classic flexbox trap: once
+     the folder grid is taller than this panel, centering pushes the excess
+     above the fold too — and a scroll container's default scroll position
+     can't reach content that overflows *upward*, so the eyebrow/title at
+     the top of .dh-home-inner render fully clipped with no way to scroll to
+     them (exactly the "cut off" report — a smaller/shorter window is more
+     likely to overflow here at all, which is why this didn't show up on
+     the window this was authored/tested on). flex-start always starts
+     content flush at the top, so any overflow only ever extends downward
+     into the scrollable area .dh-home already provides. */
+  justify-content: flex-start;
   overflow-y: auto;
   padding: 0;
 }
