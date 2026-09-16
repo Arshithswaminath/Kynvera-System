@@ -7,7 +7,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from Injaaz import create_app
+from kynvera import create_app
 from app.models import db
 
 app = create_app()

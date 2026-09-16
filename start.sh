@@ -23,4 +23,4 @@ echo ""
 echo "Starting Flask server on http://localhost:${PORT}"
 echo "Press Ctrl+C to stop"
 echo ""
-python Injaaz.py
+python kynvera.py

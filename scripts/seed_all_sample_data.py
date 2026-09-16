@@ -893,7 +893,7 @@ def seed_all_sample_data() -> dict:
 
 
 def main():
-    from Injaaz import create_app
+    from kynvera import create_app
     from app.models import db
 
     app = create_app()

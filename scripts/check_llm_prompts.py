@@ -60,7 +60,7 @@ def main() -> int:
 
     print('=== 1) Config / wiring ===')
     sys.path.insert(0, str(ROOT))
-    from Injaaz import create_app
+    from kynvera import create_app
 
     app = create_app()
     with app.app_context():

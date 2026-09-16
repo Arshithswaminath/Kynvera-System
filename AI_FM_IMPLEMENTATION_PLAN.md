@@ -29,7 +29,7 @@ Only about a third of this is actually AI (sections 2, 3, 5, 6, part of 11). The
 
 ## 2. Current state of the Injaaz codebase (verified, not assumed)
 
-Injaaz is a Flask app (`Injaaz.py` entrypoint, blueprints per module) backed by SQLAlchemy models in `app/models.py`, with feature modules under `module_*/`, and an existing native mobile shell via Capacitor (`capacitor.config.ts`, `android/` folder present).
+Injaaz is a Flask app (`kynvera.py` entrypoint, blueprints per module) backed by SQLAlchemy models in `app/models.py`, with feature modules under `module_*/`, and an existing native mobile shell via Capacitor (`capacitor.config.ts`, `android/` folder present).
 
 **Already exists and is directly reusable:**
 

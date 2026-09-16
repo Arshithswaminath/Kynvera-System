@@ -29,10 +29,25 @@ def sync_category_from_folder(doc):
         doc.category = UNCATEGORIZED_NAME
 
 
+def _sibling_name_key(name):
+    return (name or '').strip().lower()
+
+
+def find_sibling_folder(name, parent_id):
+    """Return an existing folder with the same name under the same parent (case-insensitive)."""
+    want = _sibling_name_key(name)
+    if not want:
+        return None
+    for folder in DocHubFolder.query.filter_by(parent_id=parent_id).all():
+        if _sibling_name_key(folder.name) == want:
+            return folder
+    return None
+
+
 def get_or_create_default_folder(name='Internal'):
     """Lazily resolve (or create) a top-level folder, used as the fallback destination
     when a create/upload request doesn't specify a folder_id."""
-    folder = DocHubFolder.query.filter_by(name=name, parent_id=None).first()
+    folder = find_sibling_folder(name, None)
     if not folder:
         folder = DocHubFolder(name=name)
         db.session.add(folder)
@@ -48,10 +63,60 @@ def create_folder(name, parent_id, created_by):
         parent = db.session.get(DocHubFolder, parent_id)
         if not parent:
             raise ValueError('Parent folder not found')
+    if find_sibling_folder(name, parent_id):
+        raise ValueError('A folder with this name already exists here')
     folder = DocHubFolder(name=name, parent_id=parent_id, created_by=created_by)
     db.session.add(folder)
     db.session.commit()
     return folder
+
+
+def merge_duplicate_folders():
+    """Collapse same-named siblings left by the multi-worker category backfill.
+
+    Gunicorn workers each ran the one-time backfill against an empty
+    `dochub_folders` table, so live ended up with two root folders per
+    category — one holding the documents, one empty. Reassign documents and
+    children onto the keeper, then delete the extras. Idempotent.
+    """
+    merged = 0
+    for _ in range(8):
+        folders = DocHubFolder.query.order_by(DocHubFolder.id.asc()).all()
+        groups = {}
+        for folder in folders:
+            key = (folder.parent_id, _sibling_name_key(folder.name))
+            groups.setdefault(key, []).append(folder)
+
+        pass_merged = 0
+        for group in groups.values():
+            if len(group) < 2:
+                continue
+            scored = sorted(
+                group,
+                key=lambda f: (
+                    -DocHubDocument.query.filter_by(folder_id=f.id).count(),
+                    f.id,
+                ),
+            )
+            keeper = scored[0]
+            for dup in scored[1:]:
+                DocHubDocument.query.filter_by(folder_id=dup.id).update(
+                    {'folder_id': keeper.id, 'category': keeper.name},
+                    synchronize_session=False,
+                )
+                DocHubFolder.query.filter_by(parent_id=dup.id).update(
+                    {'parent_id': keeper.id},
+                    synchronize_session=False,
+                )
+                db.session.delete(dup)
+                pass_merged += 1
+
+        if not pass_merged:
+            break
+        db.session.commit()
+        merged += pass_merged
+
+    return merged
 
 
 def _collect_folder_ids(folder_id):
@@ -89,6 +154,11 @@ def rename_folder(folder_id, name=None, parent_id=None):
         DocHubDocument.query.filter_by(folder_id=folder_id).update(
             {'category': name}, synchronize_session=False
         )
+
+    clash = find_sibling_folder(folder.name, folder.parent_id)
+    if clash and clash.id != folder.id:
+        db.session.rollback()
+        raise ValueError('A folder with this name already exists here')
 
     folder.updated_at = utc_now_naive()
     db.session.commit()

@@ -4,7 +4,7 @@
   {% include 'partials/base_head.html' %}
   <title>DocHub — Document Management | Kynvera</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=23">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=35">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=36">
 </head>
 <body class="has-main-nav dochub-page-v2">
   {% set active_page = 'dochub' %}
@@ -94,7 +94,7 @@
         <div class="dh-sb-section">
           <div class="sb-section-label">Folders</div>
           <button type="button" class="dh-sb-new-folder" id="dhSbNewFolderBtn" style="display:none" onclick="dhOpenFolderModal(null,null)">+ New folder</button>
-          <div class="dh-folder-tree" id="dhFolderTree" role="tree"></div>
+          <div class="dh-folder-tree" id="dhFolderTree" role="tree"><div class="sb-doc-empty dh-folder-tree-loading">Loading…</div></div>
         </div>
 
         <div class="dh-sb-section dh-sb-section--other" id="dhSbOtherSection" hidden>
@@ -164,7 +164,14 @@
                     <h2 class="dh-home-title">Browse your collections</h2>
                     <p class="dh-home-sub">Pick a collection to view its documents, or use search above to find anything fast.</p>
                   </div>
-                  <div class="dh-folder-grid" id="dhFolderGrid"></div>
+                  <div class="dh-folder-grid" id="dhFolderGrid">
+                    <div class="dh-folder-card dh-folder-card--skeleton" aria-hidden="true"></div>
+                    <div class="dh-folder-card dh-folder-card--skeleton" aria-hidden="true"></div>
+                    <div class="dh-folder-card dh-folder-card--skeleton" aria-hidden="true"></div>
+                    <div class="dh-folder-card dh-folder-card--skeleton" aria-hidden="true"></div>
+                    <div class="dh-folder-card dh-folder-card--skeleton" aria-hidden="true"></div>
+                    <div class="dh-folder-card dh-folder-card--skeleton" aria-hidden="true"></div>
+                  </div>
                   <button type="button" class="btn btn-ghost dh-home-new-folder" id="dhHomeNewFolderBtn" style="display:none" onclick="dhOpenFolderModal(null,null)">+ New folder</button>
                 </div>
               </div>
@@ -544,7 +551,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js" crossorigin="anonymous"></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/dochub.js') }}?v=9"></script>
+  <script src="{{ url_for('static', filename='js/dochub.js') }}?v=10"></script>
   <script>window.FILES_SAVE_MODULE = 'dochub'; window.FILES_SAVE_MODULE_LABEL = 'DocHub';</script>
   <script src="{{ url_for('static', filename='js/files-save.js') }}?v=17"></script>
 </body>

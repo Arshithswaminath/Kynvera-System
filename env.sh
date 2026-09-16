@@ -1,5 +1,5 @@
 # Source once per terminal:  source ./env.sh
-# Then run like Windows:     python Injaaz.py
+# Then run like Windows:     python kynvera.py
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 if [[ "${INJAAZ_ENV_LOADED:-}" == "$ROOT" ]]; then
   return 0 2>/dev/null || exit 0

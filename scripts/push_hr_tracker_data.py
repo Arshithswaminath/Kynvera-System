@@ -288,7 +288,7 @@ def restore_from_21aug_excel() -> None:
         shutil.copy2(db_path, dest)
         print(f"backed up sqlite -> {dest}")
 
-    from Injaaz import create_app
+    from kynvera import create_app
     from app.models import (
         HiringCandidate,
         LeaveEmployee,

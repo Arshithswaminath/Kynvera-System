@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepends Injaaz venv to PATH when you cd into the project (Windows-like: python Injaaz.py)
+# Prepends Injaaz venv to PATH when you cd into the project (Windows-like: python kynvera.py)
 set -euo pipefail
 
 MARKER="# Injaaz-App:"
@@ -15,7 +15,7 @@ cat >> "$ZSHRC" <<'EOF'
 
 # Injaaz-App: put project venv on PATH when inside the repo (no recursive source)
 _injaaz_update_branch_label() {
-  if [[ -f "$PWD/Injaaz.py" ]] && git -C "$PWD" rev-parse --git-dir >/dev/null 2>&1; then
+  if [[ -f "$PWD/kynvera.py" ]] && git -C "$PWD" rev-parse --git-dir >/dev/null 2>&1; then
     local branch
     branch="$(git -C "$PWD" branch --show-current 2>/dev/null)"
     if [[ -n "$branch" ]]; then
@@ -34,7 +34,7 @@ _injaaz_auto_venv() {
     _injaaz_update_branch_label
     return 0
   fi
-  if [[ -f "$PWD/Injaaz.py" && -x "$PWD/venv/bin/python" ]]; then
+  if [[ -f "$PWD/kynvera.py" && -x "$PWD/venv/bin/python" ]]; then
     export INJAAZ_ENV_LOADED="$PWD"
     export VIRTUAL_ENV="$PWD/venv"
     export PATH="$PWD/venv/bin:$PWD/bin:${PATH}"
@@ -53,4 +53,4 @@ _injaaz_auto_venv
 EOF
 
 echo "Installed auto-venv hook in $ZSHRC"
-echo "Open a new terminal, cd to the project, then run: python Injaaz.py"
+echo "Open a new terminal, cd to the project, then run: python kynvera.py"

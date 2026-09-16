@@ -50,7 +50,7 @@
        │ HTTPS
        │
 ┌──────▼─────────────────────────────────────────┐
-│         Flask Application (Injaaz.py)          │
+│         Flask Application (kynvera.py)          │
 │  ┌──────────────────────────────────────────┐  │
 │  │  Routes & Blueprints                     │  │
 │  │  - Auth Routes (/api/auth/*)             │  │
@@ -895,7 +895,7 @@ User (1) ──── (N) Submission
 ## 📚 Key Files & Their Roles
 
 ### Application Entry Point
-- `Injaaz.py` - Main Flask application factory
+- `kynvera.py` - Main Flask application factory
 - `wsgi.py` - WSGI entry point for production
 
 ### Configuration

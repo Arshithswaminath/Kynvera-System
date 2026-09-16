@@ -113,7 +113,7 @@ def get_my_submissions():
   - Form ID for tracking
 - **Mobile responsive**
 
-#### 4. **Route Added** (`Injaaz.py`)
+#### 4. **Route Added** (`kynvera.py`)
 ```python
 @app.route('/workflow/submitted-forms')
 def submitted_forms():
@@ -349,7 +349,7 @@ General Manager (final review, edit, sign)
 
 ### **Backend:**
 5. `app/workflow/routes.py`
-6. `Injaaz.py`
+6. `kynvera.py`
 
 ### **Generators:**
 7. `module_hvac_mep/hvac_generators.py`

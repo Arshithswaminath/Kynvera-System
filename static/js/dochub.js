@@ -956,9 +956,44 @@
     return folders.find(f => Number(f.id) === Number(id)) || null;
   }
 
+  function folderNameKey(name) {
+    return String(name || '').trim().toLowerCase();
+  }
+
+  function rawFolderChildren(parentId) {
+    const wantParent = parentId == null ? null : Number(parentId);
+    return folders.filter(f => {
+      const have = f.parent_id == null ? null : Number(f.parent_id);
+      return have === wantParent;
+    });
+  }
+
+  function rawSubtreeDocCount(folderId) {
+    const ids = [];
+    const walk = id => {
+      ids.push(Number(id));
+      rawFolderChildren(id).forEach(kid => walk(kid.id));
+    };
+    walk(folderId);
+    const idSet = new Set(ids);
+    return docs.filter(d => idSet.has(Number(d.folder_id)) && d.status !== 'archived').length;
+  }
+
   function folderChildren(parentId) {
-    return folders
-      .filter(f => (f.parent_id == null ? null : Number(f.parent_id)) === (parentId == null ? null : Number(parentId)))
+    const siblings = rawFolderChildren(parentId);
+    const keepIdByName = {};
+    siblings.forEach(f => {
+      const key = folderNameKey(f.name);
+      const n = rawSubtreeDocCount(f.id);
+      const id = Number(f.id);
+      const prev = keepIdByName[key];
+      if (!prev || n > prev.n || (n === prev.n && id < prev.id)) {
+        keepIdByName[key] = { id, n };
+      }
+    });
+    const keepIds = new Set(Object.values(keepIdByName).map(v => v.id));
+    return siblings
+      .filter(f => keepIds.has(Number(f.id)))
       .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
   }
 

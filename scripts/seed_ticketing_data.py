@@ -291,7 +291,7 @@ def main():
     import os
     import sys
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from Injaaz import create_app
+    from kynvera import create_app
     app = create_app()
     with app.app_context():
         seed_ticketing_data()

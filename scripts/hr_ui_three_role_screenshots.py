@@ -7,7 +7,7 @@ Capture HR module UIs with Playwright:
   • GM: GM Approval queue + modal when workflow runs.
 
 Prerequisites:
-  - App running: python Injaaz.py (default http://127.0.0.1:5000)
+  - App running: python kynvera.py (default http://127.0.0.1:5000)
   - pip install playwright && playwright install chromium
 
 Usage:

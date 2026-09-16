@@ -37,7 +37,7 @@ pip install sentry-sdk[flask]
 
 **Configuration:**
 ```python
-# In Injaaz.py, add after create_app():
+# In kynvera.py, add after create_app():
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 
@@ -162,7 +162,7 @@ echo "sentry-sdk[flask]==1.38.0" >> requirements-prods.txt
 ```
 
 ### Step 3: Configure in Application
-Add to `Injaaz.py` after `create_app()`:
+Add to `kynvera.py` after `create_app()`:
 ```python
 # Sentry error tracking (optional)
 if app.config.get('FLASK_ENV') == 'production':

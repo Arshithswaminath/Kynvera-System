@@ -12,7 +12,7 @@ This document describes the professional structure of the Injaaz application.
 Injaaz-App/
 │
 ├── 📄 Core Files
-│   ├── Injaaz.py              # Main Flask application factory
+│   ├── kynvera.py              # Main Flask application factory
 │   ├── config.py              # Application configuration
 │   ├── wsgi.py                # WSGI entry point (for production)
 │   ├── manage.py              # Management commands
@@ -137,7 +137,7 @@ Injaaz-App/
 ### ✅ Essential Files (Never Delete)
 
 **Core Application:**
-- `Injaaz.py` - Main application
+- `kynvera.py` - Main application
 - `config.py` - Configuration
 - `requirements*.txt` - Dependencies
 
@@ -243,7 +243,7 @@ module_name/
 3. Create `routes.py`
 4. Create `templates/` folder
 5. Add form template
-6. Register in `Injaaz.py`
+6. Register in `kynvera.py`
 
 ---
 

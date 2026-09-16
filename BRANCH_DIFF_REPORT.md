@@ -123,7 +123,7 @@ Excluding `test_output/`, `node_modules/`, `screenshots/`, `generated/`, and mar
 | `app/admin/routes.py` | ~6.8k lines changed | Admin dashboard, devices, notifications |
 | `app/workflow/routes.py` | ~6.8k lines changed | Workflow & approvals |
 | `app/models.py` | ~2.3k lines changed | New models (ticketing, assistant, etc.) |
-| `Injaaz.py` | ~2.2k lines changed | Blueprint registration, app factory |
+| `kynvera.py` | ~2.2k lines changed | Blueprint registration, app factory |
 | `module_mmr/` | All 4 core files heavily changed | Scheduler, chargeability, dashboard |
 | `module_hr/routes.py` | ~2.7k lines changed | HR workflow enhancements |
 | `common/workflow_notifications.py` | 84 → 508 lines | Full notification system |

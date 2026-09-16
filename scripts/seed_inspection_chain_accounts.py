@@ -187,7 +187,7 @@ def main() -> int:
     from dotenv import load_dotenv
 
     load_dotenv(ROOT / ".env")
-    from Injaaz import create_app
+    from kynvera import create_app
 
     app = create_app()
     _assert_local_db(app)

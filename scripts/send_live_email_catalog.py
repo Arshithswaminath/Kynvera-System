@@ -91,7 +91,7 @@ def main() -> int:
     to_addr = (args.to or TO_DEFAULT).strip()
     run_id = f"live-email-test-{_stamp()}"
 
-    from Injaaz import create_app
+    from kynvera import create_app
 
     app = create_app()
     print("\n" + "=" * 72)

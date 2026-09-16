@@ -53,7 +53,7 @@ python scripts\init_db.py
 
 ### 5. Start the application
 ```powershell
-python Injaaz.py
+python kynvera.py
 ```
 
 Or use the batch file:

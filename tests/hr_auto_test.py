@@ -2,7 +2,7 @@
 """
 HR Module Auto-Test: Fill all HR forms, submit, and download Word + PDF.
 
-Run with the Flask app already running (python Injaaz.py). Uses admin credentials
+Run with the Flask app already running (python kynvera.py). Uses admin credentials
 to submit forms and download DOCX/PDF. Output saved to test_output/hr_forms_<timestamp>/.
 
 Usage:

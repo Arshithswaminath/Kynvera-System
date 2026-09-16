@@ -60,7 +60,7 @@ This wasn't just written and left untested — the harness was actually run end-
 
 ### 1. The global rate limit will throttle the load test itself
 
-`Injaaz.py`'s `default_limits=["100 per hour"]` (or whatever `RATELIMIT_DEFAULT` is set
+`kynvera.py`'s `default_limits=["100 per hour"]` (or whatever `RATELIMIT_DEFAULT` is set
 to) applies to every route, keyed by source IP. Confirmed empirically: request #100 in
 a rapid-fire test against one endpoint was the first to get a 429. Since Locust runs
 from a single local IP, **you must raise this before load testing** or you'll just be

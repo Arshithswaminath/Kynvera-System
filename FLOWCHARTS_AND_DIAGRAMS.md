@@ -826,7 +826,7 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │              FLASK APPLICATION LAYER                            │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │              Injaaz.py (App Factory)                      │  │
+│  │              kynvera.py (App Factory)                      │  │
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐              │  │
 │  │  │  Auth    │  │  Admin   │  │  Module  │              │  │
 │  │  │Blueprint │  │Blueprint │  │Blueprint │              │  │

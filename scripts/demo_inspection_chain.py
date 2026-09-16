@@ -74,7 +74,7 @@ def _mint_tokens(usernames: tuple[str, ...]) -> dict[str, str]:
     from flask_jwt_extended import create_access_token
 
     load_dotenv(ROOT / ".env")
-    from Injaaz import create_app
+    from kynvera import create_app
     from app.models import User
 
     app = create_app()
@@ -142,7 +142,7 @@ def main() -> int:
         from dotenv import load_dotenv
 
         load_dotenv(ROOT / ".env")
-        from Injaaz import create_app
+        from kynvera import create_app
         from scripts.seed_inspection_chain_accounts import _assert_local_db, seed_inspection_chain_accounts
 
         app = create_app()

@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import text
 from app.models import db, Notification
-from Injaaz import create_app
+from kynvera import create_app
 
 def create_notifications_table():
     """Create the notifications table if it doesn't exist"""

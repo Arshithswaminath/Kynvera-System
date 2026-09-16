@@ -6,7 +6,7 @@ Modes (pick one).
   --inspection-only / --hr-only: subset.
   --all --yes: every row in `submissions` (catalog_material, procurement, etc.) — IRREVERSIBLE.
 
-Examples (project root; stop `python Injaaz.py` if SQLite reports "database is locked"):
+Examples (project root; stop `python kynvera.py` if SQLite reports "database is locked"):
   python scripts/clear_hr_inspection_submissions.py --inspection-only
   python scripts/clear_hr_inspection_submissions.py --hr-only
   python scripts/clear_hr_inspection_submissions.py
@@ -27,7 +27,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from Injaaz import create_app  # noqa: E402
+from kynvera import create_app  # noqa: E402
 from app.models import db, File, Notification, Submission  # noqa: E402
 
 INSPECTION_MODULES = ("inspection", "hvac_mep", "civil", "cleaning")

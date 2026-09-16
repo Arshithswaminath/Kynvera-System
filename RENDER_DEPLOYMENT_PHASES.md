@@ -6,7 +6,7 @@ This document describes how to run Injaaz on [Render](https://render.com/) in tw
 
 ## Shared concepts
 
-- **Web service** — Runs `gunicorn` (see `render.yaml` `startCommand`). The Flask app loads configuration from environment variables (see root `config.py` and `Injaaz.py`).
+- **Web service** — Runs `gunicorn` (see `render.yaml` `startCommand`). The Flask app loads configuration from environment variables (see root `config.py` and `kynvera.py`).
 - **`GENERATED_DIR`** — Root directory for generated Excel/PDF, DocHub cache, MMR uploads and JSON config, module uploads under `uploads/`, and job folders. On Render’s default filesystem this path is **ephemeral** unless you attach a persistent disk (Phase 2).
 - **Database** — Production expects **PostgreSQL** via `DATABASE_URL` (SQLite is not used when `FLASK_ENV` is production and `DATABASE_URL` is required).
 - **Outbound email** — Render **free** web services **block SMTP** (ports 25, 465, 587). Use **`MAILJET_API_KEY`** + **`MAILJET_SECRET_KEY`** + **`MAIL_DEFAULT_SENDER`** (Mailjet HTTPS API). Paid Render instances can use SMTP (e.g. Gmail) again.

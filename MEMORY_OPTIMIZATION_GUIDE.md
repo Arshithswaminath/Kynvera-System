@@ -74,7 +74,7 @@ return io.BytesIO(response.content), True  # Entire image in memory!
 
 ### Fix 1: Reduce ThreadPoolExecutor Workers
 
-**File:** `Injaaz.py`
+**File:** `kynvera.py`
 
 Change from 2 workers to 1 worker:
 
@@ -159,7 +159,7 @@ If optimizations aren't enough, upgrade to:
 
 This is the **easiest and most effective** fix.
 
-**File:** `Injaaz.py` (line 72)
+**File:** `kynvera.py` (line 72)
 
 ```python
 # Change this:

@@ -172,7 +172,7 @@ Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Yellow
 Write-Host "1. Review and update .env file if needed" -ForegroundColor White
 Write-Host "2. Activate virtual environment: .\venv\Scripts\Activate.ps1" -ForegroundColor White
-Write-Host "3. Start the application: python Injaaz.py" -ForegroundColor White
+Write-Host "3. Start the application: python kynvera.py" -ForegroundColor White
 Write-Host "   Or use: .\start.bat" -ForegroundColor White
 Write-Host "4. Open http://localhost:5000 in your browser" -ForegroundColor White
 Write-Host "5. Login with admin credentials:" -ForegroundColor White

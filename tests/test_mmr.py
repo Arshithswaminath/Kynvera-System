@@ -98,7 +98,7 @@ def uploaded(client, admin_auth_headers):
 class TestDashboardAccess:
     def test_requires_auth(self, client):
         """The dashboard is an HTML page route (path has no /api/ segment), so the app's
-        custom JWT unauthorized handler (Injaaz.py's unauthorized_callback /
+        custom JWT unauthorized handler (kynvera.py's unauthorized_callback /
         _is_html_page_request) silently redirects to login instead of returning
         401/422 JSON — that behavior is reserved for /admin/mmr/api/* endpoints."""
         response = client.get('/admin/mmr/')
@@ -681,7 +681,7 @@ class TestSendEmail:
 class TestSchedulerLiveness:
     def test_scheduler_initialized_and_running(self, app):
         """The APScheduler job (module_mmr.scheduler.init_scheduler) is started
-        unconditionally from Injaaz.create_app(). This is a lightweight confirmation the
+        unconditionally from kynvera.create_app(). This is a lightweight confirmation the
         already-running background thread wasn't silently broken — it does not start/stop
         the scheduler itself (that would race the live instance used by the whole session)."""
         from module_mmr import scheduler as mmr_scheduler

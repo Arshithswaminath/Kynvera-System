@@ -258,7 +258,7 @@ def gap_inspection_gm_chain(base, admin_token, admin_user_id: int | None):
     print('\n3) HVAC / Civil / Cleaning → GM approval chain')
     os.chdir(ROOT)
     sys.path.insert(0, str(ROOT))
-    from Injaaz import create_app
+    from kynvera import create_app
     from common.db_utils import create_submission_db
 
     visit = datetime.now(timezone.utc).strftime('%Y-%m-%d')
@@ -357,7 +357,7 @@ def gap_email(base, admin_token):
     print('\n4) Email send (Brevo + MMR)')
     os.chdir(ROOT)
     sys.path.insert(0, str(ROOT))
-    from Injaaz import create_app
+    from kynvera import create_app
     from common.email_service import send_email
 
     app = create_app()

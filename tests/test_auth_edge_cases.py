@@ -4,7 +4,7 @@ Auth/session edge cases not covered by tests/test_auth.py:
 1. A revoked Session row rejects an otherwise-valid access token.
 2. Invalid/garbage-token handling differs between JSON API routes and
    full HTML-page routes (the custom jwt error-callback branching in
-   Injaaz.py around _is_html_page_request / _silent_refresh_or_login).
+   kynvera.py around _is_html_page_request / _silent_refresh_or_login).
 3. Several admin/dochub/workflow "page shell" routes render with no auth
    decorator at all (by design - the client fetches protected /api/... data
    afterwards), so an unauthenticated GET must still return a bare HTML
@@ -71,7 +71,7 @@ class TestRevokedSessionRejected:
 
 class TestApiVsHtmlPageErrorBranching:
     """Background note #2: bare @jwt_required() routes route failures
-    through Injaaz.py's custom JWT error callbacks, which branch on
+    through kynvera.py's custom JWT error callbacks, which branch on
     _is_html_page_request(). /api/... paths get a flat JSON 401; full-page
     GETs get redirected (302) toward /login instead."""
 

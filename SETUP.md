@@ -158,7 +158,7 @@ You can start the application in two ways:
 
 #### Option B: Manual start
 ```powershell
-python Injaaz.py
+python kynvera.py
 ```
 
 The application will start on `http://localhost:5000`

@@ -32,7 +32,7 @@ The codebase is a **modular monolith**: many Flask **blueprints**, one database,
 
 ### 2.1 Application factory and composition
 
-- **`Injaaz.py`** defines `create_app()`: loads `config`, validates it, initializes **Flask-SQLAlchemy**, **bcrypt**, **Flask-Migrate**, **JWTManager**, registers blueprints, error handlers, and CLI hooks.
+- **`kynvera.py`** defines `create_app()`: loads `config`, validates it, initializes **Flask-SQLAlchemy**, **bcrypt**, **Flask-Migrate**, **JWTManager**, registers blueprints, error handlers, and CLI hooks.
 - **Defensive imports**: each major blueprint is imported in a `try/except` block so a **broken optional module** does not prevent the rest of the app from starting (routes for that module may be absent until fixed).
 
 ### 2.2 Configuration
@@ -67,7 +67,7 @@ The codebase is a **modular monolith**: many Flask **blueprints**, one database,
 
 - Uploads under **`GENERATED_DIR`** (configurable, e.g. persistent disk on Render).
 - **Cloudinary** and **boto3 (S3)** in stack for cloud asset storage where configured.
-- **`concurrent.futures.ThreadPoolExecutor`** in `Injaaz.py` for **background report work** (worker count tuned for small hosts).
+- **`concurrent.futures.ThreadPoolExecutor`** in `kynvera.py` for **background report work** (worker count tuned for small hosts).
 - **Redis + RQ** available for queues/caching when `REDIS_URL` is set (rate limiting and workers).
 
 ### 2.7 Document and report generation (techniques)

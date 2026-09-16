@@ -13,4 +13,4 @@ echo.
 echo Starting Flask server (see PORT in .env, default http://localhost:5000)
 echo Press Ctrl+C to stop
 echo.
-venv\Scripts\python.exe Injaaz.py
+venv\Scripts\python.exe kynvera.py

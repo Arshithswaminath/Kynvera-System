@@ -42,7 +42,7 @@ os.environ['KYNVERA_MARKETING_ONLY'] = 'false'
 @pytest.fixture(scope='session')
 def app():
     """Create test application"""
-    from Injaaz import create_app
+    from kynvera import create_app
     from app.models import db
     
     app = create_app()

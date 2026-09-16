@@ -52,7 +52,7 @@ class TestQhsiDashboard:
         # HTML page routes (path has no '/api/' segment) go through the app's
         # `_is_html_page_request()` JWT-error branch, which silently redirects
         # to the login page instead of returning a JSON 401 — see
-        # Injaaz.py's `unauthorized_loader`/`_silent_refresh_or_login`.
+        # kynvera.py's `unauthorized_loader`/`_silent_refresh_or_login`.
         res = client.get('/qhsi/')
         assert res.status_code == 302
         assert '/login' in res.headers.get('Location', '')

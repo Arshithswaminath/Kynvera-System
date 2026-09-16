@@ -525,7 +525,7 @@ def main():
     parser.get_default = getattr(parser, 'get_default', lambda k: None)
     parser.add_argument('--clear', action='store_true', help='Remove prior procurement rows first')
     args = parser.parse_args()
-    from Injaaz import create_app
+    from kynvera import create_app
     from app.models import db
     app = create_app()
     with app.app_context():

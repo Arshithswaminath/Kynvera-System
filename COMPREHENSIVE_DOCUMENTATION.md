@@ -147,7 +147,7 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │                    FLASK APPLICATION LAYER                      │
 │  ┌──────────────────────────────────────────────────────────┐ │
-│  │                    Injaaz.py                               │ │
+│  │                    kynvera.py                               │ │
 │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │ │
 │  │  │ Auth Routes  │  │ Admin Routes │  │ Module Routes│   │ │
 │  │  │ /api/auth/*  │  │/api/admin/* │  │/hvac-mep,etc │   │ │
@@ -208,7 +208,7 @@
 Injaaz-App/
 │
 ├── 📄 Core Application Files
-│   ├── Injaaz.py              # Flask app factory & main entry point
+│   ├── kynvera.py              # Flask app factory & main entry point
 │   ├── config.py              # Configuration management
 │   ├── wsgi.py                # WSGI entry point (production)
 │   ├── manage.py              # Management commands
@@ -1443,7 +1443,7 @@ flask db upgrade
 5. **Run Application**
    ```bash
    # Development
-   python Injaaz.py
+   python kynvera.py
    
    # Production (with Gunicorn)
    gunicorn -w 4 -b 0.0.0.0:5000 wsgi:app
@@ -1505,7 +1505,7 @@ services:
 ┌─────────────────────────────────────────────────────────────┐
 │              FLASK APPLICATION SERVER                        │
 │  ┌──────────────────────────────────────────────────────┐ │
-│  │              Injaaz.py (App Factory)                  │ │
+│  │              kynvera.py (App Factory)                  │ │
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐          │ │
 │  │  │  Auth    │  │  Admin   │  │  Module  │          │ │
 │  │  │ Blueprint│  │ Blueprint│  │ Blueprint│          │ │

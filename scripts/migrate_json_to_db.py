@@ -11,7 +11,7 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from Injaaz import create_app
+from kynvera import create_app
 from app.models import db, Submission, Job, File, User
 from config import GENERATED_DIR, UPLOADS_DIR, JOBS_DIR
 

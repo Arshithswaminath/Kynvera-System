@@ -7,10 +7,10 @@ Injaaz is a Flask-based site-visit reporting application with modular form submi
 
 ### Dual Flask App Pattern
 The codebase has **two Flask applications**:
-1. **`Injaaz.py`** (legacy/main): Entry point using simple blueprints, `ThreadPoolExecutor` for background tasks, JSON-based job state stored in `generated/jobs/`
+1. **`kynvera.py`** (legacy/main): Entry point using simple blueprints, `ThreadPoolExecutor` for background tasks, JSON-based job state stored in `generated/jobs/`
 2. **`app/__init__.py`** (newer): Flask app factory pattern with SQLAlchemy, Flask-Migrate, JWT auth, Redis/RQ for background tasks
 
-**Key Decision**: Most active development happens in the legacy `Injaaz.py` structure. The `app/` directory appears to be a parallel attempt at restructuring but is less complete.
+**Key Decision**: Most active development happens in the legacy `kynvera.py` structure. The `app/` directory appears to be a parallel attempt at restructuring but is less complete.
 
 ### Module Structure Pattern
 Each module (`module_hvac_mep/`, `module_civil/`, `module_cleaning/`) follows an identical pattern:
@@ -22,7 +22,7 @@ module_*/
   dropdown_data.json # (optional) form dropdown options
 ```
 
-**Blueprint Registration**: `Injaaz.py` uses defensive imports with try/except blocks to allow partial deployment if a module fails to import.
+**Blueprint Registration**: `kynvera.py` uses defensive imports with try/except blocks to allow partial deployment if a module fails to import.
 
 ### Job Submission Flow
 1. User submits form via `/submit` POST with multipart form data
@@ -33,7 +33,7 @@ module_*/
 6. Job state updated with progress (0-100) and result URLs
 7. Frontend polls `/job-status/<job_id>` to check completion
 
-**Critical**: All paths come from `current_app.config['GENERATED_DIR']`, `UPLOADS_DIR`, `JOBS_DIR` set by `Injaaz.py:create_app()`.
+**Critical**: All paths come from `current_app.config['GENERATED_DIR']`, `UPLOADS_DIR`, `JOBS_DIR` set by `kynvera.py:create_app()`.
 
 ## Services & Utilities
 
@@ -76,7 +76,7 @@ Root `config.py` defines:
 ### Running Locally
 ```bash
 # Option 1: Direct Python (legacy app)
-python Injaaz.py  # Runs on http://localhost:5000 with debug=True
+python kynvera.py  # Runs on http://localhost:5000 with debug=True
 
 # Option 2: Flask app factory (newer structure)
 flask --app app run
@@ -120,7 +120,7 @@ submission_data["base_url"] = request.host_url.rstrip('/')
 Then use it to build absolute URLs: `base_url + url_for('download_generated', filename=..., _external=False)`
 
 ### File Download Route
-Single route serves all generated files: `/{GENERATED_DIR}/<path:filename>` → `download_generated()` in `Injaaz.py`
+Single route serves all generated files: `/{GENERATED_DIR}/<path:filename>` → `download_generated()` in `kynvera.py`
 
 ## Integration Points
 
@@ -137,7 +137,7 @@ Single route serves all generated files: `/{GENERATED_DIR}/<path:filename>` → 
 
 ## Common Pitfalls
 
-1. **Dual App Confusion**: Ensure you're editing the correct Flask app structure (legacy `Injaaz.py` vs. `app/__init__.py`)
+1. **Dual App Confusion**: Ensure you're editing the correct Flask app structure (legacy `kynvera.py` vs. `app/__init__.py`)
 2. **Path Resolution**: Always use `current_app.config['GENERATED_DIR']` etc., not hardcoded paths
 3. **Job State Race Conditions**: Job JSON files are written/read without locks; avoid concurrent modifications
 4. **Missing Email Config**: HVAC/MEP email reports silently skip if `MAIL_SERVER` not configured
@@ -145,7 +145,7 @@ Single route serves all generated files: `/{GENERATED_DIR}/<path:filename>` → 
 
 ## Quick Reference
 
-**Add a new module**: Copy `module_cleaning/` structure, update `Injaaz.py` to import/register blueprint  
+**Add a new module**: Copy `module_cleaning/` structure, update `kynvera.py` to import/register blueprint  
 **Debug job failures**: Read `generated/jobs/job_<id>.json` for error messages  
 **Test report generation**: Call `create_excel_report(data, output_dir)` directly from a route or script  
 **Check logs**: Flask logger outputs to stdout; use `app.logger.info()` or `logging.getLogger(__name__)`

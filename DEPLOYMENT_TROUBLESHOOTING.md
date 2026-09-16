@@ -68,7 +68,7 @@ buildCommand: bash build.sh
 
 ### Fix 2: Ensure Database Init Happens at Runtime
 
-The `Injaaz.py` already has database initialization in `create_app()` (lines 119-243), so this should work automatically.
+The `kynvera.py` already has database initialization in `create_app()` (lines 119-243), so this should work automatically.
 
 **Verify:** Check that database tables are created in `create_app()` function.
 

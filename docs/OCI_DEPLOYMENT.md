@@ -53,7 +53,7 @@ Set **`GENERATED_DIR=/var/injaaz/generated`** in your environment (`.env` or sys
 
 ## 4. Database
 
-Production expects **PostgreSQL** via **`DATABASE_URL`** when `FLASK_ENV=production` (see `config.py` / `Injaaz.py`).
+Production expects **PostgreSQL** via **`DATABASE_URL`** when `FLASK_ENV=production` (see `config.py` / `kynvera.py`).
 
 **Options:**
 

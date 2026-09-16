@@ -95,7 +95,7 @@ RATE LIMITING — THIS WILL SURPRISE YOU (verified empirically, not just read
 from source — see below)
 ============================================================================
 
-Flask-Limiter is wired up in Injaaz.py with:
+Flask-Limiter is wired up in kynvera.py with:
 
     default_limits=[os.environ.get('RATELIMIT_DEFAULT', '100 per hour')]
     key_func=get_remote_address

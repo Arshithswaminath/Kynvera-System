@@ -53,7 +53,7 @@ sqlite3.OperationalError: no such column: submissions.operations_manager_id
 GET http://127.0.0.1:5000/favicon.ico 404 (NOT FOUND)
 ```
 
-**Solution**: Added favicon route in `Injaaz.py`
+**Solution**: Added favicon route in `kynvera.py`
 
 **Result**: Browser can now load favicon (serves logo.png)
 
@@ -73,7 +73,7 @@ GET http://127.0.0.1:5000/favicon.ico 404 (NOT FOUND)
    ```bash
    # Stop current server (Ctrl+C)
    # Then restart
-   python Injaaz.py
+   python kynvera.py
    ```
 
 2. **Update User Designations**
@@ -111,7 +111,7 @@ GET http://127.0.0.1:5000/favicon.ico 404 (NOT FOUND)
 
 ### Modified Files
 1. ✅ `migrations/add_new_workflow_fields.py` - Fixed and ran successfully
-2. ✅ `Injaaz.py` - Added favicon route
+2. ✅ `kynvera.py` - Added favicon route
 3. ✅ `instance/injaaz.db` - Database updated with new columns
 
 ### Documentation Created

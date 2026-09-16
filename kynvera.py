@@ -713,16 +713,7 @@ def create_app():
                         # Gunicorn starts several workers and each one runs this
                         # init, so a blind insert here gave every category two
                         # folders on live — one holding the documents, one empty.
-                        def _root_folder(display_name):
-                            existing = DocHubFolder.query.filter_by(
-                                name=display_name, parent_id=None
-                            ).first()
-                            if existing:
-                                return existing
-                            created = DocHubFolder(name=display_name)
-                            db.session.add(created)
-                            db.session.flush()
-                            return created
+                        from app.docs.folder_service import get_or_create_default_folder as _root_folder
 
                         folder_by_cat = {}
                         for cat in distinct_cats:
@@ -743,6 +734,17 @@ def create_app():
                 except Exception as backfill_err:
                     db.session.rollback()
                     logger.warning(f"Could not backfill DocHub folders (non-critical): {backfill_err}")
+
+                # Collapse duplicate root folders created when several Gunicorn
+                # workers raced the backfill above. Safe to run every boot.
+                try:
+                    from app.docs.folder_service import merge_duplicate_folders
+                    merged = merge_duplicate_folders()
+                    if merged:
+                        logger.info(f"✅ Merged {merged} duplicate DocHub folder(s)")
+                except Exception as merge_err:
+                    db.session.rollback()
+                    logger.warning(f"Could not merge duplicate DocHub folders (non-critical): {merge_err}")
 
                 if 'hiring_documents' in inspector.get_table_names():
                     hd_cols = [col['name'] for col in inspector.get_columns('hiring_documents')]
@@ -898,13 +900,10 @@ def create_app():
                             'onboarding': 'Onboarding', 'contracts': 'Contracts',
                             'policies': 'Policies', 'manuals': 'Manuals', 'reports': 'Reports',
                         }
+                        from app.docs.folder_service import get_or_create_default_folder
                         for cat_name in ('onboarding', 'contracts', 'policies', 'manuals', 'reports'):
                             display_name = category_display_names[cat_name]
-                            folder = DocHubFolder.query.filter_by(name=display_name).first()
-                            if not folder:
-                                folder = DocHubFolder(name=display_name)
-                                db.session.add(folder)
-                                db.session.flush()
+                            folder = get_or_create_default_folder(display_name)
                             folder_by_cat[cat_name] = folder.id
                         samples = [
                             ('Employee Onboarding Guide', 'onboarding', 'published',

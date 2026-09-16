@@ -28,7 +28,7 @@ TEST_CC = ["arshithinjaaz@gmail.com"]
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from Injaaz import create_app  # noqa: E402
+from kynvera import create_app  # noqa: E402
 app = create_app()
 
 

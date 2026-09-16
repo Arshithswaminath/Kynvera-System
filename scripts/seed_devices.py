@@ -152,7 +152,7 @@ def main():
     parser = argparse.ArgumentParser(description='Seed Device Management demo fleet')
     parser.add_argument('--clear', action='store_true', help='Remove DEV-OV-* rows first')
     args = parser.parse_args()
-    from Injaaz import create_app
+    from kynvera import create_app
     from app.models import db
 
     app = create_app()

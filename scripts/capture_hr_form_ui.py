@@ -95,7 +95,7 @@ def main() -> int:
     from flask_jwt_extended import create_access_token, create_refresh_token
 
     load_dotenv(ROOT / ".env")
-    from Injaaz import create_app
+    from kynvera import create_app
     from app.models import User
 
     flask_app = create_app()

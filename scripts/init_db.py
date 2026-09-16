@@ -8,7 +8,7 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from Injaaz import create_app
+from kynvera import create_app
 from app.models import db, User
 
 def init_database():
@@ -75,7 +75,7 @@ def init_database():
             print("\nAdmin user already exists, skipping creation")
         
         print("\n✅ Database initialization complete!")
-        print("\nYou can now run the application with: python Injaaz.py")
+        print("\nYou can now run the application with: python kynvera.py")
 
 if __name__ == '__main__':
     init_database()

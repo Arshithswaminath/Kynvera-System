@@ -11,7 +11,7 @@ Prerequisites:
     pip install playwright
     playwright install chromium
 
-Usage (app must be running, e.g. python Injaaz.py):
+Usage (app must be running, e.g. python kynvera.py):
 
     python scripts/capture_full_page_screenshots.py \\
         --base-url http://127.0.0.1:5000 \\
@@ -221,7 +221,7 @@ def main() -> int:
         print("Install: pip install playwright && playwright install chromium", file=sys.stderr)
         return 1
 
-    from Injaaz import create_app
+    from kynvera import create_app
 
     app = create_app()
     routes = collect_paths(app)

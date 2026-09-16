@@ -46,7 +46,7 @@ Injaaz is a well-structured Flask application for managing inspections, HR forms
 |-------|----------|----------------|
 | **Large workflow file** | `app/workflow/routes.py` (~2.5k lines) | Split by responsibility: `workflow_submissions.py`, `workflow_approvals.py`, `workflow_history.py`. |
 | **Monolithic dashboard.js** | `static/js/dashboard.js` (~2.6k lines) | Extract auth, module visibility, mobile menu, and stats into smaller modules. |
-| **Dual app factories** | `Injaaz.py` and `app/__init__.py` | Use a single `create_app()` entry point and import it from `Injaaz.py`. |
+| **Dual app factories** | `kynvera.py` and `app/__init__.py` | Use a single `create_app()` entry point and import it from `kynvera.py`. |
 | **Module-specific logic in workflow** | `get_module_functions()` | Introduce a registry or plugin-style pattern instead of a long if/elif chain. |
 
 ### 2.2 Database & Models
@@ -54,7 +54,7 @@ Injaaz is a well-structured Flask application for managing inspections, HR forms
 | Issue | Location | Recommendation |
 |-------|----------|----------------|
 | **`module_type` length** | `Submission.module_type` is `String(20)` | Values like `hr_leave_application`, `procurement_material` exceed 20 chars. Increase to `String(50)` or `String(80)` and add a migration. |
-| **Raw ALTER TABLE in startup** | `Injaaz.py` lines 271–331 | Prefer Flask-Migrate for schema changes. Use `flask db migrate` and `flask db upgrade`. |
+| **Raw ALTER TABLE in startup** | `kynvera.py` lines 271–331 | Prefer Flask-Migrate for schema changes. Use `flask db migrate` and `flask db upgrade`. |
 | **Legacy fields** | `manager_id`, `supervisor_notified_at`, etc. | Plan a migration to drop deprecated columns once no longer used. |
 | **`workflow_status` length** | `String(40)` | Values like `operations_manager_approved` are 28 chars; consider `String(50)` for future statuses. |
 

@@ -23,10 +23,10 @@ print(
 )
 
 # Priority list: try the most likely module that holds your app first.
-# Note: 'Injaaz' is the primary app module in this repository.
+# Note: 'kynvera' is the primary app module in this repository.
 candidates = [
-    ("Injaaz", "create_app"),
-    ("Injaaz", "app"),
+    ("kynvera", "create_app"),
+    ("kynvera", "app"),
     ("app", "create_app"),
     ("app", "app"),
     ("application", "app"),
@@ -90,8 +90,8 @@ def _load_flask_app():
         *errors,
         "",
         "Please ensure your Flask app exposes one of the following examples:",
-        "  - Injaaz.py: def create_app(): return Flask(...)  (preferred for this repo)",
-        "  - Injaaz.py: app = Flask(__name__)",
+        "  - kynvera.py: def create_app(): return Flask(...)  (preferred for this repo)",
+        "  - kynvera.py: app = Flask(__name__)",
         "",
         "Common fixes:",
         "  - Ensure package/folder names are valid Python identifiers (no hyphens).",

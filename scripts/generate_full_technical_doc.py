@@ -184,7 +184,7 @@ def build(path):
     story += [Paragraph("Table of Contents", s["h1"]), _rule(s), Spacer(1,0.2*cm)]
     toc_entries = [
         ("1",  "Application Overview & Architecture"),
-        ("2",  "Application Factory — Injaaz.py"),
+        ("2",  "Application Factory — kynvera.py"),
         ("3",  "Configuration — config.py"),
         ("4",  "Database Models — app/models.py"),
         ("5",  "Common Utilities — common/"),
@@ -246,7 +246,7 @@ def build(path):
     story.append(Paragraph("Blueprint registration pattern", s["h2"]))
     story.append(Paragraph(
         "Each blueprint is imported in a guarded <b>try/except</b> block at the top of "
-        "<b>Injaaz.py</b>. If an import fails (e.g. a missing dependency), the app still "
+        "<b>kynvera.py</b>. If an import fails (e.g. a missing dependency), the app still "
         "starts and all other modules remain available. The failed module is silently absent "
         "from the URL space until fixed.", s["body"]))
     story += _code([
@@ -267,7 +267,7 @@ def build(path):
     # 2. APP FACTORY
     # ══════════════════════════════════════════════════════════════════════
     story.append(PageBreak())
-    story.append(_sec("2", "Application Factory — Injaaz.py", s))
+    story.append(_sec("2", "Application Factory — kynvera.py", s))
     story.append(Paragraph(
         "<b>create_app()</b> is the Flask application factory. It is the single entry point "
         "that wires together every component. Nothing is initialised at module level — "
@@ -923,7 +923,7 @@ def build(path):
 
     story.append(Paragraph("Scheduler integration", s["h2"]))
     story += _code([
-        "# APScheduler is initialised in Injaaz.py create_app()",
+        "# APScheduler is initialised in kynvera.py create_app()",
         "# MMR module registers a daily job when the config enables automation.",
         "# Key config keys (from _load_config()):",
         "#   schedule_enabled: true/false",
@@ -1137,7 +1137,7 @@ def build(path):
 
     qr_data = [
         ["Function","File","Purpose"],
-        ["create_app()","Injaaz.py","Flask application factory; registers all blueprints and extensions."],
+        ["create_app()","kynvera.py","Flask application factory; registers all blueprints and extensions."],
         ["validate_config(app)","common/config_validator.py","Startup config check; raises on critical failures."],
         ["sync_access_session_row(jti, payload)","common/jwt_session.py","Ensure a JWT session row exists (blocklist safety)."],
         ["error_response(msg, code, …)","common/error_responses.py","Standardised JSON error body."],

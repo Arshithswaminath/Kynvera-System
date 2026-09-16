@@ -41,7 +41,7 @@ fi
 python scripts/init_db.py
 
 echo ""
-echo "Installing shell hook so 'python Injaaz.py' works in this folder (like Windows)..."
+echo "Installing shell hook so 'python kynvera.py' works in this folder (like Windows)..."
 bash scripts/install-dev-shell.sh
 
 echo ""
@@ -50,7 +50,7 @@ echo "Setup complete!"
 echo "========================================"
 echo ""
 echo "Run the app (same as Windows):"
-echo "  python Injaaz.py"
+echo "  python kynvera.py"
 echo "Or:"
 echo "  ./start.sh"
 echo ""

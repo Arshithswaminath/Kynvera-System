@@ -70,7 +70,7 @@ Shared code lives under `app/`, `common/`, and domain folders such as `module_hv
 ## 6. Operations and resilience
 
 - **Configuration** is driven by `config.py` and environment variables (database, Redis, secrets, mail, MMR schedule overrides, etc.).
-- **Blueprint imports** in `Injaaz.py` are often guarded so a failing module can be skipped without stopping the entire app; affected routes may show a clear error until fixed.
+- **Blueprint imports** in `kynvera.py` are often guarded so a failing module can be skipped without stopping the entire app; affected routes may show a clear error until fixed.
 
 ---
 

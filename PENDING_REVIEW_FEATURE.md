@@ -138,7 +138,7 @@ Integrated the Pending Reviews section directly into the main dashboard, positio
 - Error handling
 - Responsive design
 
-### 3. **`Injaaz.py`** ✅
+### 3. **`kynvera.py`** ✅
 **Changes:**
 - Added new route: `/workflow/pending-reviews` → `pending_reviews()`
 - Route renders `pending_reviews.html` template

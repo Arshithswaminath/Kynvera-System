@@ -147,11 +147,11 @@ def inspection_cleanup(app):
 class TestAuthRequired:
     """All /inspection/* routes require @jwt_required(). Unlike ticketing's
     /tickets/api/... routes (which return 401/422 JSON because they contain
-    '/api/' in the path), Injaaz.py's `_is_html_page_request()` treats any
-    path *without* '/api/' as an HTML page navigation (Injaaz.py:246-258).
+    '/api/' in the path), kynvera.py's `_is_html_page_request()` treats any
+    path *without* '/api/' as an HTML page navigation (kynvera.py:246-258).
     Since every /inspection/... route is registered without '/api/' in its
     path, a missing/invalid JWT hits `unauthorized_callback` /
-    `invalid_token_callback` (Injaaz.py:281-293), which — finding no refresh
+    `invalid_token_callback` (kynvera.py:281-293), which — finding no refresh
     cookie either — redirects to the login page with 302, instead of
     returning a 401/422 JSON error. That is real, deliberate app-wide
     behavior (not a bug in module_inspection), so these tests assert the

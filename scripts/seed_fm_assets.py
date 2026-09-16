@@ -676,7 +676,7 @@ def main():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if root not in sys.path:
         sys.path.insert(0, root)
-    from Injaaz import create_app
+    from kynvera import create_app
 
     app = create_app()
     with app.app_context():
