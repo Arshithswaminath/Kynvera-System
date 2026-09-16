@@ -542,6 +542,14 @@ function updateModuleVisibility(user) {
     filesMenuItem.style.display = hasFilesAccess ? 'list-item' : 'none';
   }
 
+  // DocHub (same rule as main_navbar's dochub-menu-item — on for everyone unless opted out)
+  const dochubCard = document.getElementById('module-dochub');
+  if (dochubCard) {
+    const hasDocHubAccess = userHasDocHubNavAccess(user);
+    dochubCard.style.display = hasDocHubAccess ? 'block' : 'none';
+    dochubCard.style.visibility = hasDocHubAccess ? 'visible' : 'hidden';
+  }
+
   const automationsCard = document.getElementById('module-automations');
   const automationsMenuItem = document.getElementById('automations-menu-item');
   const hasAutomationsAccess = userHasAutomationsAccess(user);
