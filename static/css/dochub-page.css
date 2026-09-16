@@ -772,6 +772,14 @@ body.dochub-page-v2.has-main-nav .nav.scrolled {
   gap: 16px;
 }
 
+/* .module-back-link is a flex item here with no width of its own, so the
+   column's default align-items:stretch was expanding its clickable box to
+   the full row width — clicking the blank space beside "Back" navigated
+   away too. Shrink it back to just the icon + label. */
+.dh-content > .module-back-link {
+  align-self: flex-start;
+}
+
 .dh-body {
   display: grid;
   grid-template-columns: 1fr;
@@ -3902,8 +3910,11 @@ body.dochub-page-v2 .modal-overlay .modal {
 }
 
 /* When the home/folder grid is showing, drop the white card chrome so the
-   grid sits directly on the page background (single background, no nested card). */
-body.dochub-page-v2 .editor-area:has(> #dhEmptyState[style*="flex"]) {
+   grid sits directly on the page background (single background, no nested
+   card). Toggled by dochub.js via a MutationObserver on #dhEmptyState —
+   plain class match, not :has(), so it doesn't depend on selector engine
+   support or on catching every spot that flips that element's display. */
+body.dochub-page-v2 .editor-area.dh-editor-area--home {
   background: transparent;
   border-color: transparent;
   box-shadow: none;

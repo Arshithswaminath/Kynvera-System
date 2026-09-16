@@ -23,6 +23,15 @@
   --hh-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
+/* Candidate detail page only: almost everything below is sized in rem, so
+   letting the root font grow a little on roomy screens makes text and card
+   padding grow with it — instead of sitting at a fixed size no matter how
+   much desktop space is available. No-op below ~1440px (stays the default
+   16px), so laptops are unaffected; caps at 19px around a 2560px-wide window. */
+html.hh-detail-scale {
+  font-size: clamp(16px, 12.14px + 0.268vw, 19px);
+}
+
 body.hh-page {
   margin: 0;
   font-family: var(--hh-font);
@@ -1897,7 +1906,7 @@ body.hh-page .nav .logo {
   align-items: center;
   gap: 0.2rem;
   width: 100%;
-  max-width: 72px;
+  max-width: 4.5rem; /* = 72px at the default 16px root — kept in rem so it scales with .hh-detail-scale's fluid font-size instead of clipping labels */
   margin: 0;
   padding: 0.05rem 0.1rem 0.1rem;
   border: none;

@@ -41,7 +41,7 @@ def test_update_user_emails_profile_changes(client, admin_auth_headers, app, mon
     assert captured[0]['to'] == 'pat.staff@kynvera.net'
     assert captured[0]['subject'] == 'Your Kynvera profile was updated'
     assert 'Full name: Pat Staff → Pat Staff Updated' in captured[0]['body']
-    assert 'HR module: Off → On' in captured[0]['body']
+    assert 'Modules added: HR module' in captured[0]['body']
     assert 'password' not in captured[0]['subject'].lower()
 
 

@@ -906,10 +906,10 @@ def _branded_auth_html(*, title, greeting, paragraphs, extra_html='', cta_url=''
   <td style="padding:8px 32px 0 32px;">
     <table cellpadding="0" cellspacing="0" border="0">
       <tr>
-        <td bgcolor="#ff8e68" style="background-color:#ff8e68;border-radius:8px;">
+        <td bgcolor="#ff8e68" style="background-color:#ff8e68;border-radius:8px;padding:11px 22px;">
           <a href="{_esc(cta_url)}"
-             style="display:inline-block;padding:11px 22px;font-family:Arial,Helvetica,sans-serif;
-                    font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">{_esc(cta_label)}</a>
+             style="display:block;font-family:Arial,Helvetica,sans-serif;
+                    font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;mso-padding-alt:0;">{_esc(cta_label)}</a>
         </td>
       </tr>
     </table>

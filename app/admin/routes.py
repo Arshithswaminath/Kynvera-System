@@ -670,18 +670,24 @@ def _diff_user_profile(before, after):
         else:
             rows.append(('Signature', 'Updated'))
 
+    # Module access reads as a grant/revoke, not a field edit — one summary
+    # line naming the modules beats a wall of "MODULE: Off -> On" rows.
+    modules_added = []
+    modules_removed = []
+
     insp_before = bool(before.get('access_hvac') or before.get('access_civil') or before.get('access_cleaning'))
     insp_after = bool(after.get('access_hvac') or after.get('access_civil') or after.get('access_cleaning'))
     if insp_before != insp_after:
-        _append_profile_change(rows, 'Inspection', 'On' if insp_before else 'Off', 'On' if insp_after else 'Off')
+        (modules_added if insp_after else modules_removed).append('Inspection')
 
     for attr, label in _PROFILE_ACCESS_LABELS:
         if not _profile_values_equal(attr, before.get(attr), after.get(attr)):
-            _append_profile_change(
-                rows, label,
-                'On' if before.get(attr) else 'Off',
-                'On' if after.get(attr) else 'Off',
-            )
+            (modules_added if after.get(attr) else modules_removed).append(label)
+
+    if modules_added:
+        rows.append(('Modules added', ', '.join(modules_added)))
+    if modules_removed:
+        rows.append(('Modules removed', ', '.join(modules_removed)))
     return rows
 
 

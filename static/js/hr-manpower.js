@@ -1029,6 +1029,7 @@
     var rows = state.vacancies || [];
     if (!rows.length) {
       body.innerHTML = '<tr><td colspan="' + colSpan + '" class="mp-empty">No vacancies match. Add a vacancy or import the Excel tracker.</td></tr>';
+      scheduleBoardFit();
       return;
     }
 
@@ -1056,6 +1057,56 @@
     });
 
     body.innerHTML = html;
+    scheduleBoardFit();
+  }
+
+  /**
+   * Auto-fit the board table to whatever width the current screen actually
+   * has, instead of relying on the user's browser zoom (which is a sticky
+   * per-site setting — it follows the browser profile, not the monitor, so
+   * a level chosen on a cramped laptop shows up unchanged on a roomy
+   * desktop). Only the table is scaled down here; the rest of the page
+   * (sidebar, buttons, stat tiles) always stays at native size.
+   */
+  var BOARD_FIT_MIN_PX = 12; // never shrink the table's own text past this — legibility beats avoiding scroll
+  var BOARD_FIT_BREAKPOINT = 900; // below this, the mobile layout takes over instead
+  var boardFitRaf = null;
+
+  function fitBoardToViewport() {
+    var wrap = $('mpBoardWrap');
+    var table = $('mpBoard');
+    if (!wrap || !table) return;
+    table.style.zoom = '';
+    if (window.innerWidth <= BOARD_FIT_BREAKPOINT) return;
+    var natural = wrap.scrollWidth;
+    var avail = wrap.clientWidth;
+    if (!natural || !avail || natural <= avail) return;
+    var baseFontPx = parseFloat(window.getComputedStyle(table).fontSize) || 13.44;
+    var minZoom = Math.min(1, BOARD_FIT_MIN_PX / baseFontPx);
+    var scale = Math.max(minZoom, Math.min(1, avail / natural));
+    table.style.zoom = String(Math.round(scale * 100) / 100);
+  }
+
+  function scheduleBoardFit() {
+    if (typeof window.requestAnimationFrame !== 'function') {
+      fitBoardToViewport();
+      return;
+    }
+    if (boardFitRaf) window.cancelAnimationFrame(boardFitRaf);
+    boardFitRaf = window.requestAnimationFrame(function () {
+      boardFitRaf = null;
+      fitBoardToViewport();
+    });
+  }
+
+  function initBoardFit() {
+    var wrap = $('mpBoardWrap');
+    if (!wrap) return;
+    window.addEventListener('resize', scheduleBoardFit);
+    if (typeof ResizeObserver === 'function') {
+      new ResizeObserver(scheduleBoardFit).observe(wrap);
+    }
+    scheduleBoardFit();
   }
 
   function initColDrag() {
@@ -2377,6 +2428,7 @@
     state.colOrder = loadColOrder();
     renderBoardHead();
     initColDrag();
+    initBoardFit();
     bindEvents();
     refreshAll().then(function () {
       if (window.location.hash === '#settings') {

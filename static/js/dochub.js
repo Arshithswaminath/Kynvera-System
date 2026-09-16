@@ -3186,6 +3186,24 @@ ${dhCanEdit ? `<span class="dh-sr-actions">
       });
     }
 
+    // The "no card chrome behind the home/folder grid" look used to depend on a
+    // CSS :has() selector matching dhEmptyState's inline style — fragile (engine
+    // support, and every one of the many places in this file that flip that
+    // inline style had to be caught), and it was rendering inconsistently.
+    // Drive it from one observer instead, via a plain class.
+    const editorArea = document.getElementById('dhEditorArea');
+    const emptyState = document.getElementById('dhEmptyState');
+    if (editorArea && emptyState) {
+      const syncHomeChrome = () => {
+        editorArea.classList.toggle('dh-editor-area--home', emptyState.style.display === 'flex');
+      };
+      syncHomeChrome();
+      new MutationObserver(syncHomeChrome).observe(emptyState, {
+        attributes: true,
+        attributeFilter: ['style'],
+      });
+    }
+
     const stBadge = document.getElementById('dhStatusBadge');
     if (stBadge) stBadge.onclick = cycleStatus;
 
