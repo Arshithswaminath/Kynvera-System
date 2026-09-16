@@ -99,6 +99,55 @@
     Spec: { label: 'Spec', icon: '📄' }
   };
 
+  /**
+   * Rich per-card styling (icon, color, blurb) for the folder grid — restores the original
+   * hand-designed look for the folders that come from the initial category migration, while
+   * any new admin-created folder falls back to a plain generic look (FOLDER_CARD_DEFAULT).
+   * Keyed by lowercased folder name since that's how these were named during migration.
+   */
+  const FOLDER_CARD_META = {
+    onboarding: {
+      colorClass: 'dh-folder-icon--onboarding',
+      desc: 'Employee onboarding packets and orientation guides',
+      svg: '<svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>'
+    },
+    contracts: {
+      colorClass: 'dh-folder-icon--contracts',
+      desc: 'Service agreements, vendor contracts, and legal documents',
+      svg: '<svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>'
+    },
+    policies: {
+      colorClass: 'dh-folder-icon--policies',
+      desc: 'Company policies, compliance documents, and procedures',
+      svg: '<svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>'
+    },
+    manuals: {
+      colorClass: 'dh-folder-icon--manuals',
+      desc: 'Technical manuals, user guides, and operating procedures',
+      svg: '<svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"/></svg>'
+    },
+    reports: {
+      colorClass: 'dh-folder-icon--reports',
+      desc: 'Analysis reports, performance reviews, and summaries',
+      svg: '<svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>'
+    },
+    internal: {
+      colorClass: 'dh-folder-icon--internal',
+      desc: 'Internal communications, memos, and working documents',
+      svg: '<svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>'
+    },
+    uncategorized: {
+      colorClass: 'dh-folder-icon--internal',
+      desc: 'Documents without a specific category',
+      svg: '<svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>'
+    }
+  };
+  const FOLDER_CARD_DEFAULT = {
+    colorClass: '',
+    desc: '',
+    svg: folderIcon()
+  };
+
   const TEMPLATES = {
     onboarding: `<h1>Employee Onboarding Guide</h1>
 <div class="callout callout-blue"><span class="callout-icon">👋</span><div><strong>Welcome to the team!</strong> This guide will help you get up and running quickly.</div></div>
@@ -164,6 +213,18 @@
   };
 
   let docs = [];
+  let folders = [];
+  /** Folder currently being browsed in the main panel (null = not browsing a folder). */
+  let currentFolderId = null;
+  /** Sidebar folder-tree nodes manually expanded (folder id -> true). */
+  let dhFolderTreeExpanded = {};
+  /** doc id being dragged onto a folder row, for the optimistic-move drag/drop flow. */
+  let dhDragDocId = null;
+  /** 'move' | 'copy' — which action the folder-picker modal performs on submit. */
+  let dhMoveModalMode = 'move';
+  let dhMoveModalDocId = null;
+  /** null = creating a new folder; a folder id = renaming/re-parenting that folder. */
+  let dhFolderModalEditId = null;
   let dhIsAdmin = false;
   /** DocHub library access (view, list, star, export). */
   let dhCanWrite = false;
@@ -173,7 +234,8 @@
 
   let filterBucket = 'all';
   /** Sidebar buckets manually collapsed while filterBucket still matches (click row again to close). */
-  let sbCollapsedBuckets = new Set();
+  /** "All documents" starts collapsed too — nobody wants every title dumped into the sidebar on load. */
+  let sbCollapsedBuckets = new Set(['all']);
   let searchQ = '';
   let currentDocId = null;
   let viewMode = 'view';
@@ -852,11 +914,110 @@
     return m ? m.label : tag || 'Document';
   }
 
+  /** Colored file-type chip (like Drive/Dropbox file badges) for document list rows. */
+  const FILE_TYPE_CHIP_META = {
+    PDF: { bg: '#fee2e2', color: '#dc2626' },
+    DOCX: { bg: '#dbeafe', color: '#2563eb' },
+    DOC: { bg: '#dbeafe', color: '#2563eb' },
+    XLSX: { bg: '#dcfce7', color: '#16a34a' },
+    XLS: { bg: '#dcfce7', color: '#16a34a' },
+    PPTX: { bg: '#ffedd5', color: '#ea580c' },
+    ZIP: { bg: '#f3f4f6', color: '#4b5563' },
+    MD: { bg: '#e0e7ff', color: '#4f46e5' },
+    PNG: { bg: '#fae8ff', color: '#a21caf' },
+    JPG: { bg: '#fae8ff', color: '#a21caf' },
+    JPEG: { bg: '#fae8ff', color: '#a21caf' },
+    GIF: { bg: '#fae8ff', color: '#a21caf' },
+    WEBP: { bg: '#fae8ff', color: '#a21caf' }
+  };
+
+  function fileTypeChip(doc) {
+    if (doc.doc_type !== 'upload' || !doc.type) {
+      return { bg: 'var(--accent-light)', color: 'var(--accent-2)', label: 'DOC' };
+    }
+    const t = String(doc.type).toUpperCase();
+    const meta = FILE_TYPE_CHIP_META[t] || { bg: 'var(--surface-3)', color: 'var(--ink-3)' };
+    return { bg: meta.bg, color: meta.color, label: t.slice(0, 4) };
+  }
+
   function diClass(tag) {
     const t = (tag || 'other').toLowerCase();
     const map = ['onboarding', 'contracts', 'policies', 'manuals', 'reports'];
     if (map.includes(t)) return 'di-' + t;
     return 'di-internal';
+  }
+
+  // ---------------------------------------------------------------------
+  // Folder tree data helpers (folders[] is the flat list from GET /api/docs/folders)
+  // ---------------------------------------------------------------------
+
+  function folderById(id) {
+    if (id == null) return null;
+    return folders.find(f => Number(f.id) === Number(id)) || null;
+  }
+
+  function folderChildren(parentId) {
+    return folders
+      .filter(f => (f.parent_id == null ? null : Number(f.parent_id)) === (parentId == null ? null : Number(parentId)))
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  }
+
+  /** Root folder + every descendant id, depth-first (mirrors the backend's _collect_folder_ids). */
+  function collectDescendantFolderIds(folderId) {
+    const ids = [Number(folderId)];
+    folderChildren(folderId).forEach(kid => {
+      ids.push(...collectDescendantFolderIds(kid.id));
+    });
+    return ids;
+  }
+
+  /** Non-archived document count for a folder, rolled up across all its descendants. */
+  function folderDocCount(folderId) {
+    const ids = new Set(collectDescendantFolderIds(folderId));
+    return docs.filter(d => ids.has(Number(d.folder_id)) && d.status !== 'archived').length;
+  }
+
+  /** Root-to-self chain of folders, for breadcrumbs. */
+  function folderPath(folderId) {
+    const path = [];
+    let cur = folderById(folderId);
+    const seen = new Set();
+    while (cur && !seen.has(cur.id)) {
+      path.unshift(cur);
+      seen.add(cur.id);
+      cur = cur.parent_id != null ? folderById(cur.parent_id) : null;
+    }
+    return path;
+  }
+
+  function folderIcon() {
+    return '<svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-19.5 0v6a2.25 2.25 0 0 0 2.25 2.25h15a2.25 2.25 0 0 0 2.25-2.25v-6m-19.5 0v-1.5A2.25 2.25 0 0 1 4.5 6h4.372c.516 0 .998.24 1.311.65l1.108 1.45a1.5 1.5 0 0 0 1.311.65H19.5a2.25 2.25 0 0 1 2.25 2.25v1.5"/></svg>';
+  }
+
+  async function loadFolders() {
+    const r = await apiFetch('/api/docs/folders', { headers: jsonHeaders() });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.success === false) return;
+    folders = j.folders || [];
+  }
+
+  function populateFolderSelect(selectEl, selectedId) {
+    if (!selectEl) return;
+    const opts = [];
+    const walk = (parentId, depth) => {
+      folderChildren(parentId).forEach(f => {
+        opts.push({ id: f.id, label: '— '.repeat(depth) + f.name });
+        walk(f.id, depth + 1);
+      });
+    };
+    walk(null, 0);
+    const prev = selectedId != null ? selectedId : selectEl.value;
+    selectEl.innerHTML = opts
+      .map(o => `<option value="${o.id}">${esc(o.label)}</option>`)
+      .join('');
+    if (prev != null && opts.some(o => String(o.id) === String(prev))) {
+      selectEl.value = String(prev);
+    }
   }
 
   function toast(msg, bad) {
@@ -980,7 +1141,8 @@
 
   function updateKpis() {}
 
-  const COLLECTION_BUCKETS = ['onboarding', 'contracts', 'policies', 'manuals', 'reports', 'internal'];
+  /** Real folders replaced flat category browsing — kept empty so the (now dead) checks below no-op. */
+  const COLLECTION_BUCKETS = [];
 
   function visibleDocs() {
     const now = Math.floor(Date.now() / 1000);
@@ -1009,20 +1171,7 @@
     return LABELS[filterBucket] || filterBucket;
   }
 
-  const SB_NAV_BUCKETS = [
-    'all',
-    'published',
-    'draft',
-    'review',
-    'starred',
-    'recent',
-    'onboarding',
-    'contracts',
-    'policies',
-    'manuals',
-    'reports',
-    'internal'
-  ];
+  const SB_NAV_BUCKETS = ['all', 'published', 'draft', 'review', 'starred', 'recent'];
 
   function isOtherFilter() {
     return !SB_NAV_BUCKETS.includes(filterBucket);
@@ -1031,7 +1180,7 @@
   function docsForNavBucket(bucket) {
     const now = Math.floor(Date.now() / 1000);
     const recentCutoff = now - 30 * 24 * 60 * 60;
-    const catBuckets = ['onboarding', 'contracts', 'policies', 'manuals', 'reports', 'internal'];
+    const catBuckets = COLLECTION_BUCKETS;
     return docs.filter(d => {
       if (bucket === 'published' && d.status !== 'published') return false;
       if (bucket === 'draft' && d.status !== 'draft') return false;
@@ -1044,6 +1193,216 @@
       if (searchQ && !docMatchesSearch(d)) return false;
       return true;
     });
+  }
+
+  // ---------------------------------------------------------------------
+  // Folder tree (sidebar), folder grid (home screen), folder drill-down panel
+  // ---------------------------------------------------------------------
+
+  function renderFolderTreeNode(folder, depth) {
+    const kids = folderChildren(folder.id);
+    const expanded = !!dhFolderTreeExpanded[folder.id];
+    const hasKids = kids.length > 0;
+    const count = folderDocCount(folder.id);
+    const adminBtns = dhIsAdmin
+      ? `<button type="button" class="dh-folder-node-action" title="Rename" data-folder-action="rename" data-folder-id="${folder.id}" onclick="event.stopPropagation();dhOpenFolderModal(${folder.parent_id == null ? 'null' : folder.parent_id},${folder.id})">✎</button>
+         <button type="button" class="dh-folder-node-action" title="Delete" data-folder-action="delete" data-folder-id="${folder.id}" onclick="event.stopPropagation();dhDeleteFolder(${folder.id})">🗑</button>`
+      : '';
+    let html = `<div class="dh-folder-node" data-folder-id="${folder.id}" style="--depth:${depth}">
+      <div class="dh-folder-row${currentFolderId === folder.id ? ' active' : ''}${depth === 0 ? ' dh-folder-row--top' : ''}" data-folder-drop="${folder.id}" draggable="false">
+        <button type="button" class="dh-folder-toggle${hasKids ? '' : ' dh-folder-toggle--leaf'}" data-toggle-id="${folder.id}" aria-label="${expanded ? 'Collapse' : 'Expand'}" tabindex="${hasKids ? '0' : '-1'}">${hasKids ? (expanded ? '▾' : '▸') : ''}</button>
+        <button type="button" class="dh-folder-row-main" data-open-folder="${folder.id}">
+          <span class="dh-folder-row-icon" aria-hidden="true">${folderIcon()}</span>
+          <span class="dh-folder-row-name">${esc(folder.name)}</span>
+          <span class="sb-badge">${count}</span>
+        </button>
+        <span class="dh-folder-row-actions">${adminBtns}</span>
+      </div>`;
+    if (hasKids && expanded) {
+      html += `<div class="dh-folder-children">${kids.map(k => renderFolderTreeNode(k, depth + 1)).join('')}</div>`;
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function renderFolderTree() {
+    const el = document.getElementById('dhFolderTree');
+    if (!el) return;
+    const roots = folderChildren(null);
+    el.innerHTML = roots.length
+      ? roots.map(f => renderFolderTreeNode(f, 0)).join('')
+      : '<div class="sb-doc-empty">No folders yet</div>';
+
+    el.querySelectorAll('[data-toggle-id]').forEach(btn => {
+      if (btn.classList.contains('dh-folder-toggle--leaf')) return;
+      btn.onclick = e => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-toggle-id');
+        dhFolderTreeExpanded[id] = !dhFolderTreeExpanded[id];
+        renderFolderTree();
+      };
+    });
+    el.querySelectorAll('[data-open-folder]').forEach(btn => {
+      btn.onclick = () => window.dhOpenFolder(Number(btn.getAttribute('data-open-folder')));
+    });
+    initFolderDropTargets(el);
+
+    const newBtn = document.getElementById('dhSbNewFolderBtn');
+    if (newBtn) newBtn.style.display = dhIsAdmin ? '' : 'none';
+  }
+
+  function renderFolderGrid() {
+    const grid = document.getElementById('dhFolderGrid');
+    if (!grid) return;
+    const homeNewBtn = document.getElementById('dhHomeNewFolderBtn');
+    if (homeNewBtn) homeNewBtn.style.display = dhIsAdmin ? '' : 'none';
+    const roots = folderChildren(null);
+    if (!roots.length) {
+      grid.innerHTML = dhIsAdmin
+        ? '<p class="dh-home-sub">No folders yet. Use <strong>+ New folder</strong> in the sidebar to create your first one.</p>'
+        : '<p class="dh-home-sub">No folders yet.</p>';
+      return;
+    }
+    grid.innerHTML = roots
+      .map(f => {
+        const n = folderDocCount(f.id);
+        const meta = FOLDER_CARD_META[String(f.name || '').toLowerCase()] || FOLDER_CARD_DEFAULT;
+        const descHtml = meta.desc ? `<div class="dh-folder-desc">${esc(meta.desc)}</div>` : '';
+        return `<button type="button" class="dh-folder-card" data-open-folder="${f.id}">
+          <div class="dh-folder-top">
+            <span class="dh-folder-icon-wrap ${meta.colorClass}">${meta.svg}</span>
+            <span class="dh-folder-count">${n} doc${n === 1 ? '' : 's'}</span>
+          </div>
+          <div class="dh-folder-bottom">
+            <div class="dh-folder-name">${esc(f.name)}</div>
+            ${descHtml}
+            <div class="dh-folder-foot">
+              <span>View collection</span>
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+            </div>
+          </div>
+        </button>`;
+      })
+      .join('');
+    grid.querySelectorAll('[data-open-folder]').forEach(btn => {
+      btn.onclick = () => window.dhOpenFolder(Number(btn.getAttribute('data-open-folder')));
+    });
+    initFolderDropTargets(grid);
+  }
+
+  function renderFolderPanel(wrap) {
+    const folder = folderById(currentFolderId);
+    if (!folder) {
+      wrap.innerHTML = '<p class="dh-search-results-hint">Folder not found.</p>';
+      return;
+    }
+    const path = folderPath(currentFolderId);
+    const subfolders = folderChildren(currentFolderId);
+    const directDocs = docs
+      .filter(d => Number(d.folder_id) === Number(currentFolderId))
+      .filter(d => !searchQ || docMatchesSearch(d));
+
+    let html = '<div class="dh-search-results-inner">';
+    html += '<div class="dh-folder-breadcrumb" role="navigation" aria-label="Folder path">';
+    html += '<button type="button" class="dh-folder-crumb" data-crumb-folder="">Collections</button>';
+    path.forEach(f => {
+      html += `<span class="dh-folder-crumb-sep">/</span><button type="button" class="dh-folder-crumb" data-crumb-folder="${f.id}">${esc(f.name)}</button>`;
+    });
+    html += '</div>';
+
+    html += '<div class="dh-search-results-head">';
+    html += `<h2 class="dh-search-results-title">${esc(folder.name)}</h2>`;
+    const total = subfolders.length + directDocs.length;
+    html += `<p class="dh-search-results-meta">${subfolders.length} folder${subfolders.length === 1 ? '' : 's'}, ${directDocs.length} document${directDocs.length === 1 ? '' : 's'}</p>`;
+    html += '</div>';
+
+    if (dhIsAdmin) {
+      html += `<button type="button" class="btn btn-ghost dh-folder-add-sub" data-new-subfolder="${folder.id}">+ New subfolder here</button>`;
+    }
+
+    if (total === 0) {
+      html += '<p class="dh-search-results-hint">This folder is empty. Use the menu to upload or create a document here.</p>';
+    } else {
+      if (subfolders.length) {
+        html += '<div class="dh-folder-subgrid">';
+        html += subfolders
+          .map(f => {
+            const n = folderDocCount(f.id);
+            return `<button type="button" class="dh-folder-subcard" data-open-folder="${f.id}" data-folder-drop="${f.id}">
+              <span class="dh-folder-row-icon" aria-hidden="true">${folderIcon()}</span>
+              <span class="dh-folder-subcard-name">${esc(f.name)}</span>
+              <span class="sb-badge">${n}</span>
+            </button>`;
+          })
+          .join('');
+        html += '</div>';
+      }
+      if (directDocs.length) {
+        html += '<ul class="dh-search-results-list" role="list">';
+        html += directDocs
+          .map(doc => {
+            const chip = fileTypeChip(doc);
+            const dragAttrs = dhCanEdit ? ` data-drag-doc="${doc.id}" draggable="true"` : '';
+            return `<li><div class="dh-search-result-row" role="button" tabindex="0" data-doc-id="${doc.id}"${dragAttrs}>
+<span class="dh-doc-type-chip" style="background:${chip.bg};color:${chip.color}" aria-hidden="true">${esc(chip.label)}</span>
+<span class="dh-sr-main">
+  <span class="dh-sr-name">${esc(doc.name)}</span>
+  <span class="dh-sr-meta">
+    <span class="dh-sr-status-badge sb-${doc.status}">${statusLabel(doc.status)}</span>
+    <span class="dh-sr-date">${esc(doc.date)}</span>
+  </span>
+</span>
+${dhCanEdit ? `<span class="dh-sr-actions">
+  <button type="button" class="dh-sr-action" title="Move to…" data-move-doc="${doc.id}">⇄</button>
+  <button type="button" class="dh-sr-action" title="Copy to…" data-copy-doc="${doc.id}">⧉</button>
+</span>` : ''}
+</div></li>`;
+          })
+          .join('');
+        html += '</ul>';
+      }
+    }
+    html += '</div>';
+    wrap.innerHTML = html;
+
+    wrap.querySelectorAll('[data-open-folder]').forEach(btn => {
+      btn.onclick = () => window.dhOpenFolder(Number(btn.getAttribute('data-open-folder')));
+    });
+    wrap.querySelectorAll('[data-crumb-folder]').forEach(btn => {
+      btn.onclick = () => {
+        const v = btn.getAttribute('data-crumb-folder');
+        if (!v) window.dhCloseFolder();
+        else window.dhOpenFolder(Number(v));
+      };
+    });
+    const newSub = wrap.querySelector('[data-new-subfolder]');
+    if (newSub) newSub.onclick = () => window.dhOpenFolderModal(Number(newSub.getAttribute('data-new-subfolder')), null);
+    wrap.querySelectorAll('[data-doc-id]').forEach(btn => {
+      btn.onclick = e => {
+        if (e.target.closest('[data-move-doc],[data-copy-doc]')) return;
+        selectDoc(Number(btn.dataset.docId));
+      };
+      btn.onkeydown = e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectDoc(Number(btn.dataset.docId));
+        }
+      };
+    });
+    wrap.querySelectorAll('[data-move-doc]').forEach(btn => {
+      btn.onclick = e => {
+        e.stopPropagation();
+        window.dhOpenMoveModal(Number(btn.getAttribute('data-move-doc')), 'move');
+      };
+    });
+    wrap.querySelectorAll('[data-copy-doc]').forEach(btn => {
+      btn.onclick = e => {
+        e.stopPropagation();
+        window.dhOpenMoveModal(Number(btn.getAttribute('data-copy-doc')), 'copy');
+      };
+    });
+    initFolderDropTargets(wrap);
+    initDraggableDocRows(wrap);
   }
 
   function syncMainSearchPanel() {
@@ -1062,6 +1421,13 @@
     if (currentDocId != null || chromeOpen) {
       wrap.hidden = true;
       wrap.innerHTML = '';
+      return;
+    }
+
+    if (currentFolderId != null) {
+      empty.style.display = 'none';
+      wrap.hidden = false;
+      renderFolderPanel(wrap);
       return;
     }
 
@@ -1166,11 +1532,6 @@
     renderSbDocList('dhSbDocsReview', docsForNavBucket('review'));
     renderSbDocList('dhSbDocsStarred', docsForNavBucket('starred'));
     renderSbDocList('dhSbDocsRecent', docsForNavBucket('recent'));
-    renderSbDocList('dhSbDocsOnboarding', docsForNavBucket('onboarding'));
-    renderSbDocList('dhSbDocsContracts', docsForNavBucket('contracts'));
-    renderSbDocList('dhSbDocsPolicies', docsForNavBucket('policies'));
-    renderSbDocList('dhSbDocsManuals', docsForNavBucket('manuals'));
-    renderSbDocList('dhSbDocsReports', docsForNavBucket('reports'));
     renderSbDocList('dhSbDocsOther', visibleDocs());
 
     const setCount = (id, n) => {
@@ -1183,23 +1544,13 @@
     setCount('dhSbCountReview', docsForNavBucket('review').length);
     setCount('dhSbCountStarred', docsForNavBucket('starred').length);
     setCount('dhSbCountRecent', docsForNavBucket('recent').length);
-    setCount('dhSbCountOnboarding', docsForNavBucket('onboarding').length);
-    setCount('dhSbCountContracts', docsForNavBucket('contracts').length);
-    setCount('dhSbCountPolicies', docsForNavBucket('policies').length);
-    setCount('dhSbCountManuals', docsForNavBucket('manuals').length);
-    setCount('dhSbCountReports', docsForNavBucket('reports').length);
     setCount('dhSbOtherCount', visibleDocs().length);
 
     const osl = document.getElementById('dhSbOtherSectionLabel');
     if (osl) osl.textContent = panelTitle();
 
-    // Update folder grid card counts on the home screen
-    ['onboarding', 'contracts', 'policies', 'manuals', 'reports', 'internal', 'Internal'].forEach(tag => {
-      const el = document.getElementById('dhFolderCount-' + tag);
-      if (!el) return;
-      const n = docs.filter(d => (d.tag || '').toLowerCase() === tag.toLowerCase() && d.status !== 'archived').length;
-      el.textContent = n + ' doc' + (n === 1 ? '' : 's');
-    });
+    renderFolderTree();
+    renderFolderGrid();
 
     syncSbBucketOpenState();
     syncMainSearchPanel();
@@ -1495,6 +1846,9 @@
     document.getElementById('dhViewerDownload').textContent = '⬇ Download';
     document.getElementById('dhViewerDownload').onclick = () => downloadFileDoc(doc.id);
 
+    document.getElementById("dhViewerMove").style.display = dhCanEdit ? 'inline-flex' : 'none';
+    document.getElementById("dhViewerCopy").style.display = dhCanEdit ? 'inline-flex' : 'none';
+
     const pub = document.getElementById('dhViewerPublish');
     pub.style.display = dhCanEdit ? 'inline-flex' : 'none';
     pub.disabled = doc.status === 'published';
@@ -1528,6 +1882,9 @@
     document.getElementById('dhViewerDownload').style.display = 'inline-flex';
     document.getElementById('dhViewerDownload').textContent = '⬇ Export';
     document.getElementById('dhViewerDownload').onclick = () => exportContentAsHtml(doc);
+
+    document.getElementById("dhViewerMove").style.display = dhCanEdit ? 'inline-flex' : 'none';
+    document.getElementById("dhViewerCopy").style.display = dhCanEdit ? 'inline-flex' : 'none';
 
     const pub = document.getElementById('dhViewerPublish');
     pub.style.display = dhCanEdit ? 'inline-flex' : 'none';
@@ -1767,11 +2124,21 @@
     markDirty();
   }
 
-  window.dhGoToFolder = function(tag) {
-    const key = String(tag || '').toLowerCase();
-    const head = document.querySelector('.dh-sb-bucket-head[data-filter="' + key + '"]');
-    sbCollapsedBuckets.delete(key);
-    filterDocs(key, head);
+  window.dhOpenFolder = function (folderId) {
+    if (dirty && !confirm('Discard unsaved changes?')) return;
+    dirty = false;
+    currentDocId = null;
+    currentFolderId = Number(folderId);
+    searchQ = '';
+    const search = document.getElementById('dhSearch');
+    if (search) search.value = '';
+    document.getElementById('dhViewerState').style.display = 'none';
+    document.getElementById('dhEditorState').style.display = 'none';
+    // Open the folder's own ancestor chain in the tree so it's visible when selected.
+    folderPath(currentFolderId).forEach(f => {
+      dhFolderTreeExpanded[f.id] = true;
+    });
+    renderDocList();
     if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
       const results = document.getElementById('dhSearchResults');
       if (!results || results.hidden) {
@@ -1780,6 +2147,226 @@
       }
     }
   };
+
+  window.dhCloseFolder = function () {
+    currentFolderId = null;
+    renderDocList();
+  };
+
+  // --- Folder create / rename / delete (admin-only; server also enforces this) ---
+
+  window.dhOpenFolderModal = function (parentId, editFolderId) {
+    if (!dhIsAdmin) return;
+    dhFolderModalEditId = editFolderId != null ? Number(editFolderId) : null;
+    const modal = document.getElementById('dhFolderModal');
+    const title = document.getElementById('dhFolderModalTitle');
+    const input = document.getElementById('dhFolderModalInput');
+    const parentSelect = document.getElementById('dhFolderModalParent');
+    if (!modal || !input) return;
+    populateFolderSelect(parentSelect, parentId != null ? Number(parentId) : '');
+    if (parentSelect) {
+      const rootOpt = document.createElement('option');
+      rootOpt.value = '';
+      rootOpt.textContent = '(Top level)';
+      parentSelect.insertBefore(rootOpt, parentSelect.firstChild);
+      parentSelect.value = parentId != null ? String(parentId) : '';
+    }
+    if (dhFolderModalEditId != null) {
+      const f = folderById(dhFolderModalEditId);
+      if (title) title.textContent = 'Rename folder';
+      input.value = f ? f.name : '';
+      if (parentSelect) {
+        // A folder cannot become its own descendant — hide itself and its subtree.
+        const banned = new Set(collectDescendantFolderIds(dhFolderModalEditId));
+        Array.from(parentSelect.options).forEach(opt => {
+          if (opt.value && banned.has(Number(opt.value))) opt.remove();
+        });
+        parentSelect.value = f && f.parent_id != null ? String(f.parent_id) : '';
+      }
+    } else {
+      if (title) title.textContent = 'New folder';
+      input.value = '';
+    }
+    modal.classList.add('open');
+    input.focus();
+  };
+
+  window.dhCloseFolderModal = function () {
+    const modal = document.getElementById('dhFolderModal');
+    if (modal) modal.classList.remove('open');
+    dhFolderModalEditId = null;
+  };
+
+  window.dhSubmitFolderModal = async function () {
+    const input = document.getElementById('dhFolderModalInput');
+    const parentSelect = document.getElementById('dhFolderModalParent');
+    const name = input ? input.value.trim() : '';
+    if (!name) {
+      toast('Please enter a folder name', true);
+      return;
+    }
+    const parentVal = parentSelect ? parentSelect.value : '';
+    const parent_id = parentVal ? Number(parentVal) : null;
+
+    let r, j;
+    if (dhFolderModalEditId != null) {
+      r = await apiFetch('/api/docs/folders/' + dhFolderModalEditId, {
+        method: 'PATCH',
+        headers: jsonHeaders(),
+        body: JSON.stringify({ name, parent_id })
+      });
+    } else {
+      r = await apiFetch('/api/docs/folders', {
+        method: 'POST',
+        headers: jsonHeaders(),
+        body: JSON.stringify({ name, parent_id })
+      });
+    }
+    j = await r.json().catch(() => ({}));
+    if (!r.ok || j.success === false) {
+      toast(j.error || 'Could not save folder', true);
+      return;
+    }
+    toast(dhFolderModalEditId != null ? 'Folder updated' : 'Folder created');
+    window.dhCloseFolderModal();
+    await loadFolders();
+    renderDocList();
+  };
+
+  window.dhDeleteFolder = async function (folderId) {
+    if (!dhIsAdmin) return;
+    const f = folderById(folderId);
+    if (!f) return;
+    if (!confirm(`Delete folder "${f.name}"?`)) return;
+
+    let r = await apiFetch('/api/docs/folders/' + folderId, { method: 'DELETE' });
+    let j = await r.json().catch(() => ({}));
+    if (r.status === 409 && j.error_code === 'FOLDER_NOT_EMPTY') {
+      const n = (j.details && j.details.doc_count) || 0;
+      if (!confirm(`This folder contains ${n} document(s). Move them to the parent folder and delete?`)) return;
+      r = await apiFetch('/api/docs/folders/' + folderId + '?reassign=1', { method: 'DELETE' });
+      j = await r.json().catch(() => ({}));
+    }
+    if (!r.ok || j.success === false) {
+      toast(j.error || 'Could not delete folder', true);
+      return;
+    }
+    toast('Folder deleted');
+    if (currentFolderId === Number(folderId)) currentFolderId = null;
+    await loadFolders();
+    await loadDocs(false);
+  };
+
+  // --- Move / copy a document to another folder ---
+
+  window.dhOpenMoveModal = function (docId, mode) {
+    dhMoveModalDocId = Number(docId);
+    dhMoveModalMode = mode === 'copy' ? 'copy' : 'move';
+    const doc = docs.find(d => Number(d.id) === dhMoveModalDocId);
+    const modal = document.getElementById('dhMoveModal');
+    const title = document.getElementById('dhMoveModalTitle');
+    const select = document.getElementById('dhMoveModalSelect');
+    if (!modal || !select) return;
+    populateFolderSelect(select, doc ? doc.folder_id : null);
+    if (title) title.textContent = (dhMoveModalMode === 'copy' ? 'Copy' : 'Move') + (doc ? ` "${doc.name}"` : '');
+    modal.classList.add('open');
+  };
+
+  window.dhCloseMoveModal = function () {
+    const modal = document.getElementById('dhMoveModal');
+    if (modal) modal.classList.remove('open');
+    dhMoveModalDocId = null;
+  };
+
+  window.dhSubmitMoveModal = async function () {
+    if (dhMoveModalDocId == null) return;
+    const select = document.getElementById('dhMoveModalSelect');
+    const folder_id = select && select.value ? Number(select.value) : null;
+    const ok = await moveOrCopyDoc(dhMoveModalDocId, folder_id, dhMoveModalMode);
+    if (ok) window.dhCloseMoveModal();
+  };
+
+  async function moveOrCopyDoc(docId, folderId, mode) {
+    const path = mode === 'copy' ? '/copy' : '/move';
+    const r = await apiFetch('/api/docs/' + docId + path, {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ folder_id: folderId })
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.success === false) {
+      toast(j.error || (mode === 'copy' ? 'Copy failed' : 'Move failed'), true);
+      return false;
+    }
+    toast(mode === 'copy' ? 'Document copied' : 'Document moved');
+    await loadDocs(false);
+    return true;
+  }
+
+  // --- Drag-and-drop: drag a document row onto a folder to move it there ---
+  // Adapted from the BD Kanban board's card-drag pattern (admin_bd_module.html):
+  // dragstart guards interactive children, dragover/dragleave toggle a drop-target
+  // class, drop performs an optimistic move with rollback on failure.
+
+  function initDraggableDocRows(root) {
+    root.querySelectorAll('[data-drag-doc]').forEach(row => {
+      row.addEventListener('dragstart', e => {
+        if (e.target.closest('button')) {
+          // Allow the Move/Copy buttons themselves to be clicked without starting a drag.
+        }
+        dhDragDocId = Number(row.getAttribute('data-drag-doc'));
+        e.dataTransfer.effectAllowed = 'move';
+        try {
+          e.dataTransfer.setData('text/plain', String(dhDragDocId));
+        } catch (err) {}
+      });
+      row.addEventListener('dragend', () => {
+        dhDragDocId = null;
+        document.querySelectorAll('.dh-drop-target').forEach(el => el.classList.remove('dh-drop-target'));
+      });
+    });
+  }
+
+  function initFolderDropTargets(root) {
+    root.querySelectorAll('[data-folder-drop]').forEach(el => {
+      el.addEventListener('dragover', e => {
+        if (dhDragDocId == null) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        el.classList.add('dh-drop-target');
+      });
+      el.addEventListener('dragleave', () => {
+        el.classList.remove('dh-drop-target');
+      });
+      el.addEventListener('drop', async e => {
+        e.preventDefault();
+        el.classList.remove('dh-drop-target');
+        if (dhDragDocId == null) return;
+        const targetFolderId = Number(el.getAttribute('data-folder-drop'));
+        const docId = dhDragDocId;
+        dhDragDocId = null;
+        const doc = docs.find(d => Number(d.id) === docId);
+        const prevFolderId = doc ? doc.folder_id : null;
+        if (doc) {
+          doc.folder_id = targetFolderId;
+          renderDocList();
+        }
+        const r = await apiFetch('/api/docs/' + docId + '/move', {
+          method: 'POST',
+          headers: jsonHeaders(),
+          body: JSON.stringify({ folder_id: targetFolderId })
+        });
+        if (!r.ok) {
+          if (doc) doc.folder_id = prevFolderId;
+          renderDocList();
+          toast('Could not move document', true);
+          return;
+        }
+        toast('Document moved');
+        await loadDocs(false);
+      });
+    });
+  }
 
   function applyWriteUI() {
     ['dhNewDocBtn', 'dhUploadBtn', 'dhSbNewBtn', 'dhSbUploadBtn'].forEach(id => {
@@ -1823,16 +2410,13 @@
         'dhSbDocsReview',
         'dhSbDocsStarred',
         'dhSbDocsRecent',
-        'dhSbDocsOnboarding',
-        'dhSbDocsContracts',
-        'dhSbDocsPolicies',
-        'dhSbDocsManuals',
-        'dhSbDocsReports',
         'dhSbDocsOther'
       ].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = denied;
       });
+      const tree = document.getElementById('dhFolderTree');
+      if (tree) tree.innerHTML = denied;
       return;
     }
     dhIsAdmin = !!isAdmin;
@@ -1843,6 +2427,8 @@
        (e.g. 401 from session/JWT edge cases on deploy). Otherwise buttons stay display:none. */
     applyWriteUI();
     applyEditChrome();
+
+    await loadFolders();
 
     const r = await apiFetch('/api/docs', { headers: jsonHeaders() });
     const j = await r.json().catch(() => ({}));
@@ -1867,9 +2453,9 @@
       selectDoc(currentDocId);
     } else if (!currentDocId) {
       setDocInfoWrapsVisible(false);
-      document.getElementById('dhEmptyState').style.display = 'flex';
       document.getElementById('dhViewerState').style.display = 'none';
       document.getElementById('dhEditorState').style.display = 'none';
+      syncMainSearchPanel();
     }
     syncTabStyles();
   }
@@ -1889,6 +2475,7 @@
       x.classList.toggle('selected', i === 0);
     });
     dhSyncTemplateSelection();
+    populateFolderSelect(document.getElementById('dhNewFolder'), currentFolderId);
   }
 
   function closeNewModal() {
@@ -2033,6 +2620,7 @@
     if (input) input.value = '';
     dhUploadTitlesByKey = new Map();
     syncUploadFileListUi();
+    populateFolderSelect(document.getElementById('dhUFolder'), currentFolderId);
   }
 
   function closeUploadModal() {
@@ -2100,14 +2688,15 @@
     }
     const sel = document.querySelector('#dhTemplateGrid .template-item.selected');
     const cat = sel ? sel.getAttribute('data-cat') || 'other' : 'other';
-    const apiCat = cat === 'other' ? 'Internal' : cat;
     const content = TEMPLATES[cat] || TEMPLATES.other;
+    const folderSelect = document.getElementById('dhNewFolder');
+    const folder_id = folderSelect && folderSelect.value ? Number(folderSelect.value) : null;
     const r = await apiFetch('/api/docs', {
       method: 'POST',
       headers: jsonHeaders(),
       body: JSON.stringify({
         title,
-        category: apiCat,
+        folder_id,
         content,
         status: 'draft'
       })
@@ -2153,7 +2742,8 @@
       if (!t) t = basenameTitleFromFilename(f.name);
       fd.append('names', t);
     });
-    fd.append('category', document.getElementById('dhUCategory').value || 'Internal');
+    const uFolderSelect = document.getElementById('dhUFolder');
+    if (uFolderSelect && uFolderSelect.value) fd.append('folder_id', uFolderSelect.value);
     fd.append('status', document.getElementById('dhUStatus').value || 'draft');
     const r = await apiFetch('/api/docs/upload', {
       method: 'POST',
@@ -2244,6 +2834,7 @@
     if (dirty && !confirm('Discard unsaved changes?')) return;
     dirty = false;
     searchQ = '';
+    currentFolderId = null;
     const search = document.getElementById('dhSearch');
     if (search) search.value = '';
     showEmpty();
@@ -2256,6 +2847,7 @@
       sbCollapsedBuckets.clear();
     }
     filterBucket = f;
+    currentFolderId = null;
     switchShell();
     document.querySelectorAll('.sb-nav-item').forEach(e => e.classList.remove('active'));
     document.querySelectorAll('.dh-sb-bucket-head').forEach(e => e.classList.remove('active'));
@@ -2288,20 +2880,35 @@
       return;
     }
     const users = j.users || j.data?.users || [];
+    const initialsOf = name => {
+      const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+      return (parts[0]?.[0] || '?') + (parts.length > 1 ? parts[parts.length - 1][0] : '');
+    };
     const body = document.getElementById('dhAccessBody');
     body.innerHTML = users
-      .map(
-        u => `<tr style="border-bottom:1px solid var(--border)">
-      <td style="padding:10px 12px">${esc(u.full_name || u.username)}</td>
-      <td style="padding:10px 12px">${esc(u.email)}</td>
-      <td style="padding:10px 12px">${esc(u.role)}</td>
-      <td style="padding:10px 12px">${
-        u.role === 'admin'
-          ? '<span style="background:var(--accent-light);color:var(--accent);padding:3px 8px;border-radius:999px;font-size:11px;font-weight:600">Always allowed</span>'
-          : `<label style="display:flex;align-items:center;gap:8px"><input type="checkbox" ${u.can_access_dochub ? 'checked' : ''} onchange="dhSetUserAccess(${u.id},this.checked)"> <span>${u.can_access_dochub ? 'Allowed' : 'Blocked'}</span></label>`
-      }</td>
-    </tr>`
-      )
+      .map(u => {
+        const label = u.full_name || u.username;
+        const access =
+          u.role === 'admin'
+            ? '<span class="dh-access-badge dh-access-badge--always">Always allowed</span>'
+            : `<label class="dh-access-toggle-label">
+                 <input type="checkbox" class="dh-access-toggle" ${u.can_access_dochub ? 'checked' : ''} onchange="dhSetUserAccess(${u.id},this.checked)">
+                 <span class="dh-access-badge ${u.can_access_dochub ? 'dh-access-badge--allowed' : 'dh-access-badge--blocked'}">${u.can_access_dochub ? 'Allowed' : 'Blocked'}</span>
+               </label>`;
+        return `<tr>
+      <td>
+        <div class="dh-access-user">
+          <span class="dh-access-avatar">${esc(initialsOf(label).toUpperCase())}</span>
+          <div class="dh-access-user-text">
+            <div class="dh-access-user-name">${esc(label)}</div>
+            <div class="dh-access-user-email">${esc(u.email)}</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="dh-access-role-pill${u.role === 'admin' ? ' is-admin' : ''}">${esc(u.role)}</span></td>
+      <td>${access}</td>
+    </tr>`;
+      })
       .join('');
     document.getElementById('dhAccessModal').classList.add('open');
   };
@@ -2496,6 +3103,9 @@
   window.toggleStar = function () {
     if (currentDocId != null) toggleStarById(currentDocId);
   };
+  window.currentDocIdForViewer = function () {
+    return currentDocId;
+  };
   window.publishDoc = function () {
     if (currentDocId != null) publishDocument(currentDocId);
   };
@@ -2546,6 +3156,35 @@
     bind('dhEditorSaveBtn', saveDoc);
     const brandHome = document.getElementById('dhBrandHome');
     if (brandHome) brandHome.addEventListener('click', window.dhGoHome);
+
+    // The shared "← Back" link (module_back_link.html) always points to the main
+    // dashboard by default. Inside DocHub that should behave like a real back button:
+    // close an open document, or step up one folder level, before actually leaving.
+    const moduleBack = document.querySelector('[data-module-back]');
+    if (moduleBack) {
+      moduleBack.addEventListener('click', e => {
+        if (dirty && !confirm('Discard unsaved changes?')) {
+          e.preventDefault();
+          return;
+        }
+        dirty = false;
+        if (currentDocId != null) {
+          e.preventDefault();
+          showEmpty();
+          return;
+        }
+        if (currentFolderId != null) {
+          e.preventDefault();
+          const folder = folderById(currentFolderId);
+          if (folder && folder.parent_id != null) {
+            window.dhOpenFolder(folder.parent_id);
+          } else {
+            window.dhCloseFolder();
+          }
+        }
+        // Otherwise nothing left to unwind inside DocHub — let the link navigate normally.
+      });
+    }
 
     const stBadge = document.getElementById('dhStatusBadge');
     if (stBadge) stBadge.onclick = cycleStatus;

@@ -1124,17 +1124,19 @@ class DocHubDocument(db.Model):
     content = db.Column(db.Text, nullable=True)  # HTML content for editable docs
     # JSON array: [{ "url": "/api/docs/inline/…", "filename": "…", "feed_document_id": 123 }, …]
     reference_attachments = db.Column(db.Text, nullable=True)
-    category = db.Column(db.String(50), default='Internal', index=True)  # onboarding, contracts, policies, manuals, reports, Internal, etc.
+    category = db.Column(db.String(50), default='Internal', index=True)  # derived from folder.name; kept in sync on every folder-affecting write (search scoring, RAG citations, and exports still read this)
     status = db.Column(db.String(20), default='draft', index=True)  # draft, review, published, archived
     size_bytes = db.Column(db.Integer, default=0)
     is_starred = db.Column(db.Boolean, default=False)
     # True when this row mirrors an inline-stored file (editor reference); deleting the row does not delete the file.
     inline_asset = db.Column(db.Boolean, default=False)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    folder_id = db.Column(db.Integer, db.ForeignKey('dochub_folders.id'), nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=_utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow, index=True)
 
     author = db.relationship('User', backref=db.backref('dochub_documents', lazy='dynamic'))
+    folder = db.relationship('DocHubFolder', backref=db.backref('documents', lazy='dynamic'))
 
     def to_dict(self):
         author_name = 'Unknown'
@@ -1160,6 +1162,7 @@ class DocHubDocument(db.Model):
             'type': self.file_type or '',
             'doc_type': self.doc_type or 'content',
             'tag': self.category,
+            'folder_id': self.folder_id,
             'status': self.status,
             'author': author_name,
             'author_id': self.author_id,
@@ -1221,6 +1224,34 @@ class DocHubAccess(db.Model):
 
     def __repr__(self):
         return f'<DocHubAccess user={self.user_id} access={self.can_access}>'
+
+
+class DocHubFolder(db.Model):
+    """Folder node in the DocHub library tree. Arbitrary depth via self-referential parent_id; admin-managed."""
+    __tablename__ = 'dochub_folders'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    parent_id = db.Column(db.Integer, db.ForeignKey('dochub_folders.id'), nullable=True, index=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    parent = db.relationship('DocHubFolder', remote_side=[id], backref=db.backref('children', lazy='dynamic'))
+    creator = db.relationship('User', foreign_keys=[created_by])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'parent_id': self.parent_id,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<DocHubFolder {self.id} - {self.name}>'
 
 
 class KnowledgeBaseEntry(db.Model):

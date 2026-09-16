@@ -19,7 +19,8 @@ from flask_jwt_extended import get_jwt_identity
 from werkzeug.utils import secure_filename
 
 from app.middleware import token_required
-from app.models import DocHubAccess, DocHubDocument, User, db
+from app.models import DocHubAccess, DocHubDocument, DocHubFolder, User, db
+from app.docs import folder_service
 from common.error_responses import error_response, success_response
 from common.datetime_utils import utc_now_naive
 
@@ -236,6 +237,96 @@ def access_check():
 DOC_CATEGORIES = ['onboarding', 'contracts', 'policies', 'manuals', 'reports', 'Internal', 'API', 'Guide', 'Legal', 'Spec']
 
 
+@docs_bp.route('/folders', methods=['GET'])
+@token_required(locations=['headers'])
+def list_folders():
+    """Flat list of every DocHub folder. Frontend builds the tree/breadcrumbs and
+    rolls up per-folder document counts client-side from this + GET /api/docs."""
+    user = _get_current_user()
+    if not _has_dochub_access(user):
+        return error_response('DocHub access denied', status_code=403, error_code='ACCESS_DENIED')
+
+    folders = DocHubFolder.query.order_by(DocHubFolder.name.asc()).all()
+    return success_response({'folders': [f.to_dict() for f in folders]})
+
+
+@docs_bp.route('/folders', methods=['POST'])
+@token_required(locations=['headers'])
+def create_folder_route():
+    user = _get_current_user()
+    if not user or user.role != 'admin':
+        return error_response('Only administrators can create folders', status_code=403, error_code='ACCESS_DENIED')
+
+    data = request.get_json() or {}
+    name = (data.get('name') or '').strip()
+    parent_id = data.get('parent_id')
+    try:
+        parent_id = int(parent_id) if parent_id is not None else None
+    except (TypeError, ValueError):
+        return error_response('Invalid parent_id', status_code=400, error_code='VALIDATION_ERROR')
+
+    try:
+        folder = folder_service.create_folder(name, parent_id, user.id)
+    except ValueError as e:
+        return error_response(str(e), status_code=400, error_code='VALIDATION_ERROR')
+
+    return success_response({'folder': folder.to_dict()}, message='Folder created', status_code=201)
+
+
+@docs_bp.route('/folders/<int:folder_id>', methods=['PATCH'])
+@token_required(locations=['headers'])
+def rename_folder_route(folder_id):
+    user = _get_current_user()
+    if not user or user.role != 'admin':
+        return error_response('Only administrators can edit folders', status_code=403, error_code='ACCESS_DENIED')
+
+    data = request.get_json() or {}
+    name = data.get('name')
+    parent_id = data.get('parent_id') if 'parent_id' in data else None
+    try:
+        parent_id = int(parent_id) if parent_id is not None else None
+    except (TypeError, ValueError):
+        return error_response('Invalid parent_id', status_code=400, error_code='VALIDATION_ERROR')
+
+    try:
+        folder = folder_service.rename_folder(
+            folder_id,
+            name=name if name is not None else None,
+            parent_id=parent_id if 'parent_id' in data else None,
+        )
+    except ValueError as e:
+        return error_response(str(e), status_code=400, error_code='VALIDATION_ERROR')
+
+    return success_response({'folder': folder.to_dict()}, message='Folder updated')
+
+
+@docs_bp.route('/folders/<int:folder_id>', methods=['DELETE'])
+@token_required(locations=['headers'])
+def delete_folder_route(folder_id):
+    user = _get_current_user()
+    if not user or user.role != 'admin':
+        return error_response('Only administrators can delete folders', status_code=403, error_code='ACCESS_DENIED')
+
+    reassign = str(request.args.get('reassign', '')).lower() in ('1', 'true', 'yes') or bool(
+        (request.get_json(silent=True) or {}).get('reassign')
+    )
+
+    try:
+        result = folder_service.delete_folder(folder_id, reassign=reassign)
+    except ValueError as e:
+        return error_response(str(e), status_code=404, error_code='NOT_FOUND')
+
+    if result.get('needs_confirmation'):
+        return error_response(
+            f"Folder contains {result['doc_count']} document(s). Confirm to move them to the parent folder and delete.",
+            status_code=409,
+            error_code='FOLDER_NOT_EMPTY',
+            details={'doc_count': result['doc_count']},
+        )
+
+    return success_response(result, message='Folder deleted')
+
+
 @docs_bp.route('/inline-image', methods=['POST'])
 @token_required(locations=['headers'])
 def upload_inline_editor_image():
@@ -418,17 +509,24 @@ def list_documents():
 def create_document():
     """Create a new content-based document (editable in browser)."""
     user = _get_current_user()
-    if not _has_dochub_access(user):
-        return error_response('DocHub access denied', status_code=403, error_code='ACCESS_DENIED')
+    if not user or user.role != 'admin':
+        return error_response('Only administrators can create documents', status_code=403, error_code='ACCESS_DENIED')
 
     data = request.get_json() or {}
     title = (data.get('title') or data.get('name') or '').strip()
     if not title:
         return error_response('Document title is required', status_code=400, error_code='VALIDATION_ERROR')
 
-    category = (data.get('category') or data.get('tag') or 'Internal').strip()
-    if category not in DOC_CATEGORIES:
-        category = 'Internal'
+    folder_id = data.get('folder_id')
+    try:
+        folder_id = int(folder_id) if folder_id is not None else None
+    except (TypeError, ValueError):
+        return error_response('Invalid folder_id', status_code=400, error_code='VALIDATION_ERROR')
+    if folder_id is not None and not db.session.get(DocHubFolder, folder_id):
+        return error_response('Folder not found', status_code=400, error_code='VALIDATION_ERROR')
+    if folder_id is None:
+        folder_id = folder_service.get_or_create_default_folder('Internal').id
+
     content = data.get('content') or ''
     status = (data.get('status') or 'draft').strip().lower()
     if status not in ['draft', 'review', 'published', 'archived']:
@@ -441,11 +539,12 @@ def create_document():
         file_type='',
         doc_type='content',
         content=content,
-        category=category,
+        folder_id=folder_id,
         status=status,
         size_bytes=0,
         author_id=user.id if user else None
     )
+    folder_service.sync_category_from_folder(doc)
     db.session.add(doc)
     db.session.commit()
     return success_response({'document': doc.to_dict()}, message='Document created', status_code=201)
@@ -455,8 +554,8 @@ def create_document():
 @token_required(locations=['headers'])
 def upload_documents():
     user = _get_current_user()
-    if not _has_dochub_access(user):
-        return error_response('DocHub access denied', status_code=403, error_code='ACCESS_DENIED')
+    if not user or user.role != 'admin':
+        return error_response('Only administrators can upload documents', status_code=403, error_code='ACCESS_DENIED')
 
     incoming = []
     if 'files' in request.files:
@@ -468,7 +567,16 @@ def upload_documents():
     if not incoming:
         return error_response('No file selected', status_code=400, error_code='VALIDATION_ERROR')
 
-    category = (request.form.get('category') or 'Internal').strip()
+    folder_id_raw = request.form.get('folder_id')
+    try:
+        folder_id = int(folder_id_raw) if folder_id_raw not in (None, '') else None
+    except (TypeError, ValueError):
+        return error_response('Invalid folder_id', status_code=400, error_code='VALIDATION_ERROR')
+    if folder_id is not None and not db.session.get(DocHubFolder, folder_id):
+        return error_response('Folder not found', status_code=400, error_code='VALIDATION_ERROR')
+    if folder_id is None:
+        folder_id = folder_service.get_or_create_default_folder('Internal').id
+
     status = (request.form.get('status') or 'draft').strip().lower()
     if status not in ['draft', 'review', 'published', 'archived']:
         status = 'draft'
@@ -507,11 +615,12 @@ def upload_documents():
             stored_path=path,
             file_type=ext.upper(),
             doc_type='upload',
-            category=category,
+            folder_id=folder_id,
             status=status,
             size_bytes=size_bytes,
             author_id=user.id if user else None
         )
+        folder_service.sync_category_from_folder(doc)
         db.session.add(doc)
         created.append(doc)
 
@@ -644,6 +753,60 @@ def preview_upload_as_pdf(doc_id):
     )
 
 
+@docs_bp.route('/<int:doc_id>/move', methods=['POST'])
+@token_required(locations=['headers'])
+def move_document_route(doc_id):
+    user = _get_current_user()
+    if not user or user.role != 'admin':
+        return error_response('Only administrators can move documents', status_code=403, error_code='ACCESS_DENIED')
+
+    doc = DocHubDocument.query.get_or_404(doc_id)
+    data = request.get_json() or {}
+    folder_id = data.get('folder_id')
+    try:
+        folder_id = int(folder_id) if folder_id is not None else None
+    except (TypeError, ValueError):
+        return error_response('Invalid folder_id', status_code=400, error_code='VALIDATION_ERROR')
+
+    try:
+        folder_service.move_document(doc, folder_id)
+    except ValueError as e:
+        return error_response(str(e), status_code=400, error_code='VALIDATION_ERROR')
+
+    return success_response({'document': doc.to_dict()}, message='Document moved')
+
+
+@docs_bp.route('/<int:doc_id>/copy', methods=['POST'])
+@token_required(locations=['headers'])
+def copy_document_route(doc_id):
+    user = _get_current_user()
+    if not user or user.role != 'admin':
+        return error_response('Only administrators can copy documents', status_code=403, error_code='ACCESS_DENIED')
+
+    doc = DocHubDocument.query.get_or_404(doc_id)
+    data = request.get_json() or {}
+    folder_id = data.get('folder_id')
+    try:
+        folder_id = int(folder_id) if folder_id is not None else None
+    except (TypeError, ValueError):
+        return error_response('Invalid folder_id', status_code=400, error_code='VALIDATION_ERROR')
+
+    generated_root = current_app.config.get('GENERATED_DIR')
+    if not generated_root:
+        return error_response('Generated directory not configured', status_code=500, error_code='CONFIG_ERROR')
+
+    try:
+        new_doc = folder_service.copy_document(doc, folder_id, user, generated_root)
+    except ValueError as e:
+        return error_response(str(e), status_code=400, error_code='VALIDATION_ERROR')
+    except (FileNotFoundError, RuntimeError, OSError) as e:
+        db.session.rollback()
+        current_app.logger.exception('Could not copy DocHub document %s', doc_id)
+        return error_response('Could not copy document file', status_code=500, error_code='SERVER_ERROR')
+
+    return success_response({'document': new_doc.to_dict()}, message='Document copied', status_code=201)
+
+
 @docs_bp.route('/<int:doc_id>', methods=['PATCH'])
 @token_required(locations=['headers'])
 def update_document(doc_id):
@@ -653,6 +816,12 @@ def update_document(doc_id):
 
     doc = DocHubDocument.query.get_or_404(doc_id)
     data = request.get_json() or {}
+
+    # Starring is a personal bookmark any viewer can toggle; every other field is an
+    # actual edit, restricted to admins (viewers may only browse/open documents).
+    edit_fields = {'name', 'status', 'tag', 'content', 'reference_attachments'}
+    if edit_fields.intersection(data.keys()) and (not user or user.role != 'admin'):
+        return error_response('Only administrators can edit documents', status_code=403, error_code='ACCESS_DENIED')
 
     if 'name' in data:
         new_name = (data.get('name') or '').strip()
@@ -686,13 +855,10 @@ def update_document(doc_id):
 @token_required(locations=['headers'])
 def delete_document(doc_id):
     user = _get_current_user()
-    if not _has_dochub_access(user):
-        return error_response('DocHub access denied', status_code=403, error_code='ACCESS_DENIED')
+    if not user or user.role != 'admin':
+        return error_response('Only administrators can delete documents', status_code=403, error_code='ACCESS_DENIED')
 
     doc = DocHubDocument.query.get_or_404(doc_id)
-    # Owner or admin can delete
-    if user.role != 'admin' and (doc.author_id != user.id):
-        return error_response('Only owner/admin can delete this document', status_code=403, error_code='ACCESS_DENIED')
 
     path = doc.stored_path
     shared_inline = bool(getattr(doc, 'inline_asset', False))

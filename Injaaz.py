@@ -676,6 +676,8 @@ def create_app():
                         missing_columns.append(('inline_asset', 'BOOLEAN DEFAULT FALSE'))
                     if 'reference_attachments' not in columns:
                         missing_columns.append(('reference_attachments', 'TEXT'))
+                    if 'folder_id' not in columns:
+                        missing_columns.append(('folder_id', 'INTEGER'))
                     if missing_columns:
                         logger.info(f"Adding DocHub columns: {[c[0] for c in missing_columns]}")
                         for col_name, col_def in missing_columns:
@@ -689,6 +691,48 @@ def create_app():
                                     logger.info(f"Column {col_name} already exists")
                                 else:
                                     logger.warning(f"Could not add {col_name}: {col_error}")
+
+                # Step 3b: One-time backfill — turn each existing flat `category` string into a
+                # real DocHubFolder row and point every document at it. Runs once (guarded on
+                # DocHubFolder being empty) since dochub_folders itself is created fresh by
+                # db.create_all() above, so an empty table means this backfill hasn't run yet.
+                try:
+                    from app.models import DocHubDocument, DocHubFolder
+                    if DocHubFolder.query.count() == 0 and DocHubDocument.query.filter(
+                        DocHubDocument.folder_id.is_(None)
+                    ).count() > 0:
+                        distinct_cats = [
+                            row[0] for row in db.session.query(DocHubDocument.category).distinct().all()
+                            if row[0] and row[0].strip()
+                        ]
+                        category_display_names = {
+                            'onboarding': 'Onboarding', 'contracts': 'Contracts',
+                            'policies': 'Policies', 'manuals': 'Manuals', 'reports': 'Reports',
+                        }
+                        folder_by_cat = {}
+                        for cat in distinct_cats:
+                            display_name = category_display_names.get(cat.lower(), cat)
+                            folder = DocHubFolder(name=display_name)
+                            db.session.add(folder)
+                            db.session.flush()
+                            folder_by_cat[cat] = folder.id
+                        uncategorized = DocHubFolder(name='Uncategorized')
+                        db.session.add(uncategorized)
+                        db.session.flush()
+                        for cat, fid in folder_by_cat.items():
+                            DocHubDocument.query.filter(
+                                DocHubDocument.folder_id.is_(None), DocHubDocument.category == cat
+                            ).update({'folder_id': fid}, synchronize_session=False)
+                        DocHubDocument.query.filter(
+                            DocHubDocument.folder_id.is_(None)
+                        ).update({'folder_id': uncategorized.id}, synchronize_session=False)
+                        db.session.commit()
+                        logger.info(
+                            f"✅ Backfilled DocHub folders: {len(folder_by_cat)} category folder(s) + Uncategorized"
+                        )
+                except Exception as backfill_err:
+                    db.session.rollback()
+                    logger.warning(f"Could not backfill DocHub folders (non-critical): {backfill_err}")
 
                 if 'hiring_documents' in inspector.get_table_names():
                     hd_cols = [col['name'] for col in inspector.get_columns('hiring_documents')]
@@ -835,10 +879,23 @@ def create_app():
 
                 # Step 4: Seed sample DocHub documents if empty
                 try:
-                    from app.models import DocHubDocument, User
+                    from app.models import DocHubDocument, DocHubFolder, User
                     if DocHubDocument.query.count() == 0:
                         admin_user = User.query.filter_by(role='admin').first()
                         author_id = admin_user.id if admin_user else None
+                        folder_by_cat = {}
+                        category_display_names = {
+                            'onboarding': 'Onboarding', 'contracts': 'Contracts',
+                            'policies': 'Policies', 'manuals': 'Manuals', 'reports': 'Reports',
+                        }
+                        for cat_name in ('onboarding', 'contracts', 'policies', 'manuals', 'reports'):
+                            display_name = category_display_names[cat_name]
+                            folder = DocHubFolder.query.filter_by(name=display_name).first()
+                            if not folder:
+                                folder = DocHubFolder(name=display_name)
+                                db.session.add(folder)
+                                db.session.flush()
+                            folder_by_cat[cat_name] = folder.id
                         samples = [
                             ('Employee Onboarding Guide', 'onboarding', 'published',
                              '<h1>Employee Onboarding Guide</h1>'
@@ -878,6 +935,7 @@ def create_app():
                                 doc_type='content',
                                 content=content,
                                 category=cat,
+                                folder_id=folder_by_cat.get(cat),
                                 status=status,
                                 author_id=author_id
                             )

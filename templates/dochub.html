@@ -4,7 +4,7 @@
   {% include 'partials/base_head.html' %}
   <title>DocHub — Document Management | Kynvera</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=23">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=28">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=34">
 </head>
 <body class="has-main-nav dochub-page-v2">
   {% set active_page = 'dochub' %}
@@ -35,8 +35,8 @@
 
       <nav class="sb-nav">
         <div class="dh-sb-section">
-          <div class="sb-section-label">Overview</div>
-          <div class="dh-sb-bucket dh-sb-bucket--open" data-bucket="all" id="dhSbBucketAll">
+          <div class="sb-section-label">Library</div>
+          <div class="dh-sb-bucket" data-bucket="all" id="dhSbBucketAll">
             <button type="button" class="dh-sb-bucket-head" id="dhSbHeadAll" data-filter="all" onclick="dhSelectSbBucket('all',this)">
               <span class="dh-sb-bucket-label">All documents</span>
               <span class="sb-badge" id="dhSbCountAll">0</span>
@@ -70,10 +70,6 @@
             </button>
             <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsReview"></div></div>
           </div>
-        </div>
-
-        <div class="dh-sb-section">
-          <div class="sb-section-label">Workspace</div>
           <div class="dh-sb-bucket" data-bucket="starred" id="dhSbBucketStarred">
             <button type="button" class="dh-sb-bucket-head" data-filter="starred" onclick="dhSelectSbBucket('starred',this)">
               <span class="dh-sb-bucket-label">Starred</span>
@@ -82,60 +78,6 @@
             </button>
             <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsStarred"></div></div>
           </div>
-
-          <div class="sb-group-toggle" id="dhCategoriesToggle" onclick="toggleGroup('categories',this)">
-            <span>Categories</span>
-            <span class="sb-chevron open">▾</span>
-          </div>
-          <div class="sb-collapse" id="group-categories">
-            <div class="dh-sb-bucket dh-sb-bucket--nested" data-bucket="onboarding" id="dhSbBucketOnboarding">
-              <button type="button" class="dh-sb-bucket-head" data-filter="onboarding" onclick="dhSelectSbBucket('onboarding',this)">
-                <span class="dh-sb-bucket-label">Onboarding</span>
-                <span class="sb-badge" id="dhSbCountOnboarding">0</span>
-                <span class="sb-chevron">▾</span>
-              </button>
-              <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsOnboarding"></div></div>
-            </div>
-            <div class="dh-sb-bucket dh-sb-bucket--nested" data-bucket="contracts" id="dhSbBucketContracts">
-              <button type="button" class="dh-sb-bucket-head" data-filter="contracts" onclick="dhSelectSbBucket('contracts',this)">
-                <span class="dh-sb-bucket-label">Contracts</span>
-                <span class="sb-badge" id="dhSbCountContracts">0</span>
-                <span class="sb-chevron">▾</span>
-              </button>
-              <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsContracts"></div></div>
-            </div>
-            <div class="dh-sb-bucket dh-sb-bucket--nested" data-bucket="policies" id="dhSbBucketPolicies">
-              <button type="button" class="dh-sb-bucket-head" data-filter="policies" onclick="dhSelectSbBucket('policies',this)">
-                <span class="dh-sb-bucket-label">Policies</span>
-                <span class="sb-badge" id="dhSbCountPolicies">0</span>
-                <span class="sb-chevron">▾</span>
-              </button>
-              <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsPolicies"></div></div>
-            </div>
-            <div class="dh-sb-bucket dh-sb-bucket--nested" data-bucket="manuals" id="dhSbBucketManuals">
-              <button type="button" class="dh-sb-bucket-head" data-filter="manuals" onclick="dhSelectSbBucket('manuals',this)">
-                <span class="dh-sb-bucket-label">Manuals</span>
-                <span class="sb-badge" id="dhSbCountManuals">0</span>
-                <span class="sb-chevron">▾</span>
-              </button>
-              <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsManuals"></div></div>
-            </div>
-            <div class="dh-sb-bucket dh-sb-bucket--nested" data-bucket="reports" id="dhSbBucketReports">
-              <button type="button" class="dh-sb-bucket-head" data-filter="reports" onclick="dhSelectSbBucket('reports',this)">
-                <span class="dh-sb-bucket-label">Reports</span>
-                <span class="sb-badge" id="dhSbCountReports">0</span>
-                <span class="sb-chevron">▾</span>
-              </button>
-              <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsReports"></div></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="dh-sb-section">
-          <div class="sb-section-label">Reports</div>
-          <a href="#" class="sb-nav-item" data-filter="analytics" id="dhNavAnalytics" onclick="filterDocs('analytics',this);return false">
-            Analytics
-          </a>
           <div class="dh-sb-bucket" data-bucket="recent" id="dhSbBucketRecent">
             <button type="button" class="dh-sb-bucket-head" data-filter="recent" onclick="dhSelectSbBucket('recent',this)">
               <span class="dh-sb-bucket-label">Recent</span>
@@ -147,12 +89,12 @@
           <a href="#" class="sb-nav-item" data-filter="archived" onclick="filterDocs('archived',this);return false">
             Archived
           </a>
-          <a href="#" class="sb-nav-item" data-filter="internal" onclick="filterDocs('internal',this);return false">
-            Internal
-          </a>
-          <button type="button" class="sb-nav-item" onclick="openNewModal()">
-            New from template
-          </button>
+        </div>
+
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Folders</div>
+          <button type="button" class="dh-sb-new-folder" id="dhSbNewFolderBtn" style="display:none" onclick="dhOpenFolderModal(null,null)">+ New folder</button>
+          <div class="dh-folder-tree" id="dhFolderTree" role="tree"></div>
         </div>
 
         <div class="dh-sb-section dh-sb-section--other" id="dhSbOtherSection" hidden>
@@ -165,6 +107,12 @@
 
         <div class="dh-sb-section">
           <div class="sb-section-label">System</div>
+          <a href="{{ url_for('dashboard') }}" class="sb-nav-item">
+            <span class="sb-nav-icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>
+            </span>
+            App Home
+          </a>
           <a href="/admin/dashboard" class="sb-nav-item">
             Settings
           </a>
@@ -216,111 +164,8 @@
                     <h2 class="dh-home-title">Browse your collections</h2>
                     <p class="dh-home-sub">Pick a collection to view its documents, or use search above to find anything fast.</p>
                   </div>
-                  <div class="dh-folder-grid">
-
-                    <button type="button" class="dh-folder-card" onclick="dhGoToFolder('onboarding')">
-                      <div class="dh-folder-top">
-                        <span class="dh-folder-icon-wrap dh-folder-icon--onboarding">
-                          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
-                        </span>
-                        <span class="dh-folder-count" id="dhFolderCount-onboarding">—</span>
-                      </div>
-                      <div class="dh-folder-bottom">
-                        <div class="dh-folder-name">Onboarding</div>
-                        <div class="dh-folder-desc">Employee onboarding packets and orientation guides</div>
-                        <div class="dh-folder-foot">
-                          <span>View collection</span>
-                          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
-                        </div>
-                      </div>
-                    </button>
-
-                    <button type="button" class="dh-folder-card" onclick="dhGoToFolder('contracts')">
-                      <div class="dh-folder-top">
-                        <span class="dh-folder-icon-wrap dh-folder-icon--contracts">
-                          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
-                        </span>
-                        <span class="dh-folder-count" id="dhFolderCount-contracts">—</span>
-                      </div>
-                      <div class="dh-folder-bottom">
-                        <div class="dh-folder-name">Contracts</div>
-                        <div class="dh-folder-desc">Service agreements, vendor contracts, and legal documents</div>
-                        <div class="dh-folder-foot">
-                          <span>View collection</span>
-                          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
-                        </div>
-                      </div>
-                    </button>
-
-                    <button type="button" class="dh-folder-card" onclick="dhGoToFolder('policies')">
-                      <div class="dh-folder-top">
-                        <span class="dh-folder-icon-wrap dh-folder-icon--policies">
-                          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
-                        </span>
-                        <span class="dh-folder-count" id="dhFolderCount-policies">—</span>
-                      </div>
-                      <div class="dh-folder-bottom">
-                        <div class="dh-folder-name">Policies</div>
-                        <div class="dh-folder-desc">Company policies, compliance documents, and procedures</div>
-                        <div class="dh-folder-foot">
-                          <span>View collection</span>
-                          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
-                        </div>
-                      </div>
-                    </button>
-
-                    <button type="button" class="dh-folder-card" onclick="dhGoToFolder('manuals')">
-                      <div class="dh-folder-top">
-                        <span class="dh-folder-icon-wrap dh-folder-icon--manuals">
-                          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"/></svg>
-                        </span>
-                        <span class="dh-folder-count" id="dhFolderCount-manuals">—</span>
-                      </div>
-                      <div class="dh-folder-bottom">
-                        <div class="dh-folder-name">Manuals</div>
-                        <div class="dh-folder-desc">Technical manuals, user guides, and operating procedures</div>
-                        <div class="dh-folder-foot">
-                          <span>View collection</span>
-                          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
-                        </div>
-                      </div>
-                    </button>
-
-                    <button type="button" class="dh-folder-card" onclick="dhGoToFolder('reports')">
-                      <div class="dh-folder-top">
-                        <span class="dh-folder-icon-wrap dh-folder-icon--reports">
-                          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
-                        </span>
-                        <span class="dh-folder-count" id="dhFolderCount-reports">—</span>
-                      </div>
-                      <div class="dh-folder-bottom">
-                        <div class="dh-folder-name">Reports</div>
-                        <div class="dh-folder-desc">Analysis reports, performance reviews, and summaries</div>
-                        <div class="dh-folder-foot">
-                          <span>View collection</span>
-                          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
-                        </div>
-                      </div>
-                    </button>
-
-                    <button type="button" class="dh-folder-card" onclick="dhGoToFolder('internal')">
-                      <div class="dh-folder-top">
-                        <span class="dh-folder-icon-wrap dh-folder-icon--internal">
-                          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
-                        </span>
-                        <span class="dh-folder-count" id="dhFolderCount-internal">—</span>
-                      </div>
-                      <div class="dh-folder-bottom">
-                        <div class="dh-folder-name">Internal</div>
-                        <div class="dh-folder-desc">Internal communications, memos, and working documents</div>
-                        <div class="dh-folder-foot">
-                          <span>View collection</span>
-                          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
-                        </div>
-                      </div>
-                    </button>
-
-                  </div>
+                  <div class="dh-folder-grid" id="dhFolderGrid"></div>
+                  <button type="button" class="btn btn-ghost dh-home-new-folder" id="dhHomeNewFolderBtn" style="display:none" onclick="dhOpenFolderModal(null,null)">+ New folder</button>
                 </div>
               </div>
 
@@ -345,6 +190,8 @@
                       </div>
                     </div>
                     <button type="button" class="btn btn-ghost" id="dhViewerStar" onclick="toggleStar()">☆ Star</button>
+                    <button type="button" class="btn btn-ghost" id="dhViewerMove" onclick="dhOpenMoveModal(currentDocIdForViewer(),'move')">⇄ Move</button>
+                    <button type="button" class="btn btn-ghost" id="dhViewerCopy" onclick="dhOpenMoveModal(currentDocIdForViewer(),'copy')">⧉ Copy</button>
                     <button type="button" class="btn btn-ghost" id="dhViewerDownload">⬇ Export</button>
                     <button type="button" class="btn btn-ghost" id="dhViewerDelete" style="color:var(--red)" onclick="deleteDoc()">🗑 Delete</button>
                   </div>
@@ -519,6 +366,10 @@
           <label for="dhNewTitle">Document title</label>
           <input type="text" id="dhNewTitle" placeholder="Enter document title…" autocomplete="off"/>
         </div>
+        <div class="dh-modal-field">
+          <label for="dhNewFolder">Folder</label>
+          <select id="dhNewFolder"></select>
+        </div>
         <div class="dh-modal-field dh-modal-field--last">
           <label for="dhNewDesc">Description <span class="dh-field-optional">(optional)</span></label>
           <textarea id="dhNewDesc" placeholder="Brief description…" rows="2"></textarea>
@@ -553,15 +404,8 @@
       </div>
       <div class="dh-modal-row">
         <div class="dh-modal-field">
-          <label for="dhUCategory">Category</label>
-          <select id="dhUCategory">
-            <option value="onboarding">Onboarding</option>
-            <option value="contracts">Project Contracts</option>
-            <option value="policies">Policies</option>
-            <option value="manuals">User Manuals</option>
-            <option value="reports">Reports</option>
-            <option value="Internal">Internal</option>
-          </select>
+          <label for="dhUFolder">Folder</label>
+          <select id="dhUFolder"></select>
         </div>
         <div class="dh-modal-field">
           <label for="dhUStatus">Status</label>
@@ -611,24 +455,81 @@
   </div>
 
   <div class="modal-overlay" id="dhAccessModal" onclick="if(event.target===this)dhCloseAccessModal()">
-    <div class="modal dh-access-modal" style="max-width:720px;width:96vw">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px">
-        <h2 style="margin:0">DocHub Access Control</h2>
-        <button type="button" class="btn btn-ghost" onclick="dhCloseAccessModal()">✕ Close</button>
+    <div class="modal dh-modal-folder dh-access-modal">
+      <div class="dh-create-shell">
+        <header class="dh-create-header">
+          <div class="dh-create-header-text">
+            <h2>DocHub Access Control</h2>
+            <p class="dh-create-lead">Admins can grant or revoke DocHub access per user.</p>
+          </div>
+          <button type="button" class="dh-create-close" onclick="dhCloseAccessModal()" aria-label="Close">✕</button>
+        </header>
+        <div class="dh-create-body">
+          <div class="dh-access-table-wrap">
+            <table class="dh-access-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Role</th>
+                  <th>Access</th>
+                </tr>
+              </thead>
+              <tbody id="dhAccessBody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
-      <p style="font-size:14px;color:var(--ink-3);margin-bottom:12px">Admins can grant or revoke DocHub access per user.</p>
-      <div class="dh-access-table-wrap">
-        <table style="width:100%;border-collapse:collapse;font-size:14px">
-          <thead>
-            <tr style="background:var(--surface-2);font-size:11.5px;text-transform:uppercase;color:var(--ink-3);font-weight:700">
-              <th style="padding:10px 12px;text-align:left">User</th>
-              <th style="padding:10px 12px;text-align:left">Email</th>
-              <th style="padding:10px 12px;text-align:left">Role</th>
-              <th style="padding:10px 12px;text-align:left">Access</th>
-            </tr>
-          </thead>
-          <tbody id="dhAccessBody"></tbody>
-        </table>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="dhFolderModal" onclick="if(event.target===this)dhCloseFolderModal()">
+    <div class="modal dh-modal-folder">
+      <div class="dh-create-shell">
+        <header class="dh-create-header">
+          <div class="dh-create-header-text">
+            <h2 id="dhFolderModalTitle">New folder</h2>
+            <p class="dh-create-lead">Organize your documents into folders and subfolders.</p>
+          </div>
+          <button type="button" class="dh-create-close" onclick="dhCloseFolderModal()" aria-label="Close">✕</button>
+        </header>
+        <div class="dh-create-body">
+          <div class="dh-modal-field">
+            <label class="dh-create-label" for="dhFolderModalInput">Folder name</label>
+            <input type="text" id="dhFolderModalInput" placeholder="e.g. Vendor Contracts" autocomplete="off"/>
+          </div>
+          <div class="dh-modal-field dh-modal-field--last">
+            <label class="dh-create-label" for="dhFolderModalParent">Parent folder</label>
+            <select id="dhFolderModalParent"></select>
+          </div>
+        </div>
+        <footer class="dh-create-footer">
+          <button type="button" class="btn btn-ghost" onclick="dhCloseFolderModal()">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="dhSubmitFolderModal()">Save</button>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="dhMoveModal" onclick="if(event.target===this)dhCloseMoveModal()">
+    <div class="modal dh-modal-folder dh-modal-move">
+      <div class="dh-create-shell">
+        <header class="dh-create-header">
+          <div class="dh-create-header-text">
+            <h2 id="dhMoveModalTitle">Move document</h2>
+            <p class="dh-create-lead">Choose where this document should live.</p>
+          </div>
+          <button type="button" class="dh-create-close" onclick="dhCloseMoveModal()" aria-label="Close">✕</button>
+        </header>
+        <div class="dh-create-body">
+          <div class="dh-modal-field dh-modal-field--last">
+            <label class="dh-create-label" for="dhMoveModalSelect">Destination folder</label>
+            <select id="dhMoveModalSelect"></select>
+          </div>
+        </div>
+        <footer class="dh-create-footer">
+          <button type="button" class="btn btn-ghost" onclick="dhCloseMoveModal()">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="dhSubmitMoveModal()">Confirm</button>
+        </footer>
       </div>
     </div>
   </div>
@@ -643,7 +544,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js" crossorigin="anonymous"></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/dochub.js') }}?v=3"></script>
+  <script src="{{ url_for('static', filename='js/dochub.js') }}?v=8"></script>
   <script>window.FILES_SAVE_MODULE = 'dochub'; window.FILES_SAVE_MODULE_LABEL = 'DocHub';</script>
   <script src="{{ url_for('static', filename='js/files-save.js') }}?v=17"></script>
 </body>
