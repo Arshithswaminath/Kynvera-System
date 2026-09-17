@@ -10,7 +10,7 @@ from flask_jwt_extended import jwt_required
 from sqlalchemy import inspect, or_, text
 from sqlalchemy.orm import joinedload
 
-from app.models import HIRING_PIPELINE_STEPS, HiringCandidate, LeaveEmployee, db
+from app.models import HiringCandidate, LeaveEmployee, db
 from common.datetime_utils import naive_utc_isoformat_z, utc_now_naive
 from common.error_responses import error_response, success_response
 
@@ -233,23 +233,58 @@ def hiring_linked_employee_ids(emp_ids) -> set[int]:
     return {row[0] for row in rows if row[0]}
 
 
+def employee_has_prior_staff_record(emp: LeaveEmployee, candidate: HiringCandidate | None) -> bool:
+    """True when this staff row existed before the current hiring conversion."""
+    if not emp or not candidate:
+        return False
+    if candidate.employee_list_dismissed_at:
+        return True
+    if emp.created_at and candidate.created_at and emp.created_at < candidate.created_at:
+        return True
+    return False
+
+
+def hiring_conversion_meta(employees) -> dict[int, dict]:
+    """Flags for Employee List: linked from hiring, and whether a prior staff row exists."""
+    ids = [int(emp.id) for emp in (employees or []) if getattr(emp, 'id', None)]
+    out = {
+        emp_id: {'from_hiring': False, 'has_prior_record': False}
+        for emp_id in ids
+    }
+    if not ids:
+        return out
+    by_id = {int(emp.id): emp for emp in employees if getattr(emp, 'id', None)}
+    rows = (
+        HiringCandidate.query
+        .filter(HiringCandidate.leave_employee_id.in_(ids))
+        .all()
+    )
+    for candidate in rows:
+        emp_id = candidate.leave_employee_id
+        emp = by_id.get(emp_id)
+        out[emp_id] = {
+            'from_hiring': True,
+            'has_prior_record': employee_has_prior_staff_record(emp, candidate),
+        }
+    return out
+
+
 def _linked_employee_active(candidate: HiringCandidate) -> bool:
     emp = getattr(candidate, 'leave_employee', None)
     return bool(candidate.leave_employee_id and emp and emp.active)
 
 
 def revoke_employee_conversion(candidate: HiringCandidate) -> None:
-    """Undo a hiring→employee conversion (e.g. a mistaken duplicate add).
+    """Undo a hiring→employee conversion without deleting the hiring file.
 
-    Unlinks the Employee List row and reopens the candidate's hiring file at
-    the stage just before "Candidate employed", so a corrected Emp ID can be
-    issued later without losing the document progress already recorded.
+    Unlinks the Employee List row and puts the candidate back in the
+    Employee from hiring queue at Candidate employed, so they can be added
+    again. Document progress already recorded is kept.
     """
     candidate.leave_employee_id = None
     candidate.employee_list_dismissed_at = None
-    if candidate.normalized_pipeline_status() == 'candidate_employee':
-        idx = HIRING_PIPELINE_STEPS.index('candidate_employee')
-        candidate.pipeline_status = HIRING_PIPELINE_STEPS[idx - 1]
+    if candidate.normalized_pipeline_status() != 'candidate_employee':
+        candidate.pipeline_status = 'candidate_employee'
     candidate.updated_at = utc_now_naive()
     try:
         from module_hr.staffing_link import sync_vacancy_from_candidate

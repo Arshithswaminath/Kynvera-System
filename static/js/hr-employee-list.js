@@ -350,19 +350,47 @@
     }
     $('elModalDesig').textContent = emp.designation || '—';
     $('elModalCompany').textContent = emp.company || '—';
+    var who = (emp.full_name || 'This person') + (emp.emp_id ? ' (' + emp.emp_id + ')' : '');
+    var fromHiring = !!emp.from_hiring;
+    var hasPrior = !!emp.has_prior_record;
+    var hasLeave = !!emp.has_leave_records;
     if ($('elDeleteBtn')) {
-      $('elDeleteBtn').textContent = emp.from_hiring ? 'Revoke — remove & reopen hiring file' : 'Remove from list';
+      $('elDeleteBtn').textContent = fromHiring ? 'Revoke conversion' : 'Remove from list';
     }
     if ($('elDeleteAvatar')) $('elDeleteAvatar').textContent = initials(emp.full_name);
     if ($('elDeleteTitle')) {
-      $('elDeleteTitle').textContent = emp.from_hiring ? 'Revoke this hiring conversion?' : 'Remove this person?';
+      $('elDeleteTitle').textContent = fromHiring ? 'Revoke this hiring conversion?' : 'Remove this person?';
+    }
+    if ($('elDeleteHint')) {
+      if (fromHiring && hasPrior) {
+        $('elDeleteHint').textContent = 'This person already has an Employee List record. That record will be kept.';
+      } else if (fromHiring) {
+        $('elDeleteHint').textContent = 'There is no previous Employee List record for this person.';
+      } else if (hasLeave) {
+        $('elDeleteHint').textContent = 'This person has leave records. Those records will be kept in Leave Tracker.';
+      } else {
+        $('elDeleteHint').textContent = 'There is no hiring file or leave history for this person.';
+      }
+      $('elDeleteHint').hidden = false;
     }
     if ($('elDeleteCopy')) {
-      var who = (emp.full_name || 'This person') + (emp.emp_id ? ' (' + emp.emp_id + ')' : '');
-      $('elDeleteCopy').textContent = emp.from_hiring
-        ? who + ' will leave Employee List and their Hiring Documents file will reopen at ' +
-          '"Visa process started" so a corrected Emp ID can be issued.'
-        : who + ' will leave Employee List. Leave records stay in Leave Tracker.';
+      if (fromHiring && hasPrior) {
+        $('elDeleteCopy').textContent = 'Only the hiring conversion is undone. The hiring file and documents stay, and ' +
+          who + ' returns to Employee from hiring.';
+      } else if (fromHiring) {
+        $('elDeleteCopy').textContent = who +
+          ' will leave Employee List and return to Employee from hiring. The hiring file and documents are kept.';
+      } else if (hasLeave) {
+        $('elDeleteCopy').textContent = who + ' will leave Employee List.';
+      } else {
+        $('elDeleteCopy').textContent = who + ' will be removed from Employee List.';
+      }
+    }
+    var confirmBtn = $('elDeleteConfirm');
+    if (confirmBtn) {
+      confirmBtn.textContent = fromHiring ? 'Revoke' : 'Delete';
+      confirmBtn.classList.toggle('hh-btn-danger', !fromHiring);
+      confirmBtn.classList.toggle('hh-btn-primary', !!fromHiring);
     }
     var leave = $('elModalLeaveLink');
     if (leave) leave.href = '/hr/leave-tracker';
@@ -430,9 +458,12 @@
     var name = currentEmp.full_name || 'Employee';
     var fromHiring = !!currentEmp.from_hiring;
     modalBusy = true;
-    return apiJson('/hr/api/leave-tracker/employees/' + currentEmp.id, 'DELETE').then(function () {
+    return apiJson('/hr/api/leave-tracker/employees/' + currentEmp.id, 'DELETE').then(function (body) {
+      var kept = !!(body && body.kept_employee_record);
       showImportResult(fromHiring
-        ? name + ' removed from the list — their hiring file was reopened'
+        ? (kept
+          ? name + ' conversion revoked — Employee List record kept, they are back in Employee from hiring'
+          : name + ' was revoked — they are back in Employee from hiring')
         : name + ' removed from the list');
       closeModal();
       selectedId = null;

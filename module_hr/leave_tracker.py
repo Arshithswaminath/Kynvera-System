@@ -476,6 +476,18 @@ def _fetch_tracker_logs(employee_ids: list[int]) -> list[LeaveLog]:
     )
 
 
+def _employee_ids_with_leave(employee_ids: list[int]) -> set[int]:
+    if not employee_ids:
+        return set()
+    rows = (
+        db.session.query(LeaveLog.employee_id)
+        .filter(LeaveLog.employee_id.in_(employee_ids))
+        .distinct()
+        .all()
+    )
+    return {row[0] for row in rows if row[0]}
+
+
 def _logs_by_employee(logs: list[LeaveLog]) -> dict[int, list[LeaveLog]]:
     out: dict[int, list[LeaveLog]] = {}
     for lg in logs:
@@ -1020,12 +1032,16 @@ def register_leave_tracker_routes(hr_bp):
                 if leave_sick_alert_level(e.used_total('sick'))
             ]
 
-        from module_hr.employee_from_hiring import hiring_linked_employee_ids
-        from_hiring_ids = hiring_linked_employee_ids([e.id for e in employees])
+        from module_hr.employee_from_hiring import hiring_conversion_meta
+        conversion = hiring_conversion_meta(employees)
+        leave_ids = _employee_ids_with_leave([e.id for e in employees])
         payloads = []
         for emp in employees:
             row = emp.to_dict(year=year)
-            row['from_hiring'] = emp.id in from_hiring_ids
+            flags = conversion.get(emp.id) or {}
+            row['from_hiring'] = bool(flags.get('from_hiring'))
+            row['has_prior_record'] = bool(flags.get('has_prior_record'))
+            row['has_leave_records'] = emp.id in leave_ids
             payloads.append(row)
         return success_response({
             'employees': payloads,
@@ -1089,17 +1105,24 @@ def register_leave_tracker_routes(hr_bp):
             return error_response('Employee not found', status_code=404, error_code='NOT_FOUND')
 
         if request.method == 'DELETE':
-            from module_hr.employee_from_hiring import revoke_employee_conversion
+            from module_hr.employee_from_hiring import (
+                employee_has_prior_staff_record,
+                revoke_employee_conversion,
+            )
             from app.models import HiringCandidate
 
             linked_candidate = HiringCandidate.query.filter_by(leave_employee_id=emp.id).first()
+            keep_staff = False
             if linked_candidate:
+                keep_staff = employee_has_prior_staff_record(emp, linked_candidate)
                 revoke_employee_conversion(linked_candidate)
-            emp.active = False
+            if not keep_staff:
+                emp.active = False
             emp.updated_at = utc_now_naive()
             db.session.commit()
             return success_response({
-                'deleted': True,
+                'deleted': not keep_staff,
+                'kept_employee_record': keep_staff,
                 'employee': emp.to_dict(),
                 'reverted_hiring_candidate_id': linked_candidate.id if linked_candidate else None,
             })

@@ -117,7 +117,7 @@ def test_promote_creates_employee_and_leaves_queue(client, admin_auth_headers):
     assert again.status_code == 409, again.get_json()
 
 
-def test_delete_employee_reverts_hiring_candidate(client, admin_auth_headers):
+def test_revoke_employee_returns_to_hiring_queue(client, admin_auth_headers):
     created = _create_candidate(client, admin_auth_headers, name='Duplicate Add', role='Cleaner')
     cid = created['id']
     _mark_employed(client, admin_auth_headers, cid)
@@ -131,24 +131,105 @@ def test_delete_employee_reverts_hiring_candidate(client, admin_auth_headers):
     emp_id = ((promoted.get_json() or {}).get('employee') or {}).get('id')
     assert emp_id
 
-    deleted = client.delete(
+    after_promote = client.get('/hr/api/employee-from-hiring', headers=admin_auth_headers)
+    assert cid not in [
+        row.get('hiring_candidate_id')
+        for row in ((after_promote.get_json() or {}).get('pending') or [])
+    ]
+    promoted_roster = client.get('/hr/api/leave-tracker/employees', headers=admin_auth_headers)
+    promoted_row = next(
+        row for row in ((promoted_roster.get_json() or {}).get('employees') or [])
+        if row.get('emp_id') == 'EFH-DUP-ADD'
+    )
+    assert promoted_row.get('from_hiring') is True
+    assert promoted_row.get('has_prior_record') is False
+
+    revoked = client.delete(
         f'/hr/api/leave-tracker/employees/{emp_id}',
         headers=admin_auth_headers,
     )
-    assert deleted.status_code == 200, deleted.get_json()
-    body = deleted.get_json() or {}
+    assert revoked.status_code == 200, revoked.get_json()
+    body = revoked.get_json() or {}
     assert body.get('reverted_hiring_candidate_id') == cid
+    assert body.get('kept_employee_record') is False
 
     candidate = client.get(f'/hr/api/hiring/candidates/{cid}', headers=admin_auth_headers)
     assert candidate.status_code == 200, candidate.get_json()
     cand_data = (candidate.get_json() or {}).get('candidate') or {}
-    assert cand_data.get('pipeline_status') == 'visa_process_started'
+    assert cand_data.get('pipeline_status') == 'candidate_employee'
     assert cand_data.get('leave_employee_id') in (None, '')
     assert cand_data.get('on_employee_list') is False
+
+    pending = client.get('/hr/api/employee-from-hiring', headers=admin_auth_headers)
+    assert pending.status_code == 200, pending.get_json()
+    ids = [row.get('hiring_candidate_id') for row in ((pending.get_json() or {}).get('pending') or [])]
+    assert cid in ids
 
     roster = client.get('/hr/api/leave-tracker/employees', headers=admin_auth_headers)
     emp_ids = {row.get('emp_id') for row in ((roster.get_json() or {}).get('employees') or [])}
     assert 'EFH-DUP-ADD' not in emp_ids
+
+    again = client.post(
+        f'/hr/api/employee-from-hiring/{cid}/promote',
+        headers=admin_auth_headers,
+        json={'emp_id': 'EFH-DUP-ADD', 'full_name': 'Duplicate Add', 'designation': 'Cleaner'},
+    )
+    assert again.status_code == 200, again.get_json()
+    assert ((again.get_json() or {}).get('employee') or {}).get('emp_id') == 'EFH-DUP-ADD'
+
+
+def test_revoke_keeps_existing_employee_list_record(client, admin_auth_headers):
+    existing = client.post(
+        '/hr/api/leave-tracker/employees',
+        headers=admin_auth_headers,
+        json={'emp_id': 'EFH-KEEP', 'full_name': 'Already On List', 'company': 'Kynvera'},
+    )
+    assert existing.status_code == 201, existing.get_json()
+    emp_pk = ((existing.get_json() or {}).get('employee') or {}).get('id')
+    assert emp_pk
+
+    created = _create_candidate(client, admin_auth_headers, name='Already On List')
+    cid = created['id']
+    _mark_employed(client, admin_auth_headers, cid)
+
+    merged = client.post(
+        f'/hr/api/employee-from-hiring/{cid}/dismiss',
+        headers=admin_auth_headers,
+        json={'emp_id': 'EFH-KEEP'},
+    )
+    assert merged.status_code == 200, merged.get_json()
+
+    roster = client.get('/hr/api/leave-tracker/employees', headers=admin_auth_headers)
+    listed = next(
+        row for row in ((roster.get_json() or {}).get('employees') or [])
+        if row.get('emp_id') == 'EFH-KEEP'
+    )
+    assert listed.get('from_hiring') is True
+    assert listed.get('has_prior_record') is True
+
+    revoked = client.delete(
+        f'/hr/api/leave-tracker/employees/{emp_pk}',
+        headers=admin_auth_headers,
+    )
+    assert revoked.status_code == 200, revoked.get_json()
+    body = revoked.get_json() or {}
+    assert body.get('kept_employee_record') is True
+    assert body.get('deleted') is False
+    assert body.get('reverted_hiring_candidate_id') == cid
+
+    still = client.get('/hr/api/leave-tracker/employees', headers=admin_auth_headers)
+    emp_ids = {row.get('emp_id') for row in ((still.get_json() or {}).get('employees') or [])}
+    assert 'EFH-KEEP' in emp_ids
+    kept = next(
+        row for row in ((still.get_json() or {}).get('employees') or [])
+        if row.get('emp_id') == 'EFH-KEEP'
+    )
+    assert kept.get('from_hiring') is False
+    assert kept.get('has_prior_record') is False
+
+    pending = client.get('/hr/api/employee-from-hiring', headers=admin_auth_headers)
+    ids = [row.get('hiring_candidate_id') for row in ((pending.get_json() or {}).get('pending') or [])]
+    assert cid in ids
 
 
 def test_promote_duplicate_emp_id_offers_merge(client, admin_auth_headers):
