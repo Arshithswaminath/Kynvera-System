@@ -945,7 +945,7 @@ def create_app():
         path = request.path or '/'
         public_exact = {
             '/', '/privacy', '/terms', '/robots.txt', '/health',
-            '/manifest.json', '/favicon.ico', '/offline', '/sitemap.xml',
+            '/manifest.json', '/favicon.ico', '/favicon-48x48.png', '/offline', '/sitemap.xml',
             '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png',
         }
         if path in public_exact or path.startswith('/static/'):
@@ -1126,16 +1126,29 @@ def create_app():
         )
         response.headers['Cache-Control'] = 'public, max-age=604800'
         return response
+
+    @app.route('/favicon-48x48.png')
+    def favicon_48():
+        """Stable 48×48 PNG Google Search prefers over cache-busted static icons."""
+        response = send_from_directory(
+            os.path.join(app.static_folder, 'images', 'kynvera'),
+            'kynvera-mark-48.png',
+            mimetype='image/png',
+        )
+        response.headers['Cache-Control'] = 'public, max-age=604800'
+        return response
     
     @app.route('/apple-touch-icon.png')
     @app.route('/apple-touch-icon-precomposed.png')
     def apple_touch_icon():
         """iOS fetches this at the site root when adding to the home screen."""
-        return send_from_directory(
+        response = send_from_directory(
             os.path.join(app.static_folder, 'images', 'kynvera'),
             'kynvera-mark-180.png',
             mimetype='image/png',
         )
+        response.headers['Cache-Control'] = 'public, max-age=604800'
+        return response
 
     @app.route('/robots.txt')
     def robots_txt():
@@ -1145,12 +1158,19 @@ def create_app():
             body = "User-agent: *\nDisallow: /\n"
         elif marketing_only() or is_marketing_host():
             body = (
+                "User-agent: Googlebot-Image\n"
+                "Allow: /favicon.ico\n"
+                "Allow: /favicon-48x48.png\n"
+                "Allow: /apple-touch-icon.png\n"
+                "Allow: /static/images/kynvera/\n"
+                "\n"
                 "User-agent: *\n"
                 "Allow: /\n"
                 "Allow: /privacy\n"
                 "Allow: /terms\n"
                 "Allow: /static/\n"
                 "Allow: /favicon.ico\n"
+                "Allow: /favicon-48x48.png\n"
                 "Allow: /apple-touch-icon.png\n"
                 "Allow: /sitemap.xml\n"
                 "Disallow: /login\n"
@@ -1173,6 +1193,7 @@ def create_app():
                 "Allow: /terms\n"
                 "Allow: /static/\n"
                 "Allow: /favicon.ico\n"
+                "Allow: /favicon-48x48.png\n"
                 "Allow: /apple-touch-icon.png\n"
                 "Allow: /offline\n"
                 "Allow: /manifest.json\n"
@@ -1524,6 +1545,7 @@ def create_app():
         public_exact = {
             '/', '/offline', '/manifest.json', '/privacy', '/terms',
             '/robots.txt', '/sitemap.xml', '/forgot-password', '/reset-password',
+            '/favicon.ico', '/favicon-48x48.png',
             '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png',
         }
         public_prefixes = (

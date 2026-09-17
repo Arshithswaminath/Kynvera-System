@@ -9,6 +9,7 @@ def test_robots_txt_disallows_app_shells(client):
     assert 'Disallow: /api/' in body
     assert 'Allow: /privacy' in body
     assert 'Allow: /favicon.ico' in body
+    assert 'Allow: /favicon-48x48.png' in body
     assert 'Allow: /sitemap.xml' in body
     assert 'Sitemap: ' in body
     assert body.strip().endswith('sitemap.xml')
@@ -27,12 +28,29 @@ def test_favicon_ico_meets_google_search_size(client):
     assert max(width for width, _height in sizes) >= 48
 
 
+def test_favicon_48_png_meets_google_search_size(client):
+    import io
+    from PIL import Image
+
+    response = client.get('/favicon-48x48.png')
+    assert response.status_code == 200
+    assert response.mimetype == 'image/png'
+    assert 'public' in (response.headers.get('Cache-Control') or '')
+    icon = Image.open(io.BytesIO(response.data))
+    assert icon.size[0] >= 48
+    assert icon.size[0] == icon.size[1]
+
+
 def test_landing_declares_google_favicon_sizes(client):
     html = client.get('/').get_data(as_text=True)
-    assert 'href="/favicon.ico"' in html
-    assert 'kynvera-mark-48.png' in html
-    assert 'kynvera-mark-96.png' in html
-    assert 'kynvera-mark-192.png' in html
+    head = html.split('</head>', 1)[0]
+    assert 'href="/favicon-48x48.png"' in head
+    assert 'href="/favicon.ico"' in head
+    assert 'kynvera-mark-96.png' in head
+    assert 'kynvera-mark-192.png' in head
+    assert 'kynvera-mark-32.png' not in head
+    assert 'operations application services for companies' in html.lower()
+    assert 'Kynvera puts inspections' not in html
 
 
 def test_privacy_and_terms_pages(client):
