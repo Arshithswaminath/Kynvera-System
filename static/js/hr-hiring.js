@@ -777,6 +777,29 @@
     return hiringListHref(stored);
   }
 
+  function isSafeInternalPath(href) {
+    const path = String(href || '').trim();
+    return path.charAt(0) === '/' && path.charAt(1) !== '/';
+  }
+
+  function isHiringDocsListPath(href) {
+    return /^\/hr\/hiring\/?(\?|#|$)/.test(String(href || '').trim());
+  }
+
+  function hiringDetailBackHref() {
+    const params = new URLSearchParams(window.location.search || '');
+    const fromQuery = String(params.get('back') || '').trim();
+    if (isSafeInternalPath(fromQuery) && !isHiringDocsListPath(fromQuery)) {
+      return fromQuery;
+    }
+    const rendered = document.querySelector('a.hh-back');
+    const fromMarkup = rendered ? String(rendered.getAttribute('href') || '').trim() : '';
+    if (isSafeInternalPath(fromMarkup) && !isHiringDocsListPath(fromMarkup)) {
+      return fromMarkup;
+    }
+    return hiringListHrefKeepDropdowns();
+  }
+
   function listFiltersQuery(filters) {
     const qs = new URLSearchParams();
     if (filters.q) qs.set('q', filters.q);
@@ -3501,12 +3524,14 @@
 
     const backLink = document.querySelector('a.hh-back');
     if (backLink) {
-      backLink.setAttribute('href', hiringListHrefKeepDropdowns());
-      // Keep stage / vacancy / trade / project filters. Clear search only.
-      // Avoid history.back() so a typed search (e.g. "sanj") is not restored.
+      backLink.setAttribute('href', hiringDetailBackHref());
+      // Keep stage / vacancy / trade / project filters when returning to the
+      // Hiring Docs list. Clear search only. Avoid history.back() so a typed
+      // search (e.g. "sanj") is not restored. When opened from Manpower (or
+      // another page via ?back=), follow that href instead of the list.
       backLink.setAttribute('data-no-history-back', '1');
       backLink.addEventListener('click', function () {
-        backLink.setAttribute('href', hiringListHrefKeepDropdowns());
+        backLink.setAttribute('href', hiringDetailBackHref());
       });
     }
 

@@ -91,8 +91,8 @@
         esc(who) +
         '.<br>' +
         (match.name_can_update
-          ? 'Merge and use this full name?</span>'
-          : 'Merge into one record?</span>');
+          ? 'Merge and use this full name, or create a new record?</span>'
+          : 'Merge into one record, or create a new one?</span>');
     } else if (row.pending_hire) {
       var hire = row.pending_hire || {};
       var hireName = hire.full_name || 'hiring';
@@ -194,10 +194,19 @@
   }
 
   var dismissBusy = false;
+  var dismissRow = null;
 
   function openDismissModal(row) {
     var modal = $('efhDismissModal');
     if (!modal || !row) return;
+    dismissRow = {
+      hiring_candidate_id: row.hiring_candidate_id,
+      emp_id: row.emp_id || '',
+      full_name: row.full_name || '',
+      designation: row.designation || row.role || '',
+      company: row.company || 'Kynvera',
+      matched_employee: row.matched_employee || {},
+    };
     modal.setAttribute('data-candidate-id', String(row.hiring_candidate_id || ''));
     var match = row.matched_employee || {};
     modal.setAttribute('data-emp-id', String(match.emp_id || ''));
@@ -211,11 +220,11 @@
       if (canUpdate && listName && listName !== name) {
         copy.textContent =
           (empId ? name + ' is already on the Employee List as ' + empId + '. ' : '') +
-          'The staff list has a shorter name. Merge into one record and use the full name from hiring?';
+          'The staff list has a shorter name. Merge and use the full name from hiring, or create a new record if this is a different person.';
       } else {
         copy.textContent = empId
-          ? name + ' is already on the Employee List as ' + empId + '. Merge into one record?'
-          : name + ' is already on the Employee List. Merge into one record?';
+          ? name + ' is already on the Employee List as ' + empId + '. Merge into one record, or create a new record if this is a different person.'
+          : name + ' is already on the Employee List. Merge into one record, or create a new record if this is a different person.';
       }
     }
     if (empLine) empLine.textContent = empId || listName || '—';
@@ -240,9 +249,31 @@
       modal.removeAttribute('data-candidate-id');
       modal.removeAttribute('data-emp-id');
     }
+    dismissRow = null;
     if (!otherModalsOpen() && !($('efhPromoteModal') && !$('efhPromoteModal').hidden)) {
       document.body.style.overflow = '';
     }
+  }
+
+  function openCreateNewFromDismiss() {
+    if (dismissBusy) return Promise.resolve();
+    var row = dismissRow;
+    if (!row || !row.hiring_candidate_id) {
+      return Promise.reject(new Error('Candidate is missing'));
+    }
+    var match = row.matched_employee || {};
+    closeDismissModal();
+    openPromoteModal({
+      hiring_candidate_id: row.hiring_candidate_id,
+      emp_id: '',
+      full_name: row.full_name || '',
+      designation: row.designation || '',
+      company: row.company || 'Kynvera',
+    }, {
+      createNew: true,
+      takenEmpId: match.emp_id || '',
+    });
+    return Promise.resolve();
   }
 
   function submitDismiss() {
@@ -253,7 +284,9 @@
     var empId = ((modal && modal.getAttribute('data-emp-id')) || '').trim();
     dismissBusy = true;
     var confirmBtn = $('efhDismissConfirm');
+    var createBtn = $('efhDismissCreate');
     if (confirmBtn) confirmBtn.disabled = true;
+    if (createBtn) createBtn.disabled = true;
     return apiJson(
       '/hr/api/employee-from-hiring/' + candidateId + '/dismiss',
       'POST',
@@ -272,6 +305,7 @@
       .finally(function () {
         dismissBusy = false;
         if (confirmBtn) confirmBtn.disabled = false;
+        if (createBtn) createBtn.disabled = false;
       });
   }
 
@@ -293,15 +327,43 @@
 
   var promoteBusy = false;
   var promoteOnSuccess = null;
+  var PROMOTE_TITLE = 'Move to Employee List';
+  var PROMOTE_HINT = 'Add this person to the general Employee List? Emp ID and full name are required.';
+  var PROMOTE_SUBMIT = 'Move to Employee List';
 
-  function openPromoteModal(row) {
+  function setPromoteCopy(opts) {
+    opts = opts || {};
+    var title = $('efhPromoteTitle');
+    var hint = $('efhPromoteHint');
+    var submit = $('efhPromoteSubmit');
+    var empIdField = $('efhPromoteEmpId');
+    if (opts.createNew) {
+      if (title) title.textContent = 'Create new Employee List record';
+      if (hint) {
+        hint.textContent = opts.takenEmpId
+          ? 'Emp ID ' + opts.takenEmpId + ' is already on the list. Enter a new Emp ID to add a separate person.'
+          : 'Enter a new Emp ID to add a separate person to the Employee List.';
+      }
+      if (submit) submit.textContent = 'Create new record';
+      if (empIdField) empIdField.placeholder = 'New Emp ID';
+    } else {
+      if (title) title.textContent = PROMOTE_TITLE;
+      if (hint) hint.textContent = PROMOTE_HINT;
+      if (submit) submit.textContent = PROMOTE_SUBMIT;
+      if (empIdField) empIdField.placeholder = 'INJ-0042';
+    }
+  }
+
+  function openPromoteModal(row, opts) {
     var modal = $('efhPromoteModal');
     if (!modal || !row) return;
+    opts = opts || {};
     $('efhPromoteCandidateId').value = String(row.hiring_candidate_id || '');
-    if ($('efhPromoteEmpId')) $('efhPromoteEmpId').value = row.emp_id || '';
+    if ($('efhPromoteEmpId')) $('efhPromoteEmpId').value = opts.createNew ? '' : (row.emp_id || '');
     if ($('efhPromoteName')) $('efhPromoteName').value = row.full_name || '';
     if ($('efhPromoteDesig')) $('efhPromoteDesig').value = row.designation || row.role || '';
     if ($('efhPromoteCompany')) $('efhPromoteCompany').value = row.company || 'Kynvera';
+    setPromoteCopy(opts);
     modal.hidden = false;
     document.body.style.overflow = 'hidden';
     setTimeout(function () {
@@ -312,6 +374,7 @@
   function closePromoteModal() {
     var modal = $('efhPromoteModal');
     if (modal) modal.hidden = true;
+    setPromoteCopy();
     if (!otherModalsOpen()) document.body.style.overflow = '';
   }
 
@@ -347,6 +410,8 @@
             openDismissModal({
               hiring_candidate_id: candidateId,
               full_name: payload.full_name,
+              designation: payload.designation,
+              company: payload.company,
               matched_employee: details.matched_employee || {
                 emp_id: payload.emp_id,
                 full_name: '',
@@ -409,6 +474,14 @@
         confirmBtn.addEventListener('click', function () {
           submitDismiss().catch(function (err) {
             toast(err.message || 'Could not merge with Employee List', true);
+          });
+        });
+      }
+      var createBtn = $('efhDismissCreate');
+      if (createBtn) {
+        createBtn.addEventListener('click', function () {
+          openCreateNewFromDismiss().catch(function (err) {
+            toast(err.message || 'Could not start a new Employee List record', true);
           });
         });
       }

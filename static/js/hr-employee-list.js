@@ -350,12 +350,19 @@
     }
     $('elModalDesig').textContent = emp.designation || '—';
     $('elModalCompany').textContent = emp.company || '—';
+    if ($('elDeleteBtn')) {
+      $('elDeleteBtn').textContent = emp.from_hiring ? 'Revoke — remove & reopen hiring file' : 'Remove from list';
+    }
     if ($('elDeleteAvatar')) $('elDeleteAvatar').textContent = initials(emp.full_name);
+    if ($('elDeleteTitle')) {
+      $('elDeleteTitle').textContent = emp.from_hiring ? 'Revoke this hiring conversion?' : 'Remove this person?';
+    }
     if ($('elDeleteCopy')) {
-      $('elDeleteCopy').textContent =
-        (emp.full_name || 'This person') +
-        (emp.emp_id ? ' (' + emp.emp_id + ')' : '') +
-        ' will leave Employee List. Leave records stay in Leave Tracker.';
+      var who = (emp.full_name || 'This person') + (emp.emp_id ? ' (' + emp.emp_id + ')' : '');
+      $('elDeleteCopy').textContent = emp.from_hiring
+        ? who + ' will leave Employee List and their Hiring Documents file will reopen at ' +
+          '"Visa process started" so a corrected Emp ID can be issued.'
+        : who + ' will leave Employee List. Leave records stay in Leave Tracker.';
     }
     var leave = $('elModalLeaveLink');
     if (leave) leave.href = '/hr/leave-tracker';
@@ -421,9 +428,12 @@
   function confirmDeleteEmployee() {
     if (!currentEmp || modalBusy) return Promise.resolve();
     var name = currentEmp.full_name || 'Employee';
+    var fromHiring = !!currentEmp.from_hiring;
     modalBusy = true;
     return apiJson('/hr/api/leave-tracker/employees/' + currentEmp.id, 'DELETE').then(function () {
-      showImportResult(name + ' removed from the list');
+      showImportResult(fromHiring
+        ? name + ' removed from the list — their hiring file was reopened'
+        : name + ' removed from the list');
       closeModal();
       selectedId = null;
       currentEmp = null;
@@ -668,9 +678,6 @@
       $('elEditBtn').addEventListener('click', function () {
         fillEditForm(currentEmp);
         showModalPane('edit');
-        setTimeout(function () {
-          $('elEditName') && $('elEditName').focus();
-        }, 50);
       });
     $('elModalMergeBtn') &&
       $('elModalMergeBtn').addEventListener('click', function () {

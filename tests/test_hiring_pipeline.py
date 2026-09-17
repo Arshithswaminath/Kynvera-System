@@ -175,3 +175,30 @@ def test_employed_cannot_move_to_hold_or_not_hired(client, admin_auth_headers):
     )
     assert still_hired.status_code == 200, still_hired.get_json()
     assert still_hired.get_json()['candidate']['pipeline_status'] == 'visa_process_started'
+
+
+def test_candidate_detail_back_link_from_manpower(client, admin_auth_headers):
+    created = _create_candidate(client, admin_auth_headers)
+    cid = created['id']
+
+    from_manpower = client.get(
+        f'/hr/hiring/candidates/{cid}?back=/hr/manpower-tracker',
+        headers=admin_auth_headers,
+    )
+    assert from_manpower.status_code == 200, from_manpower.get_data(as_text=True)[:400]
+    manpower_html = from_manpower.get_data(as_text=True)
+    assert 'href="/hr/manpower-tracker"' in manpower_html
+    assert 'hiringDetailBackHref' in manpower_html or 'hr-hiring.js' in manpower_html
+
+    default = client.get(f'/hr/hiring/candidates/{cid}', headers=admin_auth_headers)
+    assert default.status_code == 200
+    assert 'href="/hr/hiring"' in default.get_data(as_text=True)
+
+    unsafe = client.get(
+        f'/hr/hiring/candidates/{cid}?back=https://evil.example/phish',
+        headers=admin_auth_headers,
+    )
+    assert unsafe.status_code == 200
+    unsafe_html = unsafe.get_data(as_text=True)
+    assert 'https://evil.example/phish' not in unsafe_html
+    assert 'href="/hr/hiring"' in unsafe_html

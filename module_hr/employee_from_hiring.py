@@ -10,7 +10,7 @@ from flask_jwt_extended import jwt_required
 from sqlalchemy import inspect, or_, text
 from sqlalchemy.orm import joinedload
 
-from app.models import HiringCandidate, LeaveEmployee, db
+from app.models import HIRING_PIPELINE_STEPS, HiringCandidate, LeaveEmployee, db
 from common.datetime_utils import naive_utc_isoformat_z, utc_now_naive
 from common.error_responses import error_response, success_response
 
@@ -236,6 +236,26 @@ def hiring_linked_employee_ids(emp_ids) -> set[int]:
 def _linked_employee_active(candidate: HiringCandidate) -> bool:
     emp = getattr(candidate, 'leave_employee', None)
     return bool(candidate.leave_employee_id and emp and emp.active)
+
+
+def revoke_employee_conversion(candidate: HiringCandidate) -> None:
+    """Undo a hiring→employee conversion (e.g. a mistaken duplicate add).
+
+    Unlinks the Employee List row and reopens the candidate's hiring file at
+    the stage just before "Candidate employed", so a corrected Emp ID can be
+    issued later without losing the document progress already recorded.
+    """
+    candidate.leave_employee_id = None
+    candidate.employee_list_dismissed_at = None
+    if candidate.normalized_pipeline_status() == 'candidate_employee':
+        idx = HIRING_PIPELINE_STEPS.index('candidate_employee')
+        candidate.pipeline_status = HIRING_PIPELINE_STEPS[idx - 1]
+    candidate.updated_at = utc_now_naive()
+    try:
+        from module_hr.staffing_link import sync_vacancy_from_candidate
+        sync_vacancy_from_candidate(candidate)
+    except Exception:
+        logger.exception('Could not sync vacancy after revoking employee conversion')
 
 
 def pending_from_hiring_query():

@@ -294,11 +294,15 @@ def register_hiring_document_routes(hr_bp):
         candidate = db.session.get(HiringCandidate, candidate_id)
         if not candidate:
             return jsonify({'error': 'Candidate not found'}), 404
+        back_url = request.args.get('back', '')
+        if not (back_url.startswith('/') and not back_url.startswith('//')):
+            back_url = '/hr/hiring'
         return render_template(
             'hr_hiring_candidate_detail.html',
             user=user,
             candidate=candidate,
             hiring_active='documents',
+            back_url=back_url,
         )
 
     # ── API: candidates ────────────────────────────────────────────────────

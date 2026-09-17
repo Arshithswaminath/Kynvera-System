@@ -229,6 +229,7 @@
               '<button type="button" class="hh-modal-close" data-mp-confirm-cancel aria-label="Close">&times;</button>' +
             '</div>' +
             '<p class="mp-confirm-message" id="mpConfirmMessage"></p>' +
+            '<dl class="mp-confirm-meta" id="mpConfirmMeta" hidden></dl>' +
             '<div class="mp-confirm-actions">' +
               '<button type="button" class="hh-btn hh-btn-secondary" data-mp-confirm-cancel></button>' +
               '<button type="button" class="hh-btn" data-mp-confirm-ok></button>' +
@@ -244,6 +245,7 @@
 
       titleEl.textContent = title;
       msgEl.textContent = message;
+      setConfirmMeta(modal, options.meta);
       cancelBtns.forEach(function (btn) {
         if (btn.tagName === 'BUTTON' && btn.classList.contains('hh-btn')) {
           btn.textContent = cancelLabel;
@@ -280,6 +282,62 @@
       modal.setAttribute('aria-hidden', 'false');
       okBtn.focus();
     });
+  }
+
+  function setConfirmMeta(modal, rows) {
+    if (!modal) return;
+    var metaEl = modal.querySelector('#mpConfirmMeta');
+    var msgEl = modal.querySelector('#mpConfirmMessage');
+    if (!metaEl) {
+      metaEl = document.createElement('dl');
+      metaEl.id = 'mpConfirmMeta';
+      metaEl.className = 'mp-confirm-meta';
+      if (msgEl && msgEl.parentNode) msgEl.parentNode.insertBefore(metaEl, msgEl.nextSibling);
+      else return;
+    }
+    var list = (rows || []).filter(function (row) {
+      return row && String(row.value == null ? '' : row.value).trim();
+    });
+    if (!list.length) {
+      metaEl.hidden = true;
+      metaEl.innerHTML = '';
+      return;
+    }
+    metaEl.hidden = false;
+    metaEl.innerHTML = list.map(function (row) {
+      return '<div><dt>' + esc(row.label) + '</dt><dd>' + esc(row.value) + '</dd></div>';
+    }).join('');
+  }
+
+  function vacancyStatusLabel(v) {
+    if (!v) return '';
+    if (v.status_label) return String(v.status_label);
+    var key = v.status || '';
+    var found = statusList().find(function (s) { return s.key === key; });
+    return (found && found.label) || key;
+  }
+
+  function vacancyDeleteMeta(v) {
+    if (!v) return [];
+    var hc = v.hiring_candidate || {};
+    var candidate = String(hc.full_name || v.candidate_name || '').trim();
+    if (candidate && hc.pipeline_label) candidate += ' — ' + hc.pipeline_label;
+    var req = v.requirement_type_label
+      || ((v.requirement_type || 'new') === 'replacement' ? 'Replacement' : 'New');
+    if ((v.requirement_type || '') === 'replacement') {
+      var who = [v.replacement_name, v.replacement_employee_id].filter(function (part) {
+        return String(part || '').trim();
+      }).join(' · ');
+      if (who) req += ' · ' + who;
+    }
+    return [
+      { label: 'Trade', value: v.trade_name || vacancyTradeName(v) },
+      { label: 'Project', value: v.project_name || '' },
+      { label: 'Person', value: v.person_label || '' },
+      { label: 'Candidate', value: candidate },
+      { label: 'Status', value: vacancyStatusLabel(v) },
+      { label: 'Type', value: req },
+    ];
   }
 
   function openModal(id) {
@@ -969,7 +1027,7 @@
         var hc = v.hiring_candidate;
         return '<td class="mp-col-candidate"><div class="mp-linked-candidate">' +
           '<div class="mp-linked-main">' +
-            '<a class="mp-linked-name" href="' + esc(hc.url || ('/hr/hiring/candidates/' + hc.id)) + '" title="' +
+            '<a class="mp-linked-name" href="' + esc((hc.url || ('/hr/hiring/candidates/' + hc.id)) + '?back=' + encodeURIComponent('/hr/manpower-tracker')) + '" title="' +
               esc((hc.full_name || v.candidate_name || '') + (hc.pipeline_label ? ' — ' + hc.pipeline_label : '')) + '">' +
               esc(hc.full_name || v.candidate_name) +
             '</a>' +
@@ -1276,9 +1334,16 @@
     var action = btn.getAttribute('data-action');
 
     if (action === 'delete') {
+      var vac = (state.vacancies || []).find(function (row) {
+        return String(row.id) === String(id);
+      });
+      var linked = !!(vac && (vac.hiring_candidate_id || vac.linked));
       confirmDialog({
         title: 'Delete vacancy',
-        message: 'Delete this vacancy? This cannot be undone.',
+        message: linked
+          ? 'Remove this row from the manpower board? The Hiring Docs file stays. This cannot be undone.'
+          : 'Remove this vacancy from the board? This cannot be undone.',
+        meta: vacancyDeleteMeta(vac),
         confirmLabel: 'Delete',
         danger: true,
       }).then(function (ok) {

@@ -117,6 +117,40 @@ def test_promote_creates_employee_and_leaves_queue(client, admin_auth_headers):
     assert again.status_code == 409, again.get_json()
 
 
+def test_delete_employee_reverts_hiring_candidate(client, admin_auth_headers):
+    created = _create_candidate(client, admin_auth_headers, name='Duplicate Add', role='Cleaner')
+    cid = created['id']
+    _mark_employed(client, admin_auth_headers, cid)
+
+    promoted = client.post(
+        f'/hr/api/employee-from-hiring/{cid}/promote',
+        headers=admin_auth_headers,
+        json={'emp_id': 'EFH-DUP-ADD', 'full_name': 'Duplicate Add', 'designation': 'Cleaner'},
+    )
+    assert promoted.status_code == 200, promoted.get_json()
+    emp_id = ((promoted.get_json() or {}).get('employee') or {}).get('id')
+    assert emp_id
+
+    deleted = client.delete(
+        f'/hr/api/leave-tracker/employees/{emp_id}',
+        headers=admin_auth_headers,
+    )
+    assert deleted.status_code == 200, deleted.get_json()
+    body = deleted.get_json() or {}
+    assert body.get('reverted_hiring_candidate_id') == cid
+
+    candidate = client.get(f'/hr/api/hiring/candidates/{cid}', headers=admin_auth_headers)
+    assert candidate.status_code == 200, candidate.get_json()
+    cand_data = (candidate.get_json() or {}).get('candidate') or {}
+    assert cand_data.get('pipeline_status') == 'visa_process_started'
+    assert cand_data.get('leave_employee_id') in (None, '')
+    assert cand_data.get('on_employee_list') is False
+
+    roster = client.get('/hr/api/leave-tracker/employees', headers=admin_auth_headers)
+    emp_ids = {row.get('emp_id') for row in ((roster.get_json() or {}).get('employees') or [])}
+    assert 'EFH-DUP-ADD' not in emp_ids
+
+
 def test_promote_duplicate_emp_id_offers_merge(client, admin_auth_headers):
     existing = client.post(
         '/hr/api/leave-tracker/employees',
@@ -272,6 +306,53 @@ def test_merge_updates_shorter_staff_name(client, admin_auth_headers):
     assert listed.get('from_hiring') is True
 
 
+def test_similar_name_can_create_separate_employee(client, admin_auth_headers):
+    existing = client.post(
+        '/hr/api/leave-tracker/employees',
+        headers=admin_auth_headers,
+        json={'emp_id': '698', 'full_name': 'Mohd Arif', 'company': 'Kynvera'},
+    )
+    assert existing.status_code == 201, existing.get_json()
+
+    created = _create_candidate(
+        client, admin_auth_headers, name='Mohammed Arif', role='Technician'
+    )
+    cid = created['id']
+    _mark_employed(client, admin_auth_headers, cid)
+
+    pending = client.get('/hr/api/employee-from-hiring', headers=admin_auth_headers)
+    match = next(
+        row for row in ((pending.get_json() or {}).get('pending') or [])
+        if row.get('hiring_candidate_id') == cid
+    )
+    assert match.get('already_on_list') is True
+    assert (match.get('matched_employee') or {}).get('emp_id') == '698'
+
+    promoted = client.post(
+        f'/hr/api/employee-from-hiring/{cid}/promote',
+        headers=admin_auth_headers,
+        json={
+            'emp_id': 'EFH-NEW-ARIF',
+            'full_name': 'Mohammed Arif',
+            'designation': 'Technician',
+            'company': 'Kynvera',
+        },
+    )
+    assert promoted.status_code == 200, promoted.get_json()
+    emp = (promoted.get_json() or {}).get('employee') or {}
+    assert emp.get('emp_id') == 'EFH-NEW-ARIF'
+    assert emp.get('full_name') == 'Mohammed Arif'
+
+    roster = client.get('/hr/api/leave-tracker/employees', headers=admin_auth_headers)
+    emp_ids = {row.get('emp_id') for row in ((roster.get_json() or {}).get('employees') or [])}
+    assert '698' in emp_ids
+    assert 'EFH-NEW-ARIF' in emp_ids
+
+    after = client.get('/hr/api/employee-from-hiring', headers=admin_auth_headers)
+    ids = [row.get('hiring_candidate_id') for row in ((after.get_json() or {}).get('pending') or [])]
+    assert cid not in ids
+
+
 def test_dismiss_requires_existing_employee(client, admin_auth_headers):
     created = _create_candidate(client, admin_auth_headers, name='Only In Hiring')
     cid = created['id']
@@ -330,4 +411,6 @@ def test_employee_list_page_has_incomplete_toggle(client, admin_auth_headers):
     assert 'id="efhHiringBanner"' in queue_html
     assert 'id="efhStatIncomplete"' in queue_html
     assert 'id="efhDismissModal"' in queue_html
+    assert 'id="efhDismissCreate"' in queue_html
+    assert 'Create new' in queue_html
     assert 'id="elModalMergeBtn"' in html

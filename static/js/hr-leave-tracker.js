@@ -366,13 +366,9 @@
 
   function logsQueryParams() {
     var params = new URLSearchParams();
-    var q =
-      (($('ltLogsSearch') && $('ltLogsSearch').value) ||
-        ($('ltSearch') && $('ltSearch').value) ||
-        '').trim();
+    var q = (($('ltSearch') && $('ltSearch').value) || '').trim();
     var company = ($('ltCompany') && $('ltCompany').value) || 'all';
     var lt = ($('ltLogTypeFilter') && $('ltLogTypeFilter').value) || 'all';
-    if ($('ltLogCompanyFilter')) company = $('ltLogCompanyFilter').value || 'all';
     var leaveFrom = ($('ltLogLeaveFrom') && $('ltLogLeaveFrom').value) || '';
     var leaveTo = ($('ltLogLeaveTo') && $('ltLogLeaveTo').value) || '';
     if (q) params.set('q', q);
@@ -1061,9 +1057,7 @@
     var hasCol = Object.keys(filters).some(function (k) {
       return String(filters[k] || '').trim();
     });
-    var q = ($('ltLogsSearch') && $('ltLogsSearch').value) || '';
     var lt = ($('ltLogTypeFilter') && $('ltLogTypeFilter').value) || 'all';
-    var company = ($('ltLogCompanyFilter') && $('ltLogCompanyFilter').value) || 'all';
     var leaveFrom = ($('ltLogLeaveFrom') && $('ltLogLeaveFrom').value) || '';
     var leaveTo = ($('ltLogLeaveTo') && $('ltLogLeaveTo').value) || '';
     var createdFrom = ($('ltLogCreatedFrom') && $('ltLogCreatedFrom').value) || '';
@@ -1072,9 +1066,7 @@
     var editedTo = ($('ltLogEditedTo') && $('ltLogEditedTo').value) || '';
     return (
       hasCol ||
-      !!q.trim() ||
       (lt && lt !== 'all') ||
-      (company && company !== 'all') ||
       !!leaveFrom ||
       !!leaveTo ||
       !!createdFrom ||
@@ -2845,28 +2837,16 @@
     $('ltSearch') && $('ltSearch').addEventListener('input', reload);
     $('ltCompany') && $('ltCompany').addEventListener('change', reload);
     wireSearchClear('ltSearch', 'ltSearchClear');
-    wireSearchClear('ltLogsSearch', 'ltLogsSearchClear');
-    $('ltLogsSearch') &&
-      $('ltLogsSearch').addEventListener(
-        'input',
-        debounce(function () {
-          loadLogs();
-          syncLogsClearBtn();
-        }, 250)
-      );
     $('ltLogsClearFilters') &&
       $('ltLogsClearFilters').addEventListener('click', function () {
         state.logColFilters = emptyLogColFilters();
-        if ($('ltLogsSearch')) $('ltLogsSearch').value = '';
         if ($('ltLogTypeFilter')) $('ltLogTypeFilter').value = 'all';
-        if ($('ltLogCompanyFilter')) $('ltLogCompanyFilter').value = 'all';
         ['ltLogLeaveFrom', 'ltLogLeaveTo', 'ltLogCreatedFrom', 'ltLogCreatedTo', 'ltLogEditedFrom', 'ltLogEditedTo'].forEach(
           function (id) {
             if ($(id)) $(id).value = '';
           }
         );
         state.logSort = { key: null, dir: 'desc' };
-        syncSearchClear('ltLogsSearch', 'ltLogsSearchClear');
         syncColFilterButtons();
         loadLogs();
       });
@@ -3056,11 +3036,6 @@
 
     $('ltLogTypeFilter') &&
       $('ltLogTypeFilter').addEventListener('change', function () {
-        loadLogs();
-        syncLogsClearBtn();
-      });
-    $('ltLogCompanyFilter') &&
-      $('ltLogCompanyFilter').addEventListener('change', function () {
         loadLogs();
         syncLogsClearBtn();
       });

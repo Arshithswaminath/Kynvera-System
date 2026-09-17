@@ -1,5 +1,13 @@
 // Service worker registration (install / download UI removed)
-if ('serviceWorker' in navigator) {
+//
+// Skipped on local dev hosts: its scope (/static/) covers every page on the
+// origin once registered from any page (e.g. the dashboard), which makes
+// local JS/CSS edits look like they never took effect until it's manually
+// unregistered. Any previously-registered worker is also torn down here so
+// local testing doesn't need a manual DevTools cleanup step.
+const _isLocalDevHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+if ('serviceWorker' in navigator && !_isLocalDevHost) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/static/service-worker.js')
@@ -21,6 +29,11 @@ if ('serviceWorker' in navigator) {
         console.error('Service Worker registration failed:', error);
       });
   });
+} else if ('serviceWorker' in navigator && _isLocalDevHost) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => reg.unregister());
+  });
+  caches.keys().then((names) => names.forEach((name) => caches.delete(name)));
 }
 
 window.KynveraPWA = {

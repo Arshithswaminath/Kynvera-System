@@ -433,11 +433,13 @@ body.el-page .hh-topbar {
   position: relative;
   z-index: 1;
   width: min(26rem, 100%);
+  max-width: calc(100vw - 2rem);
   background: #fff;
   border-radius: 18px;
-  padding: 1.5rem 1.35rem 1.25rem;
+  padding: 1.5rem 1.5rem 1.35rem;
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
   text-align: center;
+  box-sizing: border-box;
 }
 
 #elViewPane,
@@ -590,8 +592,10 @@ body.el-page .hh-topbar {
 
 .el-inline-form {
   width: 100%;
+  max-width: 100%;
   padding: 2.1rem 0 0;
   box-shadow: none;
+  box-sizing: border-box;
 }
 
 .el-inline-form[hidden],
@@ -615,6 +619,14 @@ body.el-page .hh-topbar {
 .el-form-card {
   text-align: left;
   width: min(28rem, 100%);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.el-modal-card .el-form-card,
+.el-modal-card .el-inline-form {
+  width: 100%;
+  max-width: 100%;
 }
 
 .el-form-card h2 {
@@ -632,6 +644,7 @@ body.el-page .hh-topbar {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  min-width: 0;
   margin-bottom: 0.85rem;
   font-size: 0.85rem;
   font-weight: 650;
@@ -640,6 +653,9 @@ body.el-page .hh-topbar {
 
 .el-field input,
 .el-field select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 44px;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--hh-border, #e9eaee);
@@ -649,6 +665,7 @@ body.el-page .hh-topbar {
   font-weight: 500;
   background: #fff;
   color: inherit;
+  box-sizing: border-box;
 }
 
 #elAddCompany,
@@ -671,13 +688,18 @@ body.el-page .hh-topbar {
 
 .el-field-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.75rem;
+  min-width: 0;
 }
 
 .el-form-actions {
   justify-content: flex-end;
   margin-top: 0.25rem;
+}
+
+#efhDismissModal .el-modal-actions .hh-btn {
+  flex: 0 1 auto;
 }
 
 @media (max-width: 768px) {
@@ -688,6 +710,15 @@ body.el-page .hh-topbar {
   .el-toolbar .hh-excel-actions,
   .el-toolbar .hh-btn {
     width: 100%;
+  }
+
+  #efhDismissModal .el-modal-actions .hh-btn {
+    flex: 1 1 calc(50% - 0.5rem);
+  }
+
+  #efhDismissCreate {
+    flex-basis: 100%;
+    order: 3;
   }
 }
 

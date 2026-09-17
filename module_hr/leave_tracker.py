@@ -1089,10 +1089,20 @@ def register_leave_tracker_routes(hr_bp):
             return error_response('Employee not found', status_code=404, error_code='NOT_FOUND')
 
         if request.method == 'DELETE':
+            from module_hr.employee_from_hiring import revoke_employee_conversion
+            from app.models import HiringCandidate
+
+            linked_candidate = HiringCandidate.query.filter_by(leave_employee_id=emp.id).first()
+            if linked_candidate:
+                revoke_employee_conversion(linked_candidate)
             emp.active = False
             emp.updated_at = utc_now_naive()
             db.session.commit()
-            return success_response({'deleted': True, 'employee': emp.to_dict()})
+            return success_response({
+                'deleted': True,
+                'employee': emp.to_dict(),
+                'reverted_hiring_candidate_id': linked_candidate.id if linked_candidate else None,
+            })
 
         data = request.get_json(silent=True) or {}
         if 'emp_id' in data and data['emp_id']:
