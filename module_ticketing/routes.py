@@ -1603,15 +1603,14 @@ def draft_tickets():
     if not _can_view_draft_tickets(user):
         abort(403)
 
-    drafts = _email_draft_tickets_query().order_by(Ticket.created_at.desc()).all()
-
-    # ── Email intake history: every inbound email, converted or not, so
-    # supervisors can see the whole received → converted funnel instead of
-    # just whatever's still sitting in the pending-review queue above.
-    # Ticket rows don't remember "this came from a draft" once converted,
-    # so TicketEmailIntake (one row per webhook/poller call, see
-    # _process_inbound_email_intake) is the only place that history lives.
-    status_filter = (request.args.get('status') or 'all').strip().lower()
+    # One list. Pending drafts are the queue (every open email draft, not
+    # capped). Converted, discarded, and failed mail comes from
+    # TicketEmailIntake — a ticket row no longer says "this was a draft"
+    # once it leaves that status. The page opens on Pending review.
+    _INTAKE_STATUSES = ('all', 'pending', 'converted', 'discarded', 'failed')
+    status_filter = (request.args.get('status') or 'pending').strip().lower()
+    if status_filter not in _INTAKE_STATUSES:
+        status_filter = 'pending'
     date_from_raw = (request.args.get('date_from') or '').strip()
     date_to_raw = (request.args.get('date_to') or '').strip()
     search_q = (request.args.get('q') or '').strip()
@@ -1657,27 +1656,127 @@ def draft_tickets():
             return 'discarded'
         return 'converted'
 
-    intake_counts = {'total': 0, 'converted': 0, 'pending': 0, 'discarded': 0, 'failed': 0}
-    intake_all = []
+    range_start = datetime.combine(date_from, datetime.min.time()) if date_from else None
+    range_end = (
+        datetime.combine(date_to + timedelta(days=1), datetime.min.time()) if date_to else None
+    )
+    needle = search_q.lower()
+
+    def _in_range(moment):
+        if range_start and (moment is None or moment < range_start):
+            return False
+        if range_end and (moment is None or moment >= range_end):
+            return False
+        return True
+
+    def _matches_query(*parts):
+        if not needle:
+            return True
+        blob = ' '.join((part or '') for part in parts).lower()
+        return needle in blob
+
+    def _view(outcome, ticket, title, snippet, sender_name, sender_email, received, is_error=False):
+        return {
+            'outcome': outcome,
+            'ticket_public_id': ticket.ticket_id if ticket else None,
+            'title': title or '(no subject)',
+            'snippet': snippet or '',
+            'sender_name': sender_name or None,
+            'sender_email': sender_email or None,
+            'received': received,
+            'is_error': is_error,
+        }
+
+    drafts = _email_draft_tickets_query().order_by(Ticket.created_at.desc()).all()
+    draft_ids = [t.id for t in drafts]
+    intake_for_draft = {}
+    if draft_ids:
+        for linked in (
+            TicketEmailIntake.query
+            .filter(TicketEmailIntake.ticket_id.in_(draft_ids))
+            .all()
+        ):
+            prev = intake_for_draft.get(linked.ticket_id)
+            if prev is None or (linked.received_at or datetime.min) >= (prev.received_at or datetime.min):
+                intake_for_draft[linked.ticket_id] = linked
+
+    pending_views = []
+    for ticket in drafts:
+        linked = intake_for_draft.get(ticket.id)
+        received = (linked.received_at if linked else None) or ticket.created_at
+        if not _in_range(received):
+            continue
+        if not _matches_query(
+            ticket.ticket_id, ticket.title, ticket.work_description,
+            ticket.source_sender_name, ticket.source_sender_email,
+            linked.subject if linked else None,
+            linked.from_name if linked else None,
+            linked.from_email if linked else None,
+            linked.raw_body if linked else None,
+        ):
+            continue
+        sender_name = (ticket.source_sender_name or '').strip() or (linked.from_name if linked else None)
+        sender_email = (ticket.source_sender_email or '').strip() or (linked.from_email if linked else None)
+        snippet = (ticket.work_description or '').strip() or ((linked.raw_body or '').strip() if linked else '')
+        title = (ticket.title or '').strip() or ((linked.subject or '').strip() if linked else '')
+        pending_views.append(_view(
+            'pending', ticket, title, snippet, sender_name, sender_email, received,
+        ))
+
+    other_views = []
     for row in intake_rows:
+        ticket = row.ticket
+        if ticket is not None and (ticket.source or '') == 'assistant':
+            continue
         outcome = _outcome(row)
+        if outcome == 'pending':
+            continue
+        is_error = outcome == 'failed'
+        snippet = (row.error_message or '').strip() if is_error else ''
+        if not snippet and ticket is not None:
+            snippet = (ticket.work_description or '').strip()
+        if not snippet:
+            snippet = (row.raw_body or '').strip()
+        title = ''
+        if ticket is not None:
+            title = (ticket.title or '').strip()
+        title = title or (row.subject or '').strip()
+        sender_name = (ticket.source_sender_name or '').strip() if ticket is not None else ''
+        sender_email = (ticket.source_sender_email or '').strip() if ticket is not None else ''
+        sender_name = sender_name or (row.from_name or '').strip()
+        sender_email = sender_email or (row.from_email or '').strip()
+        other_views.append(_view(
+            outcome, ticket, title, snippet, sender_name, sender_email,
+            row.received_at or (ticket.created_at if ticket is not None else None),
+            is_error=is_error,
+        ))
+
+    intake_all = pending_views + other_views
+    intake_all.sort(key=lambda item: item['received'] or datetime.min, reverse=True)
+
+    intake_counts = {'total': 0, 'converted': 0, 'pending': 0, 'discarded': 0, 'failed': 0}
+    for item in intake_all:
         intake_counts['total'] += 1
-        intake_counts[outcome] += 1
-        intake_all.append({'row': row, 'outcome': outcome})
+        intake_counts[item['outcome']] += 1
 
     intake_filtered = (
         [item for item in intake_all if item['outcome'] == status_filter]
         if status_filter in ('converted', 'pending', 'discarded', 'failed')
         else intake_all
     )
-    INTAKE_PAGE_SIZE = 200
-    intake_items = intake_filtered[:INTAKE_PAGE_SIZE]
-    intake_truncated = len(intake_filtered) - len(intake_items)
+    # The pending queue is the work list — show every open draft. The other
+    # views stay capped; they are a log, not a queue.
+    if status_filter == 'pending':
+        intake_items = intake_filtered
+        intake_truncated = 0
+    else:
+        intake_page_size = 200
+        intake_items = intake_filtered[:intake_page_size]
+        intake_truncated = len(intake_filtered) - len(intake_items)
 
     return render_template(
         'ticket_drafts.html',
         user=user,
-        drafts=drafts,
         intake_items=intake_items,
         intake_counts=intake_counts,
         intake_status_filter=status_filter,

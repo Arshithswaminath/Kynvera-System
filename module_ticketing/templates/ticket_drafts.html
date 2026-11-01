@@ -21,11 +21,44 @@
       display: flex; gap: 10px; align-items: flex-start;
     }
     .draft-intro svg { flex-shrink: 0; margin-top: 1px; color: var(--tkt-accent); }
-    .draft-sender { font-size: .78rem; color: var(--tkt-text-2); }
+    .draft-sender { font-size: .78rem; color: var(--tkt-text-2); min-width: 0; }
     .draft-sender strong { color: var(--tkt-text); }
+    .draft-list-table.tkt-table {
+      table-layout: fixed;
+      width: 100%;
+    }
+    .draft-list-table.tkt-table th,
+    .draft-list-table.tkt-table td {
+      min-width: 0;
+      max-width: none;
+      overflow: hidden;
+    }
+    .draft-list-table.tkt-table th:nth-child(6),
+    .draft-list-table.tkt-table td:nth-child(6) {
+      text-align: right;
+      overflow: visible;
+    }
+    .draft-clip,
     .draft-snippet {
-      font-size: .82rem; color: var(--tkt-text-2); max-width: 320px;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      display: block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .draft-snippet { font-size: .82rem; color: var(--tkt-text-2); }
+    .draft-snippet--error { color: #b91c1c; }
+    .draft-toolbar { margin-bottom: 14px; }
+    @media (max-width: 768px) {
+      .draft-list-table.tkt-table { table-layout: auto; }
+      .draft-list-table .draft-clip,
+      .draft-list-table .draft-snippet {
+        white-space: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+      }
+      .draft-list-table.tkt-table td:nth-child(6) { text-align: left; }
     }
     .draft-stats {
       display: flex; flex-wrap: wrap; gap: 10px;
@@ -42,8 +75,8 @@
     .draft-stat-num { font-size: 1.35rem; font-weight: 800; color: var(--tkt-text); line-height: 1.1; }
     .draft-stat-label { font-size: .74rem; color: var(--tkt-text-2); }
     .draft-outcome {
-      display: inline-flex; align-items: center; height: 22px; padding: 0 9px;
-      border-radius: 999px; font-size: .72rem; font-weight: 700;
+      display: inline-flex; align-items: center; height: 20px; margin-top: 4px; padding: 0 8px;
+      border-radius: 999px; font-size: .68rem; font-weight: 700;
       text-transform: uppercase; letter-spacing: .02em; white-space: nowrap;
     }
     .draft-outcome--pending    { background: #fef3c7; color: #92400e; }
@@ -72,18 +105,77 @@
   <div class="draft-intro">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
     <div>
-      These tickets were created automatically from emails sent to
-      <strong>{{ intake_email }}</strong>.
-      Nothing here has entered the active workflow yet — open <strong>Review &amp; Convert</strong> to check
-      the details, fill in anything the sender left out, and turn it into a real work order.
+      These emails were sent to <strong>{{ intake_email }}</strong>.
+      Mail still waiting has not entered the workflow yet — open <strong>Review &amp; Convert</strong>
+      to check the details, fill in anything the sender left out, and turn it into a work order.
     </div>
+  </div>
+
+  <div class="draft-toolbar">
+    <div class="draft-stats">
+      <a href="{{ url_for('ticketing.draft_tickets', status='pending', date_from=intake_date_from or None, date_to=intake_date_to or None, q=intake_search_q or None) }}"
+         class="draft-stat {% if intake_status_filter == 'pending' %}active{% endif %}">
+        <span class="draft-stat-num">{{ intake_counts.pending }}</span>
+        <span class="draft-stat-label">Pending review</span>
+      </a>
+      <a href="{{ url_for('ticketing.draft_tickets', status='converted', date_from=intake_date_from or None, date_to=intake_date_to or None, q=intake_search_q or None) }}"
+         class="draft-stat {% if intake_status_filter == 'converted' %}active{% endif %}">
+        <span class="draft-stat-num">{{ intake_counts.converted }}</span>
+        <span class="draft-stat-label">Converted</span>
+      </a>
+      <a href="{{ url_for('ticketing.draft_tickets', status='discarded', date_from=intake_date_from or None, date_to=intake_date_to or None, q=intake_search_q or None) }}"
+         class="draft-stat {% if intake_status_filter == 'discarded' %}active{% endif %}">
+        <span class="draft-stat-num">{{ intake_counts.discarded }}</span>
+        <span class="draft-stat-label">Discarded</span>
+      </a>
+      <a href="{{ url_for('ticketing.draft_tickets', status='failed', date_from=intake_date_from or None, date_to=intake_date_to or None, q=intake_search_q or None) }}"
+         class="draft-stat {% if intake_status_filter == 'failed' %}active{% endif %}">
+        <span class="draft-stat-num">{{ intake_counts.failed }}</span>
+        <span class="draft-stat-label">Failed to parse</span>
+      </a>
+      <a href="{{ url_for('ticketing.draft_tickets', status='all', date_from=intake_date_from or None, date_to=intake_date_to or None, q=intake_search_q or None) }}"
+         class="draft-stat {% if intake_status_filter == 'all' %}active{% endif %}">
+        <span class="draft-stat-num">{{ intake_counts.total }}</span>
+        <span class="draft-stat-label">Total received</span>
+      </a>
+    </div>
+
+    <form method="get" class="tkt-filter-bar" style="margin-top:14px;">
+      <div class="tkt-filter-search">
+        <span class="tkt-filter-search-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+        </span>
+        <input class="tkt-filter-input--search" type="search" name="q" value="{{ intake_search_q }}" placeholder="Search sender or subject…">
+      </div>
+      <input class="tkt-input" type="date" name="date_from" value="{{ intake_date_from }}" style="max-width:160px;" aria-label="From date">
+      <input class="tkt-input" type="date" name="date_to" value="{{ intake_date_to }}" style="max-width:160px;" aria-label="To date">
+      <select class="tkt-select" name="status" style="max-width:180px;">
+        <option value="pending" {% if intake_status_filter == 'pending' %}selected{% endif %}>Pending review</option>
+        <option value="converted" {% if intake_status_filter == 'converted' %}selected{% endif %}>Converted</option>
+        <option value="discarded" {% if intake_status_filter == 'discarded' %}selected{% endif %}>Discarded</option>
+        <option value="failed" {% if intake_status_filter == 'failed' %}selected{% endif %}>Failed to parse</option>
+        <option value="all" {% if intake_status_filter == 'all' %}selected{% endif %}>All statuses</option>
+      </select>
+      <button type="submit" class="tkt-btn tkt-btn-primary tkt-btn-sm">Filter</button>
+      {% if intake_status_filter != 'pending' or intake_date_from or intake_date_to or intake_search_q %}
+      <a href="{{ url_for('ticketing.draft_tickets') }}" class="tkt-btn tkt-btn-outline tkt-btn-sm">Clear</a>
+      {% endif %}
+    </form>
   </div>
 
   <div class="tkt-card">
     <div class="tkt-card-body" style="padding:0;">
-      {% if drafts %}
+      {% if intake_items %}
       <div class="tkt-table-wrap">
-        <table class="tkt-table">
+        <table class="tkt-table draft-list-table">
+          <colgroup>
+            <col style="width:140px">
+            <col style="width:18%">
+            <col style="width:18%">
+            <col>
+            <col style="width:156px">
+            <col style="width:188px">
+          </colgroup>
           <thead>
             <tr>
               <th>Ticket ID</th>
@@ -95,131 +187,35 @@
             </tr>
           </thead>
           <tbody>
-            {% for t in drafts %}
-            <tr>
-              <td style="white-space:nowrap;font-weight:700;">{{ t.ticket_id }}</td>
-              <td style="max-width:220px;">
-                <span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ t.title }}</span>
-              </td>
-              <td class="draft-sender">
-                <strong>{{ t.source_sender_name or t.source_sender_email or 'Unknown sender' }}</strong>
-                {% if t.source_sender_name and t.source_sender_email %}<br>{{ t.source_sender_email }}{% endif %}
-              </td>
-              <td>
-                <span class="draft-snippet" title="{{ t.work_description }}">{{ t.work_description }}</span>
-              </td>
-              <td style="white-space:nowrap;font-size:.78rem;color:var(--tkt-text-3);">{{ t.created_at|tkt_datetime if t.created_at else '—' }}</td>
-              <td style="white-space:nowrap;">
-                <a href="{{ url_for('ticketing.draft_ticket_review', ticket_id=t.ticket_id) }}"
-                   class="tkt-btn tkt-btn-primary tkt-btn-sm">Review &amp; Convert</a>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}
-      <div class="tkt-empty">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="56" height="56"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
-        <p>No draft tickets right now. New emails to {{ intake_email }} will appear here.</p>
-      </div>
-      {% endif %}
-    </div>
-  </div>
-
-  <div class="tkt-card" style="margin-top:24px;">
-    <div class="tkt-card-header">
-      <h3>Email intake history</h3>
-      <span style="font-size:.72rem;color:var(--tkt-text-3);">Every email received at {{ intake_email }}, converted or not</span>
-    </div>
-    <div class="tkt-card-body">
-      <div class="draft-stats">
-        <a href="{{ url_for('ticketing.draft_tickets', status='all', date_from=intake_date_from or None, date_to=intake_date_to or None, q=intake_search_q or None) }}"
-           class="draft-stat {% if intake_status_filter == 'all' %}active{% endif %}">
-          <span class="draft-stat-num">{{ intake_counts.total }}</span>
-          <span class="draft-stat-label">Total received</span>
-        </a>
-        <a href="{{ url_for('ticketing.draft_tickets', status='converted', date_from=intake_date_from or None, date_to=intake_date_to or None, q=intake_search_q or None) }}"
-           class="draft-stat {% if intake_status_filter == 'converted' %}active{% endif %}">
-          <span class="draft-stat-num">{{ intake_counts.converted }}</span>
-          <span class="draft-stat-label">Converted</span>
-        </a>
-        <a href="{{ url_for('ticketing.draft_tickets', status='pending', date_from=intake_date_from or None, date_to=intake_date_to or None, q=intake_search_q or None) }}"
-           class="draft-stat {% if intake_status_filter == 'pending' %}active{% endif %}">
-          <span class="draft-stat-num">{{ intake_counts.pending }}</span>
-          <span class="draft-stat-label">Pending review</span>
-        </a>
-        <a href="{{ url_for('ticketing.draft_tickets', status='discarded', date_from=intake_date_from or None, date_to=intake_date_to or None, q=intake_search_q or None) }}"
-           class="draft-stat {% if intake_status_filter == 'discarded' %}active{% endif %}">
-          <span class="draft-stat-num">{{ intake_counts.discarded }}</span>
-          <span class="draft-stat-label">Discarded</span>
-        </a>
-        <a href="{{ url_for('ticketing.draft_tickets', status='failed', date_from=intake_date_from or None, date_to=intake_date_to or None, q=intake_search_q or None) }}"
-           class="draft-stat {% if intake_status_filter == 'failed' %}active{% endif %}">
-          <span class="draft-stat-num">{{ intake_counts.failed }}</span>
-          <span class="draft-stat-label">Failed to parse</span>
-        </a>
-      </div>
-
-      <form method="get" class="tkt-filter-bar" style="margin-top:18px;">
-        <div class="tkt-filter-search">
-          <span class="tkt-filter-search-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
-          </span>
-          <input class="tkt-filter-input--search" type="search" name="q" value="{{ intake_search_q }}" placeholder="Search sender or subject…">
-        </div>
-        <input class="tkt-input" type="date" name="date_from" value="{{ intake_date_from }}" style="max-width:160px;" aria-label="From date">
-        <input class="tkt-input" type="date" name="date_to" value="{{ intake_date_to }}" style="max-width:160px;" aria-label="To date">
-        <select class="tkt-select" name="status" style="max-width:180px;">
-          <option value="all" {% if intake_status_filter == 'all' %}selected{% endif %}>All statuses</option>
-          <option value="pending" {% if intake_status_filter == 'pending' %}selected{% endif %}>Pending review</option>
-          <option value="converted" {% if intake_status_filter == 'converted' %}selected{% endif %}>Converted</option>
-          <option value="discarded" {% if intake_status_filter == 'discarded' %}selected{% endif %}>Discarded</option>
-          <option value="failed" {% if intake_status_filter == 'failed' %}selected{% endif %}>Failed to parse</option>
-        </select>
-        <button type="submit" class="tkt-btn tkt-btn-primary tkt-btn-sm">Filter</button>
-        {% if intake_status_filter != 'all' or intake_date_from or intake_date_to or intake_search_q %}
-        <a href="{{ url_for('ticketing.draft_tickets') }}" class="tkt-btn tkt-btn-outline tkt-btn-sm">Clear</a>
-        {% endif %}
-      </form>
-
-      {% if intake_items %}
-      <div class="tkt-table-wrap" style="margin-top:14px;">
-        <table class="tkt-table">
-          <thead>
-            <tr>
-              <th>Received</th>
-              <th>From</th>
-              <th>Subject</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
             {% for item in intake_items %}
-            {% set row = item.row %}
             <tr>
-              <td style="white-space:nowrap;font-size:.78rem;color:var(--tkt-text-3);">{{ row.received_at|tkt_datetime if row.received_at else '—' }}</td>
-              <td class="draft-sender">
-                <strong>{{ row.from_name or row.from_email or 'Unknown sender' }}</strong>
-                {% if row.from_name and row.from_email %}<br>{{ row.from_email }}{% endif %}
-              </td>
-              <td style="max-width:280px;">
-                <span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ row.subject }}">{{ row.subject or '(no subject)' }}</span>
-                {% if item.outcome == 'failed' and row.error_message %}
-                <span style="display:block;font-size:.72rem;color:#b91c1c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ row.error_message }}">{{ row.error_message }}</span>
+              <td style="font-weight:700;"><span class="draft-clip">{{ item.ticket_public_id or '—' }}</span></td>
+              <td>
+                <span class="draft-clip" title="{{ item.title }}">{{ item.title }}</span>
+                {% if intake_status_filter == 'all' %}
+                <span class="draft-outcome draft-outcome--{{ item.outcome }}">
+                  {% if item.outcome == 'pending' %}Pending review
+                  {% elif item.outcome == 'failed' %}Failed to parse
+                  {% else %}{{ item.outcome|capitalize }}
+                  {% endif %}
+                </span>
                 {% endif %}
               </td>
-              <td>
-                <span class="draft-outcome draft-outcome--{{ item.outcome }}">
-                  {% if item.outcome == 'pending' %}Pending review{% else %}{{ item.outcome|capitalize }}{% endif %}
-                </span>
+              <td class="draft-sender">
+                <strong class="draft-clip">{{ item.sender_name or item.sender_email or 'Unknown sender' }}</strong>
+                {% if item.sender_name and item.sender_email %}<span class="draft-clip">{{ item.sender_email }}</span>{% endif %}
               </td>
+              <td>
+                <span class="draft-snippet{% if item.is_error %} draft-snippet--error{% endif %}" title="{{ item.snippet }}">{{ item.snippet }}</span>
+              </td>
+              <td style="font-size:.78rem;color:var(--tkt-text-3);"><span class="draft-clip">{{ item.received|tkt_datetime if item.received else '—' }}</span></td>
               <td style="white-space:nowrap;">
-                {% if item.outcome == 'pending' and row.ticket %}
-                <a href="{{ url_for('ticketing.draft_ticket_review', ticket_id=row.ticket.ticket_id) }}" class="tkt-btn tkt-btn-outline tkt-btn-sm">Review</a>
-                {% elif row.ticket %}
-                <a href="{{ url_for('ticketing.ticket_detail', ticket_id=row.ticket.ticket_id) }}" class="tkt-btn tkt-btn-outline tkt-btn-sm">{{ row.ticket.ticket_id }}</a>
+                {% if item.outcome == 'pending' and item.ticket_public_id %}
+                <a href="{{ url_for('ticketing.draft_ticket_review', ticket_id=item.ticket_public_id) }}"
+                   class="tkt-btn tkt-btn-primary tkt-btn-sm">Review &amp; Convert</a>
+                {% elif item.ticket_public_id %}
+                <a href="{{ url_for('ticketing.ticket_detail', ticket_id=item.ticket_public_id) }}"
+                   class="tkt-btn tkt-btn-outline tkt-btn-sm">Open ticket</a>
                 {% endif %}
               </td>
             </tr>
@@ -228,10 +224,15 @@
         </table>
       </div>
       {% if intake_truncated > 0 %}
-      <p style="font-size:.78rem;color:var(--tkt-text-3);margin:10px 0 0;">Showing the most recent {{ intake_items|length }} of {{ intake_truncated + intake_items|length }} matching emails — narrow the filters above to see the rest.</p>
+      <p style="font-size:.78rem;color:var(--tkt-text-3);margin:0;padding:10px 14px 14px;">Showing the most recent {{ intake_items|length }} of {{ intake_truncated + intake_items|length }} matching emails — narrow the filters above to see the rest.</p>
       {% endif %}
+      {% elif intake_status_filter == 'pending' and not intake_date_from and not intake_date_to and not intake_search_q %}
+      <div class="tkt-empty">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="56" height="56"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
+        <p>No draft tickets right now. New emails to {{ intake_email }} will appear here.</p>
+      </div>
       {% else %}
-      <div class="tkt-empty" style="padding:32px 0;">
+      <div class="tkt-empty">
         <p>No emails match these filters.</p>
       </div>
       {% endif %}
